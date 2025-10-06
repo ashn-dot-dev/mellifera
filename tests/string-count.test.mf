@@ -1,0 +1,9 @@
+println(`"".count() is ` + repr("".count()));
+println(`"abc".count() is ` + repr("abc".count()));
+println(`"😀".count() is ` + repr("😀".count())); # 0xf0, 0x9f, 0x98, 0x80
+println(`"abc😀def".count() is ` + repr("abc😀def".count()));
+################################################################################
+# "".count() is 0
+# "abc".count() is 3
+# "😀".count() is 4
+# "abc😀def".count() is 10

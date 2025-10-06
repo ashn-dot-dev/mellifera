@@ -1,0 +1,31 @@
+# Declaration of a standard type and instantiation of that type with `new`.
+let event = type {
+    .party = function(self) {
+        println("🥳 woo party 🎉");
+    },
+    .cleanup = function(self) {
+        println("🧹 boo cleanup 🧽");
+    },
+};
+let e = new event Map{};
+e.party();
+e.cleanup();
+
+print("\n");
+
+# Declaration of a type extending a base type and instantiation of that type
+# with `new`.
+let birthday = type extends(event, {
+    .party = function(self) {
+        println("🥳 woo birthday party 🎂");
+    },
+});
+let b = new birthday Map{};
+b.party();
+b.cleanup();
+################################################################################
+# 🥳 woo party 🎉
+# 🧹 boo cleanup 🧽
+#
+# 🥳 woo birthday party 🎂
+# 🧹 boo cleanup 🧽

@@ -1,0 +1,13 @@
+dumpln(math::atan(NaN));
+dumpln(math::asin(+0).fixed(2));
+dumpln(math::asin(+1).fixed(2));
+dumpln(math::atan(+Inf).fixed(2));
+dumpln(math::asin(-1).fixed(2));
+dumpln(math::atan(-Inf).fixed(2));
+################################################################################
+# NaN
+# 0
+# 1.57
+# 1.57
+# -1.57
+# -1.57

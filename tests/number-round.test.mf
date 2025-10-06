@@ -1,0 +1,13 @@
+println(`(+123.45).round() is ` + repr((+123.45).round()));
+println(`(-123.45).round() is ` + repr((-123.45).round()));
+println(`(+123.54).round() is ` + repr((+123.54).round()));
+println(`(-123.54).round() is ` + repr((-123.54).round()));
+try { Inf.round(); } catch err { println(`Inf.round() produced the error ` + repr(err)); }
+try { NaN.round(); } catch err { println(`NaN.round() produced the error ` + repr(err)); }
+################################################################################
+# (+123.45).round() is 123
+# (-123.45).round() is -123
+# (+123.54).round() is 124
+# (-123.54).round() is -124
+# Inf.round() produced the error "cannot convert float infinity to integer"
+# NaN.round() produced the error "cannot convert float NaN to integer"

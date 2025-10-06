@@ -1,0 +1,23 @@
+dumpln(ty::is_vector(null));
+dumpln(ty::is_vector(true));
+dumpln(ty::is_vector(123));
+dumpln(ty::is_vector("foo"));
+dumpln(ty::is_vector(r"foo"));
+dumpln(ty::is_vector(["foo", "bar", "baz"]));
+dumpln(ty::is_vector({.foo = "bar"}));
+dumpln(ty::is_vector({"foo", "bar"}));
+dumpln(ty::is_vector(123.&));
+dumpln(ty::is_vector(function() {}));
+dumpln(ty::is_vector(dumpln));
+################################################################################
+# false
+# false
+# false
+# false
+# false
+# true
+# false
+# false
+# false
+# false
+# false

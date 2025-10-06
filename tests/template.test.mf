@@ -1,0 +1,86 @@
+let n = 123.456;
+let s = "foo bar";
+
+dumpln($"foo");
+dumpln($"{123}");
+dumpln($"{"foo"}");
+dumpln($"{123} {"foo"}");
+dumpln($"{123} {"foo"} {"bar"}");
+dumpln($"{[123, 456, 789 ]}");
+dumpln($"{ Map{"abc": 123, .def = 456} }");
+dumpln($"{ {"abc": 123, .def = 456} }");
+dumpln($"{ Set{"abc", "def"} }");
+dumpln($"{ {"abc", "def"} }");
+dumpln($"{n} {s} {"baz"}");
+dumpln($"{{}}");
+dumpln($"{{{{}}}}");
+dumpln($"{{{123}}}");
+dumpln($"{{{ 123 }}}");
+
+print("\n");
+
+dumpln($`foo\n{123}\nbar`);
+dumpln($`foo{{\n{123}\n}}bar`);
+
+print("\n");
+
+# Templates should invoke `result.into_string` on a `result` returned from an
+# expression.
+let person = type {
+    .init = function(name, age) {
+        return new person {
+            .name = name,
+            .age = age,
+        };
+    },
+    .into_string = function(self) {
+        return self.name;
+    },
+};
+dumpln($"{person::init("Alice", 42)}");
+
+let bad = type {
+    .into_string = function(self) {
+        return null;
+    },
+};
+try { $"{new bad Map{}}"; } catch err { dumpln(err); }
+
+print("\n");
+
+dumpln($```
+foo
+{123}
+bar
+```.trim());
+
+dumpln($```
+foo{{
+{123}
+}}bar
+```.trim());
+################################################################################
+# "foo"
+# "123"
+# "foo"
+# "123 foo"
+# "123 foo bar"
+# "[123, 456, 789]"
+# "{\"abc\": 123, \"def\": 456}"
+# "{\"abc\": 123, \"def\": 456}"
+# "{\"abc\", \"def\"}"
+# "{\"abc\", \"def\"}"
+# "123.456 foo bar baz"
+# "{}"
+# "{{}}"
+# "{123}"
+# "{123}"
+#
+# "foo\\n123\\nbar"
+# "foo{\\n123\\n}bar"
+#
+# "Alice"
+# "metafunction `into_string` returned null"
+#
+# "foo\n123\nbar"
+# "foo{\n123\n}bar"

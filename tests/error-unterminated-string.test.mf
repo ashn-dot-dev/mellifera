@@ -1,0 +1,3 @@
+"x
+################################################################################
+[error-unterminated-string.test.mf, line 1] expected character, found newline

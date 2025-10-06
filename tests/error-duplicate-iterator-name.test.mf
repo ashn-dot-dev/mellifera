@@ -1,0 +1,3 @@
+for x, x in Map{} { }
+################################################################################
+# [error-duplicate-iterator-name.test.mf, line 1] duplicate iterator name `x`

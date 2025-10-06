@@ -1,0 +1,44 @@
+# null
+dumpln( null );
+
+# number: IEEE-754 double
+dumpln( 123.456 );
+dumpln( Inf );
+dumpln( NaN );
+
+# boolean: true or false
+dumpln( true );
+dumpln( false );
+
+# string: byte strings with assumed UTF-8 encoding
+dumpln( "hello 🍔" );
+dumpln( "hello\t🍔" ); # string with escape sequences
+dumpln( `hello\t🍔` ); # raw string where escape sequences are not processed
+let burger = "🍔";
+dumpln( $"hello\t{burger}" ); # template string with string interpolation
+dumpln( $`hello\t{burger}` ); # template string using raw string literal
+
+# regexp: regular expressions
+dumpln( r`(\w+) (\w+)` );
+
+# vector: ordered collection of elements
+dumpln( [] );
+dumpln( ["foo", "bar", "baz"] );
+
+# map: collection of key-value pairs with unique keys
+dumpln( Map{} ); # empty map requires Map to disambiguate from the empty set
+dumpln( {"foo": 123, "bar": 456, "baz": ["abc", 789]} );
+dumpln( {.foo = 123, .bar = 456, .baz = ["abc", 789]} ); # alternate syntax
+
+# set: collection unique elements
+dumpln( Set{} ); # empty set requires Set to disambiguate from the empty map
+dumpln( {"foo", "bar", "baz", ["abc", 789]} );
+
+# reference: pointer-like construct to allow in-place mutation and data sharing
+dumpln( 123.& ); # .& is the postfix addressof operator
+
+# function: first-class function values
+dumpln( function() { println("hello"); } );
+let add = function(a, b) { return a + b; };
+dumpln( add );
+println($"add(123, 456) is {add(123, 456)}");

@@ -1,0 +1,11 @@
+dumpln(math::exp(-1).fixed(3));
+dumpln(math::exp(0).fixed(3));
+dumpln(math::exp(1).fixed(3));
+dumpln(math::exp(2).fixed(3));
+dumpln(math::exp(10).fixed(3));
+################################################################################
+# 0.368
+# 1
+# 2.718
+# 7.389
+# 22026.466

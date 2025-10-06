@@ -1,0 +1,11 @@
+dumpln("A".bytes());
+dumpln("foobar".bytes());
+
+let burger = "🍔".bytes();
+assert(burger[0] == "\xF0");
+assert(burger[1] == "\x9F");
+assert(burger[2] == "\x8D");
+assert(burger[3] == "\x94");
+################################################################################
+# ["A"]
+# ["f", "o", "o", "b", "a", "r"]

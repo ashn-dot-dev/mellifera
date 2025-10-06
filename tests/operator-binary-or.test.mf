@@ -1,0 +1,43 @@
+try { dumpln( null         or null         ); } catch err { dumpln(err); }
+try { dumpln( true         or true         ); } catch err { dumpln(err); }
+try { dumpln( 123          or 123          ); } catch err { dumpln(err); }
+try { dumpln( "foo"        or "foo"        ); } catch err { dumpln(err); }
+try { dumpln( []           or []           ); } catch err { dumpln(err); }
+try { dumpln( Map{}        or Map{}        ); } catch err { dumpln(err); }
+try { dumpln( Set{}        or Set{}        ); } catch err { dumpln(err); }
+try { dumpln( 123.&        or 123.&        ); } catch err { dumpln(err); }
+try { dumpln( function(){} or function(){} ); } catch err { dumpln(err); }
+try { dumpln( println      or println      ); } catch err { dumpln(err); }
+
+print("\n");
+
+dumpln(false or false);
+dumpln(false or true);
+dumpln(true or false);
+dumpln(true or true);
+
+print("\n");
+
+# short circuiting
+let f = function(s) { println(s); error "oopsie"; };
+try { false or f("false or f()"); } catch { println("error"); }
+true or f("true and f()");
+################################################################################
+# "attempted binary or operation with types `null` and `null`"
+# true
+# "attempted binary or operation with types `number` and `number`"
+# "attempted binary or operation with types `string` and `string`"
+# "attempted binary or operation with types `vector` and `vector`"
+# "attempted binary or operation with types `map` and `map`"
+# "attempted binary or operation with types `set` and `set`"
+# "attempted binary or operation with types `reference` and `reference`"
+# "attempted binary or operation with types `function` and `function`"
+# "attempted binary or operation with types `function` and `function`"
+#
+# false
+# true
+# true
+# true
+#
+# false or f()
+# error

@@ -1,0 +1,14 @@
+println(`"foo=bar".rfind("=") is ` + repr("foo=bar".rfind("=")));
+println(`"foo=bar".rfind("nope") is ` + repr("foo=bar".rfind("nope")));
+println(`"foo=foo".rfind("foo") is ` + repr("foo=foo".rfind("foo")));
+
+println(`"abc😀def".rfind("abc") is ` + repr("abc😀def".rfind("abc")));
+println(`"abc😀def".rfind("def") is ` + repr("abc😀def".rfind("def")));
+println(`"abc😀def".rfind("😀") is ` + repr("abc😀def".rfind("😀")));
+################################################################################
+# "foo=bar".rfind("=") is 3
+# "foo=bar".rfind("nope") is null
+# "foo=foo".rfind("foo") is 4
+# "abc😀def".rfind("abc") is 0
+# "abc😀def".rfind("def") is 7
+# "abc😀def".rfind("😀") is 3

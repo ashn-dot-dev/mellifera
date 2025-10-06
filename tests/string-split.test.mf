@@ -1,0 +1,15 @@
+println(`"foo bar".split(" ") is ` + repr("foo bar".split(" ")));
+println(`"f o o b a r".split(" ") is ` + repr("f o o b a r".split(" ")));
+println(`"foobar".split("oo") is ` + repr("foobar".split("oo")));
+println(`"foobar".split("o") is ` + repr("foobar".split("o")));
+println(`"foobar".split("baz") is ` + repr("foobar".split("baz")));
+println(`"foobar".split("") is ` + repr("foobar".split("")));
+println(`"".split("") is ` + repr("".split("")));
+################################################################################
+# "foo bar".split(" ") is ["foo", "bar"]
+# "f o o b a r".split(" ") is ["f", "o", "o", "b", "a", "r"]
+# "foobar".split("oo") is ["f", "bar"]
+# "foobar".split("o") is ["f", "", "bar"]
+# "foobar".split("baz") is ["foobar"]
+# "foobar".split("") is ["f", "o", "o", "b", "a", "r"]
+# "".split("") is []

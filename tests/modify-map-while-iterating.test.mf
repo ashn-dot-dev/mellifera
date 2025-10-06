@@ -1,0 +1,19 @@
+let collection = {"foo": 123, "bar": 456, "baz": 789};
+println(collection);
+for k, v in collection {
+    collection.insert("bar", 135);
+    collection.insert("boop", 246);
+    if collection.contains("baz") {
+        collection.remove("baz");
+        println("removed baz");
+    }
+    println(repr(k) + " " + repr(v));
+}
+println(collection);
+################################################################################
+# {"foo": 123, "bar": 456, "baz": 789}
+# removed baz
+# "foo" 123
+# "bar" 456
+# "baz" 789
+# {"foo": 123, "bar": 135, "boop": 246}

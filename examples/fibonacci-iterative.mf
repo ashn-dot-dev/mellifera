@@ -1,0 +1,23 @@
+# Usage:
+#   /path/to/mf.py examples/fibonacci-iterative.mf n
+
+let fibonacci = function(n) {
+    if n <= 1 {
+        return n;
+    }
+    let a = 0; # fibonacci(0)
+    let b = 1; # fibonacci(1)
+
+    for _ in range(2, n+1) {
+        let c = a + b;
+        a = b;
+        b = c;
+    }
+
+    return b;
+};
+
+if argv.count() != 2 {
+    error "expected exactly one program argument";
+}
+println(fibonacci(number::init(argv[1])));

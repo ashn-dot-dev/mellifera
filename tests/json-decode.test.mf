@@ -1,0 +1,51 @@
+dumpln(json::decode(`null`));
+
+print("\n");
+
+dumpln(json::decode(`true`));
+dumpln(json::decode(`false`));
+
+print("\n");
+
+dumpln(json::decode(`123`));
+dumpln(json::decode(`123.456`));
+try { dumpln(json::decode(`NaN`)); } catch err { println("error: " + string::init(err)); }
+try { dumpln(json::decode(`Inf`)); } catch err { println("error: " + string::init(err)); }
+
+print("\n");
+
+dumpln(json::decode(`"foo"`));
+dumpln(json::decode(`"foo\nbar"`));
+
+print("\n");
+
+dumpln(json::decode(`[]`));
+dumpln(json::decode(`["foo", "bar", "baz"]`));
+dumpln(json::decode(`["foo", ["bar"], {"baz": 123}]`));
+
+print("\n");
+
+dumpln(json::decode(`{}`));
+dumpln(json::decode(`{"foo": 123}`));
+dumpln(json::decode(`{"foo": 123, "bar": ["abc", "def"], "baz": {"blub": null}}`));
+################################################################################
+# null
+#
+# true
+# false
+#
+# 123
+# 123.456
+# error: cannot JSON-decode string "NaN"
+# error: cannot JSON-decode string "Inf"
+#
+# "foo"
+# "foo\nbar"
+#
+# []
+# ["foo", "bar", "baz"]
+# ["foo", ["bar"], {"baz": 123}]
+#
+# Map{}
+# {"foo": 123}
+# {"foo": 123, "bar": ["abc", "def"], "baz": {"blub": null}}

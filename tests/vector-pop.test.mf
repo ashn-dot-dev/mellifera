@@ -1,0 +1,12 @@
+let x = [123, 456, 789];
+let y = x.pop();
+dumpln(x);
+dumpln(y);
+
+x.pop();
+x.pop();
+try { x.pop(); } catch err { dumpln(err); } # no more elements to pop
+################################################################################
+# [123, 456]
+# 789
+# "attempted vector::pop on an empty vector"

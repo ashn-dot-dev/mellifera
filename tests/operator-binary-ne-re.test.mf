@@ -1,0 +1,7 @@
+println("\"foobar\" !~ r`foo` is " + repr("foobar" !~ r`foo`));
+println("\"foobar\" !~ r`^foo` is " + repr("foobar" !~ r`^foo`));
+println("\"foobar\" !~ r`^foo$` is " + repr("foobar" !~ r`^foo$`));
+################################################################################
+# "foobar" !~ r`foo` is false
+# "foobar" !~ r`^foo` is false
+# "foobar" !~ r`^foo$` is true

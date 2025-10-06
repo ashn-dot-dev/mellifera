@@ -1,0 +1,31 @@
+let a = {
+    "abc",
+    "def",
+};
+let b = {
+    "foo",
+    "bar",
+};
+dumpln(set::union(a, b));
+dumpln(a.union(b));
+
+let a = {
+    "abc",
+    "def",
+};
+let b = {
+    "abc",
+    "bar",
+};
+dumpln(set::union(a, b));
+dumpln(a.union(b));
+
+try { dumpln(set::union(123, Set{})); } catch err { dumpln(err); }
+try { dumpln(set::union(Set{}, 123)); } catch err { dumpln(err); }
+################################################################################
+# {"abc", "def", "foo", "bar"}
+# {"abc", "def", "foo", "bar"}
+# {"abc", "def", "bar"}
+# {"abc", "def", "bar"}
+# "attempted set::union of values 123 and Set{}"
+# "attempted set::union of values Set{} and 123"

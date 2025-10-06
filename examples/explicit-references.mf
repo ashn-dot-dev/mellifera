@@ -1,0 +1,32 @@
+let pass_by_value = function(val) {
+    println($"[inside pass_by_value] val starts as {val}");
+
+    # Here val is a copy, so the mutation performed by `val.push` will not
+    # change the original value outside of this function's lexical scope.
+    val.push(123);
+
+    println($"[inside pass_by_value] val ends as {val}");
+};
+
+let pass_by_reference = function(ref) {
+    println($"[inside pass_by_reference] ref starts as {ref} with referenced value {ref.*}");
+
+    # Here ref is a reference to the original value outside of this function's
+    # lexical scope, so mutation performed by `ref.*.push` will change that
+    # original value.
+    ref.*.push(123); # .* is the postfix dereference operator
+
+    println($"[inside pass_by_reference] ref ends as {ref} with referenced value {ref.*}");
+};
+
+let x = ["foo", "bar", "baz"];
+println($"[outside pass_by_value] x starts as {x}");
+pass_by_value(x);
+println($"[outside pass_by_value] x ends as {x}");
+
+print("\n");
+
+let y = ["abc", "def", "hij"];
+println($"[outside pass_by_reference] y starts as {y}");
+pass_by_reference(y.&); # .& is the postfix addressof operator
+println($"[outside pass_by_reference] y ends as {y}");

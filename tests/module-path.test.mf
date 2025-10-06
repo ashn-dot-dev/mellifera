@@ -1,0 +1,5 @@
+assert(
+    module::path.ends_with(`tests/module-path.test.mf`) # [Unix] /path/to/mf/tests/module-path.test.mf
+    or
+    module::path.ends_with(`tests\module-path.test.mf`) # [Windows] C:\path\to\mf\tests\module-path.test.mf
+);

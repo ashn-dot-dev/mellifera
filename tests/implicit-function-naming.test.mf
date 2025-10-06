@@ -1,0 +1,25 @@
+println(function() {});
+
+let foo = function(){};
+println(foo);
+
+let a = {
+    "b": {
+        "c": function(){}
+    },
+};
+println(a::b::c);
+
+let y = "y";
+let z = "z";
+let x = {
+    y: {
+        z: function(){}
+    },
+};
+println(x::y::z);
+################################################################################
+# function@[implicit-function-naming.test.mf, line 1]
+# foo@[implicit-function-naming.test.mf, line 3]
+# a::b::c@[implicit-function-naming.test.mf, line 8]
+# function@[implicit-function-naming.test.mf, line 17]

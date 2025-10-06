@@ -1,0 +1,23 @@
+println(typename(null));
+println(typename(true));
+println(typename(123));
+println(typename(""));
+println(typename([]));
+println(typename(Map{}));
+println(typename(Set{}));
+println(typename(123.&));
+println(typename(function(){}));
+
+let T = type Map{};
+println(typename(new T null));
+################################################################################
+# null
+# boolean
+# number
+# string
+# vector
+# map
+# set
+# reference
+# function
+# T

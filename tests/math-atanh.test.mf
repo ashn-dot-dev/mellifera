@@ -1,0 +1,17 @@
+dumpln(math::atanh(NaN));
+try { math::atanh(+Inf); } catch err { dumpln(err); }
+try { math::atanh(-Inf); } catch err { dumpln(err); }
+dumpln(math::atanh(0));
+dumpln(math::atanh(-0.5).fixed(3));
+try { math::atanh(-1); } catch err { dumpln(err); }
+dumpln(math::atanh(+0.5).fixed(3));
+try { math::atanh(+1); } catch err { dumpln(err); }
+################################################################################
+# NaN
+# "math domain error"
+# "math domain error"
+# 0
+# -0.549
+# "math domain error"
+# 0.549
+# "math domain error"

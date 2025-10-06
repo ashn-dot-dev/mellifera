@@ -1,0 +1,3 @@
+Map{"foo" & 123};
+################################################################################
+# [error-invalid-map-separator.test.mf, line 1] expected : or =, found &

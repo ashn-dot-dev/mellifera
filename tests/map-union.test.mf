@@ -1,0 +1,31 @@
+let a = {
+    "abc": 111,
+    "def": 222,
+};
+let b = {
+    "foo": 333,
+    "bar": 444,
+};
+dumpln(map::union(a, b));
+dumpln(a.union(b));
+
+let a = {
+    "abc": 111,
+    "def": 222,
+};
+let b = {
+    "abc": 333,
+    "bar": 444,
+};
+dumpln(map::union(a, b));
+dumpln(a.union(b));
+
+try { dumpln(map::union(123, Map{})); } catch err { dumpln(err); }
+try { dumpln(map::union(Map{}, 123)); } catch err { dumpln(err); }
+################################################################################
+# {"abc": 111, "def": 222, "foo": 333, "bar": 444}
+# {"abc": 111, "def": 222, "foo": 333, "bar": 444}
+# {"abc": 333, "def": 222, "bar": 444}
+# {"abc": 333, "def": 222, "bar": 444}
+# "attempted map::union of values 123 and Map{}"
+# "attempted map::union of values Map{} and 123"

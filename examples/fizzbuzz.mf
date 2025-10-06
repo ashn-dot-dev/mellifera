@@ -1,0 +1,17 @@
+let N = 30;
+for i in N {
+    let n = i + 1;
+    if n % 3 == 0 and n % 5 == 0 {
+        println("fizzbuzz");
+        continue;
+    }
+    if n % 3 == 0 {
+        println("fizz");
+        continue;
+    }
+    if n % 5 == 0 {
+        println("buzz");
+        continue;
+    }
+    println(string::init(n));
+}

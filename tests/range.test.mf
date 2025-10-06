@@ -1,0 +1,19 @@
+dumpln(vector::init(range(0, 5)));
+dumpln(vector::init(range(1, 5)));
+dumpln(vector::init(range(-1, 5)));
+dumpln(vector::init(range(-5, 1)));
+dumpln(vector::init(range(-5, 0)));
+dumpln(vector::init(range(-5, -1)));
+
+print("\n");
+
+try { range(+1, -1); } catch err { dumpln(err); }
+################################################################################
+# [0, 1, 2, 3, 4]
+# [1, 2, 3, 4]
+# [-1, 0, 1, 2, 3, 4]
+# [-5, -4, -3, -2, -1, 0]
+# [-5, -4, -3, -2, -1]
+# [-5, -4, -3, -2]
+#
+# "end-of-range -1 is less than beginning-of-range 1"

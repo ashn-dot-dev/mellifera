@@ -1,0 +1,11 @@
+dumpln(math::exp10(-1).fixed(3));
+dumpln(math::exp10(0).fixed(3));
+dumpln(math::exp10(1).fixed(3));
+dumpln(math::exp10(2).fixed(3));
+dumpln(math::exp10(10).fixed(3));
+################################################################################
+# 0.1
+# 1
+# 10
+# 100
+# 10000000000

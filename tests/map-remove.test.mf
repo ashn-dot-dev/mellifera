@@ -1,0 +1,10 @@
+let x = {"foo": 123, "bar": 456, "baz": 789};
+let y = x.remove("bar");
+dumpln(x);
+dumpln(y);
+
+try { x.remove("qux"); } catch err { dumpln(err); }
+################################################################################
+# {"foo": 123, "baz": 789}
+# 456
+# "attempted map::remove on a map without key \"qux\""

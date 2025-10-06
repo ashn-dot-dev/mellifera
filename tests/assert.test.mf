@@ -1,0 +1,5 @@
+assert(true); println(`assert(true) does nothing`);
+try { assert(false); } catch err { println(`assert(false) produces ` + repr(err)); }
+################################################################################
+# assert(true) does nothing
+# assert(false) produces "assertion failure"

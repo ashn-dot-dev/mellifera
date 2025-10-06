@@ -1,0 +1,3 @@
+new type Set{} null;
+################################################################################
+# [error-new-expected-map.test.mf, line 1] error: expected map-like value, received set

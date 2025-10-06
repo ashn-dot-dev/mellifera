@@ -1,0 +1,12 @@
+dumpln(math::cbrt(NaN));
+dumpln(math::cbrt(+Inf));
+dumpln(math::cbrt(-Inf));
+
+dumpln(math::cbrt(+8));
+dumpln(math::cbrt(-8));
+################################################################################
+# NaN
+# Inf
+# -Inf
+# 2
+# -2

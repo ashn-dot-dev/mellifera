@@ -1,0 +1,7 @@
+dumpln(range(1, 4).any(function(x) { return x == 4; }));
+dumpln(range(1, 5).any(function(x) { return x == 4; }));
+dumpln(range(1, 6).any(function(x) { return x == 4; }));
+################################################################################
+# false
+# true
+# true

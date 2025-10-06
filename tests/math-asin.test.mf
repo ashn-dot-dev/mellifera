@@ -1,0 +1,13 @@
+dumpln(math::asin(NaN));
+try { dumpln(math::asin(+Inf)); } catch err { dumpln(err); }
+try { dumpln(math::asin(-Inf)); } catch err { dumpln(err); }
+dumpln(math::asin(+0).fixed(2));
+dumpln(math::asin(+1).fixed(2));
+dumpln(math::asin(-1).fixed(2));
+################################################################################
+# NaN
+# "math domain error"
+# "math domain error"
+# 0
+# 1.57
+# -1.57

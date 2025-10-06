@@ -1,0 +1,854 @@
+# Comments begin with the # character and extend until the end of the line.
+
+println("============");
+println("== Values ==");
+println("============");
+
+println("the null value");
+println("--------------");
+dumpln( null );
+
+print("\n");
+
+println("boolean values");
+println("--------------");
+dumpln( true  );
+dumpln( false );
+
+print("\n");
+
+println("number values");
+println("-------------");
+dumpln( 123    );
+dumpln( 123.0  );
+dumpln( 123.45 );
+dumpln( 0xdeadbeef );
+
+print("\n");
+
+println("string values");
+println("-------------");
+dumpln( "hello"        );
+dumpln( "hello world"  );
+dumpln( "hello\tworld" );
+dumpln( "hello\nworld" );
+dumpln( "hello\\world" );
+dumpln( "hello\"world" );
+dumpln( "hello\x5Fworld" ); # 0x5F is ASCII _
+dumpln( "hello\x5fworld" ); # 0x5f is ASCII _
+dumpln( "hello\xf0\x9f\x8d\x94world" ); # 0xf0, 0x9f, 0x8d, 0x94 is UTF-8 🍔
+dumpln( "hello🍔world" );
+dumpln( "hello, 世界" );
+dumpln( `hello world` );
+dumpln(
+`hello
+world`
+);
+dumpln(
+```
+hello
+world
+```
+);
+
+print("\n");
+
+println("regex values");
+println("------------");
+dumpln( r`foo`         );
+dumpln( r`(\w+) (\w+)` );
+
+print("\n");
+
+println("vector values");
+println("-------------");
+dumpln( []                     );
+dumpln( ["foo", "bar", "baz"]  );
+dumpln( ["foo", "bar", "baz",] );
+
+print("\n");
+
+println("map values");
+println("----------");
+dumpln( Map{}                                    );
+dumpln( Map{"foo": 123, "bar": 456, "baz": 789}  );
+dumpln( Map{"foo": 123, "bar": 456, "baz": 789,} );
+dumpln( {"foo": 123, "bar": 456, "baz": 789}     );
+dumpln( {"foo": 123, "bar": 456, "baz": 789,}    );
+dumpln( {.foo: 123, .bar: 456, .baz: 789}        );
+dumpln( {.foo: 123, .bar: 456, .baz: 789,}       );
+dumpln( {"foo" = 123, "bar" = 456, "baz" = 789}  );
+dumpln( {"foo" = 123, "bar" = 456, "baz" = 789,} );
+dumpln( {.foo = 123, .bar = 456, .baz = 789}     );
+dumpln( {.foo = 123, .bar = 456, .baz = 789,}    );
+
+print("\n");
+
+println("set values");
+println("----------");
+dumpln( Set{}                     );
+dumpln( Set{"foo", "bar", "baz"}  );
+dumpln( Set{"foo", "bar", "baz",} );
+dumpln( {"foo", "bar", "baz"}     );
+dumpln( {"foo", "bar", "baz",}    );
+
+print("\n");
+
+println("reference values");
+println("----------------");
+dumpln( 123.&                                  );
+dumpln( {"foo": 123, "bar": 456, "baz": 456}.& );
+
+print("\n");
+
+println("function values");
+println("---------------");
+let named_function = function() { };
+dumpln( named_function                                          );
+dumpln( function() { }                                          );
+dumpln( function() { println("hello from inside a function"); } );
+
+print("\n");
+
+println("builtin function values");
+println("-----------------------");
+dumpln( dumpln  );
+dumpln( println );
+
+print("\n");
+
+println("===============");
+println("== Accessors ==");
+println("===============");
+
+let v = [123, 456, 789];
+println($`v is {v}`);
+println($`v[1] is {v[1]}`);
+try { v[3]; } catch err { println($`v[3] produces {repr(err)}`); }
+try { v["foo"]; } catch err { println($`v["foo"] produces {repr(err)}`); }
+
+print("\n");
+
+let m = {"foo": "bar", 123: {456, 789}, {"key": "val"}: "baz"};
+println($`m is {m}`);
+println($`m["foo"] is {repr(m["foo"])}`);
+println($`m[123] is {repr(m[123])}`);
+println($`m[{{"key": "val"}}] is {repr(m[{"key": "val"}])}`);
+println($`m::foo is {repr(m::foo)} (equivalent to m["foo"])`);
+println($`m.foo is {repr(m.foo)} (equivalent to m["foo"] for field access)`);
+try { m["qux"]; } catch err { println($`m["qux"] produces {repr(err)}`); }
+
+print("\n");
+
+println("============================");
+println("== Vector Value Semantics ==");
+println("============================");
+
+let k = ["y", 456];
+println($`k is {k}`);
+println(`let v be [["x", 123], k, ["z", 789]]`);
+let v = [["x", 123], k, ["z", 789]];
+println($`v is {v}`);
+println(`set v[1][1] to "foo"`);
+v[1][1] = "foo";
+println($`k is {k}`);
+println($`v is {v}`);
+
+print("\n");
+
+let v1 = [["x", 123], ["y", 456], ["z", 789]];
+println($`v1 is {v1}`);
+let v2 = v1;
+println(`let v2 be v1`);
+println($`v2 is {v2}`);
+println(`set v2[1][1] to "foo"`);
+v2[1][1] = "foo";
+println($`v1 is {v1}`);
+println($`v2 is {v2}`);
+
+print("\n");
+
+println("=========================");
+println("== Map Value Semantics ==");
+println("=========================");
+
+let k = {"y": 456};
+println($`k is {k}`);
+println(`let m be {"a": {"x": 123}, "b": k, "c": {"z": 789}}`);
+let m = {"a": {"x": 123}, "b": k, "c": {"z": 789}};
+println($`m is {m}`);
+println(`set m["b"]["y"] to "foo"`);
+m["b"]["y"] = "foo";
+println($`k is {k}`);
+println($`m is {m}`);
+
+print("\n");
+
+let m1 = {"a": {"x": 123}, "b": {"y": 456}, "c": {"z": 789}};
+println($`m1 is {m1}`);
+println(`let m2 be m1`);
+let m2 = m1;
+println($`m2 is {m2}`);
+println(`set m2["b"]["y"] to "foo"`);
+m2["b"]["y"] = "foo";
+println($`m1 is {m1}`);
+println($`m2 is {m2}`);
+
+print("\n");
+
+println("=========================");
+println("== Set Value Semantics ==");
+println("=========================");
+
+let k = {"b", 456};
+println($`k is {k}`);
+println(`let s be {{"a", 123}, k, {"c", 789}}`);
+let s = {{"a", 123}, k, {"c", 789}};
+println($`s is {s}`);
+println(`insert "foo" into k`);
+k.insert("foo");
+println($`k = {k}`);
+println($`s = {s}`);
+
+print("\n");
+
+println("===============");
+println("== Operators ==");
+println("===============");
+
+println("operator + (unary)");
+println("------------------");
+println($`+123 is {+123}`);
+println($`+-123 is {+-123}`);
+
+print("\n");
+
+println("operator - (unary)");
+println("------------------");
+println($`-123 is {-123}`);
+println($`--123 is {--123}`);
+
+print("\n");
+
+println("operator not");
+println("------------");
+println($`not true is {not true}`);
+println($`not false is {not false}`);
+
+print("\n");
+
+println("operator and");
+println("------------");
+println($`false and false is {false and false}`);
+println($`false and true is {false and true}`);
+println($`true and false is {true and false}`);
+println($`true and true is {true and true}`);
+
+print("\n");
+
+println("operator or");
+println("-----------");
+println($`false or false is {false or false}`);
+println($`false or true is {false or true}`);
+println($`true or false is {true or false}`);
+println($`true or true is {true or true}`);
+
+print("\n");
+
+println("operator ==");
+println("-----------");
+println($`123 == 123 is {123 == 123}`);
+println($`123 == 456 is {123 == 456}`);
+println($`"foo" == "foo" is {"foo" == "foo"}`);
+println($`"foo" == "bar" is {"foo" == "bar"}`);
+println($`123 == "foo" is {123 == "foo"}`);
+
+print("\n");
+
+println("operator !=");
+println("-----------");
+println($`123 != 123 is {123 != 123}`);
+println($`123 != 456 is {123 != 456}`);
+println($`"foo" != "foo" is {"foo" != "foo"}`);
+println($`"foo" != "bar" is {"foo" != "bar"}`);
+println($`123 != "foo" is {123 != "foo"}`);
+
+print("\n");
+
+println("operator <=");
+println("-----------");
+println($`123 <= 123 is {123 <= 123}`);
+println($`123 <= 456 is {123 <= 456}`);
+println($`"foo" <= "foo" is {"foo" <= "foo"}`);
+println($`"foo" <= "bar" is {"foo" <= "bar"}`);
+
+print("\n");
+
+println("operator >=");
+println("-----------");
+println($`123 >= 123 is {123 >= 123}`);
+println($`123 >= 456 is {123 >= 456}`);
+println($`"foo" >= "foo" is {"foo" >= "foo"}`);
+println($`"foo" >= "bar" is {"foo" >= "bar"}`);
+
+print("\n");
+
+println("operator <");
+println("----------");
+println($`123 < 123 is {123 < 123}`);
+println($`123 < 456 is {123 < 456}`);
+println($`"foo" < "foo" is {"foo" < "foo"}`);
+println($`"foo" < "bar" is {"foo" < "bar"}`);
+
+print("\n");
+
+println("operator >");
+println("----------");
+println($`123 > 123 is {123 > 123}`);
+println($`123 > 456 is {123 > 456}`);
+println($`"foo" > "foo" is {"foo" > "foo"}`);
+println($`"foo" > "bar" is {"foo" > "bar"}`);
+
+print("\n");
+
+println("operator =~");
+println("-----------");
+println("\"foobar\" =~ r`foo` is " + repr("foobar" =~ r`foo`));
+println("\"foobar\" =~ r`^foo` is " + repr("foobar" =~ r`^foo`));
+println("\"foobar\" =~ r`^foo$` is " + repr("foobar" =~ r`^foo$`));
+println("\"Isaac Newton, physicist\" =~ r`(\\w+) (\\w+)` is " + repr("Isaac Newton, physicist" =~ r`(\w+) (\w+)`));
+println($`re::group(0) is {repr(re::group(0))}`);
+println($`re::group(1) is {repr(re::group(1))}`);
+println($`re::group(2) is {repr(re::group(2))}`);
+try {
+    re::group(3);
+} catch err {
+    println(`re::group(3) produces: ` + err);
+}
+
+print("\n");
+
+println("operator !~");
+println("-----------");
+println("\"foobar\" !~ r`foo` is " + repr("foobar" !~ r`foo`));
+println("\"foobar\" !~ r`^foo` is " + repr("foobar" !~ r`^foo`));
+println("\"foobar\" !~ r`^foo$` is " + repr("foobar" !~ r`^foo$`));
+
+print("\n");
+
+println("operator +");
+println("----------");
+println($`123 + 456 is {123 + 456}`);
+println($`"foo" + "bar" is {repr("foo" + "bar")}`);
+println($`["foo", "bar"] + ["baz"] is {["foo", "bar"] + ["baz"]}`);
+
+print("\n");
+
+println("operator -");
+println("----------");
+println($`123 - 456 is {123 - 456}`);
+
+print("\n");
+
+println("operator *");
+println("----------");
+println($`123 * 456 is {123 * 456}`);
+
+print("\n");
+
+println("operator /");
+println("----------");
+println($`123 / 456 is {123 / 456}`);
+println($`123 / Inf is {123 / Inf}`);
+try { 123 / 0; } catch err { println($`123 / 0 produces {repr(err)}`); }
+
+print("\n");
+
+println("operator %");
+println("----------");
+println($`+7 % +3 is {+7 % +3}`);
+println($`+7 % -3 is {+7 % -3}`);
+println($`-7 % +3 is {-7 % +3}`);
+println($`-7 % -3 is {-7 % -3}`);
+println($`10 % 3.5 is {10 % 3.5}`);
+println($`123 % Inf is {123 % Inf}`);
+try { 123 % 0; } catch err { println($`123 % 0 produces {repr(err)}`); }
+
+print("\n");
+
+println("operator .&");
+println("-----------");
+println($`123.& is {123.&}`);
+
+print("\n");
+
+println("operator .*");
+println("-----------");
+println($`123.&.* is {123.&.*}`);
+println(`let x be Map{}`);
+let x = Map{};
+println(`let y be x.&`);
+let y = x.&;
+println(`set y.*["foo"] to "bar"`);
+y.*["foo"] = "bar";
+println($`x is {x}`);
+
+print("\n");
+
+println("operator precedence");
+println("-------------------");
+println($`(123 + 456) * 789 + Map{{"x": 3.14}}["x"] evaluates to { (123 + 456) * 789 + Map{"x": 3.14}["x"] }`);
+
+print("\n");
+
+println("========================");
+println("== If, Elif, and Else ==");
+println("========================");
+
+if true {
+    println("A (if)");
+}
+
+if false {
+    println("X");
+}
+elif true {
+    println("B (elif)");
+}
+
+if false {
+    println("X");
+}
+elif false {
+    println("X");
+}
+
+if false {
+    println("X");
+}
+elif false {
+    println("X");
+}
+elif true {
+    println("C (second-elif)");
+}
+
+if false {
+    println("X");
+}
+elif false {
+    println("X");
+}
+else {
+    println("D (else)");
+}
+
+print("\n");
+
+println("===========");
+println("== Loops ==");
+println("===========");
+
+println("integer loop: for x in 3");
+for x in 3 {
+    println($"x is {x}");
+}
+
+print("\n");
+
+println($"integer loops with references are not permitted: for reference x in 3");
+try {
+    for k.& in 3 { }
+}
+catch err {
+    println($"error: {err}");
+}
+
+print("\n");
+
+let v = ["a", "b", "c"];
+println($"vector loop: for x in {v}");
+for x in v {
+    println($"x is {x}");
+}
+
+print("\n");
+
+let v = [{"value": 123}, {"value": 456}, {"value": 789}];
+println($"vector loop with references: for reference x in vector {v} increment x.*.value by one");
+for x.& in v {
+    x.*.value = x.*.value + 1;
+}
+println($"vector post-loop is {v}");
+
+print("\n");
+
+let m = Map{"a": 123, "b": 456, "c": 789};
+println($"map loop: for k, v in {m}");
+for k, v in m {
+    println($"k is {k}, v is {v}");
+}
+
+print("\n");
+
+let m = {{"id": 123}: "foo", {"id": 456}: "bar", {"id": 789}: "baz"};
+println($"map loops with key references are not permitted: for reference k in map {m}");
+try {
+    for k.& in m { }
+}
+catch err {
+    println($"error: {err}");
+}
+
+print("\n");
+
+let m = {"foo": {"value": 123}, "bar": {"value": 456}, "baz": {"value": 789}};
+println($"map loops with value references: for k, reference v in map {m} increment v.*.value by one");
+for k, v.& in m {
+    v.*.value = v.*.value + 1;
+}
+println($"map post-loop is {m}");
+
+print("\n");
+
+let s = Set{"a", "b", "c"};
+println($"set loop: for x in {s}");
+for x in s {
+    println($"x is {x}");
+}
+
+print("\n");
+
+let s = {{"value": 123}, {"value": 456}, {"value": 789}};
+println($"set loops with references are not permitted: for reference x in set {s}");
+try {
+    for x.& in s { }
+}
+catch err {
+    println($"error: {err}");
+}
+
+print("\n");
+
+let fizzbuzzer = type extends(iterator, {
+    "init": function(n, max) {
+        return new fizzbuzzer {"n": n, "max": max};
+    },
+    "next": function(self) {
+        let n = self.n;
+        if n > self.max {
+            error null; # error null signals end-of-iteration
+        }
+        self.n = self.n + 1;
+        if n % 3 == 0 and n % 5 == 0 {
+            return "fizzbuzz";
+        }
+        if n % 3 == 0 {
+            return "fizz";
+        }
+        if n % 5 == 0 {
+            return "buzz";
+        }
+        return n;
+    },
+});
+let fb = fizzbuzzer::init(1, 15);
+println($"custom iterator loop: for x in {fb} with type {typename(fb)}");
+for x in fb {
+    println(x);
+}
+
+print("\n");
+
+let fb = fizzbuzzer::init(1, 15);
+println($"custom iterator loops with references are not permitted: for reference x in {fb} with type {typename(fb)}");
+try {
+    for x.& in fb { }
+}
+catch err {
+    println($"error: {err}");
+}
+
+print("\n");
+
+println("let x be 1");
+let x = 1;
+println("while x <= 5 print x and then increment x by 1");
+while x <= 5 {
+    println($"x is {x}");
+    x = x + 1;
+}
+
+print("\n");
+
+println("break: while true break before an error occurs");
+while true {
+    break;
+    error "oopsie";
+}
+
+print("\n");
+
+let v = ["foo", "bar", "baz"];
+println($"continue: for x in {v} continue before an error occurs");
+for x in v {
+    continue;
+    error "oopsie";
+}
+
+print("\n");
+
+println("======================================");
+println("== Scoping, Functions, and Closures ==");
+println("======================================");
+
+let hello = function() {
+    println("hello from inside a function");
+};
+hello();
+
+print("\n");
+
+println("let x be 123");
+let x = 123;
+println("open a new scope");
+if true {
+    println("\tlet x be 456 inside the new scope");
+    let x = 456;
+    println($"\tinside the scope x is {x}");
+}
+println($"outside the scope x is {x} due to lexical scoping");
+
+print("\n");
+
+println("let x be 123");
+let x = 123;
+println("open a new scope");
+if true {
+    println("\tset x to 456 inside the new scope (using assignment without let)");
+    x = 456;
+    println($"\tinside the scope x is {x}");
+}
+println($"outside the scope x is {x}");
+
+print("\n");
+
+println("let x be 123");
+let x = 123;
+println("call a function");
+function() {
+    println("\tset x to 456 from within the function (using assignment without let)");
+    x = 456;
+    println($"\tinside the function x is {x}");
+}();
+println($"outside the function x is {x}");
+
+print("\n");
+
+println("create a function `adder(x)` returning a `function(y)` that returns the sum of the closed-over x and argument y when invoked");
+let adder = function(x) {
+    return function(y) {
+        return x + y;
+    };
+};
+println($"adder is {adder}");
+println("let add1 be adder(1)");
+let add1 = adder(1);
+println($"add1 is {add1}");
+println($"add1(2) is {add1(2)}");
+
+print("\n");
+
+let x = Map{
+    "a": 123,
+    "f": function(self) {
+        println($"\t[inside f] self is {self}");
+        println($"\t[inside f] self.a is {self.a}");
+    },
+};
+println($`x is {x}`);
+println(`x["f"] is a function with a single self parameter`);
+println(`calling x["f"] as x["f"](x.&)`);
+x["f"](x.&);
+println(`calling x["f"] as x::f(x.&) (equivalent to the call above)`);
+x::f(x.&);
+println(`calling x["f"] as x.f() (equivalent to the call above, x.& is implicitly passed as the first argument)`);
+x.f();
+
+print("\n");
+
+println("===============");
+println("== Try-Catch ==");
+println("===============");
+
+try { println("inside try block"); } catch err { println($"inside try-catch block: {err}"); }
+try { error "some user defined error"; } catch err { println($"inside try-catch block: {err}"); }
+try { let x = []; x[1]; } catch err { println($"inside try-catch block: {err}"); }
+try { let x = []; x[1] = 123; } catch err { println($"inside try-catch block: {err}"); }
+try { let x = Map{}; x["foo"]; } catch err { println($"inside try-catch block: {err}"); }
+try { let x = Map{}; x["foo"] = 123; } catch err { println($"inside try-catch block: {err}"); }
+try { let x = Map{}; x::foo; } catch err { println($"inside try-catch block: {err}"); }
+try { let x = Map{}; x.foo; } catch err { println($"inside try-catch block: {err}"); }
+
+print("\n");
+
+println("==================");
+println("== Custom Types ==");
+println("==================");
+
+println("types are created using the `type` keyword");
+let vec2 = type {
+    "init": function(x, y) {
+        return new vec2 {
+            "x": x,
+            "y": y,
+        };
+    },
+    "fixed": function(self, ndigits) {
+        return vec2::init(self.x.fixed(ndigits), self.y.fixed(ndigits));
+    },
+    "magnitude": function(self) {
+        return math::sqrt(self.x * self.x + self.y * self.y);
+    },
+    "normalized": function(self) {
+        let magnitude = vec2::magnitude(self);
+        if magnitude == 0 {
+            return vec2::init(0, 0);
+        }
+        return vec2::div(self.*, magnitude);
+    },
+    "dot": function(lhs, rhs) {
+        return lhs.x * rhs.x + lhs.y * rhs.y;
+    },
+    "cross": function(lhs, rhs) {
+        return lhs.x * rhs.y - lhs.y * rhs.x;
+    },
+    "add": function(lhs, rhs) {
+        return vec2::init(lhs.x + rhs.x, lhs.y + rhs.y);
+    },
+    "sub": function(lhs, rhs) {
+        return vec2::init(lhs.x - rhs.x, lhs.y - rhs.y);
+    },
+    "mul": function(lhs, rhs) {
+        if ty::is_number(lhs) {
+            return vec2::init(lhs * rhs.x, lhs * rhs.y);
+        }
+        if ty::is_number(rhs) {
+            return vec2::init(lhs.x * rhs, lhs.y * rhs);
+        }
+        return vec2::init(lhs.x * rhs.x, lhs.y * rhs.y);
+    },
+    "div": function(lhs, rhs) {
+        if ty::is_number(rhs) {
+            return vec2::init(lhs.x / rhs, lhs.y / rhs);
+        }
+        return vec2::init(lhs.x / rhs.x, lhs.y / rhs.y);
+    },
+    "distance": function(a, b) {
+        let xdiff = a.x - b.x;
+        let ydiff = a.y - b.y;
+        return math::sqrt(xdiff * xdiff + ydiff * ydiff);
+    },
+};
+println($`the type vec2 is {vec2}`);
+
+print("\n");
+
+println("instances of a type are created using the `new` keyword");
+println(`let v be new vec2 {.x = 3, .y = 4}`);
+let v = new vec2 {.x = 3, .y = 4};
+println($`v is {v}`);
+println($`typeof(v) == vec2 is {typeof(v) == vec2}`);
+println($`typename(v) is {repr(typename(v))}`);
+println($`v.magnitude() is {v.magnitude()}`);
+println($`vec2::mul(v, 2) is {vec2::mul(v, 2)}`);
+
+print("\n");
+
+println("custom types will often define an `init` function for canonical initialization");
+println(`let v be vec2::init(3, 4)`);
+let v = vec2::init(3, 4);
+println($`v is {v}`);
+println($`typeof(v) == vec2 is {typeof(v) == vec2}`);
+println($`typename(v) is {repr(typename(v))}`);
+println($`v.magnitude() is {v.magnitude()}`);
+
+print("\n");
+
+println("==================");
+println("== Example Code ==");
+println("==================");
+
+println("example merge sort");
+println("------------------");
+let sort = function(x) {
+    if x.count() <= 1 {
+        return x;
+    }
+    let mid = (x.count() / 2).trunc();
+    let lo = sort(x.slice(0, mid));
+    let hi = sort(x.slice(mid, x.count()));
+    let lo_index = 0;
+    let hi_index = 0;
+    let result = [];
+    for _ in x.count() {
+        if lo_index == lo.count() {
+            result.push(hi[hi_index]);
+            hi_index = hi_index + 1;
+        }
+        elif hi_index == hi.count() {
+            result.push(lo[lo_index]);
+            lo_index = lo_index + 1;
+        }
+        elif lo[lo_index] < hi[hi_index] {
+            result.push(lo[lo_index]);
+            lo_index = lo_index + 1;
+        }
+        else {
+            result.push(hi[hi_index]);
+            hi_index = hi_index + 1;
+        }
+    }
+    return result;
+};
+let vec = [6, 8, 3, 1, 7, 2, 4, 5, 9];
+dumpln(sort);
+println($"unsorded vector is {vec}");
+println($"sorted vector is {sort(vec)}");
+
+print("\n");
+
+println("example fibonacci");
+println("-----------------");
+let fibonacci = function(x) {
+    if x == 0 {
+        return 0;
+    }
+    elif x == 1 {
+        return 1;
+    }
+    else {
+        return fibonacci(x - 1) + fibonacci(x - 2);
+    }
+};
+dumpln(fibonacci);
+println($"fibonacci(10) is {fibonacci(10)}");
+
+print("\n");
+
+println("============================");
+println("== Top-Level Error Traces ==");
+println("============================");
+
+let g = function() {
+    let f = function() {
+        error "oopsie";
+    };
+    f();
+};
+function() {
+    let h = function() {
+        g();
+    };
+    h();
+}();

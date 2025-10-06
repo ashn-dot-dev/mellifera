@@ -1,0 +1,15 @@
+dumpln(math::atan2(NaN, 0));
+dumpln(math::atan2(0, NaN));
+dumpln(math::atan2(NaN, NaN));
+dumpln(math::atan2(+Inf, +Inf).fixed(2));
+dumpln(math::atan2(-Inf, +Inf).fixed(2));
+dumpln(math::atan2(+Inf, -Inf).fixed(2));
+dumpln(math::atan2(-Inf, -Inf).fixed(2));
+################################################################################
+# NaN
+# NaN
+# NaN
+# 0.79
+# -0.79
+# 2.36
+# -2.36

@@ -1,0 +1,23 @@
+dumpln(ty::is_regexp(null));
+dumpln(ty::is_regexp(true));
+dumpln(ty::is_regexp(123));
+dumpln(ty::is_regexp("foo"));
+dumpln(ty::is_regexp(r"foo"));
+dumpln(ty::is_regexp(["foo", "bar", "baz"]));
+dumpln(ty::is_regexp({.foo = "bar"}));
+dumpln(ty::is_regexp({"foo", "bar"}));
+dumpln(ty::is_regexp(123.&));
+dumpln(ty::is_regexp(function() {}));
+dumpln(ty::is_regexp(dumpln));
+################################################################################
+# false
+# false
+# false
+# false
+# true
+# false
+# false
+# false
+# false
+# false
+# false

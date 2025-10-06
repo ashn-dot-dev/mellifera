@@ -1,0 +1,8 @@
+let x = {"foo", "bar", "baz"};
+x.remove("bar");
+dumpln(x);
+
+try { x.remove("qux"); } catch err { dumpln(err); }
+################################################################################
+# {"foo", "baz"}
+# "attempted set::remove on a set without element \"qux\""

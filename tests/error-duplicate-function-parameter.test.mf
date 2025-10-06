@@ -1,0 +1,3 @@
+function(x, x){};
+################################################################################
+# [error-duplicate-function-parameter.test.mf, line 1] duplicate function paramter `x`

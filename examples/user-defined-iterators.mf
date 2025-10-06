@@ -1,0 +1,27 @@
+let fizzbuzzer = type extends(iterator, {
+    "init": function(n, max) {
+        return new fizzbuzzer {"n": n, "max": max};
+    },
+    "next": function(self) {
+        let n = self.n;
+        if n > self.max {
+            error null; # error null signals end-of-iteration
+        }
+        self.n = self.n + 1;
+        if n % 3 == 0 and n % 5 == 0 {
+            return "fizzbuzz";
+        }
+        if n % 3 == 0 {
+            return "fizz";
+        }
+        if n % 5 == 0 {
+            return "buzz";
+        }
+        return n;
+    },
+});
+
+let fb = fizzbuzzer::init(1, 15);
+for x in fb {
+    println(x);
+}

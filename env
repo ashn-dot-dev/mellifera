@@ -1,0 +1,5 @@
+#!/bin/sh
+if [ -n "${MELLIFERA_HOME}" ]; then
+    export PATH="${MELLIFERA_HOME}/bin:${PATH}"
+    export MELLIFERA_SEARCH_PATH="${MELLIFERA_HOME}/lib"
+fi

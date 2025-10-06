@@ -1,0 +1,13 @@
+dumpln(math::tanh(NaN));
+dumpln(math::tanh(+Inf));
+dumpln(math::tanh(-Inf));
+dumpln(math::tanh(0));
+dumpln(math::tanh(-1).fixed(3));
+dumpln(math::tanh(+1).fixed(3));
+################################################################################
+# NaN
+# 1
+# -1
+# 0
+# -0.762
+# 0.762

@@ -1,0 +1,22 @@
+let vec2 = type {
+    "fixed": function(self, ndigits) {
+        return new vec2 {
+            .x = self.x.fixed(ndigits),
+            .y = self.y.fixed(ndigits),
+        };
+    },
+    "magnitude": function(self) {
+        return math::sqrt(self.x * self.x + self.y * self.y);
+    },
+};
+
+let va = new vec2 {.x = 3, .y = 4};
+println($`va is {va} with type {typename(va)}`);
+println($`va.magnitude() is {va.magnitude()}`);
+
+print("\n");
+
+let vb = new vec2 {.x = math::e, .y = -math::pi};
+println($`vb is {vb} with type {typename(vb)}`);
+println($`vb.magnitude() is {vb.magnitude()}`);
+println($`vb.fixed(3) is {vb.fixed(3)}`);

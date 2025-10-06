@@ -1,0 +1,15 @@
+dumpln(math::is_integer(NaN));
+dumpln(math::is_integer(+Inf));
+dumpln(math::is_integer(-Inf));
+dumpln(math::is_integer(+123));
+dumpln(math::is_integer(-123));
+dumpln(math::is_integer(+123.456));
+dumpln(math::is_integer(-123.456));
+################################################################################
+# false
+# false
+# false
+# true
+# true
+# false
+# false

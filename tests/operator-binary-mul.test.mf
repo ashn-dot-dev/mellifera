@@ -1,0 +1,21 @@
+try { dumpln( null         * null         ); } catch err { dumpln(err); }
+try { dumpln( true         * true         ); } catch err { dumpln(err); }
+try { dumpln( 123          * 456          ); } catch err { dumpln(err); }
+try { dumpln( "foo"        * "bar"        ); } catch err { dumpln(err); }
+try { dumpln( []           * []           ); } catch err { dumpln(err); }
+try { dumpln( Map{}        * Map{}        ); } catch err { dumpln(err); }
+try { dumpln( Set{}        * Set{}        ); } catch err { dumpln(err); }
+try { dumpln( 123.&        * 123.&        ); } catch err { dumpln(err); }
+try { dumpln( function(){} * function(){} ); } catch err { dumpln(err); }
+try { dumpln( println      * println      ); } catch err { dumpln(err); }
+################################################################################
+# "attempted * operation with types `null` and `null`"
+# "attempted * operation with types `boolean` and `boolean`"
+# 56088
+# "attempted * operation with types `string` and `string`"
+# "attempted * operation with types `vector` and `vector`"
+# "attempted * operation with types `map` and `map`"
+# "attempted * operation with types `set` and `set`"
+# "attempted * operation with types `reference` and `reference`"
+# "attempted * operation with types `function` and `function`"
+# "attempted * operation with types `function` and `function`"

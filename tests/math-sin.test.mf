@@ -1,0 +1,17 @@
+dumpln(math::sin(NaN));
+try { dumpln(math::sin(+Inf)); } catch err { dumpln(err); }
+try { dumpln(math::sin(-Inf)); } catch err { dumpln(err); }
+dumpln(math::sin(0).fixed(1));
+dumpln(math::sin(math::pi/2).fixed(1));
+dumpln(math::sin(math::pi).fixed(1));
+dumpln(math::sin((3 * math::pi) / 2).fixed(1));
+dumpln(math::sin(2 * math::pi).fixed(1));
+################################################################################
+# NaN
+# "math domain error"
+# "math domain error"
+# 0
+# 1
+# 0
+# -1
+# -0

@@ -1,0 +1,4 @@
+typeof(123)::is_nan("foo");
+################################################################################
+# error: expected reference to number-like value for argument 0, received string
+# ...within number::is_nan@builtin called from error-in-with-typed-argument-reference.test.mf, line 1

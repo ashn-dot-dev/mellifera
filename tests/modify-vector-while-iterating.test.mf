@@ -1,0 +1,77 @@
+let collection = [123, 456, 789];
+println(collection);
+for x in collection {
+    collection.push("boop");
+    println(x);
+}
+println(collection);
+
+print("\n");
+
+let collection = [123, 456, 789];
+println(collection);
+for x in collection {
+    collection.pop();
+    println(x);
+}
+println(collection);
+
+print("\n");
+
+let collection = [123, 456, 789];
+println(collection);
+for x in collection {
+    collection.insert(0, "boop");
+    println(x);
+}
+println(collection);
+
+print("\n");
+
+let collection = [123, 456, 789];
+println(collection);
+for x in collection {
+    collection.remove(0);
+    println(x);
+}
+println(collection);
+
+print("\n");
+
+let collection = [123, 456, 789];
+println(collection);
+for x in collection {
+    collection[1] = "foo";
+    println(x);
+}
+println(collection);
+################################################################################
+# [123, 456, 789]
+# 123
+# 456
+# 789
+# [123, 456, 789, "boop", "boop", "boop"]
+#
+# [123, 456, 789]
+# 123
+# 456
+# 789
+# []
+#
+# [123, 456, 789]
+# 123
+# 456
+# 789
+# ["boop", "boop", "boop", 123, 456, 789]
+#
+# [123, 456, 789]
+# 123
+# 456
+# 789
+# []
+#
+# [123, 456, 789]
+# 123
+# 456
+# 789
+# [123, "foo", 789]

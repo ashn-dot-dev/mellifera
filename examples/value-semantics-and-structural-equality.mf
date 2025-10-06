@@ -1,0 +1,23 @@
+let x = ["foo", {"bar": 123}, "baz"];
+let y = x; # x is assigned to y by copy
+println($`x is {x}`);
+println($`y is {y}`);
+# x and y are separate values that are structurally equal
+println($`x == y is {x == y}`);
+
+print("\n");
+
+# updates to x and y do not affect each other, because they are separate values
+x[0] = "abc";
+y[1]["bar"] = "xyz";
+println($`x is {x}`);
+println($`y is {y}`);
+# x and y are no longer structurally equal as their contents' now differ
+println($`x == y is {x == y}`);
+
+print("\n");
+
+let z = ["foo", {"bar": "xyz"}, "baz"];
+println($`z is {z}`);
+# y and z are separate values with structural equality
+println($`y == z is {y == z}`);

@@ -1,0 +1,19 @@
+try { dumpln(math::floor(NaN)); } catch err { dumpln(err); }
+try { dumpln(math::floor(+Inf)); } catch err { dumpln(err); }
+try { dumpln(math::floor(-Inf)); } catch err { dumpln(err); }
+dumpln(math::floor(+123));
+dumpln(math::floor(-123));
+dumpln(math::floor(+123.456));
+dumpln(math::floor(-123.456));
+dumpln(math::floor(+123.654));
+dumpln(math::floor(-123.654));
+################################################################################
+# "cannot convert float NaN to integer"
+# "cannot convert float infinity to integer"
+# "cannot convert float infinity to integer"
+# 123
+# -123
+# 123
+# -124
+# 123
+# -124

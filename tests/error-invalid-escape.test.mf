@@ -1,0 +1,3 @@
+"\b";
+################################################################################
+# [error-invalid-escape.test.mf, line 1] expected escape sequence, found `\\b`

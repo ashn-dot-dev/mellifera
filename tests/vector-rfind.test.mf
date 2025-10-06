@@ -1,0 +1,7 @@
+println(`["foo", "bar", "baz"].rfind("bar") is ` + repr(["foo", "bar", "baz"].rfind("bar")));
+println(`["foo", "bar", "baz"].rfind("nope") is ` + repr(["foo", "bar", "baz"].rfind("nope")));
+println(`["foo", "bar", "foo"].rfind("foo") is ` + repr(["foo", "bar", "foo"].rfind("foo")));
+################################################################################
+# ["foo", "bar", "baz"].rfind("bar") is 1
+# ["foo", "bar", "baz"].rfind("nope") is null
+# ["foo", "bar", "foo"].rfind("foo") is 2

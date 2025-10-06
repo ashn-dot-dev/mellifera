@@ -1,0 +1,42 @@
+dumpln(ty::is(null, null));
+dumpln(ty::is(true, boolean));
+dumpln(ty::is(123, number));
+dumpln(ty::is("foo", string));
+dumpln(ty::is(r"foo", regexp));
+dumpln(ty::is(["foo", "bar", "baz"], vector));
+dumpln(ty::is({.foo = "bar"}, map));
+dumpln(ty::is({"foo", "bar"}, set));
+dumpln(ty::is(123.&, reference));
+dumpln(ty::is(function() {}, typeof(function() {})));
+dumpln(ty::is(dumpln, typeof(function() {})));
+
+let t = type Map{};
+dumpln(ty::is(new t null, t));
+
+print("\n");
+
+dumpln(ty::is(123, regexp));
+dumpln(ty::is(123.&, typeof(function() {})));
+
+print("\n");
+
+let bad = Map{}; # not created with the type keyword
+try { dumpln(ty::is(Map{}, bad)); } catch err { dumpln(err); }
+################################################################################
+# true
+# true
+# true
+# true
+# true
+# true
+# true
+# true
+# true
+# true
+# true
+# true
+#
+# false
+# false
+#
+# "expected null or map value created with the `type` keyword, received Map{}"

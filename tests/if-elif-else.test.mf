@@ -1,0 +1,42 @@
+if true {
+    println("A");
+}
+
+if false {
+    println("X");
+}
+elif true {
+    println("B");
+}
+
+if false {
+    println("X");
+}
+elif false {
+    println("X");
+}
+
+if false {
+    println("X");
+}
+elif false {
+    println("X");
+}
+elif true {
+    println("C");
+}
+
+if false {
+    println("X");
+}
+elif false {
+    println("X");
+}
+else {
+    println("D");
+}
+################################################################################
+# A
+# B
+# C
+# D

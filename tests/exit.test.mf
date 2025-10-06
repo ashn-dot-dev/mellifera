@@ -1,0 +1,6 @@
+try { exit(123.456); } catch err { println($`exit(123.456) produced {repr(err)}`); }
+try { exit("foo"); } catch err { println($`exit("foo") produced {repr(err)}`); }
+exit(0);
+################################################################################
+# exit(123.456) produced "expected integer exit code, received 123.456"
+# exit("foo") produced "expected number-like value for argument 0, received string"

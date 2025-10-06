@@ -1,0 +1,17 @@
+# Test that a random number can be seeded with all builtin types.
+random::seed(null);
+random::seed(true);
+random::seed(123.0);
+random::seed("foo");
+random::seed([123, "foo"]);
+random::seed({123: "foo"});
+random::seed({123, "foo"});
+random::seed(function(){});
+random::seed(dumpln);
+
+# Test that the same seed will produce the same set of random values.
+random::seed("foo");
+let x = [random::number(0, 1), random::number(0, 1), random::number(0, 1)];
+random::seed("foo");
+let y = [random::number(0, 1), random::number(0, 1), random::number(0, 1)];
+assert(x == y);

@@ -1,0 +1,23 @@
+dumpln(ty::is_string(null));
+dumpln(ty::is_string(true));
+dumpln(ty::is_string(123));
+dumpln(ty::is_string("foo"));
+dumpln(ty::is_string(r"foo"));
+dumpln(ty::is_string(["foo", "bar", "baz"]));
+dumpln(ty::is_string({.foo = "bar"}));
+dumpln(ty::is_string({"foo", "bar"}));
+dumpln(ty::is_string(123.&));
+dumpln(ty::is_string(function() {}));
+dumpln(ty::is_string(dumpln));
+################################################################################
+# false
+# false
+# false
+# true
+# false
+# false
+# false
+# false
+# false
+# false
+# false

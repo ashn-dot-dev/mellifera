@@ -1,0 +1,70 @@
+println(json::encode(null));
+
+print("\n");
+
+println(json::encode(true));
+println(json::encode(false));
+
+print("\n");
+
+println(json::encode(123));
+println(json::encode(123.456));
+try { dumpln(json::encode(NaN)); } catch err { println("error: " + string::init(err)); }
+try { dumpln(json::encode(Inf)); } catch err { println("error: " + string::init(err)); }
+
+print("\n");
+
+println(json::encode("foo"));
+println(json::encode("foo\nbar"));
+try { dumpln(json::encode("\xFF")); } catch err { println("error: " + string::init(err)); }
+
+print("\n");
+
+println(json::encode([]));
+println(json::encode(["foo", "bar", "baz"]));
+println(json::encode(["foo", ["bar"], {"baz": 123}]));
+
+print("\n");
+
+println(json::encode(Map{}));
+println(json::encode({"foo": 123}));
+println(json::encode({"foo": 123, "bar": ["abc", "def"], "baz": {"blub": null}}));
+
+print("\n");
+
+try { dumpln(json::encode(Set{"foo", "bar"})); } catch err { println("error: " + string::init(err)); }
+
+print("\n");
+
+try { dumpln(json::encode(123.&)); } catch err { assert(string::init(err).contains("reference@")); }
+
+print("\n");
+
+try { dumpln(json::encode(function(){})); } catch err { println("error: " + string::init(err)); }
+################################################################################
+# null
+#
+# true
+# false
+#
+# 123
+# 123.456
+# error: cannot JSON-encode value NaN
+# error: cannot JSON-encode value Inf
+#
+# "foo"
+# "foo\nbar"
+# error: cannot JSON-encode string with invalid UTF-8 encoding "�"
+#
+# []
+# ["foo", "bar", "baz"]
+# ["foo", ["bar"], {"baz": 123}]
+#
+# {}
+# {"foo": 123}
+# {"foo": 123, "bar": ["abc", "def"], "baz": {"blub": null}}
+#
+# error: cannot JSON-encode value {"foo", "bar"} of type set
+#
+#
+# error: cannot JSON-encode value function@[json-encode.test.mf, line 43] of type function

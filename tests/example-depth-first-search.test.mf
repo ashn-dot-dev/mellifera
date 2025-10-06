@@ -1,0 +1,9 @@
+import("../examples/depth-first-search.mf");
+################################################################################
+# Ordered:
+# B
+# E
+# A
+# C
+# D
+# error: cycle detected in graph {W, X, Y, Z}

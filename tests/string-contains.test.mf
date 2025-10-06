@@ -1,0 +1,9 @@
+println(`"foobar".contains("foo") is ` + repr("foobar".contains("foo")));
+println(`"foobar".contains("bar") is ` + repr("foobar".contains("bar")));
+println(`"foobar".contains("baz") is ` + repr("foobar".contains("baz")));
+println(`"foobar".contains("") is ` + repr("foobar".contains("")));
+################################################################################
+# "foobar".contains("foo") is true
+# "foobar".contains("bar") is true
+# "foobar".contains("baz") is false
+# "foobar".contains("") is true

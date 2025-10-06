@@ -1,0 +1,13 @@
+dumpln(math::log2(1).fixed(3));
+dumpln(math::log2(2).fixed(3));
+dumpln(math::log2(8).fixed(3));
+dumpln(math::log2(10).fixed(3));
+try { math::log2(0); } catch err { dumpln(string::init(err)); }
+try { math::log2(-1); } catch err { dumpln(string::init(err)); }
+################################################################################
+# 0
+# 1
+# 3
+# 3.322
+# "math domain error"
+# "math domain error"

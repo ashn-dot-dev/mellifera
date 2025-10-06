@@ -1,0 +1,7 @@
+dumpln(range(1, 4).all(function(x) { return x < 5; }));
+dumpln(range(1, 5).all(function(x) { return x < 5; }));
+dumpln(range(1, 6).all(function(x) { return x < 5; }));
+################################################################################
+# true
+# true
+# false

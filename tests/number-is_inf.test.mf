@@ -1,0 +1,9 @@
+println(`123.is_inf() is ` + repr(123.is_inf()));
+println(`(+Inf).is_inf() is ` + repr((+Inf).is_inf()));
+println(`(-Inf).is_inf() is ` + repr((-Inf).is_inf()));
+println(`NaN.is_inf() is ` + repr(NaN.is_inf()));
+################################################################################
+# 123.is_inf() is false
+# (+Inf).is_inf() is true
+# (-Inf).is_inf() is true
+# NaN.is_inf() is false

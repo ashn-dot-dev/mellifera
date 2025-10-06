@@ -1,0 +1,43 @@
+try { re::group(0); } catch err { println(`re::group(0) produces: ` + err); }
+try { re::group(1); } catch err { println(`re::group(1) produces: ` + err); }
+println("\"foobar\" =~ r`foo` is " + repr("foobar" =~ r`foo`));
+println("\"foobar\" =~ r`^foo` is " + repr("foobar" =~ r`^foo`));
+println("\"foobar\" =~ r`^foo$` is " + repr("foobar" =~ r`^foo$`));
+println("\"Isaac Newton, physicist\" =~ r`(\\w+) (\\w+)` is " + repr("Isaac Newton, physicist" =~ r`(\w+) (\w+)`));
+println(`re::group(0) is ` + repr(re::group(0)));
+println(`re::group(1) is ` + repr(re::group(1)));
+println(`re::group(2) is ` + repr(re::group(2)));
+try { re::group(3); } catch err { println(`re::group(3) produces: ` + err); }
+try { re::group(-1); } catch err { println(`re::group(-1) produces: ` + err); }
+try { re::group(1.23); } catch err { println(`re::group(.23) produces: ` + err); }
+
+# Test multiline matching, should match the first r`ba.` i.e. "bar" after the newline.
+println("\"foo\\nbar\\nbaz\\nqux\" =~ r`ba.` is " + repr("foo\nbar\nbaz\nqux" =~ r`ba.`));
+println(`re::group(0) is ` + repr(re::group(0)));
+
+# Test matching where one capture group did not capture a value.
+println("\"foobar\" =~ r`foo((bar)|(baz))` is " + repr("foobar" =~ r`foo((bar)|(baz))`));
+println(`re::group(0) is ` + repr(re::group(0)));
+println(`re::group(1) is ` + repr(re::group(1)));
+println(`re::group(2) is ` + repr(re::group(2)));
+println(`re::group(3) is ` + repr(re::group(3)));
+################################################################################
+# re::group(0) produces: regular expression did not match
+# re::group(1) produces: regular expression did not match
+# "foobar" =~ r`foo` is true
+# "foobar" =~ r`^foo` is true
+# "foobar" =~ r`^foo$` is false
+# "Isaac Newton, physicist" =~ r`(\w+) (\w+)` is true
+# re::group(0) is "Isaac Newton"
+# re::group(1) is "Isaac"
+# re::group(2) is "Newton"
+# re::group(3) produces: out-of-bounds regular expression capture group 3
+# re::group(-1) produces: out-of-bounds regular expression capture group -1
+# re::group(.23) produces: expected integer, received 1.23
+# "foo\nbar\nbaz\nqux" =~ r`ba.` is true
+# re::group(0) is "bar"
+# "foobar" =~ r`foo((bar)|(baz))` is true
+# re::group(0) is "foobar"
+# re::group(1) is "bar"
+# re::group(2) is "bar"
+# re::group(3) is null

@@ -1,0 +1,29 @@
+let x = 123;
+let y = {"foo": "bar"};
+let f = function() {
+    x = 456;
+    y.foo = "baz";
+};
+
+dumpln(x);
+dumpln(y);
+f();
+dumpln(x);
+dumpln(y);
+
+print("\n");
+
+let adder = function(x) {
+    return function(y) {
+        return x + y;
+    };
+};
+let add1 = adder(1);
+dumpln(add1(2));
+################################################################################
+# 123
+# {"foo": "bar"}
+# 456
+# {"foo": "baz"}
+#
+# 3

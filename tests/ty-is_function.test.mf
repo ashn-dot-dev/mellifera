@@ -1,0 +1,23 @@
+dumpln(ty::is_function(null));
+dumpln(ty::is_function(true));
+dumpln(ty::is_function(123));
+dumpln(ty::is_function("foo"));
+dumpln(ty::is_function(r"foo"));
+dumpln(ty::is_function(["foo", "bar", "baz"]));
+dumpln(ty::is_function({.foo = "bar"}));
+dumpln(ty::is_function({"foo", "bar"}));
+dumpln(ty::is_function(123.&));
+dumpln(ty::is_function(function() {}));
+dumpln(ty::is_function(dumpln));
+################################################################################
+# false
+# false
+# false
+# false
+# false
+# false
+# false
+# false
+# false
+# true
+# true

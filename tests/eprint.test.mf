@@ -1,0 +1,48 @@
+eprint(null); eprint("\n");
+eprint(true); eprint("\n");
+eprint(false); eprint("\n");
+eprint(123); eprint("\n");
+eprint(123.4); eprint("\n");
+eprint(Inf); eprint("\n");
+eprint(NaN); eprint("\n");
+eprint("foo"); eprint("\n");
+eprint(Map{}); eprint("\n");
+eprint(Set{}); eprint("\n");
+
+let meta = type {
+    "into_string": function(value) {
+        return "ABC";
+    }
+};
+let x = new meta Map{};
+eprint(x); eprint("\n");
+
+let meta = type {
+    "into_string": function(value) {
+        return Map{};
+    }
+};
+let y = new meta Map{};
+try { eprint(y); } catch err { eprint("error: " + string::init(err)); } eprint("\n");
+
+let meta = type {
+    "into_string": function(value) {
+        error "oopsie";
+    }
+};
+let z = new meta Map{};
+try { eprint(z); } catch err { eprint("error: " + string::init(err)); } eprint("\n");
+################################################################################
+# null
+# true
+# false
+# 123
+# 123.4
+# Inf
+# NaN
+# foo
+# Map{}
+# Set{}
+# ABC
+# error: metafunction `into_string` returned Map{}
+# error: oopsie

@@ -1,0 +1,13 @@
+dumpln(math::acos(NaN));
+try { dumpln(math::acos(+Inf)); } catch err { dumpln(err); }
+try { dumpln(math::acos(-Inf)); } catch err { dumpln(err); }
+dumpln(math::acos(+1).fixed(2));
+dumpln(math::acos(+0).fixed(2));
+dumpln(math::acos(-1).fixed(2));
+################################################################################
+# NaN
+# "math domain error"
+# "math domain error"
+# 0
+# 1.57
+# 3.14

@@ -1,0 +1,12 @@
+let a = {"foo", "bar", "baz", "qux"};
+let b = {"abc", "foo", "bar"};
+dumpln(set::difference(a, b));
+dumpln(a.difference(b));
+
+try { dumpln(set::difference(123, Set{})); } catch err { dumpln(err); }
+try { dumpln(set::difference(Set{}, 123)); } catch err { dumpln(err); }
+################################################################################
+# {"baz", "qux"}
+# {"baz", "qux"}
+# "attempted set::difference of values 123 and Set{}"
+# "attempted set::difference of values Set{} and 123"

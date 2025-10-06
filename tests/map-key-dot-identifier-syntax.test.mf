@@ -1,0 +1,11 @@
+let a = {
+    "foo": 123,
+    "bar": 456,
+    "baz": 789,
+};
+let b = {
+    .foo: 123,
+    .bar: 456,
+    .baz: 789,
+};
+assert(a == b);

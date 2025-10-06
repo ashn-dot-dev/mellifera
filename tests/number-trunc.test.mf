@@ -1,0 +1,9 @@
+println(`(+123.45).trunc() is ` + repr((+123.45).trunc()));
+println(`(-123.45).trunc() is ` + repr((-123.45).trunc()));
+try { Inf.trunc(); } catch err { println(`Inf.trunc() produced the error ` + repr(err)); }
+try { NaN.trunc(); } catch err { println(`NaN.trunc() produced the error ` + repr(err)); }
+################################################################################
+# (+123.45).trunc() is 123
+# (-123.45).trunc() is -123
+# Inf.trunc() produced the error "cannot convert float infinity to integer"
+# NaN.trunc() produced the error "cannot convert float NaN to integer"

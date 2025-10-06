@@ -1,0 +1,131 @@
+let node = type {
+    "init": function(name) {
+        return new node {"name": name, "children": Set{}};
+    },
+    "into_string": function(self) {
+        return self.name;
+    },
+};
+
+let graph = type {
+    "init": function(nodes) {
+        return new graph {"nodes": nodes};
+    },
+    "into_string": function(self) {
+        let elements = [];
+        for node in self.nodes {
+            elements.push(string::init(node.*));
+        }
+        return "{" + ", ".join(elements) + "}";
+    },
+};
+
+let dfs = function(graph) {
+    let visited = Set{};
+    let ordered = [];
+
+    let visit = function(node) {
+        if visited.contains(node) {
+            return;
+        }
+        visited.insert(node);
+        for child in node.*.children {
+            visit(child);
+        }
+        ordered.insert(0, node.*);
+    };
+
+    for node in graph.nodes {
+        visit(node);
+    }
+    return ordered;
+};
+
+let dfs_cycle_detecting = function(graph) {
+    let visiting = Set{};
+    let visited = Set{};
+    let ordered = [];
+
+    let visit = function(node) {
+        if visited.contains(node) {
+            return;
+        }
+        if visiting.contains(node) {
+            error $"cycle detected in graph {string::init(graph)}";
+        }
+        visiting.insert(node);
+        for child in node.*.children {
+            visit(child);
+        }
+        visited.insert(node);
+        ordered.insert(0, node.*);
+    };
+
+    for node in graph.nodes {
+        visit(node);
+    }
+    return ordered;
+};
+
+# B-->E-->A--+
+# |   |   |  |
+# |   v   |  |
+# +-->C<--+  |
+#      |     v
+#      +---->D
+
+let a = node::init("A");
+let b = node::init("B");
+let c = node::init("C");
+let d = node::init("D");
+let e = node::init("E");
+
+a.children.insert(c.&);
+a.children.insert(d.&);
+
+b.children.insert(c.&);
+b.children.insert(e.&);
+
+c.children.insert(d.&);
+
+e.children.insert(a.&);
+e.children.insert(c.&);
+
+let ordered = dfs(graph::init({a.&, b.&, c.&, d.&, e.&}));
+println("Ordered:");
+for x in ordered {
+    println(x);
+}
+
+# Validate that the cycle-detecting and non-cycle-detecting depth-first search
+# produce identical results for acyclic directed graphs.
+assert(ordered == dfs_cycle_detecting(graph::init({a.&, b.&, c.&, d.&, e.&})));
+
+# +->W-->X--+
+# |  |   |  |
+# |  |   v  v
+# |  +-->Y->Z
+# |         |
+# +---------+
+
+let w = node::init("W");
+let x = node::init("X");
+let y = node::init("Y");
+let z = node::init("Z");
+
+w.children.insert(x.&);
+w.children.insert(y.&);
+
+x.children.insert(y.&);
+x.children.insert(z.&);
+
+y.children.insert(z.&);
+
+z.children.insert(w.&);
+
+try {
+    dfs_cycle_detecting(graph::init({w.&, x.&, y.&, z.&}));
+}
+catch err {
+    println($"error: {err}");
+}

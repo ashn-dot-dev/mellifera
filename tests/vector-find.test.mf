@@ -1,0 +1,7 @@
+println(`["foo", "bar", "baz"].find("bar") is ` + repr(["foo", "bar", "baz"].find("bar")));
+println(`["foo", "bar", "baz"].find("nope") is ` + repr(["foo", "bar", "baz"].find("nope")));
+println(`["foo", "bar", "foo"].find("foo") is ` + repr(["foo", "bar", "foo"].find("foo")));
+################################################################################
+# ["foo", "bar", "baz"].find("bar") is 1
+# ["foo", "bar", "baz"].find("nope") is null
+# ["foo", "bar", "foo"].find("foo") is 0

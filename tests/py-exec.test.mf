@@ -1,0 +1,22 @@
+py::exec(```
+import sys
+
+@builtin("py::version::major", [])
+def builtin_py_version_major() -> Union[Value, Error]:
+    return Number.new(sys.version_info.major)
+
+@builtin("py::version::minor", [])
+def builtin_py_version_minor() -> Union[Value, Error]:
+    return Number.new(sys.version_info.minor)
+
+
+BASE_ENVIRONMENT.store[String.new("py")][String.new("version")] = Map.new({
+    String.new("major"): builtin_py_version_major(),
+    String.new("minor"): builtin_py_version_minor(),
+})
+```);
+dumpln(py);
+dumpln(py::version::major());
+################################################################################
+# {"exec": py::exec@builtin, "version": {"major": py::version::major@builtin, "minor": py::version::minor@builtin}}
+# 3

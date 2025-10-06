@@ -1,0 +1,18 @@
+println(`["foo", "bar", "baz"].sorted() is ` + repr(["foo", "bar", "baz"].sorted()));
+
+print("\n");
+
+let sorted = typeof([])::sorted;
+try { vector::sorted(Map{"foo": "bar"}); } catch err { dumpln(string::init(err)); }
+try { vector::sorted(Map{"foo": "bar"}.&); } catch err { dumpln(string::init(err)); }
+
+print("\n");
+
+try { println(`["foo", 123, "baz"].sorted() is ` + repr(["foo", 123, "baz"].sorted())); } catch err { dumpln(string::init(err)); }
+################################################################################
+# ["foo", "bar", "baz"].sorted() is ["bar", "baz", "foo"]
+#
+# "expected reference to vector-like value for argument 0, received map"
+# "expected reference to vector-like value for argument 0, received reference to map"
+#
+# "attempted < operation with types `number` and `string`"

@@ -1,0 +1,23 @@
+dumpln(ty::is_number(null));
+dumpln(ty::is_number(true));
+dumpln(ty::is_number(123));
+dumpln(ty::is_number("foo"));
+dumpln(ty::is_number(r"foo"));
+dumpln(ty::is_number(["foo", "bar", "baz"]));
+dumpln(ty::is_number({.foo = "bar"}));
+dumpln(ty::is_number({"foo", "bar"}));
+dumpln(ty::is_number(123.&));
+dumpln(ty::is_number(function() {}));
+dumpln(ty::is_number(dumpln));
+################################################################################
+# false
+# false
+# true
+# false
+# false
+# false
+# false
+# false
+# false
+# false
+# false

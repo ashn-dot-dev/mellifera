@@ -1,0 +1,13 @@
+dumpln(math::cosh(NaN));
+dumpln(math::cosh(+Inf));
+dumpln(math::cosh(-Inf));
+dumpln(math::cosh(0));
+dumpln(math::cosh(-1).fixed(3));
+dumpln(math::cosh(+1).fixed(3));
+################################################################################
+# NaN
+# Inf
+# Inf
+# 1
+# 1.543
+# 1.543

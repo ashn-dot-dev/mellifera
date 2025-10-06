@@ -1,0 +1,21 @@
+try {
+    fs::read("/path/to/file/that/does/not/exist.txt");
+}
+catch err {
+    println($"error: {err}");
+}
+
+print("\n");
+
+let g = function() {
+    let f = function() {
+        error "oopsie";
+    };
+    f();
+};
+function() {
+    let h = function() {
+        g();
+    };
+    h();
+}();

@@ -1,0 +1,38 @@
+let sieve = function(n) {
+    if n < 2 {
+        return [];
+    }
+
+    let end = n + 1;
+    let primes = [];
+    for i in end {
+        primes.push(true);
+    }
+    primes[0] = false;
+    primes[1] = false;
+
+    for i in range(2, end) {
+        if not primes[i] {
+            continue;
+        }
+
+        let multiple = i * i;
+        while multiple < end {
+            primes[multiple] = false;
+            multiple = multiple + i;
+        }
+    }
+
+    let result = [];
+    for i in range(2, end) {
+        if primes[i] {
+            result.push(i);
+        }
+    }
+    return result;
+};
+
+if argv.count() != 2 { # program.mf n
+    error "expected exactly one program argument";
+}
+println(sieve(number::init(argv[1])));

@@ -1,0 +1,11 @@
+println(`", ".join(["foo", "bar", "baz"]) is ` + repr(", ".join(["foo", "bar", "baz"])));
+println(`", ".join([]) is ` + repr(", ".join([])));
+println(`"".join(["foo", "bar", "baz"]) is ` + repr("".join(["foo", "bar", "baz"])));
+println(`"".join([]) is ` + repr("".join([])));
+try { "".join(["foo", 456, "baz"]); } catch err { println("error: " + string::init(err)); }
+################################################################################
+# ", ".join(["foo", "bar", "baz"]) is "foo, bar, baz"
+# ", ".join([]) is ""
+# "".join(["foo", "bar", "baz"]) is "foobarbaz"
+# "".join([]) is ""
+# error: expected string-like value for vector element at index 1, received number

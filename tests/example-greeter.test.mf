@@ -1,0 +1,5 @@
+let greeter = import("../examples/greeter.mf");
+let greet = greeter::init("Juliet");
+greet();
+################################################################################
+# Hello, Juliet!

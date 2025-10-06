@@ -1,0 +1,19 @@
+# Usage:
+#   /path/to/mf.py examples/fibonacci-recursive-memoized.mf n
+
+let cache = {
+    0: 0, # fibonacci(0)
+    1: 1, # fibonacci(1)
+};
+let fibonacci = function(n) {
+    if not cache.contains(n) {
+        cache[n] = fibonacci(n - 1) + fibonacci(n - 2);
+    }
+    return cache[n];
+};
+
+
+if argv.count() != 2 {
+    error "expected exactly one program argument";
+}
+println(fibonacci(number::init(argv[1])));

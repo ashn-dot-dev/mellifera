@@ -1,0 +1,12 @@
+import("../examples/value-semantics-and-structural-equality.mf");
+################################################################################
+# x is ["foo", {"bar": 123}, "baz"]
+# y is ["foo", {"bar": 123}, "baz"]
+# x == y is true
+#
+# x is ["abc", {"bar": 123}, "baz"]
+# y is ["foo", {"bar": "xyz"}, "baz"]
+# x == y is false
+#
+# z is ["foo", {"bar": "xyz"}, "baz"]
+# y == z is true

@@ -1,0 +1,120 @@
+try { dumpln( null.foo                        ); } catch err { dumpln(err); }
+try { dumpln( true.foo                        ); } catch err { dumpln(err); }
+try { dumpln( 123.foo                         ); } catch err { dumpln(err); }
+try { dumpln( "foo".foo                       ); } catch err { dumpln(err); }
+try { dumpln( ["foo", "bar"].foo              ); } catch err { dumpln(err); }
+try { dumpln( Map{"foo": 123, "bar": 456}.foo ); } catch err { dumpln(err); }
+try { dumpln( Set{"foo", "bar"}.foo           ); } catch err { dumpln(err); }
+try { dumpln( 123.&.foo                       ); } catch err { dumpln(err); }
+try { dumpln( function(){}.foo                ); } catch err { dumpln(err); }
+try { dumpln( println.foo                     ); } catch err { dumpln(err); }
+
+print("\n");
+
+let meta = type {"f": function(self) { println("inside metafunction f"); }};
+let x = new meta 123;
+try { dumpln(x.f); } catch err { dumpln(err); }
+try { x.f(); } catch err { dumpln(err); }
+try { x.f = 456; } catch err { dumpln(err); }
+try { dumpln(x.f); } catch err { dumpln(err); }
+try { x.f(); } catch err { dumpln(err); }
+
+print("\n");
+
+let meta = type {"f": function(self) { println("inside metafunction f"); }};
+let x = new meta Map{};
+try { dumpln(x.f); } catch err { dumpln(err); }
+try { x.f(); } catch err { dumpln(err); }
+x.f = 456;
+try { dumpln(x.f); } catch err { dumpln(err); }
+try { x.f(); } catch err { dumpln(err); }
+
+print("\n");
+
+let meta = type {"f": function(self) { println("inside metafunction f"); }};
+let x = new meta Map{"f": 123};
+try { dumpln(x.f); } catch err { dumpln(err); }
+try { x.f(); } catch err { dumpln(err); }
+x.f = 456;
+try { dumpln(x.f); } catch err { dumpln(err); }
+try { x.f(); } catch err { dumpln(err); }
+
+print("\n");
+
+let meta = type {"f": function(self, value) { self.*.value = value; }};
+let x = new meta Map{"value": "foo"};
+dumpln(x);
+x.f("bar");
+dumpln(x);
+
+print("\n");
+
+# Implicit dereference testing.
+let meta = type {"f": function(self, value) { self.value = value; }};
+let x = new meta Map{"value": "foo"};
+let y = x.&;
+dumpln(x);
+dumpln(y.value);
+dumpln(y.f);
+x.f("bar");
+dumpln(x);
+y.f("baz");
+dumpln(x);
+
+print("\n");
+
+# Implicit dereference testing for invalid fields.
+let x = null;
+let y = x.&;
+try { y.nope; } catch err { dumpln(err); }
+try { y.nope = null; } catch err { dumpln(err); }
+let x = [];
+let y = x.&;
+try { y.nope; } catch err { dumpln(err); }
+try { y.nope = null; } catch err { dumpln(err); }
+let x = Map{};
+let y = x.&;
+try { y.nope; } catch err { dumpln(err); }
+try { y.nope = null; } catch err { dumpln(err); }
+################################################################################
+# "invalid null access with field \"foo\""
+# "invalid boolean access with field \"foo\""
+# "invalid number access with field \"foo\""
+# "invalid string access with field \"foo\""
+# "invalid vector access with field \"foo\""
+# 123
+# "invalid set access with field \"foo\""
+# "invalid reference to number access with field \"foo\""
+# "invalid function access with field \"foo\""
+# "invalid function access with field \"foo\""
+#
+# meta::f@[operator-postfix-access-dot.test.mf, line 14]
+# inside metafunction f
+# "attempted access into type `meta` with type `string`"
+# meta::f@[operator-postfix-access-dot.test.mf, line 14]
+# inside metafunction f
+#
+# meta::f@[operator-postfix-access-dot.test.mf, line 24]
+# inside metafunction f
+# 456
+# "attempted to call non-function type `number` with value 456"
+#
+# 123
+# "attempted to call non-function type `number` with value 123"
+# 456
+# "attempted to call non-function type `number` with value 456"
+#
+# {"value": "foo"}
+# {"value": "bar"}
+#
+# {"value": "foo"}
+# "foo"
+# meta::f@[operator-postfix-access-dot.test.mf, line 53]
+# {"value": "bar"}
+# {"value": "baz"}
+#
+# "invalid reference to null access with field \"nope\""
+# "invalid reference to null access with field \"nope\""
+# "invalid reference to vector access with field \"nope\""
+# "invalid reference to vector access with field \"nope\""
+# "invalid reference to map access with field \"nope\""

@@ -1,0 +1,23 @@
+dumpln(ty::is_map(null));
+dumpln(ty::is_map(true));
+dumpln(ty::is_map(123));
+dumpln(ty::is_map("foo"));
+dumpln(ty::is_map(r"foo"));
+dumpln(ty::is_map(["foo", "bar", "baz"]));
+dumpln(ty::is_map({.foo = "bar"}));
+dumpln(ty::is_map({"foo", "bar"}));
+dumpln(ty::is_map(123.&));
+dumpln(ty::is_map(function() {}));
+dumpln(ty::is_map(dumpln));
+################################################################################
+# false
+# false
+# false
+# false
+# false
+# false
+# true
+# false
+# false
+# false
+# false

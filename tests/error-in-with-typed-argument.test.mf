@@ -1,0 +1,4 @@
+math::is_nan("foo");
+################################################################################
+# error: expected number-like value for argument 0, received string
+# ...within math::is_nan@builtin called from error-in-with-typed-argument.test.mf, line 1

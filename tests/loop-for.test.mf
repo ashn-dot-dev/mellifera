@@ -1,0 +1,183 @@
+for x in 3 {
+    println(`x is ` + repr(x));
+}
+
+print("\n");
+
+try {
+    for x.& in 3 { }
+} catch err {
+    dumpln(err);
+}
+
+try {
+    for k, v in 3 { }
+} catch err {
+    dumpln(err);
+}
+
+print("\n");
+
+let v = ["a", "b", "c"];
+for x in v {
+    println(`x is ` + repr(x));
+}
+
+print("\n");
+
+let v = [{"foo"}, {"bar"}, {"baz"}];
+let i = 1;
+dumpln(v);
+for x.& in v {
+    x.*.insert(i);
+    i = i + 1;
+}
+dumpln(v);
+
+print("\n");
+
+try {
+    for k, v in v { }
+} catch err {
+    dumpln(err);
+}
+
+print("\n");
+
+let m = Map{"a": 123, "b": 456, "c": 789};
+for k, v in m {
+    println(`k is ` + repr(k) + `, ` + `v is ` + repr(v));
+}
+
+print("\n");
+
+try {
+    for k.& in m { }
+} catch err {
+    dumpln(err);
+}
+
+print("\n");
+
+let m = {"a": {"foo"}, "b": {"bar"}, "c": {"baz"}};
+let i = 1;
+dumpln(m);
+for _, v.& in m {
+    v.*.insert(i);
+    i = i + 1;
+}
+dumpln(m);
+
+print("\n");
+
+let s = Set{"a", "b", "c"};
+for x in s {
+    println(`x is ` + repr(x));
+}
+
+print("\n");
+
+try {
+    for x.& in s { }
+} catch err {
+    dumpln(err);
+}
+
+try {
+    for k, v in s { }
+} catch err {
+    dumpln(err);
+}
+
+print("\n");
+
+let fizzbuzzer = type {
+    "init": function(n, max) {
+        return new fizzbuzzer {"n": n, "max": max};
+    },
+    "next": function(self) {
+        let n = self.*.n;
+        if n > self.*.max {
+            error null;
+        }
+        self.*.n = self.*.n + 1;
+        if n % 3 == 0 and n % 5 == 0 {
+            return "fizzbuzz";
+        }
+        if n % 3 == 0 {
+            return "fizz";
+        }
+        if n % 5 == 0 {
+            return "buzz";
+        }
+        return n;
+    },
+};
+for x in fizzbuzzer::init(1, 15) {
+    println(x);
+}
+
+print("\n");
+
+try {
+    for k.& in fizzbuzzer::init(1, 15) { }
+} catch err {
+    dumpln(err);
+}
+
+try {
+    for k, v in fizzbuzzer::init(1, 15) { }
+} catch err {
+    dumpln(err);
+}
+################################################################################
+# x is 0
+# x is 1
+# x is 2
+#
+# "cannot use a key-reference over type `number`"
+# "attempted key-value iteration over type `number`"
+#
+# x is "a"
+# x is "b"
+# x is "c"
+#
+# [{"foo"}, {"bar"}, {"baz"}]
+# [{"foo", 1}, {"bar", 2}, {"baz", 3}]
+#
+# "attempted key-value iteration over type `vector`"
+#
+# k is "a", v is 123
+# k is "b", v is 456
+# k is "c", v is 789
+#
+# "cannot use a key-reference over type `map`"
+#
+# {"a": {"foo"}, "b": {"bar"}, "c": {"baz"}}
+# {"a": {"foo", 1}, "b": {"bar", 2}, "c": {"baz", 3}}
+#
+# x is "a"
+# x is "b"
+# x is "c"
+#
+# "cannot use a key-reference over type `set`"
+# "attempted key-value iteration over type `set`"
+#
+# 1
+# 2
+# fizz
+# 4
+# buzz
+# fizz
+# 7
+# 8
+# fizz
+# buzz
+# 11
+# fizz
+# 13
+# 14
+# fizzbuzz
+#
+# "cannot use a key-reference over iterator `fizzbuzzer`"
+# "attempted key-value iteration over iterator `fizzbuzzer`"

@@ -1,0 +1,12 @@
+dumpln("A".runes());
+dumpln("foobar".runes());
+
+let burger = "🍔".runes();
+assert(burger[0] == "🍔");
+
+let burgers = "🍔🍔".runes();
+assert(burgers[0] == "🍔");
+assert(burgers[1] == "🍔");
+################################################################################
+# ["A"]
+# ["f", "o", "o", "b", "a", "r"]

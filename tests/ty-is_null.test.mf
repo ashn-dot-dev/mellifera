@@ -1,0 +1,23 @@
+dumpln(ty::is_null(null));
+dumpln(ty::is_null(true));
+dumpln(ty::is_null(123));
+dumpln(ty::is_null("foo"));
+dumpln(ty::is_null(r"foo"));
+dumpln(ty::is_null(["foo", "bar", "baz"]));
+dumpln(ty::is_null({.foo = "bar"}));
+dumpln(ty::is_null({"foo", "bar"}));
+dumpln(ty::is_null(123.&));
+dumpln(ty::is_null(function() {}));
+dumpln(ty::is_null(dumpln));
+################################################################################
+# true
+# false
+# false
+# false
+# false
+# false
+# false
+# false
+# false
+# false
+# false

@@ -1,0 +1,130 @@
+<program> ::= <statement>*
+
+<statement> ::= <statement-let>
+              | <statement-if-elif-else>
+              | <statement-for>
+              | <statement-while>
+              | <statement-break>
+              | <statement-continue>
+              | <statement-try>
+              | <statement-error>
+              | <statement-return>
+              | <statement-assign>
+              | <statement-expression>
+
+<statement-let> ::= "let" <identifier> "=" <expression> ";"
+
+<statement-if-elif-else> ::= "if" <expression> <block> ("elif" <expression> <block>)* ("else" <block>)?
+
+<statement-for> ::= "for" <identifier> ".&"? ("," <identifier> ".&"?)? "in" <expression> <block>
+
+<statement-while> ::= "while" <expression> <block>
+
+<statement-break> ::= "break" ";"
+
+<statement-continue> ::= "continue" ";"
+
+<statement-try> ::= "try" <block> "catch" <identifier>? <block>
+
+<statement-error> ::= "error" <expression> ";"
+
+<statement-return> ::= "return" <expression>? ";"
+
+<statement-assign> ::= <expression> "=" <expression> ";"
+
+<statement-expression> ::= <expression> ";"
+
+<block> ::= "{" <statement>* "}"
+
+<expression> ::= <null>
+               | <boolean>
+               | <number>
+               | <string>
+               | <vector>
+               | <map>
+               | <set>
+               | <function>
+               | <template>
+               | <regex>
+               | <identifier>
+               | type <expression>
+               | new <expression> <expression>
+               | "(" <expression> ")"
+               | "+" <expression>
+               | "-" <expression>
+               | "not" <expression>
+               | <expression> "and" <expression>
+               | <expression> "or" <expression>
+               | <expression> "==" <expression>
+               | <expression> "!=" <expression>
+               | <expression> "<=" <expression>
+               | <expression> ">=" <expression>
+               | <expression> "<" <expression>
+               | <expression> ">" <expression>
+               | <expression> "=~" <expression>
+               | <expression> "!~" <expression>
+               | <expression> "+" <expression>
+               | <expression> "-" <expression>
+               | <expression> "*" <expression>
+               | <expression> "/" <expression>
+               | <expression> "%" <expression>
+               | <expression> "(" (<expression> ("," <expression>)*)? ","? ")"
+               | <expression> "[" <expression> "]"
+               | <expression> "." <identifier>
+               | <expression> "::" <identifier>
+               | <expression> ".&"
+               | <expression> ".*"
+
+<template-element> ::= "{{"
+                     | "}}"
+                     | "{" <expression> "}"
+                     | <character>
+
+<template> ::= "$" '"' <template-element>* '"'
+             | "$" "`" <template-element>* "`"
+             | "$" "```" <template-element>* "```"
+
+<regex> ::= "r" "`" ? re2 regular expression ? "`"
+
+<identifier> ::= /[a-zA-Z_]\w*/
+
+<function> ::= "function" "(" (<identifier> ("," <identifier>)*)? ")" <block>
+
+<set> ::= "Set" "{" "}"
+        | "Set"? "{" (<expression> ("," <expression>)* ","?)? "}"
+
+<map-key> ::= <expression>
+            | "." <identifier>
+
+<map-sep> ::= ":"
+            | "="
+
+<map-element> = <map-key> <map-sep> <expression>
+
+<map> ::= "Map" "{" "}"
+        | "Map"? "{" (<map-element> ("," <map-element>)* ","?)? "}"
+
+<vector> ::= "[" (<expression> ("," <expression>)* ","?)? "]"
+
+<string> ::= '"' <character>* '"'
+           | "`" <printable>* "`"
+           | "```" <printable>* "```"
+
+<character> ::= "\t" # tab
+              | "\n" # newline
+              | '\"' # double quote
+              | "\\" # backslash
+              | /\\x[0-9a-fA-F][0-9a-fA-F]/ # hex byte, e.g. \xFF -> 0xFF
+              | (<printable> - ('"' | "\"))
+
+<printable> ::= ? printable Unicode character ?
+
+<line-feed> ::= ? Unicode character U+000A ?
+
+<number> ::= /0x[0-9a-fA-F]+/
+           | /\d+(\.\d+)?/
+
+<boolean> ::= "true"
+            | "false"
+
+<null> ::= "null"

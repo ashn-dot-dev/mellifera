@@ -1,0 +1,4 @@
+let foo = type Map{"abc": 123};
+foo["bar"] = "baz";
+################################################################################
+# [error-attempted-to-modify-metamap.test.mf, line 2] error: attempted to modify metamap {"abc": 123}

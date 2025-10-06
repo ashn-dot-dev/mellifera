@@ -1,0 +1,1 @@
+assert(module::file == "module-file.test.mf"); # /path/to/mf/tests/module-file.test.mf

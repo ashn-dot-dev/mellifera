@@ -1,0 +1,15 @@
+dumpln(math::is_inf(NaN));
+dumpln(math::is_inf(+Inf));
+dumpln(math::is_inf(-Inf));
+dumpln(math::is_inf(+123));
+dumpln(math::is_inf(-123));
+dumpln(math::is_inf(+123.456));
+dumpln(math::is_inf(-123.456));
+################################################################################
+# false
+# true
+# true
+# false
+# false
+# false
+# false

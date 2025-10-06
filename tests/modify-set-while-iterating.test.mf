@@ -1,0 +1,18 @@
+let collection = {"foo", "bar", "baz"};
+println(collection);
+for x in collection {
+    if collection.contains("baz") {
+        collection.remove("baz");
+        println("removed baz");
+    }
+    collection.insert("boop");
+    println(x);
+}
+println(collection);
+################################################################################
+# {"foo", "bar", "baz"}
+# removed baz
+# foo
+# bar
+# baz
+# {"foo", "bar", "boop"}

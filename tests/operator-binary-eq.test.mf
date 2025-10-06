@@ -1,0 +1,47 @@
+let x = 123;
+let y = 456;
+let f = function() { println("f"); };
+let g = function() { println("g"); };
+try { dumpln( null            == null            ); } catch err { dumpln(err); }
+try { dumpln( true            == true            ); } catch err { dumpln(err); }
+try { dumpln( true            == false           ); } catch err { dumpln(err); }
+try { dumpln( 123             == 123             ); } catch err { dumpln(err); }
+try { dumpln( 123             == 456             ); } catch err { dumpln(err); }
+try { dumpln( "foo"           == "foo"           ); } catch err { dumpln(err); }
+try { dumpln( "foo"           == "bar"           ); } catch err { dumpln(err); }
+try { dumpln( r`(\w+)foo`     == r`(\w+)foo`     ); } catch err { dumpln(err); }
+try { dumpln( r`(\w+)foo`     == r`(\w+)bar`     ); } catch err { dumpln(err); }
+try { dumpln( [123]           == [123]           ); } catch err { dumpln(err); }
+try { dumpln( [123]           == [456]           ); } catch err { dumpln(err); }
+try { dumpln( Map{"abc": 123} == Map{"abc": 123} ); } catch err { dumpln(err); }
+try { dumpln( Map{"abc": 123} == Map{"abc": 456} ); } catch err { dumpln(err); }
+try { dumpln( Set{"abc"}      == Set{"abc"}      ); } catch err { dumpln(err); }
+try { dumpln( Set{"abc"}      == Set{"xyz"}      ); } catch err { dumpln(err); }
+try { dumpln( x.&             == x.&             ); } catch err { dumpln(err); }
+try { dumpln( x.&             == y.&             ); } catch err { dumpln(err); }
+try { dumpln( f               == f               ); } catch err { dumpln(err); }
+try { dumpln( f               == g               ); } catch err { dumpln(err); }
+try { dumpln( println         == println         ); } catch err { dumpln(err); }
+try { dumpln( println         == dumpln          ); } catch err { dumpln(err); }
+################################################################################
+# true
+# true
+# false
+# true
+# false
+# true
+# false
+# true
+# false
+# true
+# false
+# true
+# false
+# true
+# false
+# true
+# false
+# true
+# false
+# true
+# false

@@ -1,0 +1,128 @@
+dumpln( null );
+
+print("\n");
+
+dumpln( true  );
+dumpln( false );
+
+print("\n");
+
+dumpln( 123    );
+dumpln( 123.0  );
+dumpln( 123.45 );
+dumpln( 0xdeadbeef );
+
+print("\n");
+
+dumpln( "hello"        );
+dumpln( "hello world"  );
+dumpln( "hello\tworld" );
+dumpln( "hello\nworld" );
+dumpln( "hello\\world" );
+dumpln( "hello\"world" );
+dumpln( `hello world`  );
+dumpln(
+`hello
+world`
+);
+dumpln(
+```
+hello
+world
+```
+);
+
+print("\n");
+
+dumpln( r"foo"           );
+dumpln( r"(\\w+) (\\w+)" );
+dumpln( r`foo`           );
+dumpln( r`(\w+) (\w+)`   );
+
+print("\n");
+
+dumpln( []                     );
+dumpln( ["foo", "bar", "baz"]  );
+dumpln( ["foo", "bar", "baz",] );
+
+print("\n");
+
+dumpln( Map{}                                    );
+dumpln( Map{"foo": 123, "bar": 456, "baz": 789}  );
+dumpln( Map{"foo": 123, "bar": 456, "baz": 789,} );
+dumpln( {"foo": 123, "bar": 456, "baz": 789}     );
+dumpln( {"foo": 123, "bar": 456, "baz": 789,}    );
+
+print("\n");
+
+dumpln( Set{}                     );
+dumpln( Set{"foo", "bar", "baz"}  );
+dumpln( Set{"foo", "bar", "baz",} );
+dumpln( {"foo", "bar", "baz"}     );
+dumpln( {"foo", "bar", "baz",}    );
+
+print("\n");
+
+assert( typeof(123.&) == reference                                  );
+assert( typeof({"foo": 123, "bar": 456, "baz": 456}.&) == reference );
+
+print("\n");
+
+let named_function = function() { };
+dumpln( named_function                                          );
+dumpln( function() { }                                          );
+dumpln( function() { println("hello from inside a function"); } );
+
+print("\n");
+
+dumpln( dumpln  );
+dumpln( println );
+################################################################################
+# null
+#
+# true
+# false
+#
+# 123
+# 123
+# 123.45
+# 3735928559
+#
+# "hello"
+# "hello world"
+# "hello\tworld"
+# "hello\nworld"
+# "hello\\world"
+# "hello\"world"
+# "hello world"
+# "hello\nworld"
+# "\nhello\nworld\n"
+#
+# r"foo"
+# r"(\\w+) (\\w+)"
+# r"foo"
+# r"(\\w+) (\\w+)"
+#
+# []
+# ["foo", "bar", "baz"]
+# ["foo", "bar", "baz"]
+#
+# Map{}
+# {"foo": 123, "bar": 456, "baz": 789}
+# {"foo": 123, "bar": 456, "baz": 789}
+# {"foo": 123, "bar": 456, "baz": 789}
+# {"foo": 123, "bar": 456, "baz": 789}
+#
+# Set{}
+# {"foo", "bar", "baz"}
+# {"foo", "bar", "baz"}
+# {"foo", "bar", "baz"}
+# {"foo", "bar", "baz"}
+#
+#
+# named_function@[values.test.mf, line 71]
+# function@[values.test.mf, line 73]
+# function@[values.test.mf, line 74]
+#
+# dumpln@builtin
+# println@builtin

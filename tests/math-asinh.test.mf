@@ -1,0 +1,13 @@
+dumpln(math::asinh(NaN));
+dumpln(math::asinh(+Inf));
+dumpln(math::asinh(-Inf));
+dumpln(math::asinh(0));
+dumpln(math::asinh(-1.175).fixed(1));
+dumpln(math::asinh(+1.175).fixed(1));
+################################################################################
+# NaN
+# Inf
+# -Inf
+# 0
+# -1
+# 1

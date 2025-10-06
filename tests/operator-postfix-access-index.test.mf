@@ -1,0 +1,53 @@
+try { dumpln( null[0]                            ); } catch err { dumpln(err); }
+try { dumpln( true[0]                            ); } catch err { dumpln(err); }
+try { dumpln( 123[0]                             ); } catch err { dumpln(err); }
+try { dumpln( "foo"[0]                           ); } catch err { dumpln(err); }
+try { dumpln( ["foo", "bar"][0]                  ); } catch err { dumpln(err); }
+try { dumpln( Map{"foo": 123, "bar": 456}["foo"] ); } catch err { dumpln(err); }
+try { dumpln( Set{"foo", "bar"}["foo"]           ); } catch err { dumpln(err); }
+try { dumpln( 123.&[0]                           ); } catch err { dumpln(err); }
+try { dumpln( function(){}[0]                    ); } catch err { dumpln(err); }
+try { dumpln( println[0]                         ); } catch err { dumpln(err); }
+
+print("\n");
+
+let x = ["foo", "bar", "baz"];
+dumpln(x);
+x[1] = "xyz";
+dumpln(x);
+try { dumpln(x[3]); } catch err { dumpln(err); }
+
+print("\n");
+
+let x = {"foo": 123, "bar": 456};
+dumpln(x);
+x["foo"] = "xyz";
+dumpln(x);
+try { dumpln(x["baz"]); } catch err { dumpln(err); }
+
+print("\n");
+
+let meta = type {"f": function(self) { println("inside metafunction f"); }};
+let x = new meta 123;
+try { dumpln(x["f"]); } catch err { dumpln(err); }
+################################################################################
+# "attempted to access field of type `null` with type `number`"
+# "attempted to access field of type `boolean` with type `number`"
+# "attempted to access field of type `number` with type `number`"
+# "attempted to access field of type `string` with type `number`"
+# "foo"
+# 123
+# "attempted to access field of type `set` with type `string`"
+# "attempted to access field of type `reference` with type `number`"
+# "attempted to access field of type `function` with type `number`"
+# "attempted to access field of type `function` with type `number`"
+#
+# ["foo", "bar", "baz"]
+# ["foo", "xyz", "baz"]
+# "invalid vector access with index 3"
+#
+# {"foo": 123, "bar": 456}
+# {"foo": "xyz", "bar": 456}
+# "invalid map access with field \"baz\""
+#
+# "attempted to access field of type `meta` with type `string`"

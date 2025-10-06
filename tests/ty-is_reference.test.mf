@@ -1,0 +1,23 @@
+dumpln(ty::is_reference(null));
+dumpln(ty::is_reference(true));
+dumpln(ty::is_reference(123));
+dumpln(ty::is_reference("foo"));
+dumpln(ty::is_reference(r"foo"));
+dumpln(ty::is_reference(["foo", "bar", "baz"]));
+dumpln(ty::is_reference({.foo = "bar"}));
+dumpln(ty::is_reference({"foo", "bar"}));
+dumpln(ty::is_reference(123.&));
+dumpln(ty::is_reference(function() {}));
+dumpln(ty::is_reference(dumpln));
+################################################################################
+# false
+# false
+# false
+# false
+# false
+# false
+# false
+# false
+# true
+# false
+# false

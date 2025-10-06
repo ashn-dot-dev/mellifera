@@ -1,0 +1,10 @@
+let strings = [
+    "Johnny Appleseed",
+    "Some long text that does not match!",
+    "Isaac Newton"
+];
+for s in strings {
+    if s =~ r`^(\w+) (\w+)$` {
+        println($"First Name = {repr(re::group(1))}, Last Name = {repr(re::group(2))}");
+    }
+}

@@ -1,0 +1,44 @@
+let a = {"abc": 123, "def": 456, "hij": {"xyz": 3.14}};
+let b = a;
+dumpln(a);
+dumpln(b);
+
+print("\n");
+
+a["abc"] = "foo";
+dumpln(a);
+dumpln(b);
+
+print("\n");
+
+b["hij"]["xyz"] = "bar";
+dumpln(a);
+dumpln(b);
+
+print("\n");
+
+function(x) {
+    x["abc"] = "baz";
+    dumpln(a);
+    dumpln(x);
+}(a);
+
+print("\n");
+
+dumpln(a);
+dumpln(b);
+################################################################################
+# {"abc": 123, "def": 456, "hij": {"xyz": 3.14}}
+# {"abc": 123, "def": 456, "hij": {"xyz": 3.14}}
+#
+# {"abc": "foo", "def": 456, "hij": {"xyz": 3.14}}
+# {"abc": 123, "def": 456, "hij": {"xyz": 3.14}}
+#
+# {"abc": "foo", "def": 456, "hij": {"xyz": 3.14}}
+# {"abc": 123, "def": 456, "hij": {"xyz": "bar"}}
+#
+# {"abc": "foo", "def": 456, "hij": {"xyz": 3.14}}
+# {"abc": "baz", "def": 456, "hij": {"xyz": 3.14}}
+#
+# {"abc": "foo", "def": 456, "hij": {"xyz": 3.14}}
+# {"abc": 123, "def": 456, "hij": {"xyz": "bar"}}

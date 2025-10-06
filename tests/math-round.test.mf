@@ -1,0 +1,19 @@
+try { dumpln(math::round(NaN)); } catch err { dumpln(err); }
+try { dumpln(math::round(+Inf)); } catch err { dumpln(err); }
+try { dumpln(math::round(-Inf)); } catch err { dumpln(err); }
+dumpln(math::round(+123));
+dumpln(math::round(-123));
+dumpln(math::round(+123.456));
+dumpln(math::round(-123.456));
+dumpln(math::round(+123.654));
+dumpln(math::round(-123.654));
+################################################################################
+# "cannot convert float NaN to integer"
+# "cannot convert float infinity to integer"
+# "cannot convert float infinity to integer"
+# 123
+# -123
+# 123
+# -123
+# 124
+# -124

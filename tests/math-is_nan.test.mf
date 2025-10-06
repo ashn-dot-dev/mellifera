@@ -1,0 +1,15 @@
+dumpln(math::is_nan(NaN));
+dumpln(math::is_nan(+Inf));
+dumpln(math::is_nan(-Inf));
+dumpln(math::is_nan(+123));
+dumpln(math::is_nan(-123));
+dumpln(math::is_nan(+123.456));
+dumpln(math::is_nan(-123.456));
+################################################################################
+# true
+# false
+# false
+# false
+# false
+# false
+# false

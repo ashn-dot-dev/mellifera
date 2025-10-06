@@ -1,0 +1,23 @@
+dumpln(ty::is_boolean(null));
+dumpln(ty::is_boolean(true));
+dumpln(ty::is_boolean(123));
+dumpln(ty::is_boolean("foo"));
+dumpln(ty::is_boolean(r"foo"));
+dumpln(ty::is_boolean(["foo", "bar", "baz"]));
+dumpln(ty::is_boolean({.foo = "bar"}));
+dumpln(ty::is_boolean({"foo", "bar"}));
+dumpln(ty::is_boolean(123.&));
+dumpln(ty::is_boolean(function() {}));
+dumpln(ty::is_boolean(dumpln));
+################################################################################
+# false
+# true
+# false
+# false
+# false
+# false
+# false
+# false
+# false
+# false
+# false

@@ -1,0 +1,11 @@
+# Greeter module used for explaining imports.
+#
+# let greeter = import("/path/to/greeter.mf");
+# let greet = greeter::init("Juliet");
+# greet(); # prints the line "Hello, Juliet!"
+let init = function(name) {
+    return function() {
+        println("Hello, " + name + "!");
+    };
+};
+return {"init": init};

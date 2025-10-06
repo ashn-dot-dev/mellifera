@@ -1,0 +1,67 @@
+dumpln(math::pow(NaN, 0));
+dumpln(math::pow(+Inf, 0));
+dumpln(math::pow(-Inf, 0));
+dumpln(math::pow(+2, 0));
+dumpln(math::pow(-2, 0));
+
+print("\n");
+
+dumpln(math::pow(NaN, 1));
+dumpln(math::pow(+Inf, 1));
+dumpln(math::pow(-Inf, 1));
+dumpln(math::pow(+2, 1));
+dumpln(math::pow(-2, 1));
+
+print("\n");
+
+dumpln(math::pow(NaN, 2));
+dumpln(math::pow(+Inf, 2));
+dumpln(math::pow(-Inf, 2));
+dumpln(math::pow(+2, 2));
+dumpln(math::pow(-2, 2));
+
+print("\n");
+
+dumpln(math::pow(NaN, 3));
+dumpln(math::pow(+Inf, 3));
+dumpln(math::pow(-Inf, 3));
+dumpln(math::pow(+2, 3));
+dumpln(math::pow(-2, 3));
+
+print("\n");
+
+dumpln(math::pow(NaN, 1/2));
+dumpln(math::pow(+Inf, 1/2));
+dumpln(math::pow(-Inf, 1/2));
+dumpln(math::pow(+4, 1/2));
+try { dumpln(math::pow(-4, 1/2)); } catch err { dumpln(err); }
+################################################################################
+# 1
+# 1
+# 1
+# 1
+# 1
+#
+# NaN
+# Inf
+# -Inf
+# 2
+# -2
+#
+# NaN
+# Inf
+# Inf
+# 4
+# 4
+#
+# NaN
+# Inf
+# -Inf
+# 8
+# -8
+#
+# NaN
+# Inf
+# Inf
+# 2
+# "math domain error"

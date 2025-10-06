@@ -1,0 +1,34 @@
+# Import a module that does not exist.
+try {
+    import("nope.mf");
+}
+catch err {
+    println(err);
+}
+
+# Import a module that does not exist using a valid directory that does exist.
+try {
+    import("../lib");
+}
+catch err {
+    println(err);
+}
+
+# Import a module that does exist by the path to its main file.
+try {
+    let lib = import("../lib/zen/lib.mf");
+}
+catch err {
+    println(err);
+}
+
+# Import a module that does exist by the path to its directory.
+try {
+    let lib = import("../lib/zen");
+}
+catch err {
+    println(err);
+}
+################################################################################
+# module "nope.mf" not found
+# module "../lib" not found

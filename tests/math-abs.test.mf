@@ -1,0 +1,15 @@
+dumpln(math::abs(NaN));
+dumpln(math::abs(+Inf));
+dumpln(math::abs(-Inf));
+dumpln(math::abs(+123));
+dumpln(math::abs(-123));
+dumpln(math::abs(+123.456));
+dumpln(math::abs(-123.456));
+################################################################################
+# NaN
+# Inf
+# Inf
+# 123
+# 123
+# 123.456
+# 123.456

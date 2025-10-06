@@ -1,0 +1,19 @@
+let event = type {
+    .party = function(self) {
+        println("🥳 woo party 🎉");
+    },
+    .cleanup = function(self) {
+        println("🧹 boo cleanup 🧽");
+    },
+};
+
+let birthday = type extends(event, {
+    .name = "birthday",
+    .party = function(self) {
+        println("🥳 woo birthday party 🎂");
+    },
+});
+
+dumpln(birthday);
+################################################################################
+# {"party": party@[extends.test.mf, line 12], "cleanup": event::cleanup@[extends.test.mf, line 5], "name": "birthday"}

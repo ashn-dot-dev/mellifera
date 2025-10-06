@@ -1,0 +1,23 @@
+dumpln(ty::is_set(null));
+dumpln(ty::is_set(true));
+dumpln(ty::is_set(123));
+dumpln(ty::is_set("foo"));
+dumpln(ty::is_set(r"foo"));
+dumpln(ty::is_set(["foo", "bar", "baz"]));
+dumpln(ty::is_set({.foo = "bar"}));
+dumpln(ty::is_set({"foo", "bar"}));
+dumpln(ty::is_set(123.&));
+dumpln(ty::is_set(function() {}));
+dumpln(ty::is_set(dumpln));
+################################################################################
+# false
+# false
+# false
+# false
+# false
+# false
+# false
+# true
+# false
+# false
+# false

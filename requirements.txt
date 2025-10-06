@@ -1,0 +1,6 @@
+black==25.1.0
+flake8==7.3.0
+google-re2==1.1.20250805
+google-re2-stubs==0.1.1
+mypy==1.18.1
+nuitka==2.7.14

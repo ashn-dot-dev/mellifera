@@ -1,0 +1,14 @@
+# Usage:
+#   /path/to/mf.py examples/fibonacci-recursive.mf n
+
+let fibonacci = function(n) {
+    if n <= 1 {
+        return n;
+    }
+    return fibonacci(n - 1) + fibonacci(n - 2);
+};
+
+if argv.count() != 2 {
+    error "expected exactly one program argument";
+}
+println(fibonacci(number::init(argv[1])));

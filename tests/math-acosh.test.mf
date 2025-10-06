@@ -1,0 +1,13 @@
+dumpln(math::acosh(NaN));
+dumpln(math::acosh(+Inf));
+try { math::acosh(-Inf); } catch err { dumpln(err); }
+dumpln(math::acosh(1));
+dumpln(math::acosh(1.543).fixed(1));
+try { math::acosh(-1); } catch err { dumpln(err); }
+################################################################################
+# NaN
+# Inf
+# "math domain error"
+# 0
+# 1
+# "math domain error"

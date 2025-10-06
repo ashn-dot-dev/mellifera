@@ -1,0 +1,3 @@
+Set{ .foo }
+################################################################################
+# [error-set-key-dot-identifier-syntax.test.mf, line 1] expected expression, found .

@@ -1,0 +1,7 @@
+dumpln(range(1, 4).contains(4));
+dumpln(range(1, 5).contains(4));
+dumpln(range(1, 6).contains(4));
+################################################################################
+# false
+# true
+# true

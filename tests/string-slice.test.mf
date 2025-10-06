@@ -1,0 +1,24 @@
+println(`"foo=bar".slice(0, 0) is ` + repr("foo=bar".slice(0, 0)));
+println(`"foo=bar".slice(0, 7) is ` + repr("foo=bar".slice(0, 7)));
+println(`"foo=bar".slice(0, 3) is ` + repr("foo=bar".slice(0, 3)));
+println(`"foo=bar".slice(4, 7) is ` + repr("foo=bar".slice(4, 7)));
+println(`"abc😀def".slice(3, 7) is ` + repr("abc😀def".slice(3, 7)));
+println(`"abc😀def".slice(4, 7) is ` + repr("abc😀def".slice(4, 7))); # The three invalid UTF-8 bytes are written to stdout as "���".
+try { "abc😀def".slice(4, 7); } catch err { println(`"abc😀def".slice(4, 7) produces the error ` + repr(err)); }
+try { "foo=bar".slice(0.5, 1); } catch err { println(`"foo=bar".slice(0.5, 1) produces the error ` + repr(err)); }
+try { "foo=bar".slice(0, 1.5); } catch err { println(`"foo=bar".slice(0, 1.5) produces the error ` + repr(err)); }
+try { "foo=bar".slice(-1, 7); } catch err { println(`"foo=bar".slice(-1, 7) produces the error ` + repr(err)); }
+try { "foo=bar".slice(0, -1); } catch err { println(`"foo=bar".slice(0, -1) produces the error ` + repr(err)); }
+try { "foo=bar".slice(4, 3); } catch err { println(`"foo=bar".slice(4, 3) produces the error ` + repr(err)); }
+################################################################################
+# "foo=bar".slice(0, 0) is ""
+# "foo=bar".slice(0, 7) is "foo=bar"
+# "foo=bar".slice(0, 3) is "foo"
+# "foo=bar".slice(4, 7) is "bar"
+# "abc😀def".slice(3, 7) is "😀"
+# "abc😀def".slice(4, 7) is "���"
+# "foo=bar".slice(0.5, 1) produces the error "expected integer index, received 0.5"
+# "foo=bar".slice(0, 1.5) produces the error "expected integer index, received 1.5"
+# "foo=bar".slice(-1, 7) produces the error "slice begin is less than zero"
+# "foo=bar".slice(0, -1) produces the error "slice end is less than zero"
+# "foo=bar".slice(4, 3) produces the error "slice end is less than slice begin"

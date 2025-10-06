@@ -1,0 +1,21 @@
+try { dumpln( not null         ); } catch err { dumpln(err); }
+try { dumpln( not true         ); } catch err { dumpln(err); }
+try { dumpln( not 123          ); } catch err { dumpln(err); }
+try { dumpln( not "foo"        ); } catch err { dumpln(err); }
+try { dumpln( not []           ); } catch err { dumpln(err); }
+try { dumpln( not Map{}        ); } catch err { dumpln(err); }
+try { dumpln( not Set{}        ); } catch err { dumpln(err); }
+try { dumpln( not 123.&        ); } catch err { dumpln(err); }
+try { dumpln( not function(){} ); } catch err { dumpln(err); }
+try { dumpln( not println      ); } catch err { dumpln(err); }
+################################################################################
+# "attempted unary not operation with type `null`"
+# false
+# "attempted unary not operation with type `number`"
+# "attempted unary not operation with type `string`"
+# "attempted unary not operation with type `vector`"
+# "attempted unary not operation with type `map`"
+# "attempted unary not operation with type `set`"
+# "attempted unary not operation with type `reference`"
+# "attempted unary not operation with type `function`"
+# "attempted unary not operation with type `function`"

@@ -1,0 +1,41 @@
+dumpln(iterator);
+try { iterator.next(); } catch err { dumpln(err); }
+try { iterator::eoi(); } catch err { dumpln(err); }
+
+let counter = type map::union(iterator, {
+    .init = function(start, max) {
+        return new counter {
+            .current = start,
+            .max = max,
+        };
+    },
+    .next = function(self) {
+        if self.*.current > self.*.max {
+            # iterator::eoi() will error, but we still use a return statement
+            # for visual clarity to indicate that control is being returned.
+            return iterator::eoi();
+        }
+
+        let result = self.*.current;
+        self.*.current = self.*.current + 1;
+        return result;
+    },
+});
+dumpln(counter);
+let c = counter::init(5, 10);
+dumpln(c);
+for x in c {
+    dumpln(x);
+}
+################################################################################
+# {"eoi": iterator::eoi, "next": iterator::next, "count": iterator::count, "contains": iterator::contains, "any": iterator::any, "all": iterator::all, "filter": iterator::filter, "transform": iterator::transform, "into_vector": iterator::into_vector}
+# "unimplemented iterator::next"
+# null
+# {"eoi": iterator::eoi, "next": next@[iterator.test.mf, line 12], "count": iterator::count, "contains": iterator::contains, "any": iterator::any, "all": iterator::all, "filter": iterator::filter, "transform": iterator::transform, "into_vector": iterator::into_vector, "init": init@[iterator.test.mf, line 6]}
+# {"current": 5, "max": 10}
+# 5
+# 6
+# 7
+# 8
+# 9
+# 10

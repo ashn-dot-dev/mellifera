@@ -1,0 +1,55 @@
+try { dumpln( null::foo                        ); } catch err { dumpln(err); }
+try { dumpln( true::foo                        ); } catch err { dumpln(err); }
+try { dumpln( 123::foo                         ); } catch err { dumpln(err); }
+try { dumpln( "foo"::foo                       ); } catch err { dumpln(err); }
+try { dumpln( ["foo", "bar"]::foo              ); } catch err { dumpln(err); }
+try { dumpln( Map{"foo": 123, "bar": 456}::foo ); } catch err { dumpln(err); }
+try { dumpln( Set{"foo", "bar"}::foo           ); } catch err { dumpln(err); }
+try { dumpln( 123.&::foo                       ); } catch err { dumpln(err); }
+try { dumpln( function(){}::foo                ); } catch err { dumpln(err); }
+try { dumpln( println::foo                     ); } catch err { dumpln(err); }
+
+print("\n");
+
+let meta = type {"f": function(self) { println("inside metafunction f"); }};
+let x = new meta 123;
+try { dumpln(x::f); } catch err { dumpln(err); }
+try { x::f = 456; } catch err { dumpln(err); }
+try { dumpln(x::f); } catch err { dumpln(err); }
+
+print("\n");
+
+let meta = type {"f": function(self) { println("inside metafunction f"); }};
+let x = new meta Map{};
+try { dumpln(x::f); } catch err { dumpln(err); }
+x::f = 456;
+try { dumpln(x::f); } catch err { dumpln(err); }
+
+print("\n");
+
+let meta = type {"f": function(self) { println("inside metafunction f"); }};
+let x = new meta Map{"f": 123};
+try { dumpln(x::f); } catch err { dumpln(err); }
+x::f = 456;
+try { dumpln(x::f); } catch err { dumpln(err); }
+################################################################################
+# "attempted to access field of type `null`"
+# "attempted to access field of type `boolean`"
+# "attempted to access field of type `number`"
+# "attempted to access field of type `string`"
+# "attempted to access field of type `vector`"
+# 123
+# "attempted to access field of type `set`"
+# "attempted to access field of type `reference`"
+# "attempted to access field of type `function`"
+# "attempted to access field of type `function`"
+#
+# "attempted to access field of type `meta`"
+# "attempted access into type `meta` with type `string`"
+# "attempted to access field of type `meta`"
+#
+# "invalid map access with field \"f\""
+# 456
+#
+# 123
+# 456

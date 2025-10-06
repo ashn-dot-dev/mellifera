@@ -1,0 +1,12 @@
+let a = {"foo", "bar", "baz"};
+let b = {"abc", "foo", "bar"};
+dumpln(set::intersection(a, b));
+dumpln(a.intersection(b));
+
+try { dumpln(set::intersection(123, Set{})); } catch err { dumpln(err); }
+try { dumpln(set::intersection(Set{}, 123)); } catch err { dumpln(err); }
+################################################################################
+# {"foo", "bar"}
+# {"foo", "bar"}
+# "attempted set::intersection of values 123 and Set{}"
+# "attempted set::intersection of values Set{} and 123"

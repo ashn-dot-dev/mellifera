@@ -1,0 +1,9 @@
+dumpln("foobar".replace("o", "u"));
+dumpln("foobar".replace("o", "lub"));
+dumpln("foobar".replace("o", ""));
+dumpln("foobar".replace("", "X"));
+################################################################################
+# "fuubar"
+# "flublubbar"
+# "fbar"
+# "XfXoXoXbXaXrX"
