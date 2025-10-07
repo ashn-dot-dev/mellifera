@@ -4842,7 +4842,7 @@ def builtin_re_group(n: Number) -> Union[Value, Error]:
 @builtin("ty::is", [Value, Value])
 def builtin_ty_is(value: Value, type: Value) -> Union[Value, Error]:
     if isinstance(type, Null):
-        return Boolean.new(isinstance(type, Null))
+        return Boolean.new(value.meta is None)
     if isinstance(type, MetaMap):
         return Boolean.new(value.meta is type)
     raise Exception(
