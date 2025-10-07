@@ -40,12 +40,12 @@
                | <boolean>
                | <number>
                | <string>
+               | <regexp>
                | <vector>
                | <map>
                | <set>
                | <function>
                | <template>
-               | <regex>
                | <identifier>
                | type <expression>
                | new <expression> <expression>
@@ -84,8 +84,6 @@
              | "$" "`" <template-element>* "`"
              | "$" "```" <template-element>* "```"
 
-<regex> ::= "r" "`" ? re2 regular expression ? "`"
-
 <identifier> ::= /[a-zA-Z_]\w*/
 
 <function> ::= "function" "(" (<identifier> ("," <identifier>)*)? ")" <block>
@@ -105,6 +103,9 @@
         | "Map"? "{" (<map-element> ("," <map-element>)* ","?)? "}"
 
 <vector> ::= "[" (<expression> ("," <expression>)* ","?)? "]"
+
+<regexp> ::= 'r"' ? escaped re2 regular expression ? '"'
+           | "r`" ? literal re2 regular expression ? "`"
 
 <string> ::= '"' <character>* '"'
            | "`" <printable>* "`"
