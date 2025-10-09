@@ -1,6 +1,6 @@
 dumpln(math::cos(NaN));
-try { dumpln(math::cos(+Inf)); } catch err { dumpln(err); }
-try { dumpln(math::cos(-Inf)); } catch err { dumpln(err); }
+dumpln(math::cos(+Inf));
+dumpln(math::cos(-Inf));
 dumpln(math::cos(0).fixed(1));
 dumpln(math::cos(math::pi/2).fixed(1));
 dumpln(math::cos(math::pi).fixed(1));
@@ -8,8 +8,8 @@ dumpln(math::cos((3 * math::pi) / 2).fixed(1));
 dumpln(math::cos(2 * math::pi).fixed(1));
 ################################################################################
 # NaN
-# "math domain error"
-# "math domain error"
+# NaN
+# NaN
 # 1
 # 0
 # -1

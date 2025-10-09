@@ -4684,27 +4684,48 @@ def builtin_math_exp10(value: Number) -> Union[Value, Error]:
 
 @builtin("math::log", [Number])
 def builtin_math_log(value: Number) -> Union[Value, Error]:
-    return Number.new(math.log(float(value.data)))
+    if float(value) == 0:
+        return Number.new(-math.inf)
+    try:
+        return Number.new(math.log(float(value.data)))
+    except ValueError:
+        return Number.new(math.nan)
 
 
 @builtin("math::log2", [Number])
 def builtin_math_log2(value: Number) -> Union[Value, Error]:
-    return Number.new(math.log2(float(value.data)))
+    if float(value) == 0:
+        return Number.new(-math.inf)
+    try:
+        return Number.new(math.log2(float(value.data)))
+    except ValueError:
+        return Number.new(math.nan)
 
 
 @builtin("math::log10", [Number])
 def builtin_math_log10(value: Number) -> Union[Value, Error]:
-    return Number.new(math.log10(float(value.data)))
+    if float(value) == 0:
+        return Number.new(-math.inf)
+    try:
+        return Number.new(math.log10(float(value.data)))
+    except ValueError:
+        return Number.new(math.nan)
 
 
 @builtin("math::pow", [Number, Number])
 def builtin_math_pow(value: Number, power: Number) -> Union[Value, Error]:
-    return Number.new(math.pow(float(value.data), float(power.data)))
+    try:
+        return Number.new(math.pow(float(value.data), float(power.data)))
+    except ValueError:
+        return Number.new(math.nan)
 
 
 @builtin("math::sqrt", [Number])
 def builtin_math_sqrt(value: Number) -> Union[Value, Error]:
-    return Number.new(math.sqrt(float(value.data)))
+    try:
+        return Number.new(math.sqrt(float(value.data)))
+    except ValueError:
+        return Number.new(math.nan)
 
 
 @builtin("math::cbrt", [Number])
@@ -4730,27 +4751,42 @@ def builtin_math_clamp():
 
 @builtin("math::sin", [Number])
 def builtin_math_sin(value: Number) -> Union[Value, Error]:
-    return Number.new(math.sin(float(value.data)))
+    try:
+        return Number.new(math.sin(float(value.data)))
+    except ValueError:
+        return Number.new(math.nan)
 
 
 @builtin("math::cos", [Number])
 def builtin_math_cos(value: Number) -> Union[Value, Error]:
-    return Number.new(math.cos(float(value.data)))
+    try:
+        return Number.new(math.cos(float(value.data)))
+    except ValueError:
+        return Number.new(math.nan)
 
 
 @builtin("math::tan", [Number])
 def builtin_math_tan(value: Number) -> Union[Value, Error]:
-    return Number.new(math.tan(float(value.data)))
+    try:
+        return Number.new(math.tan(float(value.data)))
+    except ValueError:
+        return Number.new(math.nan)
 
 
 @builtin("math::asin", [Number])
 def builtin_math_asin(value: Number) -> Union[Value, Error]:
-    return Number.new(math.asin(float(value.data)))
+    try:
+        return Number.new(math.asin(float(value.data)))
+    except ValueError:
+        return Number.new(math.nan)
 
 
 @builtin("math::acos", [Number])
 def builtin_math_acos(value: Number) -> Union[Value, Error]:
-    return Number.new(math.acos(float(value.data)))
+    try:
+        return Number.new(math.acos(float(value.data)))
+    except ValueError:
+        return Number.new(math.nan)
 
 
 @builtin("math::atan", [Number])
@@ -4785,12 +4821,22 @@ def builtin_math_asinh(value: Number) -> Union[Value, Error]:
 
 @builtin("math::acosh", [Number])
 def builtin_math_acosh(value: Number) -> Union[Value, Error]:
-    return Number.new(math.acosh(float(value.data)))
+    try:
+        return Number.new(math.acosh(float(value.data)))
+    except ValueError:
+        return Number.new(math.nan)
 
 
 @builtin("math::atanh", [Number])
 def builtin_math_atanh(value: Number) -> Union[Value, Error]:
-    return Number.new(math.atanh(float(value.data)))
+    if float(value).is_integer() and int(value) == +1:
+        return Number.new(+math.inf)
+    if float(value).is_integer() and int(value) == -1:
+        return Number.new(-math.inf)
+    try:
+        return Number.new(math.atanh(float(value.data)))
+    except ValueError:
+        return Number.new(math.nan)
 
 
 @builtin("py::exec", [Value])

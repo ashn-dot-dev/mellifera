@@ -34,7 +34,7 @@ dumpln(math::pow(NaN, 1/2));
 dumpln(math::pow(+Inf, 1/2));
 dumpln(math::pow(-Inf, 1/2));
 dumpln(math::pow(+4, 1/2));
-try { dumpln(math::pow(-4, 1/2)); } catch err { dumpln(err); }
+dumpln(math::pow(-4, 1/2));
 ################################################################################
 # 1
 # 1
@@ -64,4 +64,4 @@ try { dumpln(math::pow(-4, 1/2)); } catch err { dumpln(err); }
 # Inf
 # Inf
 # 2
-# "math domain error"
+# NaN

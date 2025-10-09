@@ -1,13 +1,19 @@
+dumpln(math::log(NaN));
+dumpln(math::log(+Inf));
+dumpln(math::log(-Inf));
+dumpln(math::log(-1));
+dumpln(math::log(0));
 dumpln(math::log(1).fixed(3));
 dumpln(math::log(2).fixed(3));
 dumpln(math::log(8).fixed(3));
 dumpln(math::log(10).fixed(3));
-try { math::log(0); } catch err { dumpln(string::init(err)); }
-try { math::log(-1); } catch err { dumpln(string::init(err)); }
 ################################################################################
+# NaN
+# Inf
+# NaN
+# NaN
+# -Inf
 # 0
 # 0.693
 # 2.079
 # 2.303
-# "math domain error"
-# "math domain error"

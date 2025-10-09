@@ -1,14 +1,14 @@
 dumpln(math::tan(NaN));
-try { dumpln(math::tan(+Inf)); } catch err { dumpln(err); }
-try { dumpln(math::tan(-Inf)); } catch err { dumpln(err); }
+dumpln(math::tan(+Inf));
+dumpln(math::tan(-Inf));
 dumpln(math::tan(0).fixed(1));
 dumpln(math::tan(1 * math::pi / 4).fixed(1));
 dumpln(math::tan(3 * math::pi / 4).fixed(1));
 dumpln(math::tan(4 * math::pi / 4).fixed(1));
 ################################################################################
 # NaN
-# "math domain error"
-# "math domain error"
+# NaN
+# NaN
 # 0
 # 1
 # -1
