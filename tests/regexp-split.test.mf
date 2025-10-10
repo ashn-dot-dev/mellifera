@@ -1,0 +1,5 @@
+dumpln(r` `.split("foo bar foo"));
+dumpln(r`\W+`.split("foo   bar   foo"));
+################################################################################
+# ["foo", "bar", "foo"]
+# ["foo", "bar", "foo"]

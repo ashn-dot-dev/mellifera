@@ -1,0 +1,5 @@
+dumpln(r`oo`.sub("foo bar foo", "OO"));
+dumpln(r`\w`.sub("foo bar foo", "x"));
+################################################################################
+# "fOO bar fOO"
+# "xxx xxx xxx"

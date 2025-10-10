@@ -1,14 +1,13 @@
-println(`["foo", "bar", "baz"].sorted() is ` + repr(["foo", "bar", "baz"].sorted()));
+println($`["foo", "bar", "baz"].sorted() is {["foo", "bar", "baz"].sorted()}`);
 
 print("\n");
 
-let sorted = typeof([])::sorted;
-try { vector::sorted(Map{"foo": "bar"}); } catch err { dumpln(string::init(err)); }
-try { vector::sorted(Map{"foo": "bar"}.&); } catch err { dumpln(string::init(err)); }
+try { vector::sorted(Map{"foo": "bar"}); } catch err { dumpln(err); }
+try { vector::sorted(Map{"foo": "bar"}.&); } catch err { dumpln(err); }
 
 print("\n");
 
-try { println(`["foo", 123, "baz"].sorted() is ` + repr(["foo", 123, "baz"].sorted())); } catch err { dumpln(string::init(err)); }
+try { println($`["foo", 123, "baz"].sorted() is {["foo", 123, "baz"].sorted()}`); } catch err { dumpln(err); }
 ################################################################################
 # ["foo", "bar", "baz"].sorted() is ["bar", "baz", "foo"]
 #

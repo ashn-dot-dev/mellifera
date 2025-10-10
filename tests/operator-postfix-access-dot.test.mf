@@ -97,12 +97,12 @@ try { y.nope = null; } catch err { dumpln(err); }
 # meta::f@[operator-postfix-access-dot.test.mf, line 24]
 # inside metafunction f
 # 456
-# "attempted to call non-function type `number` with value 456"
+# inside metafunction f
 #
 # 123
-# "attempted to call non-function type `number` with value 123"
+# inside metafunction f
 # 456
-# "attempted to call non-function type `number` with value 456"
+# inside metafunction f
 #
 # {"value": "foo"}
 # {"value": "bar"}

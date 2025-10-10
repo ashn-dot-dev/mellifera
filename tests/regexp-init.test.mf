@@ -1,0 +1,7 @@
+dumpln(regexp::init("foo"));
+dumpln(regexp::init(`(\w) (\w)`));
+try { dumpln(regexp::init(`\q`)); } catch err { println(err); }
+################################################################################
+# r"foo"
+# r"(\\w) (\\w)"
+# invalid regular expression "\\q"

@@ -1,0 +1,37 @@
+let compare_nominal = function(lhs, rhs) {
+    if lhs < rhs {
+        return -1;
+    }
+    if lhs > rhs {
+        return +1;
+    }
+    return 0;
+};
+let compare_reverse = function(lhs, rhs) {
+    if lhs < rhs {
+        return +1;
+    }
+    if lhs > rhs {
+        return -1;
+    }
+    return 0;
+};
+println($`["foo", "bar", "baz"].sorted_by(compare_nominal) is {["foo", "bar", "baz"].sorted_by(compare_nominal)}`);
+println($`["foo", "bar", "baz"].sorted_by(compare_reverse) is {["foo", "bar", "baz"].sorted_by(compare_reverse)}`);
+
+print("\n");
+
+try { vector::sorted_by(Map{"foo": "bar"}, compare_nominal); } catch err { dumpln(err); }
+try { vector::sorted_by(Map{"foo": "bar"}.&, compare_nominal); } catch err { dumpln(err); }
+
+print("\n");
+
+try { println($`["foo", 123, "baz"].sorted_by(compare_nominal) is {["foo", 123, "baz"].sorted_by(compare_nominal)}`); } catch err { dumpln(err); }
+################################################################################
+# ["foo", "bar", "baz"].sorted_by(compare_nominal) is ["bar", "baz", "foo"]
+# ["foo", "bar", "baz"].sorted_by(compare_reverse) is ["foo", "baz", "bar"]
+#
+# "expected reference to vector-like value for argument 0, received map"
+# "expected reference to vector-like value for argument 0, received reference to map"
+#
+# "attempted < operation with types `number` and `string`"

@@ -1,0 +1,6 @@
+dumpln(re::split("foo bar foo", r` `));
+dumpln(re::split("foo bar foo", r`\W+`));
+################################################################################
+# ["foo", "bar", "foo"]
+# ["foo", "bar", "foo"]
+

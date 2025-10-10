@@ -1,0 +1,5 @@
+dumpln(re::sub("foo bar foo", r`oo`, "OO"));
+dumpln(re::sub("foo bar foo", r`\w`, "x"));
+################################################################################
+# "fOO bar fOO"
+# "xxx xxx xxx"

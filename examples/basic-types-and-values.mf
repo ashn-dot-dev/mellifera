@@ -1,14 +1,14 @@
 # null
 dumpln( null );
 
+# boolean: true or false
+dumpln( true );
+dumpln( false );
+
 # number: IEEE-754 double
 dumpln( 123.456 );
 dumpln( Inf );
 dumpln( NaN );
-
-# boolean: true or false
-dumpln( true );
-dumpln( false );
 
 # string: byte strings with assumed UTF-8 encoding
 dumpln( "hello 🍔" );

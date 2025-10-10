@@ -6,14 +6,6 @@ value semantics, structural equality, copy-on-write data sharing, strong
 dynamic typing, explicit references, and a lightweight nominal type system with
 structural protocols.
 
-Some small Mellifera example programs are provided below. A more comprehensive
-language overview can be found in `overview.mf`, and additional examples can be
-found under the `examples` directory.
-
-## Examples
-
-### Hello World
-
 ```mellifera
 println("Hello, world!");
 ```
@@ -23,83 +15,130 @@ $ mf examples/hello-world.mf
 Hello, world!
 ```
 
-### Basic Types and Values
+Mellifera aims to be an enjoyable language for writing small scripts and CLI
+utilities while still providing reasonable tools to develop larger projects.
+Here is an example word counting program in Mellifera showcasing some of the
+syntax and semantics of the language.
 
 ```mellifera
-# null
-dumpln( null );
+let help = function(writeln) {
+    writeln($```
+usage: {argv[0]} [file]
 
-# number: IEEE-754 double
-dumpln( 123.456 );
-dumpln( Inf );
-dumpln( NaN );
+positional arguments:
+  file          Text file to process (defaults to stdin).
 
-# boolean: true or false
-dumpln( true );
-dumpln( false );
+optional arguments:
+      --json    Output results as a JSON object.
+      --top=n   Output only the top n words.
+  -h, --help    Display this help text and exit.
+    ```.trim());
+};
 
-# string: byte strings with assumed UTF-8 encoding
-dumpln( "hello 🍔" );
-dumpln( "hello\t🍔" ); # string with escape sequences
-dumpln( `hello\t🍔` ); # raw string where escape sequences are not processed
-let burger = "🍔";
-dumpln( $"hello\t{burger}" ); # template string with string interpolation
-dumpln( $`hello\t{burger}` ); # template string using raw string literal
+let file = null;
+let text = null;
+let fmt = null;
+let top = null;
+let argi = 1;
+while argi < argv.count() {
+    if argv[argi] =~ r`^-+json$` {
+        fmt = "json";
+        argi = argi + 1;
+        continue;
+    }
+    if argv[argi] =~ r`^-+top(=(.*))?$` {
+        if re::group(2) != null {
+            top = number::init(re::group(2));
+        }
+        else {
+            argi = argi + 1;
+            top = number::init(argv[argi]);
+        }
+        argi = argi + 1;
+        continue;
+    }
+    if argv[argi] =~ r`^-+h(elp)?$` {
+        help(println);
+        exit(0);
+    }
 
-# regexp: regular expressions
-dumpln( r`(\w+) (\w+)` );
+    if file != null and text != null {
+        error $"multiple input files, {file} and {argv[argi]}";
+    }
+    file = argv[argi];
+    text = fs::read(file);
+    argi = argi + 1;
+}
+if file == null and text == null {
+    file = "<stdin>";
+    text = input();
+}
 
-# vector: ordered collection of elements
-dumpln( [] );
-dumpln( ["foo", "bar", "baz"] );
+let occurrences = Map{};
+let words = re::split(text, r`\s+`)
+    .iterator()
+    .transform(function(word) {
+        return re::sub(word.to_lower(), r`[^\w]`, "");
+    })
+    .filter(function(word) {
+        return word.count() != 0;
+    });
+for word in words {
+    if occurrences.contains(word) {
+        occurrences[word] = occurrences[word] + 1;
+        continue;
+    }
+    occurrences[word] = 1;
+}
 
-# map: collection of key-value pairs with unique keys
-dumpln( Map{} ); # empty map requires Map to disambiguate from the empty set
-dumpln( {"foo": 123, "bar": 456, "baz": ["abc", 789]} );
-dumpln( {.foo = 123, .bar = 456, .baz = ["abc", 789]} ); # alternate syntax
+let ordered = occurrences
+    .pairs()
+    .sorted_by(function(lhs, rhs) {
+        return rhs.value - lhs.value;
+    })
+    .iterator()
+    .transform(function(pair) {
+        return {
+            .word = pair.key,
+            .count = pair.value,
+        };
+    }).into_vector();
 
-# set: collection unique elements
-dumpln( Set{} ); # empty set requires Set to disambiguate from the empty map
-dumpln( {"foo", "bar", "baz", ["abc", 789]} );
+if top != null {
+    ordered = ordered.slice(0, min(top, ordered.count()));
+}
 
-# reference: pointer-like construct to allow in-place mutation and data sharing
-dumpln( 123.& ); # .& is the postfix addressof operator
-
-# function: first-class function values
-dumpln( function() { println("hello"); } );
-let add = function(a, b) { return a + b; };
-dumpln( add );
-println($"add(123, 456) is {add(123, 456)}");
+if fmt == "json" {
+    let map = Map{};
+    for x in ordered {
+        map[x.word] = x.count;
+    }
+    println(json::encode(map));
+}
+else {
+    for x in ordered {
+        println($"{x.word} {x.count}");
+    }
+}
 ```
 
 ```sh
-$ mf examples/basic-types-and-values.mf
-null
-123.456
-Inf
-NaN
-true
-false
-"hello 🍔"
-"hello\t🍔"
-"hello\\t🍔"
-"hello\t🍔"
-"hello\\t🍔"
-r"(\\w+) (\\w+)"
-[]
-["foo", "bar", "baz"]
-Map{}
-{"foo": 123, "bar": 456, "baz": ["abc", 789]}
-{"foo": 123, "bar": 456, "baz": ["abc", 789]}
-Set{}
-{"foo", "bar", "baz", ["abc", 789]}
-reference@0x103826330
-function@[examples/basic-types-and-values.mf, line 41]
-add@[examples/basic-types-and-values.mf, line 42]
-add(123, 456) is 579
+$ curl -s https://www.gutenberg.org/files/71/71-0.txt | mf examples/word-count.mf --top 5
+the 692
+to 440
+and 418
+of 391
+a 293
+$ curl -s https://www.gutenberg.org/files/71/71-0.txt | mf examples/word-count.mf --top=10 --json
+{"the": 692, "to": 440, "and": 418, "of": 391, "a": 293, "it": 212, "i": 188, "in": 181, "is": 173, "not": 171}
 ```
 
-### Value Semantics and Structural Equality
+Mellifera uses value semantics, meaning assignment operations copy the contents
+(i.e. the "value") of an object when executed. After an assignment statement
+such as `a = b`, the objects `a` and `b` will contain separate copies of the
+same value. Mellifera also performs equality comparisons based on structural
+equality, so two objects are considered to be equal if they have the same
+contents.
 
 ```mellifera
 let x = ["foo", {"bar": 123}, "baz"];
@@ -141,7 +180,11 @@ z is ["foo", {"bar": "xyz"}, "baz"]
 y == z is true
 ```
 
-### Explicit References
+Unlike most scripting languages, in which reference semantics are the default
+way of assigning and passing around composite data, Mellifera uses value
+semantics with explicit references. One may obtain a reference to a value using
+the postfix `.&` operator, then later dereference that reference-object to get
+the original value using the postfix `.*` operator.
 
 ```mellifera
 let pass_by_value = function(val) {
@@ -191,28 +234,12 @@ $ mf examples/explicit-references.mf
 [outside pass_by_reference] y ends as ["abc", "def", "hij", 123]
 ```
 
-### Regular Expression Matching
-
-```mellifera
-let strings = [
-    "Johnny Appleseed",
-    "Some long text that does not match!",
-    "Isaac Newton"
-];
-for s in strings {
-    if s =~ r`^(\w+) (\w+)$` {
-        println($"First Name = {repr(re::group(1))}, Last Name = {repr(re::group(2))}");
-    }
-}
-```
-
-```sh
-$ mf examples/regular-expressions.mf
-First Name = "Johnny", Last Name = "Appleseed"
-First Name = "Isaac", Last Name = "Newton"
-```
-
-### Custom User-Defined Types
+Mellifera contains a small number of core builtin types, all of which have
+first-class language support: null, boolean, number, string, regular
+expression, vector, map, set, reference, and function. These builtin types are
+sufficient for most simple programs, but when the need arises for more
+structured data, users have the option to define custom types with specific
+behavior.
 
 ```mellifera
 let vec2 = type {
@@ -248,8 +275,6 @@ vb is {"x": 2.718281828459045, "y": -3.141592653589793} with type vec2
 vb.magnitude() is 4.154354402313313
 vb.fixed(3) is {"x": 2.718, "y": -3.142}
 ```
-
-### Custom User-Defined Iterators
 
 ```mellifera
 let fizzbuzzer = type extends(iterator, {
@@ -300,7 +325,9 @@ fizz
 fizzbuzz
 ```
 
-### Exception-Based Error Handling With Pleasant Top-Level Error Traces
+Mellifera is intended to be a practical language with reasonable
+exception-based error handling and pleasant top-level error traces for when
+things go wrong.
 
 ```mellifera
 try {
@@ -336,6 +363,9 @@ error: failed to read file "/path/to/file/that/does/not/exist.txt"
 ...within h@[examples/exceptions.mf, line 17] called from examples/exceptions.mf, line 20
 ...within function@[examples/exceptions.mf, line 16] called from examples/exceptions.mf, line 21
 ```
+
+A brief language overview can be found in `overview.mf`, and additional example
+programs can be found under the `examples` directory.
 
 ## Development
 

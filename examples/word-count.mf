@@ -1,0 +1,99 @@
+let help = function(writeln) {
+    writeln($```
+usage: {argv[0]} [file]
+
+positional arguments:
+  file          Text file to process (defaults to stdin).
+
+optional arguments:
+      --json    Output results as a JSON object.
+      --top=n   Output only the top n words.
+  -h, --help    Display this help text and exit.
+    ```.trim());
+};
+
+let file = null;
+let text = null;
+let fmt = null;
+let top = null;
+let argi = 1;
+while argi < argv.count() {
+    if argv[argi] =~ r`^-+json$` {
+        fmt = "json";
+        argi = argi + 1;
+        continue;
+    }
+    if argv[argi] =~ r`^-+top(=(.*))?$` {
+        if re::group(2) != null {
+            top = number::init(re::group(2));
+        }
+        else {
+            argi = argi + 1;
+            top = number::init(argv[argi]);
+        }
+        argi = argi + 1;
+        continue;
+    }
+    if argv[argi] =~ r`^-+h(elp)?$` {
+        help(println);
+        exit(0);
+    }
+
+    if file != null and text != null {
+        error $"multiple input files, {file} and {argv[argi]}";
+    }
+    file = argv[argi];
+    text = fs::read(file);
+    argi = argi + 1;
+}
+if file == null and text == null {
+    file = "<stdin>";
+    text = input();
+}
+
+let occurrences = Map{};
+let words = re::split(text, r`\s+`)
+    .iterator()
+    .transform(function(word) {
+        return re::sub(word.to_lower(), r`[^\w]`, "");
+    })
+    .filter(function(word) {
+        return word.count() != 0;
+    });
+for word in words {
+    if occurrences.contains(word) {
+        occurrences[word] = occurrences[word] + 1;
+        continue;
+    }
+    occurrences[word] = 1;
+}
+
+let ordered = occurrences
+    .pairs()
+    .sorted_by(function(lhs, rhs) {
+        return rhs.value - lhs.value;
+    })
+    .iterator()
+    .transform(function(pair) {
+        return {
+            .word = pair.key,
+            .count = pair.value,
+        };
+    }).into_vector();
+
+if top != null {
+    ordered = ordered.slice(0, min(top, ordered.count()));
+}
+
+if fmt == "json" {
+    let map = Map{};
+    for x in ordered {
+        map[x.word] = x.count;
+    }
+    println(json::encode(map));
+}
+else {
+    for x in ordered {
+        println($"{x.word} {x.count}");
+    }
+}

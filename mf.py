@@ -3,6 +3,7 @@
 from abc import ABC, abstractmethod
 from argparse import ArgumentParser
 from collections import UserDict, UserList
+from contextlib import contextmanager
 from copy import copy
 from dataclasses import dataclass
 from pathlib import Path
@@ -68,6 +69,25 @@ def hexscape(text: Union[bytes, str]) -> str:
 def quote(item: Any) -> str:
     text = str(item)
     return f"`{text}`" if "`" not in text else f'"{text}"'
+
+
+@contextmanager
+def suppress_stderr():
+    """
+    Suppress output to stderr as a context manager. Required when compiling re2
+    regular expressions with Google's re2, which will dump a log message to the
+    standard error stream from within C++ code on failed re2 compilation.
+    """
+    STDERR_FILENO = 2
+    stderr = os.dup(STDERR_FILENO)
+    try:
+        devnull = os.open(os.devnull, os.O_WRONLY)
+        os.dup2(devnull, STDERR_FILENO)
+        os.close(devnull)
+        yield
+    finally:
+        os.dup2(stderr, STDERR_FILENO)
+        os.close(stderr)
 
 
 class InvalidFieldAccess(KeyError):
@@ -357,7 +377,22 @@ class Regexp(Value):
         return "regexp"
 
     def __init__(self, string: bytes, pattern=None, meta: Optional["MetaMap"] = None):
-        self.pattern = pattern if pattern is not None else re2.compile(string)
+        # The Google re2 library, whose C++ implementation uses Abseil
+        # internally, will emit a log message of the form:
+        #
+        #   WARNING: All log messages before absl::InitializeLog() is called are written to STDERR
+        #   E0000 00:00:1760017108.224712   15299 re2.cc:242] Error parsing '\q': invalid escape sequence: \q
+        #   error: b'invalid escape sequence: \\q'
+        #
+        # the first time that an invalid re2 regular expression compiled with
+        # re2.compile fails. Mellifera will emit its own error message on re2
+        # compilation failure, so the log message is explicitly suppressed so
+        # that implementation-specific logging is not seen by the end user.
+        with suppress_stderr():
+            try:
+                self.pattern = pattern if pattern is not None else re2.compile(string)
+            except Exception:
+                raise Exception(f"invalid regular expression {String.new(string)}")
         self.string = string
         self.meta = meta
 
@@ -2329,15 +2364,26 @@ class AstExpressionFunctionCall(AstExpression):
             if isinstance(store, Error):
                 return store
             self_argument = Reference.new(store)
+            # When making a function call using dot access syntax, perform
+            # function lookup using the value's metamap *before* looking at the
+            # fields of the value itself. This is done so that expressions such
+            # as:
+            #
+            #   somemap.foo()
+            #
+            # will find the metafunction `foo` rather than some key "foo" in
+            # the map, which is almost certainly *not* the desired behavior.
+            function = None
             try:
-                function = store[self.function.field.name]
-            except (NotImplementedError, IndexError, KeyError):
-                function = None
-            try:
-                if function is None and store.meta is not None:
+                if store.meta is not None:
                     function = store.meta[self.function.field.name]
             except KeyError:
-                function = None
+                pass
+            try:
+                if function is None:
+                    function = store[self.function.field.name]
+            except (NotImplementedError, IndexError, KeyError):
+                pass
             try:
                 if (
                     function is None
@@ -2441,13 +2487,19 @@ class AstExpressionAccessDot(AstExpression):
             return store
         field = self.field.name
 
-        # foo.bar
+        # When directly reading property via dot access, prioritize the fields
+        # of value itself *before* looking at the fields of the value's
+        # metamap. This is done so that operations such as:
+        #
+        #   somemap.foo
+        #
+        # will find the field "foo" rather than a metafunction `foo` in the
+        # map, which is almost certainly the desired behavior for nominal
+        # property lookup.
         try:
             return store[field]
         except (NotImplementedError, IndexError, KeyError):
             pass
-
-        # foo.into_bar()
         try:
             if store.meta is not None:
                 return store.meta[field]
@@ -2459,13 +2511,12 @@ class AstExpressionAccessDot(AstExpression):
         if isinstance(store, Reference):
             deref_store = store.data
 
-            # foo.*.bar
+            # Prioritize fields of the value itself *before* looking at the
+            # fields of the value's metamap.
             try:
                 return deref_store[field]
             except (NotImplementedError, IndexError, KeyError):
                 pass
-
-            # foo.*.into_bar()
             try:
                 if deref_store.meta is not None:
                     return deref_store.meta[field]
@@ -3914,6 +3965,25 @@ def builtin_string_to_lower(self: Reference, string: String) -> Union[Value, Err
     return String.new(string.runes.lower())
 
 
+@builtin("regexp::init", [String])
+def builtin_regexp_init(string: String) -> Union[Value, Error]:
+    return Regexp.new(string.bytes)
+
+
+@builtin("regexp::split", [ReferenceTo(Regexp), String])
+def builtin_regexp_split(
+    self: Reference, regexp: Regexp, text: String
+) -> Union[Value, Error]:
+    return Vector.new([String.new(x) for x in regexp.pattern.split(text.bytes)])
+
+
+@builtin("regexp::sub", [ReferenceTo(Regexp), String, String])
+def builtin_regexp_sub(
+    self: Reference, regexp: Regexp, text: String, replacement: String
+) -> Union[Value, Error]:
+    return String.new(regexp.pattern.sub(replacement.bytes, text.bytes))
+
+
 @builtin("vector::init", [Value])
 def builtin_vector_init(value: Value) -> Union[Value, Error]:
     if metafunction := value.metafunction(CONST_STRING_NEXT):
@@ -4073,19 +4143,26 @@ def builtin_vector_sorted():
             if lo_index == lo.count() {
                 result.push(hi[hi_index]);
                 hi_index = hi_index + 1;
+                continue;
             }
-            elif hi_index == hi.count() {
+            if hi_index == hi.count() {
                 result.push(lo[lo_index]);
                 lo_index = lo_index + 1;
+                continue;
             }
-            elif lo[lo_index] < hi[hi_index] {
+            if lo[lo_index] < hi[hi_index] {
                 result.push(lo[lo_index]);
                 lo_index = lo_index + 1;
+                continue;
             }
-            else {
+            if lo[lo_index] > hi[hi_index] {
                 result.push(hi[hi_index]);
                 hi_index = hi_index + 1;
+                continue;
             }
+            # When equal, take from the lower vector by convention.
+            result.push(lo[lo_index]);
+            lo_index = lo_index + 1;
         }
         return result;
     };
@@ -4097,6 +4174,60 @@ def builtin_vector_sorted():
             error $"expected reference to vector-like value for argument 0, received reference to {typename(self.*)}";
         }
         try { return sort(self.*); } catch err { error err; }
+    };
+    """
+
+
+@builtin_from_source("vector::sorted_by")
+def builtin_vector_sorted_by():
+    return """
+    let sort = function(x, compare) {
+        if x.count() <= 1 {
+            return x;
+        }
+        let mid = (x.count() / 2).trunc();
+        let lo = sort(x.slice(0, mid), compare);
+        let hi = sort(x.slice(mid, x.count()), compare);
+        let lo_index = 0;
+        let hi_index = 0;
+        let result = [];
+        for _ in x.count() {
+            if lo_index == lo.count() {
+                result.push(hi[hi_index]);
+                hi_index = hi_index + 1;
+                continue;
+            }
+            if hi_index == hi.count() {
+                result.push(lo[lo_index]);
+                lo_index = lo_index + 1;
+                continue;
+            }
+
+            let cmp = compare(lo[lo_index], hi[hi_index]);
+            if cmp < 0 {
+                result.push(lo[lo_index]);
+                lo_index = lo_index + 1;
+                continue;
+            }
+            if cmp > 0 {
+                result.push(hi[hi_index]);
+                hi_index = hi_index + 1;
+                continue;
+            }
+            # When equal, take from the lower vector by convention.
+            result.push(lo[lo_index]);
+            lo_index = lo_index + 1;
+        }
+        return result;
+    };
+    return function(self, compare) {
+        if not ty::is_reference(self) {
+            error $"expected reference to vector-like value for argument 0, received {typename(self)}";
+        }
+        if not ty::is_vector(self.*) {
+            error $"expected reference to vector-like value for argument 0, received reference to {typename(self.*)}";
+        }
+        try { return sort(self.*, compare); } catch err { error err; }
     };
     """
 
@@ -4154,6 +4285,31 @@ def builtin_map_remove(self: Reference, map: Map, k: Value) -> Union[Value, Erro
             None,
             f"attempted map::remove on a map without key {k}",
         )
+
+
+@builtin("map::keys", [ReferenceTo(Map)])
+def builtin_map_keys(self: Reference, map: Map) -> Union[Value, Error]:
+    return Vector.new([copy(k) for k in map.data.keys()])
+
+
+@builtin("map::values", [ReferenceTo(Map)])
+def builtin_map_values(self: Reference, map: Map) -> Union[Value, Error]:
+    return Vector.new([copy(v) for v in map.data.values()])
+
+
+@builtin("map::pairs", [ReferenceTo(Map)])
+def builtin_map_pairs(self: Reference, map: Map) -> Union[Value, Error]:
+    return Vector.new(
+        [
+            Map.new(
+                {
+                    String.new("key"): copy(k),
+                    String.new("value"): copy(v),
+                }
+            )
+            for k, v in map.data.items()
+        ]
+    )
 
 
 @builtin_from_source("map::union")
@@ -4885,6 +5041,24 @@ def builtin_re_group(n: Number) -> Union[Value, Error]:
         )
 
 
+@builtin_from_source("re::split")
+def builtin_re_split():
+    return """
+    return function(string, regexp) {
+        return regexp.split(string);
+    };
+    """
+
+
+@builtin_from_source("re::sub")
+def builtin_re_sub():
+    return """
+    return function(string, regexp, replacement) {
+        return regexp.sub(string, replacement);
+    };
+    """
+
+
 @builtin("ty::is", [Value, Value])
 def builtin_ty_is(value: Value, type: Value) -> Union[Value, Error]:
     if isinstance(type, Null):
@@ -5026,7 +5200,14 @@ _STRING_META = MetaMap(
         String("to_lower"): builtin_string_to_lower(),
     },
 )
-_REGEXP_META = MetaMap(name=String(Function.typename()))
+_REGEXP_META = MetaMap(
+    name=String(Function.typename()),
+    data={
+        String.new("init"): builtin_regexp_init(),
+        String.new("split"): builtin_regexp_split(),
+        String.new("sub"): builtin_regexp_sub(),
+    },
+)
 _VECTOR_META = MetaMap(
     name=String(Vector.typename()),
     data={
@@ -5044,6 +5225,9 @@ _VECTOR_META = MetaMap(
         String("sorted"): builtin_vector_sorted(
             Environment(BASE_ENVIRONMENT), evaluated=BuiltinExplicitUninitialized()
         ),
+        String("sorted_by"): builtin_vector_sorted_by(
+            Environment(BASE_ENVIRONMENT), evaluated=BuiltinExplicitUninitialized()
+        ),
         String("iterator"): builtin_vector_iterator(
             Environment(BASE_ENVIRONMENT), evaluated=BuiltinExplicitUninitialized()
         ),
@@ -5056,6 +5240,9 @@ _MAP_META = MetaMap(
         String("contains"): builtin_map_contains(),
         String("insert"): builtin_map_insert(),
         String("remove"): builtin_map_remove(),
+        String("keys"): builtin_map_keys(),
+        String("values"): builtin_map_values(),
+        String("pairs"): builtin_map_pairs(),
         String("union"): builtin_map_union(
             Environment(BASE_ENVIRONMENT), evaluated=BuiltinExplicitUninitialized()
         ),
@@ -5295,6 +5482,8 @@ BASE_ENVIRONMENT.let(
     Map.new(
         {
             String.new("group"): builtin_re_group(),
+            String.new("split"): builtin_re_split(),
+            String.new("sub"): builtin_re_sub(),
         }
     ),
 )
@@ -5325,6 +5514,7 @@ def initialize_builtin_from_source(value: Value):
 
 
 initialize_builtin_from_source(_VECTOR_META[String("sorted")])
+initialize_builtin_from_source(_VECTOR_META[String("sorted_by")])
 initialize_builtin_from_source(_VECTOR_META[String("iterator")])
 initialize_builtin_from_source(_MAP_META[String("union")])
 initialize_builtin_from_source(_SET_META[String("union")])
