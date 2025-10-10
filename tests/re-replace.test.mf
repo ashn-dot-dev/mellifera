@@ -1,5 +1,5 @@
-dumpln(r`oo`.sub("foo bar foo", "OO"));
-dumpln(r`\w`.sub("foo bar foo", "x"));
+dumpln(re::replace("foo bar foo", r`oo`, "OO"));
+dumpln(re::replace("foo bar foo", r`\w`, "x"));
 ################################################################################
 # "fOO bar fOO"
 # "xxx xxx xxx"

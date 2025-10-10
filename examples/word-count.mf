@@ -55,7 +55,7 @@ let occurrences = Map{};
 let words = re::split(text, r`\s+`)
     .iterator()
     .transform(function(word) {
-        return re::sub(word.to_lower(), r`[^\w]`, "");
+        return re::replace(word.to_lower(), r`[^\w]`, "");
     })
     .filter(function(word) {
         return word.count() != 0;

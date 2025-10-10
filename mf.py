@@ -3977,8 +3977,8 @@ def builtin_regexp_split(
     return Vector.new([String.new(x) for x in regexp.pattern.split(text.bytes)])
 
 
-@builtin("regexp::sub", [ReferenceTo(Regexp), String, String])
-def builtin_regexp_sub(
+@builtin("regexp::replace", [ReferenceTo(Regexp), String, String])
+def builtin_regexp_replace(
     self: Reference, regexp: Regexp, text: String, replacement: String
 ) -> Union[Value, Error]:
     return String.new(regexp.pattern.sub(replacement.bytes, text.bytes))
@@ -5050,11 +5050,11 @@ def builtin_re_split():
     """
 
 
-@builtin_from_source("re::sub")
-def builtin_re_sub():
+@builtin_from_source("re::replace")
+def builtin_re_replace():
     return """
     return function(string, regexp, replacement) {
-        return regexp.sub(string, replacement);
+        return regexp.replace(string, replacement);
     };
     """
 
@@ -5205,7 +5205,7 @@ _REGEXP_META = MetaMap(
     data={
         String.new("init"): builtin_regexp_init(),
         String.new("split"): builtin_regexp_split(),
-        String.new("sub"): builtin_regexp_sub(),
+        String.new("replace"): builtin_regexp_replace(),
     },
 )
 _VECTOR_META = MetaMap(
@@ -5483,7 +5483,7 @@ BASE_ENVIRONMENT.let(
         {
             String.new("group"): builtin_re_group(),
             String.new("split"): builtin_re_split(),
-            String.new("sub"): builtin_re_sub(),
+            String.new("replace"): builtin_re_replace(),
         }
     ),
 )
