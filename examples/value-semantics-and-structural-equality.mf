@@ -12,7 +12,7 @@ x[0] = "abc";
 y[1]["bar"] = "xyz";
 println($`x is {x}`);
 println($`y is {y}`);
-# x and y are no longer structurally equal as their contents' now differ
+# x and y are no longer structurally equal as their contents now differ
 println($`x == y is {x == y}`);
 
 print("\n");

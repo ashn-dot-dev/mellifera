@@ -813,7 +813,7 @@ let sort = function(x) {
 };
 let vec = [6, 8, 3, 1, 7, 2, 4, 5, 9];
 dumpln(sort);
-println($"unsorded vector is {vec}");
+println($"unsorted vector is {vec}");
 println($"sorted vector is {sort(vec)}");
 
 print("\n");

@@ -2217,7 +2217,7 @@ class AstExpressionNeRe(AstExpression):
         if not (isinstance(lhs, String) and isinstance(rhs, Regexp)):
             return Error(
                 self.location,
-                f"attempted =~ operation with types {quote(typename(lhs))} and {quote(typename(rhs))}",
+                f"attempted !~ operation with types {quote(typename(lhs))} and {quote(typename(rhs))}",
             )
         global re_match_result
         re_match_result = rhs.pattern.search(lhs.bytes)
@@ -3277,7 +3277,7 @@ class Parser:
                 if parameters[i].name == parameters[j].name:
                     raise ParseError(
                         parameters[j].location,
-                        f"duplicate function paramter {quote(parameters[i].name.runes)}",
+                        f"duplicate function parameter {quote(parameters[i].name.runes)}",
                     )
         return AstExpressionFunction(location, parameters, body)
 
@@ -3748,7 +3748,7 @@ def builtin_number_init(value: Value) -> Union[Value, Error]:
             if match_hex is not None or match_dec is not None:
                 return Number.new(sign * float(data))
         except ValueError:
-            # Fallthough to end-of-function error case.
+            # Fallthrough to end-of-function error case.
             pass
     return Error(None, f"cannot convert value {value} to number")
 
@@ -4723,7 +4723,7 @@ def json_encode(value: Value):
     if isinstance(value, Boolean):
         return value.data
     if isinstance(value, Number):
-        if math.isnan(value) or math.isinf(value):
+        if math.isnan(float(value)) or math.isinf(float(value)):
             raise ValueError(f"cannot JSON-encode value {value}")
         return int(value) if float(value).is_integer() else float(value)
     if isinstance(value, String):
@@ -5201,7 +5201,7 @@ _STRING_META = MetaMap(
     },
 )
 _REGEXP_META = MetaMap(
-    name=String(Function.typename()),
+    name=String(Regexp.typename()),
     data={
         String.new("init"): builtin_regexp_init(),
         String.new("split"): builtin_regexp_split(),

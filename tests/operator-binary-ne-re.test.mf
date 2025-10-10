@@ -1,7 +1,15 @@
 println("\"foobar\" !~ r`foo` is " + repr("foobar" !~ r`foo`));
 println("\"foobar\" !~ r`^foo` is " + repr("foobar" !~ r`^foo`));
 println("\"foobar\" !~ r`^foo$` is " + repr("foobar" !~ r`^foo$`));
+
+# Test invalid lhs and rhs operands.
+try { "foo" !~ "bar"; } catch err { dumpln(err); }
+try { 123 !~ r"bar"; } catch err { dumpln(err); }
+try { r"foo" !~ r"bar"; } catch err { dumpln(err); }
 ################################################################################
 # "foobar" !~ r`foo` is false
 # "foobar" !~ r`^foo` is false
 # "foobar" !~ r`^foo$` is true
+# "attempted !~ operation with types `string` and `string`"
+# "attempted !~ operation with types `number` and `regexp`"
+# "attempted !~ operation with types `regexp` and `regexp`"

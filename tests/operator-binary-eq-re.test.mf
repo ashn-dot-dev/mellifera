@@ -21,6 +21,11 @@ println(`re::group(0) is ` + repr(re::group(0)));
 println(`re::group(1) is ` + repr(re::group(1)));
 println(`re::group(2) is ` + repr(re::group(2)));
 println(`re::group(3) is ` + repr(re::group(3)));
+
+# Test invalid lhs and rhs operands.
+try { "foo" =~ "bar"; } catch err { dumpln(err); }
+try { 123 =~ r"bar"; } catch err { dumpln(err); }
+try { r"foo" =~ r"bar"; } catch err { dumpln(err); }
 ################################################################################
 # re::group(0) produces: regular expression did not match
 # re::group(1) produces: regular expression did not match
@@ -41,3 +46,6 @@ println(`re::group(3) is ` + repr(re::group(3)));
 # re::group(1) is "bar"
 # re::group(2) is "bar"
 # re::group(3) is null
+# "attempted =~ operation with types `string` and `string`"
+# "attempted =~ operation with types `number` and `regexp`"
+# "attempted =~ operation with types `regexp` and `regexp`"
