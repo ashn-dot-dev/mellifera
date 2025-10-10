@@ -1,0 +1,72 @@
+let value = {
+    "foo": null,
+    "bar": 123,
+    "baz": "hello",
+    "qux": [
+        "abc",
+        "def",
+        "hij",
+    ]
+};
+
+# Encode with integer indent.
+println(json::encode_ex(value, {"indent": 2}));
+println(json::encode_ex(value, {"indent": 4}));
+
+print("\n");
+
+# Encode with string indent.
+println(json::encode_ex(value, {"indent": "  "}));
+println(json::encode_ex(value, {"indent": "<indent>"}));
+
+print("\n");
+
+# Encode with non-integer indent.
+try { println(json::encode_ex(value, {"indent": 0.5})); } catch err { dumpln(err); }
+# Encode with non-number non-string indent.
+try { println(json::encode_ex(value, {"indent": null})); } catch err { dumpln(err); }
+################################################################################
+# {
+#   "foo": null,
+#   "bar": 123,
+#   "baz": "hello",
+#   "qux": [
+#     "abc",
+#     "def",
+#     "hij"
+#   ]
+# }
+# {
+#     "foo": null,
+#     "bar": 123,
+#     "baz": "hello",
+#     "qux": [
+#         "abc",
+#         "def",
+#         "hij"
+#     ]
+# }
+# 
+# {
+#   "foo": null,
+#   "bar": 123,
+#   "baz": "hello",
+#   "qux": [
+#     "abc",
+#     "def",
+#     "hij"
+#   ]
+# }
+# {
+# <indent>"foo": null,
+# <indent>"bar": 123,
+# <indent>"baz": "hello",
+# <indent>"qux": [
+# <indent><indent>"abc",
+# <indent><indent>"def",
+# <indent><indent>"hij"
+# <indent>]
+# }
+#
+# "expected integer or string indent, received 0.5"
+# "expected integer or string indent, received null"
