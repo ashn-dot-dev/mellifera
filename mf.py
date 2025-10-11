@@ -5051,16 +5051,16 @@ def builtin_random_number(a: Number, b: Number) -> Union[Value, Error]:
 @builtin("random::integer", [Number, Number])
 def builtin_random_integer(a: Number, b: Number) -> Union[Value, Error]:
     if not float(a).is_integer():
-        return Error(None, f"expected integer, received {a}")
+        return Error(None, f"expected integer lower bound, received {a}")
     if not float(b).is_integer():
-        return Error(None, f"expected integer, received {b}")
+        return Error(None, f"expected integer upper bound, received {b}")
     return Number.new(rng.randint(int(a), int(b)))
 
 
 @builtin("re::group", [Number])
 def builtin_re_group(n: Number) -> Union[Value, Error]:
     if not float(n).is_integer():
-        return Error(None, f"expected integer, received {n}")
+        return Error(None, f"expected integer capture group, received {n}")
     if re_match_result is None:
         return Error(None, "regular expression did not match")
     try:

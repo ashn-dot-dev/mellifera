@@ -24,5 +24,5 @@ catch err {
     dumpln(err);
 }
 ################################################################################
-# "expected integer, received -1.5"
-# "expected integer, received 1.5"
+# "expected integer lower bound, received -1.5"
+# "expected integer upper bound, received 1.5"
