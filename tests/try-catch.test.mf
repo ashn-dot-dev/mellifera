@@ -1,8 +1,8 @@
 try {                 } catch     { println("error");               }
-try {                 } catch err { println("error: " + repr(err)); }
+try {                 } catch err { println($"error: {err}"); }
 try { 1 + 1;          } catch     { println("error");               }
-try { 1 + "foo";      } catch err { println("error: " + repr(err)); }
-try { error "oopsie"; } catch err { println("error: " + repr(err)); }
+try { 1 + "foo";      } catch err { println($"error: {err}"); }
+try { error "oopsie"; } catch err { println($"error: {err}"); }
 ################################################################################
-# error: "attempted + operation with types `number` and `string`"
-# error: "oopsie"
+# error: attempted + operation with types `number` and `string`
+# error: oopsie

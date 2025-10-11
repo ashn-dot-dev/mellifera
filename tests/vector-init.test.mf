@@ -1,6 +1,6 @@
-println(`vector::init([123, 456, 789]) is ` + repr(vector::init([123, 456, 789])));
-println(`vector::init({"foo": 123, "bar": 456, "baz": 789}) is ` + repr(vector::init({"foo": 123, "bar": 456, "baz": 789})));
-println(`vector::init({"foo", "bar", "baz"}) is ` + repr(vector::init({"foo", "bar", "baz"})));
+println($`vector::init([123, 456, 789]) is {vector::init([123, 456, 789])}`);
+println($`vector::init({{"foo": 123, "bar": 456, "baz": 789}}) is {vector::init({"foo": 123, "bar": 456, "baz": 789})}`);
+println($`vector::init({{"foo", "bar", "baz"}}) is {vector::init({"foo", "bar", "baz"})}`);
 
 let counter = type {
     "init": function(max) {
@@ -18,19 +18,19 @@ let counter = type {
         return result;
     },
 };
-println(`vector::init(counter::init(5)) is ` + repr(vector::init(counter::init(5))));
+println($`vector::init(counter::init(5)) is {vector::init(counter::init(5))}`);
 
 print("\n");
 
-try { vector::init(null); } catch err { println(`vector::init(null) produces ` + repr(err)); }
-try { vector::init(123); } catch err { println(`vector::init(123) produces ` + repr(err)); }
-try { vector::init("foo"); } catch err { println(`vector::init("foo") produces ` + repr(err)); }
+try { vector::init(null); } catch err { println($`vector::init(null) produces the error {repr(err)}`); }
+try { vector::init(123); } catch err { println($`vector::init(123) produces the error {repr(err)}`); }
+try { vector::init("foo"); } catch err { println($`vector::init("foo") produces the error {repr(err)}`); }
 ################################################################################
 # vector::init([123, 456, 789]) is [123, 456, 789]
 # vector::init({"foo": 123, "bar": 456, "baz": 789}) is [["foo", 123], ["bar", 456], ["baz", 789]]
 # vector::init({"foo", "bar", "baz"}) is ["foo", "bar", "baz"]
 # vector::init(counter::init(5)) is [1, 2, 3, 4, 5]
 #
-# vector::init(null) produces "cannot convert value null to vector"
-# vector::init(123) produces "cannot convert value 123 to vector"
-# vector::init("foo") produces "cannot convert value \"foo\" to vector"
+# vector::init(null) produces the error "cannot convert value null to vector"
+# vector::init(123) produces the error "cannot convert value 123 to vector"
+# vector::init("foo") produces the error "cannot convert value \"foo\" to vector"

@@ -1,8 +1,8 @@
-println(`", ".join(["foo", "bar", "baz"]) is ` + repr(", ".join(["foo", "bar", "baz"])));
-println(`", ".join([]) is ` + repr(", ".join([])));
-println(`"".join(["foo", "bar", "baz"]) is ` + repr("".join(["foo", "bar", "baz"])));
-println(`"".join([]) is ` + repr("".join([])));
-try { "".join(["foo", 456, "baz"]); } catch err { println("error: " + string::init(err)); }
+println($`", ".join(["foo", "bar", "baz"]) is {repr(", ".join(["foo", "bar", "baz"]))}`);
+println($`", ".join([]) is {repr(", ".join([]))}`);
+println($`"".join(["foo", "bar", "baz"]) is {repr("".join(["foo", "bar", "baz"]))}`);
+println($`"".join([]) is {repr("".join([]))}`);
+try { "".join(["foo", 456, "baz"]); } catch err { println($"error: {err}"); }
 ################################################################################
 # ", ".join(["foo", "bar", "baz"]) is "foo, bar, baz"
 # ", ".join([]) is ""

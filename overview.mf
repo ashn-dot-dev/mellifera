@@ -124,8 +124,8 @@ println("===============");
 let v = [123, 456, 789];
 println($`v is {v}`);
 println($`v[1] is {v[1]}`);
-try { v[3]; } catch err { println($`v[3] produces {repr(err)}`); }
-try { v["foo"]; } catch err { println($`v["foo"] produces {repr(err)}`); }
+try { v[3]; } catch err { println($`v[3] produces the error {repr(err)}`); }
+try { v["foo"]; } catch err { println($`v["foo"] produces the error {repr(err)}`); }
 
 print("\n");
 
@@ -136,7 +136,7 @@ println($`m[123] is {repr(m[123])}`);
 println($`m[{{"key": "val"}}] is {repr(m[{"key": "val"}])}`);
 println($`m::foo is {repr(m::foo)} (equivalent to m["foo"])`);
 println($`m.foo is {repr(m.foo)} (equivalent to m["foo"] for field access)`);
-try { m["qux"]; } catch err { println($`m["qux"] produces {repr(err)}`); }
+try { m["qux"]; } catch err { println($`m["qux"] produces the error {repr(err)}`); }
 
 print("\n");
 
@@ -313,26 +313,26 @@ print("\n");
 
 println("operator =~");
 println("-----------");
-println("\"foobar\" =~ r`foo` is " + repr("foobar" =~ r`foo`));
-println("\"foobar\" =~ r`^foo` is " + repr("foobar" =~ r`^foo`));
-println("\"foobar\" =~ r`^foo$` is " + repr("foobar" =~ r`^foo$`));
-println("\"Isaac Newton, physicist\" =~ r`(\\w+) (\\w+)` is " + repr("Isaac Newton, physicist" =~ r`(\w+) (\w+)`));
+println($"\"foobar\" =~ r`foo` is {repr("foobar" =~ r`foo`)}");
+println($"\"foobar\" =~ r`^foo` is {repr("foobar" =~ r`^foo`)}");
+println($"\"foobar\" =~ r`^foo$` is {repr("foobar" =~ r`^foo$`)}");
+println($"\"Isaac Newton, physicist\" =~ r`(\\w+) (\\w+)` is {repr("Isaac Newton, physicist" =~ r`(\w+) (\w+)`)}");
 println($`re::group(0) is {repr(re::group(0))}`);
 println($`re::group(1) is {repr(re::group(1))}`);
 println($`re::group(2) is {repr(re::group(2))}`);
 try {
     re::group(3);
 } catch err {
-    println(`re::group(3) produces: ` + err);
+    println($`re::group(3) produces the error {repr(err)}`);
 }
 
 print("\n");
 
 println("operator !~");
 println("-----------");
-println("\"foobar\" !~ r`foo` is " + repr("foobar" !~ r`foo`));
-println("\"foobar\" !~ r`^foo` is " + repr("foobar" !~ r`^foo`));
-println("\"foobar\" !~ r`^foo$` is " + repr("foobar" !~ r`^foo$`));
+println($"\"foobar\" !~ r`foo` is {repr("foobar" !~ r`foo`)}");
+println($"\"foobar\" !~ r`^foo` is {repr("foobar" !~ r`^foo`)}");
+println($"\"foobar\" !~ r`^foo$` is {repr("foobar" !~ r`^foo$`)}");
 
 print("\n");
 
@@ -360,7 +360,7 @@ println("operator /");
 println("----------");
 println($`123 / 456 is {123 / 456}`);
 println($`123 / Inf is {123 / Inf}`);
-try { 123 / 0; } catch err { println($`123 / 0 produces {repr(err)}`); }
+try { 123 / 0; } catch err { println($`123 / 0 produces the error {repr(err)}`); }
 
 print("\n");
 
@@ -372,7 +372,7 @@ println($`-7 % +3 is {-7 % +3}`);
 println($`-7 % -3 is {-7 % -3}`);
 println($`10 % 3.5 is {10 % 3.5}`);
 println($`123 % Inf is {123 % Inf}`);
-try { 123 % 0; } catch err { println($`123 % 0 produces {repr(err)}`); }
+try { 123 % 0; } catch err { println($`123 % 0 produces the error {repr(err)}`); }
 
 print("\n");
 

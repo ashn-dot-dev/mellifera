@@ -1,10 +1,10 @@
-println(`"foo=bar".find("=") is ` + repr("foo=bar".find("=")));
-println(`"foo=bar".find("nope") is ` + repr("foo=bar".find("nope")));
-println(`"foo=foo".find("foo") is ` + repr("foo=foo".find("foo")));
+println($`"foo=bar".find("=") is {repr("foo=bar".find("="))}`);
+println($`"foo=bar".find("nope") is {repr("foo=bar".find("nope"))}`);
+println($`"foo=foo".find("foo") is {repr("foo=foo".find("foo"))}`);
 
-println(`"abc😀def".find("abc") is ` + repr("abc😀def".find("abc")));
-println(`"abc😀def".find("def") is ` + repr("abc😀def".find("def")));
-println(`"abc😀def".find("😀") is ` + repr("abc😀def".find("😀")));
+println($`"abc😀def".find("abc") is {repr("abc😀def".find("abc"))}`);
+println($`"abc😀def".find("def") is {repr("abc😀def".find("def"))}`);
+println($`"abc😀def".find("😀") is {repr("abc😀def".find("😀"))}`);
 ################################################################################
 # "foo=bar".find("=") is 3
 # "foo=bar".find("nope") is null

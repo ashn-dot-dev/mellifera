@@ -1,6 +1,6 @@
-println(`"foobar".ends_with("foo") is ` + repr("foobar".ends_with("foo")));
-println(`"foobar".ends_with("bar") is ` + repr("foobar".ends_with("bar")));
-println(`"foobar".ends_with("") is ` + repr("foobar".ends_with("")));
+println($`"foobar".ends_with("foo") is {repr("foobar".ends_with("foo"))}`);
+println($`"foobar".ends_with("bar") is {repr("foobar".ends_with("bar"))}`);
+println($`"foobar".ends_with("") is {repr("foobar".ends_with(""))}`);
 ################################################################################
 # "foobar".ends_with("foo") is false
 # "foobar".ends_with("bar") is true

@@ -1,7 +1,7 @@
-println(`123.is_integer() is ` + repr(123.is_integer()));
-println(`123.5.is_integer() is ` + repr(123.5.is_integer()));
-println(`Inf.is_integer() is ` + repr(Inf.is_integer()));
-println(`NaN.is_integer() is ` + repr(NaN.is_integer()));
+println($`123.is_integer() is {123.is_integer()}`);
+println($`123.5.is_integer() is {123.5.is_integer()}`);
+println($`Inf.is_integer() is {Inf.is_integer()}`);
+println($`NaN.is_integer() is {NaN.is_integer()}`);
 ################################################################################
 # 123.is_integer() is true
 # 123.5.is_integer() is false

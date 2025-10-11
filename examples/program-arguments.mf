@@ -1,4 +1,4 @@
 # Usage:
 #   /path/to/mf.py examples/program-arguments.mf foo bar baz
 
-println("program arguments: " + repr(argv));
+println($"program arguments: {argv}");

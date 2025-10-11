@@ -1,9 +1,9 @@
-println(`"foo=bar".cut("=") is ` + repr("foo=bar".cut("=")));
-println(`"foo=bar".cut("foo") is ` + repr("foo=bar".cut("foo")));
-println(`"foo=bar".cut("bar") is ` + repr("foo=bar".cut("bar")));
-println(`"foo=bar".cut("") is ` + repr("foo=bar".cut("")));
-println(`"foo=bar".cut("nope") is ` + repr("foo=bar".cut("nope")));
-println(`"".cut("") is ` + repr("".cut("")));
+println($`"foo=bar".cut("=") is {"foo=bar".cut("=")}`);
+println($`"foo=bar".cut("foo") is {"foo=bar".cut("foo")}`);
+println($`"foo=bar".cut("bar") is {"foo=bar".cut("bar")}`);
+println($`"foo=bar".cut("") is {"foo=bar".cut("")}`);
+println($`"foo=bar".cut("nope") is {"foo=bar".cut("nope")}`);
+println($`"".cut("") is {"".cut("")}`);
 ################################################################################
 # "foo=bar".cut("=") is {"prefix": "foo", "suffix": "bar"}
 # "foo=bar".cut("foo") is {"prefix": "", "suffix": "=bar"}

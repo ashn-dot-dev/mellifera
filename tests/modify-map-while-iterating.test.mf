@@ -7,7 +7,7 @@ for k, v in collection {
         collection.remove("baz");
         println("removed baz");
     }
-    println(repr(k) + " " + repr(v));
+    println($"{repr(k)} {repr(v)}");
 }
 println(collection);
 ################################################################################

@@ -1,5 +1,5 @@
 for x in 3 {
-    println(`x is ` + repr(x));
+    println($`x is {x}`);
 }
 
 print("\n");
@@ -20,7 +20,7 @@ print("\n");
 
 let v = ["a", "b", "c"];
 for x in v {
-    println(`x is ` + repr(x));
+    println($`x is {repr(x)}`);
 }
 
 print("\n");
@@ -46,7 +46,7 @@ print("\n");
 
 let m = Map{"a": 123, "b": 456, "c": 789};
 for k, v in m {
-    println(`k is ` + repr(k) + `, ` + `v is ` + repr(v));
+    println($`k is {repr(k)}, v is {repr(v)}`);
 }
 
 print("\n");
@@ -72,7 +72,7 @@ print("\n");
 
 let s = Set{"a", "b", "c"};
 for x in s {
-    println(`x is ` + repr(x));
+    println($`x is {repr(x)}`);
 }
 
 print("\n");

@@ -1,6 +1,6 @@
 try { dumpln( null         % null         ); } catch err { dumpln(err); }
 try { dumpln( true         % true         ); } catch err { dumpln(err); }
-try { dumpln( 12           % 5          ); } catch err { dumpln(err); }
+try { dumpln( 12           % 5            ); } catch err { dumpln(err); }
 try { dumpln( "foo"        % "bar"        ); } catch err { dumpln(err); }
 try { dumpln( []           % []           ); } catch err { dumpln(err); }
 try { dumpln( Map{}        % Map{}        ); } catch err { dumpln(err); }
@@ -12,11 +12,11 @@ try { dumpln( println      % println      ); } catch err { dumpln(err); }
 print("\n");
 
 # Verify remainder follows the behavior of C99.
-println(`+7 % +3 is ` + repr(+7 % +3));
-println(`+7 % -3 is ` + repr(+7 % -3));
-println(`-7 % +3 is ` + repr(-7 % +3));
-println(`-7 % -3 is ` + repr(-7 % -3));
-println(`10 % 3.5 is ` + repr(10 % 3.5));
+println($`+7 % +3 is {+7 % +3}`);
+println($`+7 % -3 is {+7 % -3}`);
+println($`-7 % +3 is {-7 % +3}`);
+println($`-7 % -3 is {-7 % -3}`);
+println($`10 % 3.5 is {10 % 3.5}`);
 ################################################################################
 # "attempted % operation with types `null` and `null`"
 # "attempted % operation with types `boolean` and `boolean`"

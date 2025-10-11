@@ -1,7 +1,7 @@
-println(`"foobar".contains("foo") is ` + repr("foobar".contains("foo")));
-println(`"foobar".contains("bar") is ` + repr("foobar".contains("bar")));
-println(`"foobar".contains("baz") is ` + repr("foobar".contains("baz")));
-println(`"foobar".contains("") is ` + repr("foobar".contains("")));
+println($`"foobar".contains("foo") is {"foobar".contains("foo")}`);
+println($`"foobar".contains("bar") is {"foobar".contains("bar")}`);
+println($`"foobar".contains("baz") is {"foobar".contains("baz")}`);
+println($`"foobar".contains("") is {"foobar".contains("")}`);
 ################################################################################
 # "foobar".contains("foo") is true
 # "foobar".contains("bar") is true

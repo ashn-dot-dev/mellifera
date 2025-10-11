@@ -9,8 +9,8 @@ print("\n");
 
 dumpln(json::decode(`123`));
 dumpln(json::decode(`123.456`));
-try { dumpln(json::decode(`NaN`)); } catch err { println("error: " + string::init(err)); }
-try { dumpln(json::decode(`Inf`)); } catch err { println("error: " + string::init(err)); }
+try { dumpln(json::decode(`NaN`)); } catch err { println($"error: {err}"); }
+try { dumpln(json::decode(`Inf`)); } catch err { println($"error: {err}"); }
 
 print("\n");
 

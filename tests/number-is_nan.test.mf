@@ -1,6 +1,6 @@
-println(`123.is_nan() is ` + repr(123.is_nan()));
-println(`Inf.is_nan() is ` + repr(Inf.is_nan()));
-println(`NaN.is_nan() is ` + repr(NaN.is_nan()));
+println($`123.is_nan() is {123.is_nan()}`);
+println($`Inf.is_nan() is {Inf.is_nan()}`);
+println($`NaN.is_nan() is {NaN.is_nan()}`);
 ################################################################################
 # 123.is_nan() is false
 # Inf.is_nan() is false

@@ -1,17 +1,17 @@
-println(`boolean::init(true) is ` + repr(boolean::init(true)));
-println(`boolean::init(false) is ` + repr(boolean::init(false)));
-println(`boolean::init(123) is ` + repr(boolean::init(123)));
-println(`boolean::init(0) is ` + repr(boolean::init(0)));
-println(`boolean::init(Inf) is ` + repr(boolean::init(Inf)));
-println(`boolean::init(NaN) is ` + repr(boolean::init(NaN)));
-println(`boolean::init("true") is ` + repr(boolean::init("true")));
-println(`boolean::init("false") is ` + repr(boolean::init("false")));
+println($`boolean::init(true) is {boolean::init(true)}`);
+println($`boolean::init(false) is {boolean::init(false)}`);
+println($`boolean::init(123) is {boolean::init(123)}`);
+println($`boolean::init(0) is {boolean::init(0)}`);
+println($`boolean::init(Inf) is {boolean::init(Inf)}`);
+println($`boolean::init(NaN) is {boolean::init(NaN)}`);
+println($`boolean::init("true") is {boolean::init("true")}`);
+println($`boolean::init("false") is {boolean::init("false")}`);
 
 print("\n");
 
-try { boolean::init(null); } catch err { println(`boolean::init(null) produces ` + repr(err)); }
-try { boolean::init("foo"); } catch err { println(`boolean::init("foo") produces ` + repr(err)); }
-try { boolean::init(Map{}); } catch err { println(`boolean::init(Map{}) produces ` + repr(err)); }
+try { boolean::init(null); } catch err { println($`boolean::init(null) produces the error {repr(err)}`); }
+try { boolean::init("foo"); } catch err { println($`boolean::init("foo") produces the error {repr(err)}`); }
+try { boolean::init(Map{}); } catch err { println($`boolean::init(Map{{}}) produces the error {repr(err)}`); }
 ################################################################################
 # boolean::init(true) is true
 # boolean::init(false) is false
@@ -22,6 +22,6 @@ try { boolean::init(Map{}); } catch err { println(`boolean::init(Map{}) produces
 # boolean::init("true") is true
 # boolean::init("false") is false
 #
-# boolean::init(null) produces "cannot convert value null to boolean"
-# boolean::init("foo") produces "cannot convert value \"foo\" to boolean"
-# boolean::init(Map{}) produces "cannot convert value Map{} to boolean"
+# boolean::init(null) produces the error "cannot convert value null to boolean"
+# boolean::init("foo") produces the error "cannot convert value \"foo\" to boolean"
+# boolean::init(Map{}) produces the error "cannot convert value Map{} to boolean"

@@ -1,7 +1,7 @@
-println(`(+123.45).ceil() is ` + repr((+123.45).ceil()));
-println(`(-123.45).ceil() is ` + repr((-123.45).ceil()));
-try { Inf.ceil(); } catch err { println(`Inf.ceil() produced the error ` + repr(err)); }
-try { NaN.ceil(); } catch err { println(`NaN.ceil() produced the error ` + repr(err)); }
+println($`(+123.45).ceil() is {repr((+123.45).ceil())}`);
+println($`(-123.45).ceil() is {repr((-123.45).ceil())}`);
+try { Inf.ceil(); } catch err { println($`Inf.ceil() produced the error {repr(err)}`); }
+try { NaN.ceil(); } catch err { println($`NaN.ceil() produced the error {repr(err)}`); }
 ################################################################################
 # (+123.45).ceil() is 124
 # (-123.45).ceil() is -123

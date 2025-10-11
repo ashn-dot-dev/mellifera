@@ -1,15 +1,15 @@
-println(`(123.456789).fixed(0) is ` + repr((123.456789).fixed(0)));
-println(`(123.456789).fixed(1) is ` + repr((123.456789).fixed(1)));
-println(`(123.456789).fixed(2) is ` + repr((123.456789).fixed(2)));
-println(`(123.456789).fixed(3) is ` + repr((123.456789).fixed(3)));
-println(`(123.456789).fixed(4) is ` + repr((123.456789).fixed(4)));
-println(`(123.456789).fixed(5) is ` + repr((123.456789).fixed(5)));
-println(`(123.456789).fixed(6) is ` + repr((123.456789).fixed(6)));
-println(`(123.456789).fixed(7) is ` + repr((123.456789).fixed(7)));
-println(`(123.456789).fixed(8) is ` + repr((123.456789).fixed(8)));
-try { (123.456789).fixed(-1); } catch err { println(`(123.456789).fixed(-1) produced the error ` + repr(err)); }
-try { (123.456789).fixed(3.14); } catch err { println(`(123.456789).fixed(3.14) produced the error ` + repr(err)); }
-try { (123.456789).fixed(NaN); } catch err { println(`(123.456789).fixed(NaN) produced the error ` + repr(err)); }
+println($`(123.456789).fixed(0) is {(123.456789).fixed(0)}`);
+println($`(123.456789).fixed(1) is {(123.456789).fixed(1)}`);
+println($`(123.456789).fixed(2) is {(123.456789).fixed(2)}`);
+println($`(123.456789).fixed(3) is {(123.456789).fixed(3)}`);
+println($`(123.456789).fixed(4) is {(123.456789).fixed(4)}`);
+println($`(123.456789).fixed(5) is {(123.456789).fixed(5)}`);
+println($`(123.456789).fixed(6) is {(123.456789).fixed(6)}`);
+println($`(123.456789).fixed(7) is {(123.456789).fixed(7)}`);
+println($`(123.456789).fixed(8) is {(123.456789).fixed(8)}`);
+try { (123.456789).fixed(-1); } catch err { println($`(123.456789).fixed(-1) produced the error {repr(err)}`); }
+try { (123.456789).fixed(3.14); } catch err { println($`(123.456789).fixed(3.14) produced the error {repr(err)}`); }
+try { (123.456789).fixed(NaN); } catch err { println($`(123.456789).fixed(NaN) produced the error {repr(err)}`); }
 ################################################################################
 # (123.456789).fixed(0) is 123
 # (123.456789).fixed(1) is 123.5

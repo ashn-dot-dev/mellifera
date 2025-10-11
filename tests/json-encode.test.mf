@@ -9,14 +9,14 @@ print("\n");
 
 println(json::encode(123));
 println(json::encode(123.456));
-try { dumpln(json::encode(NaN)); } catch err { println("error: " + string::init(err)); }
-try { dumpln(json::encode(Inf)); } catch err { println("error: " + string::init(err)); }
+try { dumpln(json::encode(NaN)); } catch err { println($"error: {err}"); }
+try { dumpln(json::encode(Inf)); } catch err { println($"error: {err}"); }
 
 print("\n");
 
 println(json::encode("foo"));
 println(json::encode("foo\nbar"));
-try { dumpln(json::encode("\xFF")); } catch err { println("error: " + string::init(err)); }
+try { dumpln(json::encode("\xFF")); } catch err { println($"error: {err}"); }
 
 print("\n");
 
@@ -32,7 +32,7 @@ println(json::encode({"foo": 123, "bar": ["abc", "def"], "baz": {"blub": null}})
 
 print("\n");
 
-try { dumpln(json::encode(Set{"foo", "bar"})); } catch err { println("error: " + string::init(err)); }
+try { dumpln(json::encode(Set{"foo", "bar"})); } catch err { println($"error: {err}"); }
 
 print("\n");
 
@@ -40,7 +40,7 @@ try { dumpln(json::encode(123.&)); } catch err { assert(string::init(err).contai
 
 print("\n");
 
-try { dumpln(json::encode(function(){})); } catch err { println("error: " + string::init(err)); }
+try { dumpln(json::encode(function(){})); } catch err { println($"error: {err}"); }
 ################################################################################
 # null
 #

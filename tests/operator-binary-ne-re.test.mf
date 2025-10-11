@@ -1,6 +1,6 @@
-println("\"foobar\" !~ r`foo` is " + repr("foobar" !~ r`foo`));
-println("\"foobar\" !~ r`^foo` is " + repr("foobar" !~ r`^foo`));
-println("\"foobar\" !~ r`^foo$` is " + repr("foobar" !~ r`^foo$`));
+println($"\"foobar\" !~ r`foo` is {"foobar" !~ r`foo`}");
+println($"\"foobar\" !~ r`^foo` is {"foobar" !~ r`^foo`}");
+println($"\"foobar\" !~ r`^foo$` is {"foobar" !~ r`^foo$`}");
 
 # Test invalid lhs and rhs operands.
 try { "foo" !~ "bar"; } catch err { dumpln(err); }

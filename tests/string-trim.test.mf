@@ -1,5 +1,5 @@
-println(`"foo".trim() is ` + repr("foo".trim()));
-println(repr("\t\n foo\t\n ") + ".trim() is " + repr("\t\n foo\t\n ".trim()));
+println($`"foo".trim() is {repr("foo".trim())}`);
+println($`{repr("\t\n foo\t\n ")}.trim() is {repr("\t\n foo\t\n ".trim())}`);
 ################################################################################
 # "foo".trim() is "foo"
 # "\t\n foo\t\n ".trim() is "foo"

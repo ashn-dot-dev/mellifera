@@ -1,7 +1,7 @@
-println(`123.is_inf() is ` + repr(123.is_inf()));
-println(`(+Inf).is_inf() is ` + repr((+Inf).is_inf()));
-println(`(-Inf).is_inf() is ` + repr((-Inf).is_inf()));
-println(`NaN.is_inf() is ` + repr(NaN.is_inf()));
+println($`123.is_inf() is {123.is_inf()}`);
+println($`(+Inf).is_inf() is {(+Inf).is_inf()}`);
+println($`(-Inf).is_inf() is {(-Inf).is_inf()}`);
+println($`NaN.is_inf() is {NaN.is_inf()}`);
 ################################################################################
 # 123.is_inf() is false
 # (+Inf).is_inf() is true

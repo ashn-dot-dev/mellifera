@@ -5,7 +5,7 @@
 # greet(); # prints the line "Hello, Juliet!"
 let init = function(name) {
     return function() {
-        println("Hello, " + name + "!");
+        println($"Hello, {name}!");
     };
 };
 return {"init": init};

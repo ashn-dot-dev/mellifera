@@ -1,6 +1,6 @@
-println(`"foobar".starts_with("foo") is ` + repr("foobar".starts_with("foo")));
-println(`"foobar".starts_with("bar") is ` + repr("foobar".starts_with("bar")));
-println(`"foobar".starts_with("") is ` + repr("foobar".starts_with("")));
+println($`"foobar".starts_with("foo") is {"foobar".starts_with("foo")}`);
+println($`"foobar".starts_with("bar") is {"foobar".starts_with("bar")}`);
+println($`"foobar".starts_with("") is {"foobar".starts_with("")}`);
 ################################################################################
 # "foobar".starts_with("foo") is true
 # "foobar".starts_with("bar") is false

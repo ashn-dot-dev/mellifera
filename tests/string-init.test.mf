@@ -1,13 +1,13 @@
-println(`string::init(null) is ` + repr(string::init(null)));
-println(`string::init(true) is ` + repr(string::init(true)));
-println(`string::init(false) is ` + repr(string::init(false)));
-println(`string::init(123) is ` + repr(string::init(123)));
-println(`string::init(123.4) is ` + repr(string::init(123.4)));
-println(`string::init(Inf) is ` + repr(string::init(Inf)));
-println(`string::init(NaN) is ` + repr(string::init(NaN)));
-println(`string::init("foo") is ` + repr(string::init("foo")));
-println(`string::init(Map{}) is ` + repr(string::init(Map{})));
-println(`string::init(Set{}) is ` + repr(string::init(Set{})));
+println($`string::init(null) is {repr(string::init(null))}`);
+println($`string::init(true) is {repr(string::init(true))}`);
+println($`string::init(false) is {repr(string::init(false))}`);
+println($`string::init(123) is {repr(string::init(123))}`);
+println($`string::init(123.4) is {repr(string::init(123.4))}`);
+println($`string::init(Inf) is {repr(string::init(Inf))}`);
+println($`string::init(NaN) is {repr(string::init(NaN))}`);
+println($`string::init("foo") is {repr(string::init("foo"))}`);
+println($`string::init(Map{{}}) is {repr(string::init(Map{}))}`);
+println($`string::init(Set{{}}) is {repr(string::init(Set{}))}`);
 
 let meta = type {
     "into_string": function(value) {
@@ -15,7 +15,7 @@ let meta = type {
     }
 };
 let x = new meta Map{};
-println("string::init(x) with custom into_string metafunction is " + repr(string::init(x)));
+println($`string::init(x) with custom into_string metafunction is {repr(string::init(x))}`);
 
 let meta = type {
     "into_string": function(value) {
@@ -24,7 +24,7 @@ let meta = type {
 };
 let y = new meta Map{};
 println("string::init(y) with custom into_string metafunction is...");
-try { println(repr(string::init(y))); } catch err { println("error: " + string::init(err)); }
+try { println(repr(string::init(y))); } catch err { println($"error: {err}"); }
 ################################################################################
 # string::init(null) is "null"
 # string::init(true) is "true"

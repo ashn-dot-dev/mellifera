@@ -23,7 +23,7 @@ let meta = type {
     }
 };
 let y = new meta Map{};
-try { eprintln(y); } catch err { eprintln("error: " + string::init(err)); }
+try { eprintln(y); } catch err { eprintln($"error: {err}"); }
 
 let meta = type {
     "into_string": function(value) {
@@ -31,7 +31,7 @@ let meta = type {
     }
 };
 let z = new meta Map{};
-try { eprintln(z); } catch err { eprintln("error: " + string::init(err)); }
+try { eprintln(z); } catch err { eprintln($"error: {err}"); }
 ################################################################################
 # null
 # true

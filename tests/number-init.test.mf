@@ -1,27 +1,27 @@
-println(`number::init(true) is ` + repr(number::init(true)));
-println(`number::init(false) is ` + repr(number::init(false)));
-println(`number::init(123) is ` + repr(number::init(123)));
-println(`number::init("123") is ` + repr(number::init("123")));
-println(`number::init("+123") is ` + repr(number::init("+123")));
-println(`number::init("-123") is ` + repr(number::init("-123")));
-println(`number::init("123.4") is ` + repr(number::init("123.4")));
-println(`number::init("Inf") is ` + repr(number::init("Inf")));
-println(`number::init("+Inf") is ` + repr(number::init("+Inf")));
-println(`number::init("-Inf") is ` + repr(number::init("-Inf")));
-println(`number::init("NaN") is ` + repr(number::init("NaN")));
-println(`number::init("+NaN") is ` + repr(number::init("+NaN")));
-println(`number::init("-NaN") is ` + repr(number::init("-NaN")));
+println($`number::init(true) is {repr(number::init(true))}`);
+println($`number::init(false) is {repr(number::init(false))}`);
+println($`number::init(123) is {repr(number::init(123))}`);
+println($`number::init("123") is {repr(number::init("123"))}`);
+println($`number::init("+123") is {repr(number::init("+123"))}`);
+println($`number::init("-123") is {repr(number::init("-123"))}`);
+println($`number::init("123.4") is {repr(number::init("123.4"))}`);
+println($`number::init("Inf") is {repr(number::init("Inf"))}`);
+println($`number::init("+Inf") is {repr(number::init("+Inf"))}`);
+println($`number::init("-Inf") is {repr(number::init("-Inf"))}`);
+println($`number::init("NaN") is {repr(number::init("NaN"))}`);
+println($`number::init("+NaN") is {repr(number::init("+NaN"))}`);
+println($`number::init("-NaN") is {repr(number::init("-NaN"))}`);
 
 print("\n");
 
-try { number::init(null); } catch err { println(`number::init(null) produces ` + repr(err)); }
-try { number::init("foo"); } catch err { println(`number::init("foo") produces ` + repr(err)); }
-try { number::init(Map{}); } catch err { println(`number::init(Map{}) produces ` + repr(err)); }
-try { number::init("123e2"); } catch err { println(`number::init("123e2") produces ` + repr(err)); }
-try { number::init("++123"); } catch err { println(`number::init("++123") produces ` + repr(err)); }
-try { number::init("--123"); } catch err { println(`number::init("--123") produces ` + repr(err)); }
-try { number::init(" 123"); } catch err { println(`number::init(" 123") produces ` + repr(err)); }
-try { number::init("123 "); } catch err { println(`number::init("123 ") produces ` + repr(err)); }
+try { number::init(null); } catch err { println($`number::init(null) produces the error {repr(err)}`); }
+try { number::init("foo"); } catch err { println($`number::init("foo") produces the error {repr(err)}`); }
+try { number::init(Map{}); } catch err { println($`number::init(Map{{}}) produces the error {repr(err)}`); }
+try { number::init("123e2"); } catch err { println($`number::init("123e2") produces the error {repr(err)}`); }
+try { number::init("++123"); } catch err { println($`number::init("++123") produces the error {repr(err)}`); }
+try { number::init("--123"); } catch err { println($`number::init("--123") produces the error {repr(err)}`); }
+try { number::init(" 123"); } catch err { println($`number::init(" 123") produces the error {repr(err)}`); }
+try { number::init("123 "); } catch err { println($`number::init("123 ") produces the error {repr(err)}`); }
 ################################################################################
 # number::init(true) is 1
 # number::init(false) is 0
@@ -37,11 +37,11 @@ try { number::init("123 "); } catch err { println(`number::init("123 ") produces
 # number::init("+NaN") is NaN
 # number::init("-NaN") is NaN
 #
-# number::init(null) produces "cannot convert value null to number"
-# number::init("foo") produces "cannot convert value \"foo\" to number"
-# number::init(Map{}) produces "cannot convert value Map{} to number"
-# number::init("123e2") produces "cannot convert value \"123e2\" to number"
-# number::init("++123") produces "cannot convert value \"++123\" to number"
-# number::init("--123") produces "cannot convert value \"--123\" to number"
-# number::init(" 123") produces "cannot convert value \" 123\" to number"
-# number::init("123 ") produces "cannot convert value \"123 \" to number"
+# number::init(null) produces the error "cannot convert value null to number"
+# number::init("foo") produces the error "cannot convert value \"foo\" to number"
+# number::init(Map{}) produces the error "cannot convert value Map{} to number"
+# number::init("123e2") produces the error "cannot convert value \"123e2\" to number"
+# number::init("++123") produces the error "cannot convert value \"++123\" to number"
+# number::init("--123") produces the error "cannot convert value \"--123\" to number"
+# number::init(" 123") produces the error "cannot convert value \" 123\" to number"
+# number::init("123 ") produces the error "cannot convert value \"123 \" to number"
