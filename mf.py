@@ -1688,8 +1688,17 @@ class AstProgram(AstNode):
     statements: list[AstStatement]
 
     def eval(self, env: Environment) -> Optional[Union[Value, Error]]:
+        result: Optional[Union[Value, ControlFlow]] = None
         for statement in self.statements:
-            result = statement.eval(env)
+            if isinstance(statement, AstStatementExpression):
+                # If a top-level statement is an expression, directly evaluate
+                # that expression and save the result. This allows the result
+                # of the last top-level expression statement to be used as the
+                # result of program execution.
+                result = statement.expression.eval(env)
+            else:
+                result = statement.eval(env)
+
             if isinstance(result, Return):
                 return result.value
             if isinstance(result, Break):
@@ -1698,7 +1707,7 @@ class AstProgram(AstNode):
                 return Error(self.location, "attempted to continue outside of a loop")
             if isinstance(result, Error):
                 return result
-        return None
+        return result if isinstance(result, (Value, Error)) else None
 
 
 @final
