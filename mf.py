@@ -5601,6 +5601,8 @@ def main() -> None:
             result = eval_file(args.file, env)
         except AssertionError:
             raise
+        except KeyboardInterrupt:
+            return
         except Exception as e:
             print(e, file=sys.stderr)
             sys.exit(1)
