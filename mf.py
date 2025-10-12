@@ -159,6 +159,12 @@ class Value(ABC):
     def __str__(self):
         raise NotImplementedError()
 
+    @abstractmethod
+    def hive_encode(
+        self, indent_text: Optional[str] = None, indent_level: int = 0
+    ) -> str:
+        raise NotImplementedError()
+
     def __setitem__(self, key: "Value", value: "Value") -> None:
         raise NotImplementedError()  # optionally overridden by subclasses
 
@@ -218,6 +224,11 @@ class Null(Value):
     def __str__(self):
         return "null"
 
+    def hive_encode(
+        self, indent_text: Optional[str] = None, indent_level: int = 0
+    ) -> str:
+        return str(self)
+
     def __copy__(self) -> "Null":
         return Null(self.meta if self.meta else None)
 
@@ -246,6 +257,11 @@ class Boolean(Value):
 
     def __str__(self):
         return "true" if self.data else "false"
+
+    def hive_encode(
+        self, indent_text: Optional[str] = None, indent_level: int = 0
+    ) -> str:
+        return str(self)
 
     def __copy__(self) -> "Boolean":
         return Boolean(self.data, self.meta if self.meta else None)
@@ -304,6 +320,13 @@ class Number(Value):
             end -= 1  # Remove trailing dot.
         return string[0:end]
 
+    def hive_encode(
+        self, indent_text: Optional[str] = None, indent_level: int = 0
+    ) -> str:
+        if math.isinf(float(self)) or math.isnan(float(self)):
+            raise ValueError("invalid HIVE value {self}")
+        return str(self)
+
     def __copy__(self) -> "Number":
         result = Number.__new__(Number)
         result.data = self.data
@@ -343,6 +366,11 @@ class String(Value):
 
     def __str__(self):
         return f'"{escape(self.runes)}"'
+
+    def hive_encode(
+        self, indent_text: Optional[str] = None, indent_level: int = 0
+    ) -> str:
+        return f'"{escape(self.bytes.decode("utf-8"))}"'
 
     def __contains__(self, item) -> bool:
         if isinstance(item, String):
@@ -411,6 +439,11 @@ class Regexp(Value):
     def __str__(self):
         return f'r"{escape(self.string.decode("utf-8"))}"'
 
+    def hive_encode(
+        self, indent_text: Optional[str] = None, indent_level: int = 0
+    ) -> str:
+        raise ValueError("invalid HIVE value {self}")
+
     def __copy__(self) -> "Regexp":
         return Regexp(self.string, self.pattern, self.meta if self.meta else None)
 
@@ -461,6 +494,25 @@ class Vector(Value):
 
     def __str__(self):
         elements = ", ".join([str(x) for x in self.data])
+        return f"[{elements}]"
+
+    def hive_encode(
+        self, indent_text: Optional[str] = None, indent_level: int = 0
+    ) -> str:
+        if len(self.data) == 0:
+            return "[]"
+
+        if indent_text is not None:
+            elements = ""
+            for i, element in enumerate(self.data):
+                elements += f"{indent_text * (indent_level + 1)}{element.hive_encode(indent_text, indent_level + 1)}"
+                if i != len(self.data) - 1:
+                    elements += ",\n"
+                else:
+                    elements += "\n"
+            return "[\n" + elements + f"{indent_text * indent_level}]"
+
+        elements = ", ".join([x.hive_encode() for x in self.data])
         return f"[{elements}]"
 
     def __contains__(self, item) -> bool:
@@ -556,6 +608,27 @@ class Map(Value):
         if len(self.data) == 0:
             return "Map{}"
         elements = ", ".join([f"{str(k)}: {str(v)}" for k, v in self.data.items()])
+        return f"{{{elements}}}"
+
+    def hive_encode(
+        self, indent_text: Optional[str] = None, indent_level: int = 0
+    ) -> str:
+        if len(self.data) == 0:
+            return "Map{}"
+
+        if indent_text is not None:
+            elements = ""
+            for i, k in enumerate(self.data):
+                elements += f"{indent_text * (indent_level + 1)}{k.hive_encode(indent_text, indent_level + 1)}: {self.data[k].hive_encode(indent_text, indent_level + 1)}"
+                if i != len(self.data) - 1:
+                    elements += ",\n"
+                else:
+                    elements += "\n"
+            return "{\n" + elements + f"{indent_text * indent_level}}}"
+
+        elements = ", ".join(
+            [f"{k.hive_encode()}: {v.hive_encode()}" for k, v in self.data.items()]
+        )
         return f"{{{elements}}}"
 
     def __contains__(self, item) -> bool:
@@ -669,6 +742,25 @@ class Set(Value):
         elements = ", ".join([f"{str(k)}" for k in self.data.keys()])
         return f"{{{elements}}}"
 
+    def hive_encode(
+        self, indent_text: Optional[str] = None, indent_level: int = 0
+    ) -> str:
+        if len(self.data) == 0:
+            return "Set{}"
+
+        if indent_text is not None:
+            elements = ""
+            for i, element in enumerate(self.data):
+                elements += f"{indent_text * (indent_level + 1)}{element.hive_encode(indent_text, indent_level + 1)}"
+                if i != len(self.data) - 1:
+                    elements += ",\n"
+                else:
+                    elements += "\n"
+            return "{\n" + elements + f"{indent_text * indent_level}}}"
+
+        elements = ", ".join([f"{k.hive_encode()}" for k in self.data.keys()])
+        return f"{{{elements}}}"
+
     def __contains__(self, item) -> bool:
         return item in self.data
 
@@ -721,6 +813,11 @@ class Reference(Value):
     def __str__(self):
         return f"reference@{hex(id(self.data))}"
 
+    def hive_encode(
+        self, indent_text: Optional[str] = None, indent_level: int = 0
+    ) -> str:
+        raise ValueError("invalid HIVE value {self}")
+
     def __copy__(self) -> "Reference":
         return Reference(self.data, self.meta if self.meta else None)
 
@@ -761,6 +858,11 @@ class Function(Value):
             return f"{name}@[{self.ast.location}]"
         return f"{name}"
 
+    def hive_encode(
+        self, indent_text: Optional[str] = None, indent_level: int = 0
+    ) -> str:
+        raise ValueError("invalid HIVE value {self}")
+
     def __copy__(self) -> "Function":
         return Function(self.ast, self.env, self.meta if self.meta else None)
 
@@ -794,6 +896,11 @@ class Builtin(Value):
 
     def __str__(self):
         return f"{self.name}@builtin"
+
+    def hive_encode(
+        self, indent_text: Optional[str] = None, indent_level: int = 0
+    ) -> str:
+        raise ValueError("invalid HIVE value {self}")
 
     def __copy__(self) -> "Builtin":
         return self
@@ -934,6 +1041,11 @@ class External(Value):
 
     def __str__(self):
         return f"external({repr(self.data)})"
+
+    def hive_encode(
+        self, indent_text: Optional[str] = None, indent_level: int = 0
+    ) -> str:
+        raise ValueError("invalid HIVE value {self}")
 
     def __copy__(self) -> "External":
         return External(self.data, self.meta if self.meta else None)
@@ -3009,6 +3121,11 @@ class Precedence(enum.IntEnum):
     # fmt: on
 
 
+class ParseMode(enum.Enum):
+    MELLIFERA = "mellifera"
+    HIVE = "hive"
+
+
 class Parser:
     ParseNud = Callable[["Parser"], AstExpression]
     ParseLed = Callable[["Parser", AstExpression], AstExpression]
@@ -3188,7 +3305,16 @@ class Parser:
             raise ParseError(self.current_token.location, str(e))
         return AstExpressionRegexp(token.location, Regexp.new(token.string, pattern))
 
-    def parse_expression_vector(self) -> AstExpressionVector:
+    def parse_expression_vector(
+        self, mode: ParseMode = ParseMode.MELLIFERA
+    ) -> AstExpressionVector:
+        def parse_expression():
+            match mode:
+                case ParseMode.MELLIFERA:
+                    return self.parse_expression()
+                case ParseMode.HIVE:
+                    return self.parse_hive_expression()
+
         location = self._expect_current(TokenKind.LBRACKET).location
         elements: list[AstExpression] = list()
         while not self._check_current(TokenKind.RBRACKET):
@@ -3196,11 +3322,20 @@ class Parser:
                 self._expect_current(TokenKind.COMMA)
             if self._check_current(TokenKind.RBRACKET):
                 break
-            elements.append(self.parse_expression())
+            elements.append(parse_expression())
         self._expect_current(TokenKind.RBRACKET)
         return AstExpressionVector(location, elements)
 
-    def parse_expression_map_or_set(self) -> Union[AstExpressionMap, AstExpressionSet]:
+    def parse_expression_map_or_set(
+        self, mode: ParseMode = ParseMode.MELLIFERA
+    ) -> Union[AstExpressionMap, AstExpressionSet]:
+        def parse_expression():
+            match mode:
+                case ParseMode.MELLIFERA:
+                    return self.parse_expression()
+                case ParseMode.HIVE:
+                    return self.parse_hive_expression()
+
         ParseMapOrSet = enum.Enum("ParseMapOrSet", ["UNKNOWN", "MAP", "SET"])
         map_or_set = ParseMapOrSet.UNKNOWN
         if self._check_current(TokenKind.MAP):
@@ -3234,7 +3369,7 @@ class Parser:
                     identifier.location, identifier.name
                 )
             else:
-                expression = self.parse_expression()
+                expression = parse_expression()
 
             if map_or_set == ParseMapOrSet.UNKNOWN:
                 if self._check_current(TokenKind.COLON) or self._check_current(
@@ -3256,7 +3391,7 @@ class Parser:
                             self.current_token.location,
                             f"expected {TokenKind.COLON} or {TokenKind.ASSIGN}, found {self.current_token}",
                         )
-                    map_elements.append((expression, self.parse_expression()))
+                    map_elements.append((expression, parse_expression()))
                 case ParseMapOrSet.SET:
                     set_elements.append(expression)
 
@@ -3600,6 +3735,43 @@ class Parser:
         rhs = self.parse_expression()
         self._expect_current(TokenKind.SEMICOLON)
         return AstStatementAssignment(location, expression, rhs)
+
+    def parse_hive(self) -> Value:
+        ast = self.parse_hive_expression()
+        if not self._check_current(TokenKind.EOF):
+            raise ParseError(
+                self.current_token.location,
+                f"expected end-of-input, found {self.current_token}",
+            )
+        result = ast.eval(Environment())
+        if isinstance(result, Error):
+            raise ParseError(result.location, str(result))
+        return result
+
+    def parse_hive_expression(self) -> AstExpression:
+        if self._check_current(TokenKind.NULL):
+            return self.parse_expression_null()
+        elif self._check_current(TokenKind.TRUE) or self._check_current(
+            TokenKind.FALSE
+        ):
+            return self.parse_expression_boolean()
+        elif self._check_current(TokenKind.NUMBER):
+            return self.parse_expression_number()
+        elif self._check_current(TokenKind.STRING):
+            return self.parse_expression_string()
+        elif self._check_current(TokenKind.LBRACKET):
+            return self.parse_expression_vector(mode=ParseMode.HIVE)
+        elif (
+            self._check_current(TokenKind.MAP)
+            or self._check_current(TokenKind.SET)
+            or self._check_current(TokenKind.LBRACE)
+        ):
+            return self.parse_expression_map_or_set(mode=ParseMode.HIVE)
+        else:
+            raise ParseError(
+                self.current_token.location,
+                f"expected hive value, found {self.current_token}",
+            )
 
 
 def call(
@@ -4721,9 +4893,107 @@ def builtin_fs_append(path: String, data: String) -> Union[Value, Error]:
         return Error(None, f"failed append to file {path}")
 
 
+@builtin("hive::decode", [String])
+def builtin_hive_decode(string: String) -> Union[Value, Error]:
+    try:
+        return Parser(Lexer(string.runes)).parse_hive()
+    except ParseError as e:
+        return Error(None, str(e))
+
+
+def hive_validate(value: Value):
+    if isinstance(value, Null):
+        return
+    if isinstance(value, Boolean):
+        return
+    if isinstance(value, Number) and not (
+        math.isinf(float(value)) or math.isnan(float(value))
+    ):
+        return
+    if isinstance(value, String):
+        try:
+            value.bytes.decode("utf-8")
+            return
+        except UnicodeDecodeError:
+            raise ValueError(
+                f"cannot HIVE-encode string with invalid UTF-8 encoding {value}"
+            )
+    if isinstance(value, Vector):
+        for element in value.data:
+            hive_validate(element)
+        return
+    if isinstance(value, Map):
+        for k, v in value.data.items():
+            hive_validate(k)
+            hive_validate(v)
+        return
+    elif isinstance(value, Set):
+        for element in value.data:
+            hive_validate(element)
+        return
+    raise ValueError(f"cannot HIVE-encode value {value} of type {typename(value)}")
+
+
+@builtin("hive::encode", [Value])
+def builtin_hive_encode(value: Value) -> Union[Value, Error]:
+    hive_validate(value)
+    return String.new(value.hive_encode())
+
+
+@builtin("hive::encode_ex", [Value, Map])
+def builtin_hive_encode_ex(value: Value, options: Map) -> Union[Value, Error]:
+    indent: Optional[Union[int, str]] = None
+    for k, v in options.data.items():
+        if isinstance(k, String) and k.bytes == b"indent":
+            if isinstance(v, Number) and float(v).is_integer():
+                indent = int(v)
+                continue
+            if isinstance(v, String):
+                indent = v.runes
+                continue
+            return Error(None, f"expected integer or string indent, received {v}")
+        return Error(None, String.new(f"unknown option {k}"))
+    if isinstance(indent, int):
+        indent = " " * indent
+
+    hive_validate(value)
+    return String.new(value.hive_encode(indent_text=indent, indent_level=0))
+
+
 @builtin("html::escape", [String])
 def builtin_html_escape(value: String) -> Union[Value, Error]:
     return String.new(html.escape(value.runes))
+
+
+def json_decode(value: Any):
+    if value is None:
+        return Null.new()
+    if isinstance(value, bool):
+        return Boolean.new(value)
+    if isinstance(value, (int, float)):
+        assert not (math.isnan(value) or math.isinf(value))
+        return Number.new(value)
+    if isinstance(value, str):
+        return String.new(value)
+    if isinstance(value, list):
+        return Vector.new([json_decode(x) for x in value])
+    if isinstance(value, dict):
+        return Map.new({json_decode(k): json_decode(v) for k, v in value.items()})
+    raise TypeError(f"cannot JSON-decode type {type(value).__name__}")
+
+
+@builtin("json::decode", [String])
+def builtin_json_decode(value: String) -> Union[Value, Error]:
+    def parse_constant(constant: str):
+        # ECMA-404
+        # > Numeric values that cannot be represented as sequences of digits
+        # > (such as Infinity and NaN) are not permitted.
+        raise ValueError(f"constant {value} is not permitted")
+
+    try:
+        return json_decode(json.loads(value.runes, parse_constant=parse_constant))
+    except (TypeError, ValueError):
+        raise TypeError(f"cannot JSON-decode string {value}")
 
 
 def json_encode(value: Value):
@@ -4783,37 +5053,6 @@ def builtin_json_encode_ex(value: Value, options: Map) -> Union[Value, Error]:
             indent=indent,
         )
     )
-
-
-def json_decode(value: Any):
-    if value is None:
-        return Null.new()
-    if isinstance(value, bool):
-        return Boolean.new(value)
-    if isinstance(value, (int, float)):
-        assert not (math.isnan(value) or math.isinf(value))
-        return Number.new(value)
-    if isinstance(value, str):
-        return String.new(value)
-    if isinstance(value, list):
-        return Vector.new([json_decode(x) for x in value])
-    if isinstance(value, dict):
-        return Map.new({json_decode(k): json_decode(v) for k, v in value.items()})
-    raise TypeError(f"cannot JSON-decode type {type(value).__name__}")
-
-
-@builtin("json::decode", [String])
-def builtin_json_decode(value: String) -> Union[Value, Error]:
-    def parse_constant(constant: str):
-        # ECMA-404
-        # > Numeric values that cannot be represented as sequences of digits
-        # > (such as Infinity and NaN) are not permitted.
-        raise ValueError(f"constant {value} is not permitted")
-
-    try:
-        return json_decode(json.loads(value.runes, parse_constant=parse_constant))
-    except (TypeError, ValueError):
-        raise TypeError(f"cannot JSON-decode string {value}")
 
 
 @builtin("math::is_nan", [Number])
@@ -5426,6 +5665,16 @@ BASE_ENVIRONMENT.let(
     ),
 )
 BASE_ENVIRONMENT.let(
+    String.new("hive"),
+    Map.new(
+        {
+            String.new("decode"): builtin_hive_decode(),
+            String.new("encode"): builtin_hive_encode(),
+            String.new("encode_ex"): builtin_hive_encode_ex(),
+        }
+    ),
+)
+BASE_ENVIRONMENT.let(
     String.new("html"),
     Map.new(
         {
@@ -5437,9 +5686,9 @@ BASE_ENVIRONMENT.let(
     String.new("json"),
     Map.new(
         {
+            String.new("decode"): builtin_json_decode(),
             String.new("encode"): builtin_json_encode(),
             String.new("encode_ex"): builtin_json_encode_ex(),
-            String.new("decode"): builtin_json_decode(),
         }
     ),
 )
@@ -5580,7 +5829,7 @@ class Repl(code.InteractiveConsole):
         if not (source.endswith("\n") or source.rstrip().endswith(";")):
             return True
         result = program.eval(self.env)
-        if isinstance(result, Value):
+        if isinstance(result, Value) and not isinstance(result, Null):
             print(result)
         if isinstance(result, Error):
             print(f"error: {result}")

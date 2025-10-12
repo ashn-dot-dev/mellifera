@@ -1,0 +1,70 @@
+println(hive::encode(null));
+
+print("\n");
+
+println(hive::encode(true));
+println(hive::encode(false));
+
+print("\n");
+
+println(hive::encode(123));
+println(hive::encode(123.456));
+try { dumpln(hive::encode(NaN)); } catch err { println($"error: {err}"); }
+try { dumpln(hive::encode(Inf)); } catch err { println($"error: {err}"); }
+
+print("\n");
+
+println(hive::encode("foo"));
+println(hive::encode("foo\nbar"));
+try { dumpln(hive::encode("\xFF")); } catch err { println($"error: {err}"); }
+
+print("\n");
+
+println(hive::encode([]));
+println(hive::encode(["foo", "bar", "baz"]));
+println(hive::encode(["foo", ["bar"], {"baz": 123}]));
+
+print("\n");
+
+println(hive::encode(Map{}));
+println(hive::encode({"foo": 123}));
+println(hive::encode({"foo": 123, "bar": ["abc", "def"], "baz": {"blub": null}}));
+
+print("\n");
+
+try { dumpln(hive::encode(Set{"foo", "bar"})); } catch err { println($"error: {err}"); }
+
+print("\n");
+
+try { dumpln(hive::encode(123.&)); } catch err { assert(string::init(err).contains("reference@")); }
+
+print("\n");
+
+try { dumpln(hive::encode(function(){})); } catch err { println($"error: {err}"); }
+################################################################################
+# null
+#
+# true
+# false
+#
+# 123
+# 123.456
+# error: cannot HIVE-encode value NaN of type number
+# error: cannot HIVE-encode value Inf of type number
+#
+# "foo"
+# "foo\nbar"
+# error: cannot HIVE-encode string with invalid UTF-8 encoding "�"
+#
+# []
+# ["foo", "bar", "baz"]
+# ["foo", ["bar"], {"baz": 123}]
+#
+# Map{}
+# {"foo": 123}
+# {"foo": 123, "bar": ["abc", "def"], "baz": {"blub": null}}
+#
+# "{\"foo\", \"bar\"}"
+#
+#
+# error: cannot HIVE-encode value function@[hive-encode.test.mf, line 43] of type function

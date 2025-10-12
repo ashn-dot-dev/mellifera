@@ -6,7 +6,7 @@ let value = {
         "abc",
         "def",
         "hij",
-    ]
+    ],
 };
 
 # Encode with integer indent.
@@ -18,6 +18,17 @@ print("\n");
 # Encode with string indent.
 println(json::encode_ex(value, {"indent": "  "}));
 println(json::encode_ex(value, {"indent": "<indent>"}));
+
+print("\n");
+
+# Encode with empty collections.
+println(json::encode_ex({"foo": [], "bar": Map{}}, {"indent": 4}));
+
+print("\n");
+
+# Encode with no indent option.
+println(json::encode_ex([123, 456], Map{}));
+println(json::encode_ex({"abc": 123, "def": 456}, Map{}));
 
 print("\n");
 
@@ -46,7 +57,7 @@ try { println(json::encode_ex(value, {"indent": null})); } catch err { dumpln(er
 #         "hij"
 #     ]
 # }
-# 
+#
 # {
 #   "foo": null,
 #   "bar": 123,
@@ -67,6 +78,14 @@ try { println(json::encode_ex(value, {"indent": null})); } catch err { dumpln(er
 # <indent><indent>"hij"
 # <indent>]
 # }
+#
+# {
+#     "foo": [],
+#     "bar": {}
+# }
+#
+# [123, 456]
+# {"abc": 123, "def": 456}
 #
 # "expected integer or string indent, received 0.5"
 # "expected integer or string indent, received null"

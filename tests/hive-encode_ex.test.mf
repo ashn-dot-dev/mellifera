@@ -1,0 +1,139 @@
+let value = {
+    "foo": null,
+    "bar": 123,
+    "baz": "hello",
+    "qux": [
+        "abc",
+        "def",
+        "hij",
+    ],
+    "quy": {
+        "abc": 123,
+        "def": 456,
+    },
+    "quz": {
+        "abc",
+        "def",
+        "hij",
+    },
+};
+
+# Encode with integer indent.
+println(hive::encode_ex(value, {"indent": 2}));
+println(hive::encode_ex(value, {"indent": 4}));
+
+print("\n");
+
+# Encode with string indent.
+println(hive::encode_ex(value, {"indent": "  "}));
+println(hive::encode_ex(value, {"indent": "<indent>"}));
+
+print("\n");
+
+# Encode with empty collections.
+println(hive::encode_ex({"foo": [], "bar": Map{}, "baz": Set{}}, {"indent": 4}));
+
+print("\n");
+
+# Encode with no indent option.
+println(hive::encode_ex([123, 456], Map{}));
+println(hive::encode_ex({"abc": 123, "def": 456}, Map{}));
+println(hive::encode_ex({123, 456}, Map{}));
+
+print("\n");
+
+# Encode with non-integer indent.
+try { println(hive::encode_ex(value, {"indent": 0.5})); } catch err { dumpln(err); }
+# Encode with non-number non-string indent.
+try { println(hive::encode_ex(value, {"indent": null})); } catch err { dumpln(err); }
+################################################################################
+# {
+#   "foo": null,
+#   "bar": 123,
+#   "baz": "hello",
+#   "qux": [
+#     "abc",
+#     "def",
+#     "hij"
+#   ],
+#   "quy": {
+#     "abc": 123,
+#     "def": 456
+#   },
+#   "quz": {
+#     "abc",
+#     "def",
+#     "hij"
+#   }
+# }
+# {
+#     "foo": null,
+#     "bar": 123,
+#     "baz": "hello",
+#     "qux": [
+#         "abc",
+#         "def",
+#         "hij"
+#     ],
+#     "quy": {
+#         "abc": 123,
+#         "def": 456
+#     },
+#     "quz": {
+#         "abc",
+#         "def",
+#         "hij"
+#     }
+# }
+#
+# {
+#   "foo": null,
+#   "bar": 123,
+#   "baz": "hello",
+#   "qux": [
+#     "abc",
+#     "def",
+#     "hij"
+#   ],
+#   "quy": {
+#     "abc": 123,
+#     "def": 456
+#   },
+#   "quz": {
+#     "abc",
+#     "def",
+#     "hij"
+#   }
+# }
+# {
+# <indent>"foo": null,
+# <indent>"bar": 123,
+# <indent>"baz": "hello",
+# <indent>"qux": [
+# <indent><indent>"abc",
+# <indent><indent>"def",
+# <indent><indent>"hij"
+# <indent>],
+# <indent>"quy": {
+# <indent><indent>"abc": 123,
+# <indent><indent>"def": 456
+# <indent>},
+# <indent>"quz": {
+# <indent><indent>"abc",
+# <indent><indent>"def",
+# <indent><indent>"hij"
+# <indent>}
+# }
+#
+# {
+#     "foo": [],
+#     "bar": Map{},
+#     "baz": Set{}
+# }
+#
+# [123, 456]
+# {"abc": 123, "def": 456}
+# {123, 456}
+#
+# "expected integer or string indent, received 0.5"
+# "expected integer or string indent, received null"
