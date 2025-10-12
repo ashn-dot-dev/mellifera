@@ -1,0 +1,28 @@
+"foobar" =~ r"((foo)(bar))";
+dumpln(re::group(0));
+dumpln(re::group(1));
+dumpln(re::group(2));
+dumpln(re::group(3));
+
+print("\n");
+
+"foobar" =~ r"((foo)(bar))";
+try { dumpln(re::group(-1)); } catch err { dumpln(err); }
+try { dumpln(re::group(+4)); } catch err { dumpln(err); }
+try { dumpln(re::group(1.5)); } catch err { dumpln(err); }
+
+print("\n");
+
+"nope" =~ r"((foo)(bar))";
+try { dumpln(re::group(0)); } catch err { dumpln(err); }
+################################################################################
+# "foobar"
+# "foobar"
+# "foo"
+# "bar"
+#
+# "out-of-bounds regular expression capture group -1"
+# "out-of-bounds regular expression capture group 4"
+# "expected integer capture group, received 1.5"
+#
+# "regular expression did not match"

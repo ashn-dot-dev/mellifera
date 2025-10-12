@@ -38,7 +38,7 @@ try { r"foo" =~ r"bar"; } catch err { dumpln(err); }
 # re::group(2) is "Newton"
 # re::group(3) produces: out-of-bounds regular expression capture group 3
 # re::group(-1) produces: out-of-bounds regular expression capture group -1
-# re::group(.23) produces: expected integer, received 1.23
+# re::group(.23) produces: expected integer capture group, received 1.23
 # "foo\nbar\nbaz\nqux" =~ r`ba.` is true
 # re::group(0) is "bar"
 # "foobar" =~ r`foo((bar)|(baz))` is true
