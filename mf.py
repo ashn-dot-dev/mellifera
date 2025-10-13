@@ -1681,23 +1681,32 @@ class Environment:
     @dataclass
     class Lookup:
         value: Value
-        store: Map
+        store: dict[String, Value]
 
     def __init__(self, outer: Optional["Environment"] = None):
         self.outer: Optional["Environment"] = outer
-        self.store: Map = Map()
+        self.store: dict[String, Value] = dict()
 
     def let(self, name: String, value: Value) -> None:
         self.store[name] = value
 
+    def set(self, name: String, value: Value) -> None:
+        if name in self.store:
+            self.store[name] = value
+            return
+        if self.outer is not None:
+            self.outer.set(name, value)
+            return
+        raise Exception(f"identifier {quote(name.runes)} is not defined")
+
     def get(self, name: String) -> Optional[Value]:
-        value = self.store.data.get(name, None)
+        value = self.store.get(name, None)
         if value is None and self.outer is not None:
             return self.outer.get(name)
         return value
 
     def lookup(self, name: String) -> Optional[Lookup]:
-        value = self.store.data.get(name, None)
+        value = self.store.get(name, None)
         if value is None and self.outer is not None:
             return self.outer.lookup(name)
         if value is None:
@@ -3036,19 +3045,21 @@ class AstStatementAssignment(AstStatement):
     rhs: AstExpression
 
     def eval(self, env: Environment) -> Optional[ControlFlow]:
+        # Special case for identifier assignment, where we can directly update
+        # the environment using `Environment.set`.
+        if isinstance(self.lhs, AstExpressionIdentifier):
+            rhs = self.rhs.eval(env)
+            if isinstance(rhs, Error):
+                return rhs
+            try:
+                env.set(self.lhs.name, copy(rhs))
+            except Exception as e:
+                return Error(self.location, str(e))
+            return None
+
         store: Value
         field: Value
-
-        if isinstance(self.lhs, AstExpressionIdentifier):
-            lookup = env.lookup(self.lhs.name)
-            if lookup is None:
-                return Error(
-                    self.location,
-                    f"identifier {quote(self.lhs.name.runes)} is not defined",
-                )
-            store = lookup.store
-            field = self.lhs.name
-        elif isinstance(self.lhs, AstExpressionAccessIndex):
+        if isinstance(self.lhs, AstExpressionAccessIndex):
             lhs_store = self.lhs.store.eval(env)
             if isinstance(lhs_store, Error):
                 return lhs_store
@@ -4858,11 +4869,6 @@ def builtin_import(target: String) -> Union[Value, Error]:
     return result
 
 
-@builtin("baseenv", [])
-def builtin_baseenv() -> Union[Value, Error]:
-    return Map.new(copy(BASE_ENVIRONMENT.store.data))
-
-
 @builtin("fs::read", [String])
 def builtin_fs_read(path: String) -> Union[Value, Error]:
     try:
@@ -5653,7 +5659,6 @@ BASE_ENVIRONMENT.let(
 BASE_ENVIRONMENT.let(String.new("min"), builtin_min())
 BASE_ENVIRONMENT.let(String.new("max"), builtin_max())
 BASE_ENVIRONMENT.let(String.new("import"), builtin_import())
-BASE_ENVIRONMENT.let(String.new("baseenv"), builtin_baseenv())
 BASE_ENVIRONMENT.let(
     String.new("fs"),
     Map.new(
