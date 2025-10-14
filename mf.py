@@ -160,7 +160,7 @@ class Value(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def hive_encode(
+    def comb_encode(
         self, indent_text: Optional[str] = None, indent_level: int = 0
     ) -> str:
         raise NotImplementedError()
@@ -224,7 +224,7 @@ class Null(Value):
     def __str__(self):
         return "null"
 
-    def hive_encode(
+    def comb_encode(
         self, indent_text: Optional[str] = None, indent_level: int = 0
     ) -> str:
         return str(self)
@@ -258,7 +258,7 @@ class Boolean(Value):
     def __str__(self):
         return "true" if self.data else "false"
 
-    def hive_encode(
+    def comb_encode(
         self, indent_text: Optional[str] = None, indent_level: int = 0
     ) -> str:
         return str(self)
@@ -320,11 +320,11 @@ class Number(Value):
             end -= 1  # Remove trailing dot.
         return string[0:end]
 
-    def hive_encode(
+    def comb_encode(
         self, indent_text: Optional[str] = None, indent_level: int = 0
     ) -> str:
         if math.isinf(float(self)) or math.isnan(float(self)):
-            raise ValueError("invalid HIVE value {self}")
+            raise ValueError("invalid COMB value {self}")
         return str(self)
 
     def __copy__(self) -> "Number":
@@ -367,7 +367,7 @@ class String(Value):
     def __str__(self):
         return f'"{escape(self.runes)}"'
 
-    def hive_encode(
+    def comb_encode(
         self, indent_text: Optional[str] = None, indent_level: int = 0
     ) -> str:
         return f'"{escape(self.bytes.decode("utf-8"))}"'
@@ -439,10 +439,10 @@ class Regexp(Value):
     def __str__(self):
         return f'r"{escape(self.string.decode("utf-8"))}"'
 
-    def hive_encode(
+    def comb_encode(
         self, indent_text: Optional[str] = None, indent_level: int = 0
     ) -> str:
-        raise ValueError("invalid HIVE value {self}")
+        raise ValueError("invalid COMB value {self}")
 
     def __copy__(self) -> "Regexp":
         return Regexp(self.string, self.pattern, self.meta if self.meta else None)
@@ -496,7 +496,7 @@ class Vector(Value):
         elements = ", ".join([str(x) for x in self.data])
         return f"[{elements}]"
 
-    def hive_encode(
+    def comb_encode(
         self, indent_text: Optional[str] = None, indent_level: int = 0
     ) -> str:
         if len(self.data) == 0:
@@ -505,14 +505,14 @@ class Vector(Value):
         if indent_text is not None:
             elements = ""
             for i, element in enumerate(self.data):
-                elements += f"{indent_text * (indent_level + 1)}{element.hive_encode(indent_text, indent_level + 1)}"
+                elements += f"{indent_text * (indent_level + 1)}{element.comb_encode(indent_text, indent_level + 1)}"
                 if i != len(self.data) - 1:
                     elements += ",\n"
                 else:
                     elements += "\n"
             return "[\n" + elements + f"{indent_text * indent_level}]"
 
-        elements = ", ".join([x.hive_encode() for x in self.data])
+        elements = ", ".join([x.comb_encode() for x in self.data])
         return f"[{elements}]"
 
     def __contains__(self, item) -> bool:
@@ -610,7 +610,7 @@ class Map(Value):
         elements = ", ".join([f"{str(k)}: {str(v)}" for k, v in self.data.items()])
         return f"{{{elements}}}"
 
-    def hive_encode(
+    def comb_encode(
         self, indent_text: Optional[str] = None, indent_level: int = 0
     ) -> str:
         if len(self.data) == 0:
@@ -619,7 +619,7 @@ class Map(Value):
         if indent_text is not None:
             elements = ""
             for i, k in enumerate(self.data):
-                elements += f"{indent_text * (indent_level + 1)}{k.hive_encode(indent_text, indent_level + 1)}: {self.data[k].hive_encode(indent_text, indent_level + 1)}"
+                elements += f"{indent_text * (indent_level + 1)}{k.comb_encode(indent_text, indent_level + 1)}: {self.data[k].comb_encode(indent_text, indent_level + 1)}"
                 if i != len(self.data) - 1:
                     elements += ",\n"
                 else:
@@ -627,7 +627,7 @@ class Map(Value):
             return "{\n" + elements + f"{indent_text * indent_level}}}"
 
         elements = ", ".join(
-            [f"{k.hive_encode()}: {v.hive_encode()}" for k, v in self.data.items()]
+            [f"{k.comb_encode()}: {v.comb_encode()}" for k, v in self.data.items()]
         )
         return f"{{{elements}}}"
 
@@ -742,7 +742,7 @@ class Set(Value):
         elements = ", ".join([f"{str(k)}" for k in self.data.keys()])
         return f"{{{elements}}}"
 
-    def hive_encode(
+    def comb_encode(
         self, indent_text: Optional[str] = None, indent_level: int = 0
     ) -> str:
         if len(self.data) == 0:
@@ -751,14 +751,14 @@ class Set(Value):
         if indent_text is not None:
             elements = ""
             for i, element in enumerate(self.data):
-                elements += f"{indent_text * (indent_level + 1)}{element.hive_encode(indent_text, indent_level + 1)}"
+                elements += f"{indent_text * (indent_level + 1)}{element.comb_encode(indent_text, indent_level + 1)}"
                 if i != len(self.data) - 1:
                     elements += ",\n"
                 else:
                     elements += "\n"
             return "{\n" + elements + f"{indent_text * indent_level}}}"
 
-        elements = ", ".join([f"{k.hive_encode()}" for k in self.data.keys()])
+        elements = ", ".join([f"{k.comb_encode()}" for k in self.data.keys()])
         return f"{{{elements}}}"
 
     def __contains__(self, item) -> bool:
@@ -813,10 +813,10 @@ class Reference(Value):
     def __str__(self):
         return f"reference@{hex(id(self.data))}"
 
-    def hive_encode(
+    def comb_encode(
         self, indent_text: Optional[str] = None, indent_level: int = 0
     ) -> str:
-        raise ValueError("invalid HIVE value {self}")
+        raise ValueError("invalid COMB value {self}")
 
     def __copy__(self) -> "Reference":
         return Reference(self.data, self.meta if self.meta else None)
@@ -858,10 +858,10 @@ class Function(Value):
             return f"{name}@[{self.ast.location}]"
         return f"{name}"
 
-    def hive_encode(
+    def comb_encode(
         self, indent_text: Optional[str] = None, indent_level: int = 0
     ) -> str:
-        raise ValueError("invalid HIVE value {self}")
+        raise ValueError("invalid COMB value {self}")
 
     def __copy__(self) -> "Function":
         return Function(self.ast, self.env, self.meta if self.meta else None)
@@ -897,10 +897,10 @@ class Builtin(Value):
     def __str__(self):
         return f"{self.name}@builtin"
 
-    def hive_encode(
+    def comb_encode(
         self, indent_text: Optional[str] = None, indent_level: int = 0
     ) -> str:
-        raise ValueError("invalid HIVE value {self}")
+        raise ValueError("invalid COMB value {self}")
 
     def __copy__(self) -> "Builtin":
         return self
@@ -1042,10 +1042,10 @@ class External(Value):
     def __str__(self):
         return f"external({repr(self.data)})"
 
-    def hive_encode(
+    def comb_encode(
         self, indent_text: Optional[str] = None, indent_level: int = 0
     ) -> str:
-        raise ValueError("invalid HIVE value {self}")
+        raise ValueError("invalid COMB value {self}")
 
     def __copy__(self) -> "External":
         return External(self.data, self.meta if self.meta else None)
@@ -3134,7 +3134,7 @@ class Precedence(enum.IntEnum):
 
 class ParseMode(enum.Enum):
     MELLIFERA = "mellifera"
-    HIVE = "hive"
+    COMB = "comb"
 
 
 class Parser:
@@ -3323,8 +3323,8 @@ class Parser:
             match mode:
                 case ParseMode.MELLIFERA:
                     return self.parse_expression()
-                case ParseMode.HIVE:
-                    return self.parse_hive_expression()
+                case ParseMode.COMB:
+                    return self.parse_comb_expression()
 
         location = self._expect_current(TokenKind.LBRACKET).location
         elements: list[AstExpression] = list()
@@ -3344,8 +3344,8 @@ class Parser:
             match mode:
                 case ParseMode.MELLIFERA:
                     return self.parse_expression()
-                case ParseMode.HIVE:
-                    return self.parse_hive_expression()
+                case ParseMode.COMB:
+                    return self.parse_comb_expression()
 
         ParseMapOrSet = enum.Enum("ParseMapOrSet", ["UNKNOWN", "MAP", "SET"])
         map_or_set = ParseMapOrSet.UNKNOWN
@@ -3747,8 +3747,8 @@ class Parser:
         self._expect_current(TokenKind.SEMICOLON)
         return AstStatementAssignment(location, expression, rhs)
 
-    def parse_hive(self) -> Value:
-        ast = self.parse_hive_expression()
+    def parse_comb(self) -> Value:
+        ast = self.parse_comb_expression()
         if not self._check_current(TokenKind.EOF):
             raise ParseError(
                 self.current_token.location,
@@ -3759,7 +3759,7 @@ class Parser:
             raise ParseError(result.location, str(result))
         return result
 
-    def parse_hive_expression(self) -> AstExpression:
+    def parse_comb_expression(self) -> AstExpression:
         if self._check_current(TokenKind.NULL):
             return self.parse_expression_null()
         elif self._check_current(TokenKind.TRUE) or self._check_current(
@@ -3771,17 +3771,17 @@ class Parser:
         elif self._check_current(TokenKind.STRING):
             return self.parse_expression_string()
         elif self._check_current(TokenKind.LBRACKET):
-            return self.parse_expression_vector(mode=ParseMode.HIVE)
+            return self.parse_expression_vector(mode=ParseMode.COMB)
         elif (
             self._check_current(TokenKind.MAP)
             or self._check_current(TokenKind.SET)
             or self._check_current(TokenKind.LBRACE)
         ):
-            return self.parse_expression_map_or_set(mode=ParseMode.HIVE)
+            return self.parse_expression_map_or_set(mode=ParseMode.COMB)
         else:
             raise ParseError(
                 self.current_token.location,
-                f"expected hive value, found {self.current_token}",
+                f"expected comb value, found {self.current_token}",
             )
 
 
@@ -4869,6 +4869,73 @@ def builtin_import(target: String) -> Union[Value, Error]:
     return result
 
 
+@builtin("comb::decode", [String])
+def builtin_comb_decode(string: String) -> Union[Value, Error]:
+    try:
+        return Parser(Lexer(string.runes)).parse_comb()
+    except ParseError as e:
+        return Error(None, str(e))
+
+
+def comb_validate(value: Value):
+    if isinstance(value, Null):
+        return
+    if isinstance(value, Boolean):
+        return
+    if isinstance(value, Number) and not (
+        math.isinf(float(value)) or math.isnan(float(value))
+    ):
+        return
+    if isinstance(value, String):
+        try:
+            value.bytes.decode("utf-8")
+            return
+        except UnicodeDecodeError:
+            raise ValueError(
+                f"cannot COMB-encode string with invalid UTF-8 encoding {value}"
+            )
+    if isinstance(value, Vector):
+        for element in value.data:
+            comb_validate(element)
+        return
+    if isinstance(value, Map):
+        for k, v in value.data.items():
+            comb_validate(k)
+            comb_validate(v)
+        return
+    elif isinstance(value, Set):
+        for element in value.data:
+            comb_validate(element)
+        return
+    raise ValueError(f"cannot COMB-encode value {value} of type {typename(value)}")
+
+
+@builtin("comb::encode", [Value])
+def builtin_comb_encode(value: Value) -> Union[Value, Error]:
+    comb_validate(value)
+    return String.new(value.comb_encode())
+
+
+@builtin("comb::encode_ex", [Value, Map])
+def builtin_comb_encode_ex(value: Value, options: Map) -> Union[Value, Error]:
+    indent: Optional[Union[int, str]] = None
+    for k, v in options.data.items():
+        if isinstance(k, String) and k.bytes == b"indent":
+            if isinstance(v, Number) and float(v).is_integer():
+                indent = int(v)
+                continue
+            if isinstance(v, String):
+                indent = v.runes
+                continue
+            return Error(None, f"expected integer or string indent, received {v}")
+        return Error(None, String.new(f"unknown option {k}"))
+    if isinstance(indent, int):
+        indent = " " * indent
+
+    comb_validate(value)
+    return String.new(value.comb_encode(indent_text=indent, indent_level=0))
+
+
 @builtin("fs::read", [String])
 def builtin_fs_read(path: String) -> Union[Value, Error]:
     try:
@@ -4897,73 +4964,6 @@ def builtin_fs_append(path: String, data: String) -> Union[Value, Error]:
         return Null.new()
     except Exception:
         return Error(None, f"failed append to file {path}")
-
-
-@builtin("hive::decode", [String])
-def builtin_hive_decode(string: String) -> Union[Value, Error]:
-    try:
-        return Parser(Lexer(string.runes)).parse_hive()
-    except ParseError as e:
-        return Error(None, str(e))
-
-
-def hive_validate(value: Value):
-    if isinstance(value, Null):
-        return
-    if isinstance(value, Boolean):
-        return
-    if isinstance(value, Number) and not (
-        math.isinf(float(value)) or math.isnan(float(value))
-    ):
-        return
-    if isinstance(value, String):
-        try:
-            value.bytes.decode("utf-8")
-            return
-        except UnicodeDecodeError:
-            raise ValueError(
-                f"cannot HIVE-encode string with invalid UTF-8 encoding {value}"
-            )
-    if isinstance(value, Vector):
-        for element in value.data:
-            hive_validate(element)
-        return
-    if isinstance(value, Map):
-        for k, v in value.data.items():
-            hive_validate(k)
-            hive_validate(v)
-        return
-    elif isinstance(value, Set):
-        for element in value.data:
-            hive_validate(element)
-        return
-    raise ValueError(f"cannot HIVE-encode value {value} of type {typename(value)}")
-
-
-@builtin("hive::encode", [Value])
-def builtin_hive_encode(value: Value) -> Union[Value, Error]:
-    hive_validate(value)
-    return String.new(value.hive_encode())
-
-
-@builtin("hive::encode_ex", [Value, Map])
-def builtin_hive_encode_ex(value: Value, options: Map) -> Union[Value, Error]:
-    indent: Optional[Union[int, str]] = None
-    for k, v in options.data.items():
-        if isinstance(k, String) and k.bytes == b"indent":
-            if isinstance(v, Number) and float(v).is_integer():
-                indent = int(v)
-                continue
-            if isinstance(v, String):
-                indent = v.runes
-                continue
-            return Error(None, f"expected integer or string indent, received {v}")
-        return Error(None, String.new(f"unknown option {k}"))
-    if isinstance(indent, int):
-        indent = " " * indent
-
-    hive_validate(value)
-    return String.new(value.hive_encode(indent_text=indent, indent_level=0))
 
 
 @builtin("html::escape", [String])
@@ -5660,22 +5660,22 @@ BASE_ENVIRONMENT.let(String.new("min"), builtin_min())
 BASE_ENVIRONMENT.let(String.new("max"), builtin_max())
 BASE_ENVIRONMENT.let(String.new("import"), builtin_import())
 BASE_ENVIRONMENT.let(
+    String.new("comb"),
+    Map.new(
+        {
+            String.new("decode"): builtin_comb_decode(),
+            String.new("encode"): builtin_comb_encode(),
+            String.new("encode_ex"): builtin_comb_encode_ex(),
+        }
+    ),
+)
+BASE_ENVIRONMENT.let(
     String.new("fs"),
     Map.new(
         {
             String.new("read"): builtin_fs_read(),
             String.new("write"): builtin_fs_write(),
             String.new("append"): builtin_fs_append(),
-        }
-    ),
-)
-BASE_ENVIRONMENT.let(
-    String.new("hive"),
-    Map.new(
-        {
-            String.new("decode"): builtin_hive_decode(),
-            String.new("encode"): builtin_hive_encode(),
-            String.new("encode_ex"): builtin_hive_encode_ex(),
         }
     ),
 )

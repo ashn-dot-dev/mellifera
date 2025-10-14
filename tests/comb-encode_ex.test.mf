@@ -19,33 +19,33 @@ let value = {
 };
 
 # Encode with integer indent.
-println(hive::encode_ex(value, {"indent": 2}));
-println(hive::encode_ex(value, {"indent": 4}));
+println(comb::encode_ex(value, {"indent": 2}));
+println(comb::encode_ex(value, {"indent": 4}));
 
 print("\n");
 
 # Encode with string indent.
-println(hive::encode_ex(value, {"indent": "  "}));
-println(hive::encode_ex(value, {"indent": "<indent>"}));
+println(comb::encode_ex(value, {"indent": "  "}));
+println(comb::encode_ex(value, {"indent": "<indent>"}));
 
 print("\n");
 
 # Encode with empty collections.
-println(hive::encode_ex({"foo": [], "bar": Map{}, "baz": Set{}}, {"indent": 4}));
+println(comb::encode_ex({"foo": [], "bar": Map{}, "baz": Set{}}, {"indent": 4}));
 
 print("\n");
 
 # Encode with no indent option.
-println(hive::encode_ex([123, 456], Map{}));
-println(hive::encode_ex({"abc": 123, "def": 456}, Map{}));
-println(hive::encode_ex({123, 456}, Map{}));
+println(comb::encode_ex([123, 456], Map{}));
+println(comb::encode_ex({"abc": 123, "def": 456}, Map{}));
+println(comb::encode_ex({123, 456}, Map{}));
 
 print("\n");
 
 # Encode with non-integer indent.
-try { println(hive::encode_ex(value, {"indent": 0.5})); } catch err { dumpln(err); }
+try { println(comb::encode_ex(value, {"indent": 0.5})); } catch err { dumpln(err); }
 # Encode with non-number non-string indent.
-try { println(hive::encode_ex(value, {"indent": null})); } catch err { dumpln(err); }
+try { println(comb::encode_ex(value, {"indent": null})); } catch err { dumpln(err); }
 ################################################################################
 # {
 #   "foo": null,

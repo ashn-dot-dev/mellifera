@@ -1,0 +1,70 @@
+println(comb::encode(null));
+
+print("\n");
+
+println(comb::encode(true));
+println(comb::encode(false));
+
+print("\n");
+
+println(comb::encode(123));
+println(comb::encode(123.456));
+try { dumpln(comb::encode(NaN)); } catch err { println($"error: {err}"); }
+try { dumpln(comb::encode(Inf)); } catch err { println($"error: {err}"); }
+
+print("\n");
+
+println(comb::encode("foo"));
+println(comb::encode("foo\nbar"));
+try { dumpln(comb::encode("\xFF")); } catch err { println($"error: {err}"); }
+
+print("\n");
+
+println(comb::encode([]));
+println(comb::encode(["foo", "bar", "baz"]));
+println(comb::encode(["foo", ["bar"], {"baz": 123}]));
+
+print("\n");
+
+println(comb::encode(Map{}));
+println(comb::encode({"foo": 123}));
+println(comb::encode({"foo": 123, "bar": ["abc", "def"], "baz": {"blub": null}}));
+
+print("\n");
+
+try { dumpln(comb::encode(Set{"foo", "bar"})); } catch err { println($"error: {err}"); }
+
+print("\n");
+
+try { dumpln(comb::encode(123.&)); } catch err { assert(string::init(err).contains("reference@")); }
+
+print("\n");
+
+try { dumpln(comb::encode(function(){})); } catch err { println($"error: {err}"); }
+################################################################################
+# null
+#
+# true
+# false
+#
+# 123
+# 123.456
+# error: cannot COMB-encode value NaN of type number
+# error: cannot COMB-encode value Inf of type number
+#
+# "foo"
+# "foo\nbar"
+# error: cannot COMB-encode string with invalid UTF-8 encoding "�"
+#
+# []
+# ["foo", "bar", "baz"]
+# ["foo", ["bar"], {"baz": 123}]
+#
+# Map{}
+# {"foo": 123}
+# {"foo": 123, "bar": ["abc", "def"], "baz": {"blub": null}}
+#
+# "{\"foo\", \"bar\"}"
+#
+#
+# error: cannot COMB-encode value function@[comb-encode.test.mf, line 43] of type function

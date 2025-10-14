@@ -1,0 +1,85 @@
+dumpln(comb::decode(`null`));
+
+print("\n");
+
+dumpln(comb::decode(`true`));
+dumpln(comb::decode(`false`));
+
+print("\n");
+
+dumpln(comb::decode(`123`));
+dumpln(comb::decode(`123.456`));
+try { dumpln(comb::decode(`NaN`)); } catch err { println($"error: {err}"); }
+try { dumpln(comb::decode(`Inf`)); } catch err { println($"error: {err}"); }
+
+print("\n");
+
+dumpln(comb::decode(`"foo"`));
+dumpln(comb::decode(`"foo\nbar"`));
+dumpln(comb::decode("`foo\\nbar`"));
+
+print("\n");
+
+dumpln(comb::decode(`[]`));
+dumpln(comb::decode(`["foo", "bar", "baz"]`));
+dumpln(comb::decode(`["foo", ["bar"], {"baz": 123}]`));
+
+print("\n");
+
+dumpln(comb::decode(`Map{}`));
+dumpln(comb::decode(`{"foo": 123}`));
+dumpln(comb::decode(`{"foo": 123, "bar": ["abc", "def"], "baz": {"blub": null}}`));
+dumpln(comb::decode(`{.foo = 123, .bar = ["abc", "def"], .baz = {"blub": null}}`));
+
+# Test non-string keys.
+dumpln(comb::decode(`{null: null}`));
+dumpln(comb::decode(`{true: null}`));
+dumpln(comb::decode(`{123: null}`));
+dumpln(comb::decode(`{[123, 456]: null}`));
+dumpln(comb::decode(`{Map{123: 456}: null}`));
+dumpln(comb::decode(`{Set{123, 456}: null}`));
+
+print("\n");
+
+dumpln(comb::decode(`Set{}`));
+dumpln(comb::decode(`{"foo", "bar"}`));
+dumpln(comb::decode(`{"foo", ["abc", "def"], {"blub": null}}`));
+
+print("\n");
+
+try { dumpln(comb::decode(`{}`)); } catch err { println($"error: {err}"); }
+################################################################################
+# null
+#
+# true
+# false
+#
+# 123
+# 123.456
+# error: expected comb value, found NaN
+# error: expected comb value, found Inf
+#
+# "foo"
+# "foo\nbar"
+# "foo\\nbar"
+#
+# []
+# ["foo", "bar", "baz"]
+# ["foo", ["bar"], {"baz": 123}]
+#
+# Map{}
+# {"foo": 123}
+# {"foo": 123, "bar": ["abc", "def"], "baz": {"blub": null}}
+# {"foo": 123, "bar": ["abc", "def"], "baz": {"blub": null}}
+# {null: null}
+# {true: null}
+# {123: null}
+# {[123, 456]: null}
+# {{123: 456}: null}
+# {{123, 456}: null}
+#
+# Set{}
+# {"foo", "bar"}
+# {"foo", ["abc", "def"], {"blub": null}}
+#
+# error: ambiguous empty map or set
