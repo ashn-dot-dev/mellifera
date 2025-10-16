@@ -4,7 +4,6 @@ from abc import ABC, abstractmethod
 from argparse import ArgumentParser
 from collections import UserDict, UserList
 from contextlib import contextmanager
-from copy import copy
 from dataclasses import dataclass
 from pathlib import Path
 from string import ascii_letters, digits, printable, whitespace
@@ -32,7 +31,6 @@ import re
 import sys
 import traceback
 
-
 try:
     # Mellifera canonically uses re2 for regular expressions.
     import re2
@@ -49,6 +47,16 @@ except ImportError:
     readline = None
 
 rng = random.Random()
+
+
+def copy(value):
+    """
+    Mellifera-specific implementation of copy with low overhead.
+    """
+    try:
+        return value.__copy__()
+    except AttributeError:
+        return value
 
 
 def escape(text: str) -> str:
@@ -219,7 +227,7 @@ class Null(Value):
         return 0
 
     def __eq__(self, other):
-        return type(self) is type(other)
+        return isinstance(other, Null)
 
     def __str__(self):
         return "null"
@@ -251,9 +259,7 @@ class Boolean(Value):
         return hash(self.data)
 
     def __eq__(self, other):
-        if type(self) is not type(other):
-            return False
-        return self.data == other.data
+        return self is other or isinstance(other, Boolean) and self.data == other.data
 
     def __str__(self):
         return "true" if self.data else "false"
@@ -294,9 +300,7 @@ class Number(Value):
         return hash(self.data)
 
     def __eq__(self, other):
-        if type(self) is not type(other):
-            return False
-        return self.data == other.data
+        return self is other or isinstance(other, Number) and self.data == other.data
 
     def __int__(self) -> int:
         return int(float(self.data))
@@ -335,11 +339,7 @@ class Number(Value):
 
 
 @final
-@dataclass
 class String(Value):
-    data: bytes
-    meta: Optional["MetaMap"]
-
     @staticmethod
     def typename() -> str:
         return "string"
@@ -355,14 +355,15 @@ class String(Value):
             case str():
                 self.data = data.encode("utf-8")
         self.meta = meta
+        self.hash: Optional[int] = None
 
     def __hash__(self):
-        return hash(self.bytes)
+        if self.hash is None:
+            self.hash = hash(self.bytes)
+        return self.hash
 
     def __eq__(self, other):
-        if type(self) is not type(other):
-            return False
-        return self.bytes == other.bytes
+        return self is other or isinstance(other, String) and self.data == other.data
 
     def __str__(self):
         return f'"{escape(self.runes)}"'
@@ -385,6 +386,7 @@ class String(Value):
         result = String.__new__(String)
         result.data = self.data
         result.meta = self.meta if self.meta else None
+        result.hash = self.hash
         return result
 
     @property
@@ -398,13 +400,11 @@ class String(Value):
 
 @final
 class Regexp(Value):
-    meta: Optional["MetaMap"] = None
-
     @staticmethod
     def typename() -> str:
         return "regexp"
 
-    def __init__(self, string: bytes, pattern=None, meta: Optional["MetaMap"] = None):
+    def __init__(self, text: bytes, pattern=None, meta: Optional["MetaMap"] = None):
         # The Google re2 library, whose C++ implementation uses Abseil
         # internally, will emit a log message of the form:
         #
@@ -418,26 +418,24 @@ class Regexp(Value):
         # that implementation-specific logging is not seen by the end user.
         with suppress_stderr():
             try:
-                self.pattern = pattern if pattern is not None else re2.compile(string)
+                self.pattern = pattern if pattern is not None else re2.compile(text)
             except Exception:
-                raise Exception(f"invalid regular expression {String.new(string)}")
-        self.string = string
+                raise Exception(f"invalid regular expression {String.new(text)}")
+        self.text = text
         self.meta = meta
 
     @staticmethod
-    def new(string: bytes, pattern=None) -> "Regexp":
-        return Regexp(string, pattern, _REGEXP_META)
+    def new(text: bytes, pattern=None) -> "Regexp":
+        return Regexp(text, pattern, _REGEXP_META)
 
     def __hash__(self):
-        return hash(self.string)
+        return hash(self.text)
 
     def __eq__(self, other):
-        if type(self) is not type(other):
-            return False
-        return self.string == other.string
+        return self is other or isinstance(other, Regexp) and self.text == other.text
 
     def __str__(self):
-        return f'r"{escape(self.string.decode("utf-8"))}"'
+        return f'r"{escape(self.text.decode("utf-8"))}"'
 
     def comb_encode(
         self, indent_text: Optional[str] = None, indent_level: int = 0
@@ -445,7 +443,7 @@ class Regexp(Value):
         raise ValueError("invalid COMB value {self}")
 
     def __copy__(self) -> "Regexp":
-        return Regexp(self.string, self.pattern, self.meta if self.meta else None)
+        return Regexp(self.text, self.pattern, self.meta if self.meta else None)
 
 
 @final
@@ -483,7 +481,7 @@ class Vector(Value):
         return hash(str(self))
 
     def __eq__(self, other):
-        if type(self) is not type(other):
+        if not isinstance(other, Vector):
             return False
         if len(self.data) != len(other.data):
             return False
@@ -595,7 +593,7 @@ class Map(Value):
         return hash(str(self))
 
     def __eq__(self, other):
-        if type(self) is not type(other):
+        if not isinstance(other, Map):
             return False
         if len(self.data) != len(other.data):
             return False
@@ -727,7 +725,7 @@ class Set(Value):
         return hash(str(self))
 
     def __eq__(self, other):
-        if type(self) is not type(other):
+        if not isinstance(other, Set):
             return False
         if len(self.data) != len(other.data):
             return False
@@ -806,9 +804,7 @@ class Reference(Value):
         return hash(id(self.data))
 
     def __eq__(self, other):
-        if type(self) is not type(other):
-            return False
-        return id(self.data) == id(other.data)
+        return isinstance(other, Reference) and id(self.data) == id(other.data)
 
     def __str__(self):
         return f"reference@{hex(id(self.data))}"
@@ -846,9 +842,7 @@ class Function(Value):
         return hash(id(self.ast)) + hash(id(self.env))
 
     def __eq__(self, other):
-        if type(self) is not type(other):
-            return False
-        return id(self.ast) == id(other.ast)
+        return isinstance(other, Function) and id(self.ast) == id(other.ast)
 
     def __str__(self):
         name = self.ast.name.runes if self.ast.name is not None else "function"
@@ -994,9 +988,7 @@ class BuiltinFromSource(Builtin):
         return hash(id(self.evaluated))
 
     def __eq__(self, other):
-        if type(self) is not type(other):
-            return False
-        return self.evaluated == other.evaluated
+        return type(self) is type(other) and self.evaluated == other.evaluated
 
     def initialize(self):
         evaluated = eval_source(self.source(), self.env)
@@ -1035,9 +1027,7 @@ class External(Value):
         return hash(id(self.data))
 
     def __eq__(self, other):
-        if type(self) is not type(other):
-            return False
-        return id(self.data) == id(other.data)
+        return isinstance(other, External) and id(self.data) == id(other.data)
 
     def __str__(self):
         return f"external({repr(self.data)})"
@@ -1678,11 +1668,6 @@ class ParseError(Exception):
 
 
 class Environment:
-    @dataclass
-    class Lookup:
-        value: Value
-        store: dict[String, Value]
-
     def __init__(self, outer: Optional["Environment"] = None):
         self.outer: Optional["Environment"] = outer
         self.store: dict[String, Value] = dict()
@@ -1704,14 +1689,6 @@ class Environment:
         if value is None and self.outer is not None:
             return self.outer.get(name)
         return value
-
-    def lookup(self, name: String) -> Optional[Lookup]:
-        value = self.store.get(name, None)
-        if value is None and self.outer is not None:
-            return self.outer.lookup(name)
-        if value is None:
-            return None
-        return Environment.Lookup(value, self.store)
 
 
 @dataclass
@@ -1839,7 +1816,7 @@ class AstIdentifier(AstNode):
     """
 
     location: Optional[SourceLocation]
-    name: String
+    name: String  # cached
 
 
 @final
@@ -1850,7 +1827,7 @@ class AstExpressionIdentifier(AstExpression):
     """
 
     location: Optional[SourceLocation]
-    name: String
+    name: String  # cached
 
     def eval(self, env: Environment) -> Union[Value, Error]:
         value: Optional[Value] = env.get(self.name)
@@ -3137,6 +3114,12 @@ class ParseMode(enum.Enum):
     COMB = "comb"
 
 
+# Mapping of identifier names to their unique string objects. Having a single
+# globally unique string for each identifier allows let and assignment
+# statements to take advantage of fast-path value identity comparision.
+identifier_cache: dict[str, String] = dict()
+
+
 class Parser:
     ParseNud = Callable[["Parser"], AstExpression]
     ParseLed = Callable[["Parser", AstExpression], AstExpression]
@@ -3218,6 +3201,12 @@ class Parser:
         self._register_led(TokenKind.MKREF, Parser.parse_expression_mkref)
         self._register_led(TokenKind.DEREF, Parser.parse_expression_deref)
 
+    def _identifier(self, name: str) -> String:
+        if name in identifier_cache:
+            return identifier_cache[name]
+        identifier_cache[name] = String(name)
+        return identifier_cache[name]
+
     def _register_nud(self, kind: TokenKind, parse: "Parser.ParseNud") -> None:
         self.parse_nud_functions[kind] = parse
 
@@ -3250,7 +3239,7 @@ class Parser:
 
     def parse_identifier(self) -> AstIdentifier:
         token = self._expect_current(TokenKind.IDENTIFIER)
-        return AstIdentifier(token.location, String(token.literal))
+        return AstIdentifier(token.location, self._identifier(token.literal))
 
     def parse_expression(
         self, precedence: Precedence = Precedence.LOWEST
@@ -3274,7 +3263,7 @@ class Parser:
 
     def parse_expression_identifier(self) -> AstExpressionIdentifier:
         token = self._expect_current(TokenKind.IDENTIFIER)
-        return AstExpressionIdentifier(token.location, String(token.literal))
+        return AstExpressionIdentifier(token.location, self._identifier(token.literal))
 
     def parse_expression_template(self) -> AstExpressionTemplate:
         token = self._expect_current(TokenKind.TEMPLATE)
