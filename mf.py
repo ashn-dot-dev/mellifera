@@ -238,7 +238,7 @@ class Null(Value):
         return str(self)
 
     def __copy__(self) -> "Null":
-        return Null(self.meta if self.meta else None)
+        return self  # immutable value
 
 
 @final
@@ -270,7 +270,7 @@ class Boolean(Value):
         return str(self)
 
     def __copy__(self) -> "Boolean":
-        return Boolean(self.data, self.meta if self.meta else None)
+        return self  # immutable value
 
 
 @final
@@ -332,10 +332,7 @@ class Number(Value):
         return str(self)
 
     def __copy__(self) -> "Number":
-        result = Number.__new__(Number)
-        result.data = self.data
-        result.meta = self.meta if self.meta else None
-        return result
+        return self  # immutable value
 
 
 @final
@@ -383,11 +380,7 @@ class String(Value):
         return False
 
     def __copy__(self) -> "String":
-        result = String.__new__(String)
-        result.data = self.data
-        result.meta = self.meta if self.meta else None
-        result.hash = self.hash
-        return result
+        return self  # immutable value
 
     @property
     def bytes(self) -> bytes:
@@ -443,7 +436,7 @@ class Regexp(Value):
         raise ValueError("invalid COMB value {self}")
 
     def __copy__(self) -> "Regexp":
-        return Regexp(self.text, self.pattern, self.meta if self.meta else None)
+        return self  # immutable value
 
 
 @final
@@ -550,7 +543,7 @@ class Vector(Value):
         super().__delitem__(key)
 
     def __copy__(self) -> "Vector":
-        return Vector(self.data, self.meta if self.meta else None)
+        return Vector(self.data, self.meta)
 
     def cow(self) -> None:
         if self.data.uses > 1:
@@ -659,7 +652,7 @@ class Map(Value):
             raise InvalidFieldAccess(self, key)
 
     def __copy__(self) -> "Map":
-        return Map(self.data, self.meta if self.meta else None)
+        return Map(self.data, self.meta)
 
     def cow(self) -> None:
         if self.data.uses > 1:
@@ -687,7 +680,7 @@ class MetaMap(Map):
         raise Exception(f"attempted to modify metamap {self}")
 
     def __copy__(self) -> "MetaMap":
-        return self
+        return self  # immutable value
 
 
 @final
@@ -777,7 +770,7 @@ class Set(Value):
         self.data.remove(element)
 
     def __copy__(self) -> "Set":
-        return Set(self.data, self.meta if self.meta else None)
+        return Set(self.data, self.meta)
 
     def cow(self) -> None:
         if self.data.uses > 1:
@@ -815,7 +808,7 @@ class Reference(Value):
         raise ValueError("invalid COMB value {self}")
 
     def __copy__(self) -> "Reference":
-        return Reference(self.data, self.meta if self.meta else None)
+        return self  # immutable value
 
     def cow(self) -> None:
         # We explicitly do *not* copy `self.data` as the copied data should
@@ -858,7 +851,7 @@ class Function(Value):
         raise ValueError("invalid COMB value {self}")
 
     def __copy__(self) -> "Function":
-        return Function(self.ast, self.env, self.meta if self.meta else None)
+        return self  # immutable value
 
 
 @dataclass
@@ -897,7 +890,7 @@ class Builtin(Value):
         raise ValueError("invalid COMB value {self}")
 
     def __copy__(self) -> "Builtin":
-        return self
+        return self  # immutable value
 
     def call(self, arguments: list[Value]) -> Union[Value, "Error"]:
         try:
@@ -1038,7 +1031,7 @@ class External(Value):
         raise ValueError("invalid COMB value {self}")
 
     def __copy__(self) -> "External":
-        return External(self.data, self.meta if self.meta else None)
+        return self  # immutable value
 
     def cow(self) -> None:
         # We explicitly do *not* copy self.data as the copied data should still

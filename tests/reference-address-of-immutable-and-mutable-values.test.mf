@@ -1,0 +1,51 @@
+# Test whether copied values have the same address between the original and the
+# copy. Primitive value types such as null, number, and string are immutable
+# and thus do not require additional object allocation when copied. Composite
+# value types such as vector, map, and set are mutable and do require
+# additional object allocation when copied. This test exercises this immutable
+# and mutable copy behavior by comparing the reference address of each value
+# type after copy via assignment.
+
+let a = null;
+let b = a;
+assert(a.& == b.&);
+
+let a = true;
+let b = a;
+assert(a.& == b.&);
+
+let a = 123;
+let b = a;
+assert(a.& == b.&);
+
+let a = "foo";
+let b = a;
+assert(a.& == b.&);
+
+let a = r`foo`;
+let b = a;
+assert(a.& == b.&);
+
+let a = ["foo", "bar"];
+let b = a;
+assert(a.& != b.&);
+
+let a = {"foo": "bar"};
+let b = a;
+assert(a.& != b.&);
+
+let a = {"foo", "bar"};
+let b = a;
+assert(a.& != b.&);
+
+let a = 123.&;
+let b = a;
+assert(a.& == b.&);
+
+let a = function() { return 123; };
+let b = a;
+assert(a.& == b.&);
+
+let a = dump;
+let b = a;
+assert(a.& == b.&);
