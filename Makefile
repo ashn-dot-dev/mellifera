@@ -7,6 +7,7 @@ all: lint format check
 
 bin/mf: mf.py
 	python3 -m nuitka mf.py \
+		--no-deployment-flag=self-execution \
 		--output-filename="$$(pwd)/bin/mf" \
 		--remove-output \
 		--disable-ccache
