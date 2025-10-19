@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 from abc import ABC, abstractmethod
-from argparse import ArgumentParser
 from collections import UserDict, UserList
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -5823,27 +5822,97 @@ class Repl(code.InteractiveConsole):
         return False
 
 
-def main() -> None:
-    description = "The Mellifera Programming Language"
-    parser = ArgumentParser(description=description)
-    parser.add_argument("file", type=str, nargs="?", default=None)
-    args, argv = parser.parse_known_args()
+def usage(file):
+    text = """
+usage:
+  ${PROGRAM} FILE [ARGS...]
+  ${PROGRAM} [-c|--command] COMMAND [ARGS...]
 
-    if args.file is not None:
-        argv.insert(0, args.file)
-        env = Environment(BASE_ENVIRONMENT)
-        module = env.get(CONST_STRING_MODULE)
-        assert module is not None, "expected `module` to be in the environment"
-        path = os.path.realpath(args.file)
-        module[String.new("path")] = String.new(path)
-        module[String.new("file")] = String.new(os.path.basename(path))
-        module[String.new("directory")] = String.new(os.path.dirname(path))
-        env.let(
-            String.new("argv"),
-            Vector.new([String.new(x) for x in argv]),
-        )
+options:
+  -c, --command     Execute the provided command.
+  -h, --help        Display this help text and exit.
+    """.replace(
+        "${PROGRAM}", sys.argv[0]
+    ).strip()
+    print(text, file=file)
+
+
+def main() -> None:
+    verbatim = False  # process arguments verbatim
+    cmds: Optional[str] = None  # command string
+    file: Optional[str] = None  # mf source file
+    argv: list[str] = []  # program arguments
+    argi = 1
+    while argi < len(sys.argv):
+        arg = sys.argv[argi]
+
+        def positional():
+            nonlocal verbatim, file, argi
+            if cmds is None and file is None:
+                file = arg
+                argv.append(file)
+                verbatim = True
+                argi += 1
+                return
+            argv.append(arg)
+            argi += 1
+
+        if verbatim:
+            positional()
+            continue
+
+        # Remaining args are processed verbatim.
+        if arg == "--":
+            verbatim = True
+            argi += 1
+            continue
+
+        # -c, -command
+        if m := re.match(r"^-+c(?:ommand)?(?:=(.*))?$", arg):
+            if m.group(1) is not None:
+                cmds = m.group(1)
+                argv.extend([sys.argv[0]] + sys.argv[argi + 1 :])
+                break
+
+            if argi + 1 < len(sys.argv):
+                cmds = sys.argv[argi + 1]
+                argv.extend([sys.argv[0]] + sys.argv[argi + 2 :])
+                break
+
+            print("error: expected command argument", file=sys.stderr)
+            usage(file=sys.stderr)
+            sys.exit(1)
+
+        # -h, -help
+        if m := re.match(r"^-+h(?:elp)?(?:=(.*))?$", arg):
+            usage(file=sys.stdout)
+            sys.exit(0)
+
+        if arg.startswith("-"):
+            print(f"error: unknown flag {arg}", file=sys.stderr)
+            usage(file=sys.stderr)
+            sys.exit(1)
+
+        positional()
+
+    env = Environment(BASE_ENVIRONMENT)
+    module = env.get(CONST_STRING_MODULE)
+    assert module is not None, "expected `module` to be in the environment"
+    path = os.path.realpath(file) if file is not None else os.path.abspath(__file__)
+    module[String.new("path")] = String.new(path)
+    module[String.new("file")] = String.new(os.path.basename(path))
+    module[String.new("directory")] = String.new(os.path.dirname(path))
+    env.let(
+        String.new("argv"),
+        Vector.new([String.new(x) for x in argv]),
+    )
+
+    if cmds is not None or file is not None:
         try:
-            result = eval_file(args.file, env)
+            if cmds is not None:
+                result = eval_source(cmds, env, SourceLocation(None, 1))
+            if file is not None:
+                result = eval_file(file, env)
         except AssertionError:
             raise
         except KeyboardInterrupt:
@@ -5870,7 +5939,7 @@ def main() -> None:
         HISTFILE_SIZE = 4096
         if readline and os.path.exists(HISTFILE):
             readline.read_history_file(HISTFILE)
-        repl = Repl()
+        repl = Repl(env)
         repl.interact(banner="", exitmsg="")
         if readline:
             readline.set_history_length(HISTFILE_SIZE)
