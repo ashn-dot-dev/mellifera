@@ -1040,13 +1040,11 @@ class External(Value):
 
 @dataclass
 class SourceLocation:
-    filename: Optional[str]
+    file: str
     line: int
 
     def __str__(self):
-        if self.filename is None:
-            return f"line {self.line}"
-        return f"{self.filename}, line {self.line}"
+        return f"{self.file}, line {self.line}"
 
 
 class TokenKind(enum.Enum):
@@ -1258,7 +1256,7 @@ class Lexer:
 
     def _new_token(self, kind: TokenKind, literal: str, **kwargs) -> Token:
         location = (
-            SourceLocation(self.location.filename, self.location.line)
+            SourceLocation(self.location.file, self.location.line)
             if self.location is not None
             else None
         )
@@ -1527,7 +1525,7 @@ class Lexer:
 
     def next_token(self) -> Token:
         if self.location is not None:
-            file = self.location.filename
+            file = self.location.file
             line = self.location.line
             self.location = SourceLocation(file, line)
         self._skip_whitespace_and_comments()
@@ -5797,7 +5795,7 @@ class Repl(code.InteractiveConsole):
         super().__init__()
         self.env = env if env is not None else Environment(BASE_ENVIRONMENT)
 
-    def runsource(self, source, filename="<input>", symbol="single"):
+    def runsource(self, source, file="<input>", symbol="single"):
         lexer = Lexer(source)
         parser = Parser(lexer)
         try:
@@ -5910,7 +5908,7 @@ def main() -> None:
     if cmds is not None or file is not None:
         try:
             if cmds is not None:
-                result = eval_source(cmds, env, SourceLocation(None, 1))
+                result = eval_source(cmds, env, SourceLocation("<command>", 1))
             if file is not None:
                 result = eval_file(file, env)
         except AssertionError:
