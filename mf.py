@@ -903,7 +903,7 @@ class Builtin(Value):
             # return statement, automatically return a null value. If a
             # non-None object is returned, automatically convert that object
             # into an external value wrapping the object.
-            return Null.new() if result is None else External.new(result)
+            return null if result is None else External.new(result)
         except Exception as e:
             message = f"{e}"
             if len(message) == 0:
@@ -2984,7 +2984,7 @@ class AstStatementReturn(AstStatement):
 
     def eval(self, env: Environment) -> Optional[ControlFlow]:
         if self.expression is None:
-            return Return(Null.new())
+            return Return(null)
         result = self.expression.eval(env)
         if isinstance(result, Error):
             return result
@@ -3262,7 +3262,7 @@ class Parser:
 
     def parse_expression_null(self) -> AstExpressionNull:
         location = self._expect_current(TokenKind.NULL).location
-        return AstExpressionNull(location, Null.new())
+        return AstExpressionNull(location, null)
 
     def parse_expression_boolean(self) -> AstExpressionBoolean:
         if self._check_current(TokenKind.TRUE):
@@ -3793,7 +3793,7 @@ def call(
     if isinstance(result, Error):
         result.trace.append(Error.TraceElement(location, function))
         return result
-    return Null.new()
+    return null
 
 
 # Used to indicate reference arguments when defining builtin functions.
@@ -4033,7 +4033,7 @@ def builtin_string_find(
 ) -> Union[Value, Error]:
     found = string.bytes.find(target.bytes)
     if found == -1:
-        return Null.new()
+        return null
     return Number.new(found)
 
 
@@ -4043,7 +4043,7 @@ def builtin_string_rfind(
 ) -> Union[Value, Error]:
     found = string.bytes.rfind(target.bytes)
     if found == -1:
-        return Null.new()
+        return null
     return Number.new(found)
 
 
@@ -4103,7 +4103,7 @@ def builtin_string_cut(
 ) -> Union[Value, Error]:
     found = string.bytes.find(target.bytes)
     if found == -1:
-        return Null.new()
+        return null
     prefix = String.new(string.bytes[0:found])
     suffix = String.new(string.bytes[found + len(target.bytes) :])
     return Map.new(
@@ -4198,7 +4198,7 @@ def builtin_vector_find(
     for index, value in enumerate(vector.data):
         if value == target:
             return Number.new(index)
-    return Null.new()
+    return null
 
 
 @builtin("vector::rfind", [ReferenceTo(Vector), Value])
@@ -4208,7 +4208,7 @@ def builtin_vector_rfind(
     for index, value in reversed(list(enumerate(vector.data))):
         if value == target:
             return Number.new(index)
-    return Null.new()
+    return null
 
 
 @builtin("vector::push", [ReferenceTo(Vector), Value])
@@ -4218,7 +4218,7 @@ def builtin_vector_push(
     if vector.data.uses > 1:
         vector.cow()  # copy-on-write
     vector.data.append(value)
-    return Null.new()
+    return null
 
 
 @builtin("vector::pop", [ReferenceTo(Vector)])
@@ -4240,7 +4240,7 @@ def builtin_vector_insert(
     if vector.data.uses > 1:
         vector.cow()  # copy-on-write
     vector.data.insert(int(float(index.data)), value)
-    return Null.new()
+    return null
 
 
 @builtin("vector::remove", [ReferenceTo(Vector), Number])
@@ -4442,7 +4442,7 @@ def builtin_map_insert(
     self: Reference, map: Map, k: Value, v: Value
 ) -> Union[Value, Error]:
     map[k] = v
-    return Null.new()
+    return null
 
 
 @builtin("map::remove", [ReferenceTo(Map), Value])
@@ -4521,7 +4521,7 @@ def builtin_set_insert(
     self: Reference, set: Set, element: Value
 ) -> Union[Value, Error]:
     set.insert(element)
-    return Null.new()
+    return null
 
 
 @builtin("set::remove", [ReferenceTo(Set), Value])
@@ -4530,7 +4530,7 @@ def builtin_set_remove(
 ) -> Union[Value, Error]:
     try:
         set.remove(element)
-        return Null.new()
+        return null
     except KeyError:
         return Error(
             None,
@@ -4621,7 +4621,7 @@ def builtin_assert():
 @builtin("typeof", [Value])
 def builtin_typeof(value: Value) -> Union[Value, Error]:
     if value.meta is None:
-        return Null.new()
+        return null
     return value.meta
 
 
@@ -4654,20 +4654,20 @@ def builtin_input() -> Union[Value, Error]:
 def builtin_inputln() -> Union[Value, Error]:
     line = sys.stdin.readline()
     if len(line) == 0:
-        return Null.new()
+        return null
     return String.new(line[:-1] if line[-1] == "\n" else line)
 
 
 @builtin("dump", [Value])
 def builtin_dump(value: Value) -> Union[Value, Error]:
     print(str(value), end="")
-    return Null.new()
+    return null
 
 
 @builtin("dumpln", [Value])
 def builtin_dumpln(value: Value) -> Union[Value, Error]:
     print(str(value), end="\n")
-    return Null.new()
+    return null
 
 
 @builtin("print", [Value])
@@ -4687,7 +4687,7 @@ def builtin_print(value: Value) -> Union[Value, Error]:
         print(value.runes, end="")
     else:
         print(str(value), end="")
-    return Null.new()
+    return null
 
 
 @builtin("println", [Value])
@@ -4707,7 +4707,7 @@ def builtin_println(value: Value) -> Union[Value, Error]:
         print(value.runes, end="\n")
     else:
         print(str(value), end="\n")
-    return Null.new()
+    return null
 
 
 @builtin("eprint", [Value])
@@ -4727,7 +4727,7 @@ def builtin_eprint(value: Value) -> Union[Value, Error]:
         print(value.runes, end="", file=sys.stderr)
     else:
         print(str(value), end="", file=sys.stderr)
-    return Null.new()
+    return null
 
 
 @builtin("eprintln", [Value])
@@ -4747,7 +4747,7 @@ def builtin_eprintln(value: Value) -> Union[Value, Error]:
         print(value.runes, end="\n", file=sys.stderr)
     else:
         print(str(value), end="\n", file=sys.stderr)
-    return Null.new()
+    return null
 
 
 @builtin_from_source("range")
@@ -4844,7 +4844,7 @@ def builtin_import(target: String) -> Union[Value, Error]:
     if isinstance(result, Error):
         return result
     if result is None:
-        return Null.new()
+        return null
     return result
 
 
@@ -4930,7 +4930,7 @@ def builtin_fs_write(path: String, data: String) -> Union[Value, Error]:
     try:
         with open(path.runes, "wb") as f:
             f.write(data.bytes)
-        return Null.new()
+        return null
     except Exception:
         return Error(None, f"failed write to file {path}")
 
@@ -4940,7 +4940,7 @@ def builtin_fs_append(path: String, data: String) -> Union[Value, Error]:
     try:
         with open(path.runes, "ab") as f:
             f.write(data.bytes)
-        return Null.new()
+        return null
     except Exception:
         return Error(None, f"failed append to file {path}")
 
@@ -4952,7 +4952,7 @@ def builtin_html_escape(value: String) -> Union[Value, Error]:
 
 def json_decode(value: Any):
     if value is None:
-        return Null.new()
+        return null
     if isinstance(value, bool):
         return Boolean.new(value)
     if isinstance(value, (int, float)):
@@ -5258,13 +5258,13 @@ def builtin_py_exec(source: String) -> Union[Value, Error]:
         exec(source.runes, globals())
     except Exception:
         return Error(None, String.new(traceback.format_exc()))
-    return Null.new()
+    return null
 
 
 @builtin("random::seed", [Value])
 def builtin_random_seed(seed: Value) -> Union[Value, Error]:
     rng.seed(hash(seed))
-    return Null.new()
+    return null
 
 
 @builtin("random::number", [Number, Number])
@@ -5289,7 +5289,7 @@ def builtin_re_group(n: Number) -> Union[Value, Error]:
         return Error(None, "regular expression did not match")
     try:
         if re_match_result.group(int(n)) is None:
-            return Null.new()
+            return null
         return String.new(re_match_result.group(int(n)))
     except IndexError:
         return Error(
@@ -5406,6 +5406,9 @@ BASE_ENVIRONMENT = Environment()
 # Result of the last regular expression operation (=~, !~). Either an re2 Match
 # or None. Non-None implies that the last pattern was a successful match.
 re_match_result = None
+
+# Null singleton.
+null = Null.new()
 
 # Metamaps for fundamental types *must* not be modified after program startup.
 # These metamaps are used during AST construction, and values created via the
@@ -5728,8 +5731,8 @@ BASE_ENVIRONMENT.let(
     String.new("module"),
     Map.new(
         {
-            String.new("path"): Null.new(),
-            String.new("file"): Null.new(),
+            String.new("path"): null,
+            String.new("file"): null,
             String.new("directory"): String.new(os.getcwd()),
         }
     ),

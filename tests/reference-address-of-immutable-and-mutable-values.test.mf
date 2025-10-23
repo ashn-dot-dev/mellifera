@@ -9,6 +9,9 @@
 let a = null;
 let b = a;
 assert(a.& == b.&);
+let c = null;
+assert(a.& == c.&); # all null values should use a single null object
+assert(null.& == null.&); # all null values should use a single null object
 
 let a = true;
 let b = a;
