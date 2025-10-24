@@ -1150,7 +1150,7 @@ class Token:
     kind: TokenKind
     literal: str
     location: Optional[SourceLocation] = None
-    template: Optional[list[Union[bytes, "AstExpression"]]] = None
+    template: Optional[list["AstExpression"]] = None
     number: Optional[float] = None
     string: Optional[bytes] = None
 
@@ -1432,7 +1432,7 @@ class Lexer:
         location = copy(self.location)
         self._expect_character("$")
 
-        template: list[Union[bytes, "AstExpression"]] = list()
+        template: list["AstExpression"] = list()
         string = ""  # current text being parsed
 
         def lex_template_element(default):
@@ -1447,7 +1447,11 @@ class Lexer:
                 return
             if self._remaining().startswith("{"):
                 if len(string) != 0:
-                    template.append(string.encode("utf-8"))
+                    template.append(
+                        AstExpressionString(
+                            location, String.new(string.encode("utf-8"))
+                        )
+                    )
                     string = str()
                 self.position += len("{")
                 try:
@@ -1475,7 +1479,9 @@ class Lexer:
                     lambda: self._lex_raw_string_character().decode("utf-8")
                 )
             if len(string) != 0:
-                template.append(string.encode("utf-8"))
+                template.append(
+                    AstExpressionString(location, String.new(string.encode("utf-8")))
+                )
             self._expect_character("`")
             self._expect_character("`")
             self._expect_character("`")
@@ -1486,7 +1492,9 @@ class Lexer:
                     lambda: self._lex_raw_string_character().decode("utf-8")
                 )
             if len(string) != 0:
-                template.append(string.encode("utf-8"))
+                template.append(
+                    AstExpressionString(location, String.new(string.encode("utf-8")))
+                )
             self._expect_character("`")
         elif self._current_character() == '"':
             self._expect_character('"')
@@ -1495,7 +1503,9 @@ class Lexer:
                     lambda: self._lex_string_character().decode("utf-8")
                 )
             if len(string) != 0:
-                template.append(string.encode("utf-8"))
+                template.append(
+                    AstExpressionString(location, String.new(string.encode("utf-8")))
+                )
             self._expect_character('"')
         else:
             raise ParseError(
@@ -1832,15 +1842,11 @@ class AstExpressionIdentifier(AstExpression):
 @dataclass
 class AstExpressionTemplate(AstExpression):
     location: Optional[SourceLocation]
-    template: list[Union[bytes, "AstExpression"]]
+    template: list["AstExpression"]
 
     def eval(self, env: Environment) -> Union[Value, Error]:
         output: list[bytes] = list()
         for element in self.template:
-            if isinstance(element, bytes):
-                output.append(element)
-                continue
-            assert isinstance(element, AstExpression)
             result = element.eval(Environment(env))
             if isinstance(result, Error):
                 return result
@@ -1855,11 +1861,11 @@ class AstExpressionTemplate(AstExpression):
                         f"metafunction {quote(CONST_STRING_INTO_STRING.runes)} returned {result}",
                     )
                 output.append(result.bytes)
-            else:
-                if isinstance(result, String):
-                    output.append(result.bytes)
-                    continue
-                output.append(str(result).encode("utf-8"))
+                continue
+            if isinstance(result, String):
+                output.append(result.bytes)
+                continue
+            output.append(str(result).encode("utf-8"))
         return String.new(b"".join(output))
 
 
