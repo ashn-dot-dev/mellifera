@@ -327,7 +327,7 @@ class Number(Value):
         self, indent_text: Optional[str] = None, indent_level: int = 0
     ) -> str:
         if math.isinf(float(self)) or math.isnan(float(self)):
-            raise ValueError("invalid COMB value {self}")
+            raise ValueError(f"invalid COMB value {self}")
         return str(self)
 
     def __copy__(self) -> "Number":
@@ -432,7 +432,7 @@ class Regexp(Value):
     def comb_encode(
         self, indent_text: Optional[str] = None, indent_level: int = 0
     ) -> str:
-        raise ValueError("invalid COMB value {self}")
+        raise ValueError(f"invalid COMB value {self}")
 
     def __copy__(self) -> "Regexp":
         return self  # immutable value
@@ -804,7 +804,7 @@ class Reference(Value):
     def comb_encode(
         self, indent_text: Optional[str] = None, indent_level: int = 0
     ) -> str:
-        raise ValueError("invalid COMB value {self}")
+        raise ValueError(f"invalid COMB value {self}")
 
     def __copy__(self) -> "Reference":
         return self  # immutable value
@@ -847,7 +847,7 @@ class Function(Value):
     def comb_encode(
         self, indent_text: Optional[str] = None, indent_level: int = 0
     ) -> str:
-        raise ValueError("invalid COMB value {self}")
+        raise ValueError(f"invalid COMB value {self}")
 
     def __copy__(self) -> "Function":
         return self  # immutable value
@@ -886,7 +886,7 @@ class Builtin(Value):
     def comb_encode(
         self, indent_text: Optional[str] = None, indent_level: int = 0
     ) -> str:
-        raise ValueError("invalid COMB value {self}")
+        raise ValueError(f"invalid COMB value {self}")
 
     def __copy__(self) -> "Builtin":
         return self  # immutable value
@@ -1027,7 +1027,7 @@ class External(Value):
     def comb_encode(
         self, indent_text: Optional[str] = None, indent_level: int = 0
     ) -> str:
-        raise ValueError("invalid COMB value {self}")
+        raise ValueError(f"invalid COMB value {self}")
 
     def __copy__(self) -> "External":
         return self  # immutable value
@@ -1151,8 +1151,7 @@ class Token:
     literal: str
     location: Optional[SourceLocation] = None
     template: Optional[list["AstExpression"]] = None
-    number: Optional[float] = None
-    string: Optional[bytes] = None
+    value: Optional[Value] = None
 
     def __str__(self):
         if self.kind == TokenKind.EOF:
@@ -1175,6 +1174,25 @@ class Token:
         if self.kind.value in Token.KEYWORDS:
             return self.kind.value
         return f"{self.kind.value}"
+
+    def into_value(self) -> Value:
+        location = (
+            null
+            if self.location is None
+            else Map.new(
+                {
+                    String.new("file"): String.new(self.location.file),
+                    String.new("line"): Number.new(self.location.line),
+                }
+            )
+        )
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.kind.value),
+                String.new("literal"): String.new(self.literal),
+                String.new("location"): location,
+            }
+        )
 
     @staticmethod
     def lookup_identifier(identifier: str) -> TokenKind:
@@ -1278,12 +1296,14 @@ class Lexer:
         if match is not None:
             text = match[0]
             self.position += len(text)
-            return self._new_token(TokenKind.NUMBER, text, number=float(int(text, 16)))
+            return self._new_token(
+                TokenKind.NUMBER, text, value=Number.new(float(int(text, 16)))
+            )
         match = Lexer.RE_NUMBER_DEC.match(self.source[self.position :])
         assert match is not None  # guaranteed by regexp
         text = match[0]
         self.position += len(text)
-        return self._new_token(TokenKind.NUMBER, text, number=float(text))
+        return self._new_token(TokenKind.NUMBER, text, value=Number.new(float(text)))
 
     def _lex_string_character(self) -> bytes:
         if self._is_eof():
@@ -1382,7 +1402,7 @@ class Lexer:
             string += self._lex_string_character()
         self._expect_character('"')
         literal = self.source[start : self.position]
-        return self._new_token(TokenKind.STRING, literal, string=string)
+        return self._new_token(TokenKind.STRING, literal, value=String.new(string))
 
     def _lex_raw_string_character(self) -> bytes:
         if self._is_eof():
@@ -1425,7 +1445,7 @@ class Lexer:
                 self._advance_character()
             self._expect_character("`")
             literal = self.source[start : self.position]
-        return self._new_token(TokenKind.STRING, literal, string=string)
+        return self._new_token(TokenKind.STRING, literal, value=String.new(string))
 
     def _lex_template(self) -> Token:
         start = self.position
@@ -1531,7 +1551,13 @@ class Lexer:
                 string += self._lex_raw_string_character()
             self._expect_character("`")
         literal = self.source[start : self.position]
-        return self._new_token(TokenKind.REGEXP, literal, string=string)
+        try:
+            pattern = re2.compile(string)
+        except Exception as e:
+            raise ParseError(copy(self.location), str(e))
+        return self._new_token(
+            TokenKind.REGEXP, literal, value=Regexp.new(string, pattern)
+        )
 
     def next_token(self) -> Token:
         if self.location is not None:
@@ -3284,22 +3310,18 @@ class Parser:
 
     def parse_expression_number(self) -> AstExpressionNumber:
         token = self._expect_current(TokenKind.NUMBER)
-        assert token.number is not None
-        return AstExpressionNumber(token.location, Number.new(token.number))
+        assert isinstance(token.value, Number)
+        return AstExpressionNumber(token.location, token.value)
 
     def parse_expression_string(self) -> AstExpressionString:
         token = self._expect_current(TokenKind.STRING)
-        assert token.string is not None
-        return AstExpressionString(token.location, String.new(token.string))
+        assert isinstance(token.value, String)
+        return AstExpressionString(token.location, token.value)
 
     def parse_expression_regexp(self) -> AstExpressionRegexp:
         token = self._expect_current(TokenKind.REGEXP)
-        assert token.string is not None
-        try:
-            pattern = re2.compile(token.string)
-        except Exception as e:
-            raise ParseError(self.current_token.location, str(e))
-        return AstExpressionRegexp(token.location, Regexp.new(token.string, pattern))
+        assert isinstance(token.value, Regexp)
+        return AstExpressionRegexp(token.location, token.value)
 
     def parse_expression_vector(
         self, mode: ParseMode = ParseMode.MELLIFERA
@@ -5383,6 +5405,22 @@ def builtin_ty_is_function(value: Value) -> Union[Value, Error]:
     return Boolean.new(isinstance(value, (Function, Builtin)))
 
 
+def dump_tokens_source(source: str, loc: Optional[SourceLocation] = None):
+    tokens = Vector.new()
+    lexer = Lexer(source, loc)
+    token = lexer.next_token()
+    while token.kind != TokenKind.EOF:
+        tokens.data.append(token.into_value())
+        token = lexer.next_token()
+    print(tokens.comb_encode(indent_text=" " * 4))
+
+
+def dump_tokens_file(path: Union[str, os.PathLike]):
+    with open(path, "r", encoding="utf-8") as f:
+        source = f.read()
+    dump_tokens_source(source, SourceLocation(str(path), 1))
+
+
 def eval_source(
     source: str,
     env: Optional[Environment] = None,
@@ -5837,6 +5875,7 @@ usage:
 
 options:
   -c, --command     Execute the provided command.
+  --dump-tokens     Dump a comb-encoded a vector of lexed tokens to stdout.
   -h, --help        Display this help text and exit.
     """.replace(
         "${PROGRAM}", sys.argv[0]
@@ -5849,6 +5888,7 @@ def main() -> None:
     cmds: Optional[str] = None  # command string
     file: Optional[str] = None  # mf source file
     argv: list[str] = []  # program arguments
+    dump_tokens = False
     argi = 1
     while argi < len(sys.argv):
         arg = sys.argv[argi]
@@ -5890,6 +5930,12 @@ def main() -> None:
             usage(file=sys.stderr)
             sys.exit(1)
 
+        # -dump-tokens
+        if m := re.match(r"^-+dump-tokens$", arg):
+            dump_tokens = True
+            argi += 1
+            continue
+
         # -h, -help
         if m := re.match(r"^-+h(?:elp)?(?:=(.*))?$", arg):
             usage(file=sys.stdout)
@@ -5916,10 +5962,18 @@ def main() -> None:
 
     if cmds is not None or file is not None:
         try:
-            if cmds is not None:
+            if cmds is not None and dump_tokens:
+                dump_tokens_source(cmds, SourceLocation("<command>", 1))
+                return
+            elif cmds is not None:
                 result = eval_source(cmds, env, SourceLocation("<command>", 1))
-            if file is not None:
+            if file is not None and dump_tokens:
+                dump_tokens_file(file)
+                return
+            elif file is not None:
                 result = eval_file(file, env)
+            else:
+                raise Exception("unreachable")
         except AssertionError:
             raise
         except KeyboardInterrupt:
@@ -5940,6 +5994,12 @@ def main() -> None:
                     s += f" called from {element.location}"
                 print(s, file=sys.stderr)
             sys.exit(1)
+    elif dump_tokens:
+        print(
+            "error: requested token dump without a command or file path",
+            file=sys.stderr,
+        )
+        sys.exit(1)
     else:
         HOME = os.environ.get("MELLIFERA_HOME", Path.home())
         HISTFILE = Path(HOME) / ".mellifera-history"
