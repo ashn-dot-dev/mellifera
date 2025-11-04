@@ -5611,6 +5611,16 @@ let iterator = type {
         }
         return true;
     },
+    .map = function(self, func) {
+        let map_iterator = type extends(iterator, {
+            .next = function(self) {
+                return func(self.base.next());
+            },
+        });
+        return new map_iterator {
+            .base = self,
+        };
+    },
     .filter = function(self, func) {
         let filter_iterator = type extends(iterator, {
             .next = function(self) {
@@ -5622,16 +5632,6 @@ let iterator = type {
             },
         });
         return new filter_iterator {
-            .base = self,
-        };
-    },
-    .transform = function(self, func) {
-        let transform_iterator = type extends(iterator, {
-            .next = function(self) {
-                return func(self.base.next());
-            },
-        });
-        return new transform_iterator {
             .base = self,
         };
     },

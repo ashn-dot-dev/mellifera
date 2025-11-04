@@ -28,10 +28,10 @@ for x in c {
     dumpln(x);
 }
 ################################################################################
-# {"eoi": iterator::eoi, "next": iterator::next, "count": iterator::count, "contains": iterator::contains, "any": iterator::any, "all": iterator::all, "filter": iterator::filter, "transform": iterator::transform, "into_vector": iterator::into_vector}
+# {"eoi": iterator::eoi, "next": iterator::next, "count": iterator::count, "contains": iterator::contains, "any": iterator::any, "all": iterator::all, "map": iterator::map, "filter": iterator::filter, "into_vector": iterator::into_vector}
 # "unimplemented iterator::next"
 # null
-# {"eoi": iterator::eoi, "next": next@[iterator.test.mf, line 12], "count": iterator::count, "contains": iterator::contains, "any": iterator::any, "all": iterator::all, "filter": iterator::filter, "transform": iterator::transform, "into_vector": iterator::into_vector, "init": init@[iterator.test.mf, line 6]}
+# {"eoi": iterator::eoi, "next": next@[iterator.test.mf, line 12], "count": iterator::count, "contains": iterator::contains, "any": iterator::any, "all": iterator::all, "map": iterator::map, "filter": iterator::filter, "into_vector": iterator::into_vector, "init": init@[iterator.test.mf, line 6]}
 # {"current": 5, "max": 10}
 # 5
 # 6

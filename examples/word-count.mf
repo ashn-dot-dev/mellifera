@@ -54,7 +54,7 @@ if file == null and text == null {
 let occurrences = Map{};
 let words = re::split(text, r`\s+`)
     .iterator()
-    .transform(function(word) {
+    .map(function(word) {
         return re::replace(word.to_lower(), r`[^\w]`, "");
     })
     .filter(function(word) {
@@ -74,7 +74,7 @@ let ordered = occurrences
         return rhs.value - lhs.value;
     })
     .iterator()
-    .transform(function(pair) {
+    .map(function(pair) {
         return {
             .word = pair.key,
             .count = pair.value,
