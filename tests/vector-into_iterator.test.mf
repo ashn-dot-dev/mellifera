@@ -1,4 +1,4 @@
-for x in ["abc", "def", "hij"].iterator() {
+for x in ["abc", "def", "hij"].into_iterator() {
     dumpln(x);
 }
 ################################################################################

@@ -4431,8 +4431,8 @@ def builtin_vector_sorted_by():
     """
 
 
-@builtin_from_source("vector::iterator")
-def builtin_vector_iterator():
+@builtin_from_source("vector::into_iterator")
+def builtin_vector_into_iterator():
     return """
     return function(self) {
         let vector_iterator = type extends(iterator, {
@@ -5532,7 +5532,7 @@ _VECTOR_META = MetaMap(
         String("sorted_by"): builtin_vector_sorted_by(
             Environment(BASE_ENVIRONMENT), evaluated=BuiltinExplicitUninitialized()
         ),
-        String("iterator"): builtin_vector_iterator(
+        String("into_iterator"): builtin_vector_into_iterator(
             Environment(BASE_ENVIRONMENT), evaluated=BuiltinExplicitUninitialized()
         ),
     },
@@ -5829,7 +5829,7 @@ def initialize_builtin_from_source(value: Value):
 
 initialize_builtin_from_source(_VECTOR_META[String("sorted")])
 initialize_builtin_from_source(_VECTOR_META[String("sorted_by")])
-initialize_builtin_from_source(_VECTOR_META[String("iterator")])
+initialize_builtin_from_source(_VECTOR_META[String("into_iterator")])
 initialize_builtin_from_source(_MAP_META[String("union")])
 initialize_builtin_from_source(_SET_META[String("union")])
 initialize_builtin_from_source(_SET_META[String("intersection")])
