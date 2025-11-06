@@ -3,6 +3,7 @@ package mellifera
 import (
 	"fmt"
 	"math"
+	"regexp"
 	"strconv"
 )
 
@@ -60,6 +61,14 @@ func (ctx *Context) NewNumber(data float64) *Number {
 
 func (ctx *Context) NewString(data string) *String {
 	return &String{data}
+}
+
+func (ctx *Context) NewRegexp(text string) (*Regexp, error) {
+	data, err := regexp.Compile(text)
+	if err != nil {
+		return nil, fmt.Errorf("invalid regular expression \"%s\"", escape(text))
+	}
+	return &Regexp{data}, nil
 }
 
 type Null struct{}
@@ -133,5 +142,21 @@ func (self *String) String() string {
 }
 
 func (self *String) Copy() Value {
+	return self // immutable value
+}
+
+type Regexp struct {
+	data *regexp.Regexp
+}
+
+func (self *Regexp) Typename() string {
+	return "regexp"
+}
+
+func (self *Regexp) String() string {
+	return fmt.Sprintf("r\"%s\"", escape(self.data.String()))
+}
+
+func (self *Regexp) Copy() Value {
 	return self // immutable value
 }

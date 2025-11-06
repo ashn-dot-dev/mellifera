@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNullTypename(t *testing.T) {
@@ -125,4 +126,31 @@ func TestStringCopy(t *testing.T) {
 	ctx := &Context{}
 	string := ctx.NewString("foo")
 	assert.Same(t, string, string.Copy())
+}
+
+func TestRegexpTypename(t *testing.T) {
+	ctx := &Context{}
+	regexp, err := ctx.NewRegexp(`^\w+$`)
+	require.NoError(t, err)
+	assert.Equal(t, "regexp", regexp.Typename())
+}
+
+func TestRegexpString(t *testing.T) {
+	ctx := &Context{}
+	regexp, err := ctx.NewRegexp(`^\w+$`)
+	require.NoError(t, err)
+	assert.Equal(t, `r"^\\w+$"`, regexp.String())
+}
+
+func TestRegexpCopy(t *testing.T) {
+	ctx := &Context{}
+	regexp, err := ctx.NewRegexp(`^\w+$`)
+	require.NoError(t, err)
+	assert.Same(t, regexp, regexp.Copy())
+}
+
+func TestRegexpInvalidText(t *testing.T) {
+	ctx := &Context{}
+	_, err := ctx.NewRegexp(`\q`)
+	assert.EqualError(t, err, `invalid regular expression "\\q"`)
 }
