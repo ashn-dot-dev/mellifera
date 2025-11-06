@@ -108,3 +108,21 @@ func TestNumberCopy(t *testing.T) {
 	number := ctx.NewNumber(123.456)
 	assert.Same(t, number, number.Copy())
 }
+
+func TestStringTypename(t *testing.T) {
+	ctx := &Context{}
+	string := ctx.NewString("foo")
+	assert.Equal(t, "string", string.Typename())
+}
+
+func TestStringString(t *testing.T) {
+	ctx := &Context{}
+	string := ctx.NewString("foo\t\n\"\\bar")
+	assert.Equal(t, "\"foo\\t\\n\\\"\\\\bar\"", string.String())
+}
+
+func TestStringCopy(t *testing.T) {
+	ctx := &Context{}
+	string := ctx.NewString("foo")
+	assert.Same(t, string, string.Copy())
+}

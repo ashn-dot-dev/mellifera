@@ -1,9 +1,34 @@
 package mellifera
 
 import (
+	"fmt"
 	"math"
 	"strconv"
 )
+
+func escape(s string) string {
+	result := ""
+	for _, r := range s {
+		if r == '\t' {
+			result += "\\t"
+			continue
+		}
+		if r == '\n' {
+			result += "\\n"
+			continue
+		}
+		if r == '"' {
+			result += "\\\""
+			continue
+		}
+		if r == '\\' {
+			result += "\\\\"
+			continue
+		}
+		result += string(r)
+	}
+	return result
+}
 
 type Value interface {
 	Typename() string
@@ -31,6 +56,10 @@ func (ctx *Context) NewBoolean(data bool) *Boolean {
 
 func (ctx *Context) NewNumber(data float64) *Number {
 	return &Number{data}
+}
+
+func (ctx *Context) NewString(data string) *String {
+	return &String{data}
 }
 
 type Null struct{}
@@ -88,5 +117,21 @@ func (self *Number) String() string {
 }
 
 func (self *Number) Copy() Value {
+	return self // immutable value
+}
+
+type String struct {
+	data string
+}
+
+func (self *String) Typename() string {
+	return "string"
+}
+
+func (self *String) String() string {
+	return fmt.Sprintf("\"%s\"", escape(self.data))
+}
+
+func (self *String) Copy() Value {
 	return self // immutable value
 }
