@@ -1,6 +1,7 @@
 package mellifera
 
 import (
+	"math"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -58,4 +59,52 @@ func TestBooleanCopy(t *testing.T) {
 		boolean := ctx.NewBoolean(false)
 		assert.Same(t, boolean, boolean.Copy())
 	}
+}
+
+func TestNumberTypename(t *testing.T) {
+	ctx := &Context{}
+	number := ctx.NewNumber(123.456)
+	assert.Equal(t, "number", number.Typename())
+}
+
+func TestNumberString(t *testing.T) {
+	ctx := &Context{}
+	{
+		number := ctx.NewNumber(0)
+		assert.Equal(t, "0", number.String())
+	}
+	{
+		number := ctx.NewNumber(+1)
+		assert.Equal(t, "1", number.String())
+	}
+	{
+		number := ctx.NewNumber(-1)
+		assert.Equal(t, "-1", number.String())
+	}
+	{
+		number := ctx.NewNumber(+123.456)
+		assert.Equal(t, "123.456", number.String())
+	}
+	{
+		number := ctx.NewNumber(-123.456)
+		assert.Equal(t, "-123.456", number.String())
+	}
+	{
+		number := ctx.NewNumber(math.NaN())
+		assert.Equal(t, "NaN", number.String())
+	}
+	{
+		number := ctx.NewNumber(math.Inf(+1))
+		assert.Equal(t, "Inf", number.String())
+	}
+	{
+		number := ctx.NewNumber(math.Inf(-1))
+		assert.Equal(t, "-Inf", number.String())
+	}
+}
+
+func TestNumberCopy(t *testing.T) {
+	ctx := &Context{}
+	number := ctx.NewNumber(123.456)
+	assert.Same(t, number, number.Copy())
 }

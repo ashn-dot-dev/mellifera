@@ -1,5 +1,10 @@
 package mellifera
 
+import (
+	"math"
+	"strconv"
+)
+
 type Value interface {
 	Typename() string
 	String() string
@@ -22,6 +27,10 @@ func (ctx *Context) NewNull() *Null {
 
 func (ctx *Context) NewBoolean(data bool) *Boolean {
 	return &Boolean{data}
+}
+
+func (ctx *Context) NewNumber(data float64) *Number {
+	return &Number{data}
 }
 
 type Null struct{}
@@ -54,5 +63,30 @@ func (self *Boolean) String() string {
 }
 
 func (self *Boolean) Copy() Value {
+	return self // immutable value
+}
+
+type Number struct {
+	data float64
+}
+
+func (self *Number) Typename() string {
+	return "number"
+}
+
+func (self *Number) String() string {
+	if math.IsNaN(self.data) {
+		return "NaN"
+	}
+	if self.data == math.Inf(+1) {
+		return "Inf"
+	}
+	if self.data == math.Inf(-1) {
+		return "-Inf"
+	}
+	return strconv.FormatFloat(self.data, 'g', -1, 64)
+}
+
+func (self *Number) Copy() Value {
 	return self // immutable value
 }
