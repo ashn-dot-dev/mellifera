@@ -3,6 +3,7 @@ package mellifera
 import (
 	"fmt"
 	"math"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -109,6 +110,10 @@ func (ctx *Context) NewSet(elements []Value) *Set {
 		result.Insert(element)
 	}
 	return result
+}
+
+func (ctx *Context) NewReference(value Value) *Reference {
+	return &Reference{value}
 }
 
 type Null struct{}
@@ -733,4 +738,32 @@ func (self *Set) Remove(value Value) {
 
 	self.CopyOnWrite()
 	self.data.Remove(value)
+}
+
+type Reference struct {
+	data Value
+}
+
+func (self *Reference) Typename() string {
+	return "reference"
+}
+
+func (self *Reference) String() string {
+	return fmt.Sprintf("reference@%p", self.data)
+}
+
+func (self *Reference) Copy() Value {
+	return self // immutable value
+}
+
+func (self *Reference) CopyOnWrite() {
+	// immutable value
+}
+
+func (self *Reference) Equal(other Value) bool {
+	othr, ok := other.(*Reference)
+	if !ok {
+		return false
+	}
+	return reflect.ValueOf(self.data).Pointer() == reflect.ValueOf(othr.data).Pointer()
 }

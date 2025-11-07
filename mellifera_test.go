@@ -2,6 +2,7 @@ package mellifera
 
 import (
 	"math"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -511,4 +512,22 @@ func TestSetCopyOnWrite(t *testing.T) {
 	require.True(t, c.Lookup(ctx.NewNumber(123.456)).Equal(ctx.NewNumber(123.456)))
 	require.Nil(t, c.Lookup(ctx.NewString("foo")))
 	require.True(t, c.Lookup(ctx.NewVector(nil)).Equal(ctx.NewVector(nil)))
+}
+
+func TestReferenceTypename(t *testing.T) {
+	ctx := &Context{}
+	reference := ctx.NewReference(ctx.NewNumber(123.456))
+	assert.Equal(t, "reference", reference.Typename())
+}
+
+func TestReferenceString(t *testing.T) {
+	ctx := &Context{}
+	reference := ctx.NewReference(ctx.NewNumber(123.456))
+	assert.True(t, strings.HasPrefix(reference.String(), "reference@"))
+}
+
+func TestReferenceCopy(t *testing.T) {
+	ctx := &Context{}
+	reference := ctx.NewReference(ctx.NewNumber(123.456))
+	assert.Same(t, reference, reference.Copy())
 }
