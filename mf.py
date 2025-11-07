@@ -5,7 +5,7 @@ from collections import UserDict, UserList
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from string import ascii_letters, digits, printable, whitespace
+from string import ascii_letters, digits, whitespace
 from types import ModuleType
 from typing import (
     Any,
@@ -1049,7 +1049,6 @@ class SourceLocation:
 
 class TokenKind(enum.Enum):
     # Meta
-    ILLEGAL = "illegal"
     EOF = "eof"
     # Identifiers and Literals
     IDENTIFIER = "identifier"
@@ -1156,15 +1155,6 @@ class Token:
     def __str__(self):
         if self.kind == TokenKind.EOF:
             return "end-of-file"
-        if self.kind == TokenKind.ILLEGAL:
-
-            def prettyable(c):
-                return c in printable and c not in whitespace
-
-            def prettyrepr(c):
-                return c if prettyable(c) else f"{ord(c):#04x}"
-
-            return "".join(map(prettyrepr, self.literal))
         if self.kind == TokenKind.IDENTIFIER:
             return f"{self.literal}"
         if self.kind == TokenKind.NUMBER:
@@ -1677,9 +1667,10 @@ class Lexer:
             self._advance_character()
             return self._new_token(TokenKind.RBRACKET, str(TokenKind.RBRACKET))
 
-        token = self._new_token(TokenKind.ILLEGAL, self._current_character())
-        self._advance_character()
-        return token
+        raise ParseError(
+            self.location,
+            f"unknown token {quote(self._current_character())}",
+        )
 
 
 @dataclass
@@ -3174,7 +3165,7 @@ class Parser:
 
     def __init__(self, lexer: Lexer):
         self.lexer: Lexer = lexer
-        self.current_token: Token = Token(TokenKind.ILLEGAL, "DEFAULT CURRENT TOKEN")
+        self.current_token: Token = Token(TokenKind.EOF, "DEFAULT CURRENT TOKEN")
 
         self._advance_token()
 
