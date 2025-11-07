@@ -154,3 +154,102 @@ func TestRegexpInvalidText(t *testing.T) {
 	_, err := ctx.NewRegexp(`\q`)
 	assert.EqualError(t, err, `invalid regular expression "\\q"`)
 }
+
+func TestVectorConstructorNilElements(t *testing.T) {
+	ctx := &Context{}
+	vector := ctx.NewVector(nil)
+	assert.Equal(t, 0, vector.Count())
+}
+
+func TestVectorConstructorNonNilElements(t *testing.T) {
+	ctx := &Context{}
+	{
+		vector := ctx.NewVector([]Value{})
+		assert.Equal(t, 0, vector.Count())
+	}
+	{
+		vector := ctx.NewVector([]Value{
+			ctx.NewString("foo"),
+			ctx.NewString("bar"),
+			ctx.NewString("baz"),
+		})
+		assert.Equal(t, 3, vector.Count())
+	}
+}
+
+func TestVectorTypename(t *testing.T) {
+	ctx := &Context{}
+	vector := ctx.NewVector(nil)
+	assert.Equal(t, "vector", vector.Typename())
+}
+
+func TestVectorString(t *testing.T) {
+	ctx := &Context{}
+	{
+		vector := ctx.NewVector(nil)
+		assert.Equal(t, "[]", vector.String())
+	}
+	{
+		vector := ctx.NewVector([]Value{})
+		assert.Equal(t, "[]", vector.String())
+	}
+	{
+		vector := ctx.NewVector([]Value{
+			ctx.NewString("foo"),
+			ctx.NewString("bar"),
+			ctx.NewString("baz"),
+		})
+		assert.Equal(t, `["foo", "bar", "baz"]`, vector.String())
+	}
+}
+
+func TestVectorCopy(t *testing.T) {
+	ctx := &Context{}
+	{
+		vector := ctx.NewVector(nil)
+		require.Equal(t, vector.Count(), vector.Copy().(*Vector).Count())
+	}
+	{
+		vector := ctx.NewVector([]Value{})
+		require.Equal(t, vector.Count(), vector.Copy().(*Vector).Count())
+	}
+	{
+		vector := ctx.NewVector([]Value{
+			ctx.NewString("foo"),
+			ctx.NewString("bar"),
+			ctx.NewString("baz"),
+		})
+		require.Equal(t, vector.Count(), vector.Copy().(*Vector).Count())
+		assert.Equal(t, "foo", vector.Get(0).(*String).data)
+		assert.Equal(t, "bar", vector.Get(1).(*String).data)
+		assert.Equal(t, "baz", vector.Get(2).(*String).data)
+	}
+}
+
+func TestVectorCopyOnWrite(t *testing.T) {
+	ctx := &Context{}
+	a := ctx.NewVector([]Value{
+		ctx.NewString("foo"),
+		ctx.NewString("bar"),
+		ctx.NewString("baz"),
+	})
+	b := a.Copy().(*Vector)
+	require.Equal(t, a.Count(), b.Count())
+	require.Equal(t, 2, a.data.uses)
+	require.Equal(t, 2, b.data.uses)
+	require.Same(t, a.data, b.data)
+
+	b.Set(1, ctx.NewNumber(123.456))
+	require.Equal(t, a.Count(), b.Count())
+	require.Equal(t, 1, a.data.uses)
+	require.Equal(t, 1, b.data.uses)
+	require.NotSame(t, a.data, b.data)
+
+	assert.Equal(t, "foo", a.Get(0).(*String).data)
+	assert.Equal(t, "bar", a.Get(1).(*String).data)
+	assert.Equal(t, "baz", a.Get(2).(*String).data)
+
+	assert.Equal(t, "foo", b.Get(0).(*String).data)
+	assert.Equal(t, 123.456, b.Get(1).(*Number).data)
+	assert.Equal(t, "baz", b.Get(2).(*String).data)
+}

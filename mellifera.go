@@ -5,6 +5,7 @@ import (
 	"math"
 	"regexp"
 	"strconv"
+	"strings"
 )
 
 func escape(s string) string {
@@ -35,6 +36,7 @@ type Value interface {
 	Typename() string
 	String() string
 	Copy() Value
+	CopyOnWrite()
 }
 
 type Context struct {
@@ -71,6 +73,19 @@ func (ctx *Context) NewRegexp(text string) (*Regexp, error) {
 	return &Regexp{data}, nil
 }
 
+func (ctx *Context) NewVector(elements []Value) *Vector {
+	if elements == nil {
+		return &Vector{}
+	}
+
+	return &Vector{
+		data: &VectorData{
+			elements: elements,
+			uses:     1,
+		},
+	}
+}
+
 type Null struct{}
 
 func (self *Null) Typename() string {
@@ -83,6 +98,10 @@ func (self *Null) String() string {
 
 func (self *Null) Copy() Value {
 	return self // immutable value
+}
+
+func (self *Null) CopyOnWrite() {
+	// immutable value
 }
 
 type Boolean struct {
@@ -102,6 +121,10 @@ func (self *Boolean) String() string {
 
 func (self *Boolean) Copy() Value {
 	return self // immutable value
+}
+
+func (self *Boolean) CopyOnWrite() {
+	// immutable value
 }
 
 type Number struct {
@@ -129,6 +152,10 @@ func (self *Number) Copy() Value {
 	return self // immutable value
 }
 
+func (self *Number) CopyOnWrite() {
+	// immutable value
+}
+
 type String struct {
 	data string
 }
@@ -145,6 +172,10 @@ func (self *String) Copy() Value {
 	return self // immutable value
 }
 
+func (self *String) CopyOnWrite() {
+	// immutable value
+}
+
 type Regexp struct {
 	data *regexp.Regexp
 }
@@ -159,4 +190,75 @@ func (self *Regexp) String() string {
 
 func (self *Regexp) Copy() Value {
 	return self // immutable value
+}
+
+func (self *Regexp) CopyOnWrite() {
+	// immutable value
+}
+
+type VectorData struct {
+	elements []Value
+	uses     int
+}
+
+type Vector struct {
+	data *VectorData
+}
+
+func (self *Vector) Typename() string {
+	return "vector"
+}
+
+func (self *Vector) String() string {
+	if self.data == nil {
+		return "[]"
+	}
+
+	s := make([]string, len(self.data.elements))
+	for i, element := range self.data.elements {
+		s[i] = element.String()
+	}
+	return fmt.Sprintf("[%s]", strings.Join(s, ", "))
+}
+
+func (self *Vector) Copy() Value {
+	if self.data == nil {
+		return &Vector{}
+	}
+
+	self.data.uses += 1
+	return &Vector{
+		data: self.data,
+	}
+}
+
+func (self *Vector) CopyOnWrite() {
+	if self.data != nil && self.data.uses > 1 {
+		self.data.uses -= 1
+		elements := make([]Value, len(self.data.elements))
+		for i, element := range self.data.elements {
+			elements[i] = element.Copy()
+		}
+		self.data = &VectorData{
+			elements: elements,
+			uses:     1,
+		}
+	}
+}
+
+func (self *Vector) Count() int {
+	if self.data == nil {
+		return 0
+	}
+
+	return len(self.data.elements)
+}
+
+func (self *Vector) Get(index int) Value {
+	return self.data.elements[index]
+}
+
+func (self *Vector) Set(index int, value Value) {
+	self.CopyOnWrite()
+	self.data.elements[index] = value
 }
