@@ -382,3 +382,133 @@ func TestMapCopyOnWrite(t *testing.T) {
 	require.Nil(t, c.Lookup(ctx.NewString("foo")))
 	require.True(t, c.Lookup(ctx.NewVector(nil)).Equal(ctx.NewString("hij")))
 }
+
+func TestSetConstructorNilElements(t *testing.T) {
+	ctx := &Context{}
+	set := ctx.NewSet(nil)
+	require.Equal(t, 0, set.Count())
+
+	require.Nil(t, set.Lookup(ctx.NewNull()))
+	require.Nil(t, set.Lookup(ctx.NewNumber(456.123)))
+}
+
+func TestSetConstructorNonNilElements(t *testing.T) {
+	ctx := &Context{}
+	{
+		set := ctx.NewSet([]Value{})
+		assert.Equal(t, 0, set.Count())
+	}
+	{
+		set := ctx.NewSet([]Value{
+			ctx.NewNumber(123.456),
+			ctx.NewString("foo"),
+			ctx.NewVector(nil),
+		})
+		require.Equal(t, 3, set.Count())
+
+		require.True(t, set.Lookup(ctx.NewNumber(123.456)).Equal(ctx.NewNumber(123.456)))
+		require.True(t, set.Lookup(ctx.NewString("foo")).Equal(ctx.NewString("foo")))
+		require.True(t, set.Lookup(ctx.NewVector(nil)).Equal(ctx.NewVector(nil)))
+
+		require.Nil(t, set.Lookup(ctx.NewNull()))
+		require.Nil(t, set.Lookup(ctx.NewNumber(456.123)))
+	}
+}
+
+func TestSetTypename(t *testing.T) {
+	ctx := &Context{}
+	set := ctx.NewSet(nil)
+	assert.Equal(t, "set", set.Typename())
+}
+
+func TestSetString(t *testing.T) {
+	ctx := &Context{}
+	{
+		set := ctx.NewSet(nil)
+		assert.Equal(t, "Set{}", set.String())
+	}
+	{
+		set := ctx.NewSet([]Value{})
+		assert.Equal(t, "Set{}", set.String())
+	}
+	{
+		set := ctx.NewSet([]Value{
+			ctx.NewNumber(123.456),
+			ctx.NewString("foo"),
+			ctx.NewVector(nil),
+		})
+		assert.Equal(t, `{123.456, "foo", []}`, set.String())
+	}
+}
+
+func TestSetCopy(t *testing.T) {
+	ctx := &Context{}
+	{
+		set := ctx.NewSet(nil)
+		require.Equal(t, set.Count(), set.Copy().(*Set).Count())
+	}
+	{
+		set := ctx.NewSet([]Value{})
+		require.Equal(t, set.Count(), set.Copy().(*Set).Count())
+	}
+	{
+		set := ctx.NewSet([]Value{
+			ctx.NewNumber(123.456),
+			ctx.NewString("foo"),
+			ctx.NewVector(nil),
+		})
+		require.Equal(t, set.Count(), set.Copy().(*Set).Count())
+
+		require.True(t, set.Copy().(*Set).Lookup(ctx.NewNumber(123.456)).Equal(ctx.NewNumber(123.456)))
+		require.True(t, set.Copy().(*Set).Lookup(ctx.NewString("foo")).Equal(ctx.NewString("foo")))
+		require.True(t, set.Copy().(*Set).Lookup(ctx.NewVector(nil)).Equal(ctx.NewVector(nil)))
+
+		require.Nil(t, set.Copy().(*Set).Lookup(ctx.NewNull()))
+		require.Nil(t, set.Copy().(*Set).Lookup(ctx.NewNumber(456.123)))
+	}
+}
+
+func TestSetCopyOnWrite(t *testing.T) {
+	ctx := &Context{}
+	a := ctx.NewSet([]Value{
+		ctx.NewNumber(123.456),
+		ctx.NewString("foo"),
+		ctx.NewVector(nil),
+	})
+	b := a.Copy().(*Set)
+	require.Equal(t, a.Count(), b.Count())
+	require.Equal(t, 2, a.data.uses)
+	require.Equal(t, 2, b.data.uses)
+	require.Same(t, a.data, b.data)
+
+	b.Insert(ctx.NewString("bar"))
+	require.Equal(t, a.Count()+1, b.Count())
+	require.Equal(t, 1, a.data.uses)
+	require.Equal(t, 1, b.data.uses)
+	require.NotSame(t, a.data, b.data)
+
+	require.True(t, a.Lookup(ctx.NewNumber(123.456)).Equal(ctx.NewNumber(123.456)))
+	require.True(t, a.Lookup(ctx.NewString("foo")).Equal(ctx.NewString("foo")))
+	require.True(t, a.Lookup(ctx.NewVector(nil)).Equal(ctx.NewVector(nil)))
+
+	require.True(t, b.Lookup(ctx.NewNumber(123.456)).Equal(ctx.NewNumber(123.456)))
+	require.True(t, b.Lookup(ctx.NewString("foo")).Equal(ctx.NewString("foo")))
+	require.True(t, b.Lookup(ctx.NewVector(nil)).Equal(ctx.NewVector(nil)))
+	require.True(t, b.Lookup(ctx.NewString("bar")).Equal(ctx.NewString("bar")))
+
+	c := a.Copy().(*Set)
+	c.Remove(ctx.NewString("foo"))
+
+	require.Equal(t, a.Count()-1, c.Count())
+	require.Equal(t, 1, a.data.uses)
+	require.Equal(t, 1, c.data.uses)
+	require.NotSame(t, a.data, c.data)
+
+	require.True(t, a.Lookup(ctx.NewNumber(123.456)).Equal(ctx.NewNumber(123.456)))
+	require.True(t, a.Lookup(ctx.NewString("foo")).Equal(ctx.NewString("foo")))
+	require.True(t, a.Lookup(ctx.NewVector(nil)).Equal(ctx.NewVector(nil)))
+
+	require.True(t, c.Lookup(ctx.NewNumber(123.456)).Equal(ctx.NewNumber(123.456)))
+	require.Nil(t, c.Lookup(ctx.NewString("foo")))
+	require.True(t, c.Lookup(ctx.NewVector(nil)).Equal(ctx.NewVector(nil)))
+}

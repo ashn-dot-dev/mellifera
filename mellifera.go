@@ -99,6 +99,18 @@ func (ctx *Context) NewMap(elements []MapPair) *Map {
 	return result
 }
 
+func (ctx *Context) NewSet(elements []Value) *Set {
+	if elements == nil || len(elements) == 0 {
+		return &Set{}
+	}
+
+	result := &Set{}
+	for _, element := range elements {
+		result.Insert(element)
+	}
+	return result
+}
+
 type Null struct{}
 
 func (self *Null) Typename() string {
@@ -531,4 +543,194 @@ func (self *Map) Remove(key Value) {
 
 	self.CopyOnWrite()
 	self.data.Remove(key)
+}
+
+type SetElement struct {
+	prev  *SetElement
+	next  *SetElement
+	value Value
+}
+
+// Doubly-linked list of elements in insertion order. This SetData
+// implementation is purposefully designed to be stupid simple with the intent
+// to replace the implementation with something more performant later.
+type SetData struct {
+	head  *SetElement
+	tail  *SetElement
+	count int
+	uses  int
+}
+
+func (self *SetData) Lookup(value Value) *SetElement {
+	cur := self.head
+	for cur != nil {
+		if cur.value.Equal(value) {
+			return cur
+		}
+		cur = cur.next
+	}
+	return nil
+}
+
+func (self *SetData) Insert(value Value) {
+	if self.head == nil {
+		element := &SetElement{
+			value: value,
+		}
+		self.head = element
+		self.tail = element
+		self.count = 1
+		return
+	}
+
+	lookup := self.Lookup(value)
+	if lookup == nil {
+		element := &SetElement{
+			prev:  self.tail,
+			value: value,
+		}
+		self.tail.next = element
+		self.tail = element
+		self.count += 1
+		return
+	}
+
+	lookup.value = value
+}
+
+func (self *SetData) Remove(value Value) {
+	if self.head == nil {
+		return
+	}
+
+	lookup := self.Lookup(value)
+	if lookup == nil {
+		return
+	}
+
+	if self.head == lookup {
+		self.head = lookup.next
+	}
+	if self.tail == lookup {
+		self.tail = lookup.prev
+	}
+	if lookup.prev != nil {
+		lookup.prev.next = lookup.next
+	}
+	if lookup.next != nil {
+		lookup.next.prev = lookup.prev
+	}
+	self.count -= 1
+}
+
+type Set struct {
+	data *SetData
+}
+
+func (self *Set) Typename() string {
+	return "set"
+}
+
+func (self *Set) String() string {
+	if self.data == nil || self.data.count == 0 {
+		return "Set{}"
+	}
+
+	s := make([]string, 0)
+	cur := self.data.head
+	for cur != nil {
+		s = append(s, cur.value.String())
+		cur = cur.next
+	}
+	return fmt.Sprintf("{%s}", strings.Join(s, ", "))
+}
+
+func (self *Set) Copy() Value {
+	if self.data == nil {
+		return &Set{}
+	}
+
+	self.data.uses += 1
+	return &Set{
+		data: self.data,
+	}
+}
+
+func (self *Set) CopyOnWrite() {
+	if self.data != nil && self.data.uses > 1 {
+		self.data.uses -= 1
+		data := &SetData{
+			uses: 1,
+		}
+
+		cur := self.data.head
+		for cur != nil {
+			data.Insert(cur.value.Copy())
+			cur = cur.next
+		}
+		self.data = data
+	}
+}
+
+func (self *Set) Equal(other Value) bool {
+	othr, ok := other.(*Set)
+	if !ok {
+		return false
+	}
+	if self.Count() != othr.Count() {
+		return false
+	}
+
+	selfCur := self.data.head
+	othrCur := othr.data.head
+	for selfCur != nil {
+		if !selfCur.value.Equal(othrCur.value) {
+			return false
+		}
+		selfCur = selfCur.next
+		othrCur = othrCur.next
+	}
+
+	return true
+}
+
+func (self *Set) Count() int {
+	if self.data == nil {
+		return 0
+	}
+
+	return self.data.count
+}
+
+func (self *Set) Lookup(value Value) Value {
+	if self.data == nil {
+		return nil
+	}
+
+	element := self.data.Lookup(value)
+	if element == nil {
+		return nil
+	}
+
+	return element.value
+}
+
+func (self *Set) Insert(value Value) {
+	self.CopyOnWrite()
+	if self.data == nil {
+		self.data = &SetData{
+			uses: 1,
+		}
+	}
+
+	self.data.Insert(value)
+}
+
+func (self *Set) Remove(value Value) {
+	if self.data == nil {
+		return
+	}
+
+	self.CopyOnWrite()
+	self.data.Remove(value)
 }
