@@ -220,9 +220,9 @@ func TestVectorCopy(t *testing.T) {
 			ctx.NewString("baz"),
 		})
 		require.Equal(t, vector.Count(), vector.Copy().(*Vector).Count())
-		assert.Equal(t, "foo", vector.Get(0).(*String).data)
-		assert.Equal(t, "bar", vector.Get(1).(*String).data)
-		assert.Equal(t, "baz", vector.Get(2).(*String).data)
+		assert.Equal(t, "foo", vector.Copy().(*Vector).Get(0).(*String).data)
+		assert.Equal(t, "bar", vector.Copy().(*Vector).Get(1).(*String).data)
+		assert.Equal(t, "baz", vector.Copy().(*Vector).Get(2).(*String).data)
 	}
 }
 
@@ -252,4 +252,133 @@ func TestVectorCopyOnWrite(t *testing.T) {
 	assert.Equal(t, "foo", b.Get(0).(*String).data)
 	assert.Equal(t, 123.456, b.Get(1).(*Number).data)
 	assert.Equal(t, "baz", b.Get(2).(*String).data)
+}
+
+func TestMapConstructorNilElements(t *testing.T) {
+	ctx := &Context{}
+	m := ctx.NewMap(nil)
+	require.Equal(t, 0, m.Count())
+
+	require.Nil(t, m.Lookup(ctx.NewNull()))
+	require.Nil(t, m.Lookup(ctx.NewNumber(456.123)))
+}
+
+func TestMapConstructorNonNilElements(t *testing.T) {
+	ctx := &Context{}
+	{
+		m := ctx.NewMap([]MapPair{})
+		assert.Equal(t, 0, m.Count())
+	}
+	{
+		m := ctx.NewMap([]MapPair{
+			{ctx.NewNumber(123.456), ctx.NewString("abc")},
+			{ctx.NewString("foo"), ctx.NewString("def")},
+			{ctx.NewVector(nil), ctx.NewString("hij")},
+		})
+		require.Equal(t, 3, m.Count())
+
+		require.True(t, m.Lookup(ctx.NewNumber(123.456)).Equal(ctx.NewString("abc")))
+		require.True(t, m.Lookup(ctx.NewString("foo")).Equal(ctx.NewString("def")))
+		require.True(t, m.Lookup(ctx.NewVector(nil)).Equal(ctx.NewString("hij")))
+
+		require.Nil(t, m.Lookup(ctx.NewNull()))
+		require.Nil(t, m.Lookup(ctx.NewNumber(456.123)))
+	}
+}
+
+func TestMapTypename(t *testing.T) {
+	ctx := &Context{}
+	m := ctx.NewMap(nil)
+	assert.Equal(t, "map", m.Typename())
+}
+
+func TestMapString(t *testing.T) {
+	ctx := &Context{}
+	{
+		m := ctx.NewMap(nil)
+		assert.Equal(t, "Map{}", m.String())
+	}
+	{
+		m := ctx.NewMap([]MapPair{})
+		assert.Equal(t, "Map{}", m.String())
+	}
+	{
+		m := ctx.NewMap([]MapPair{
+			{ctx.NewNumber(123.456), ctx.NewString("abc")},
+			{ctx.NewString("foo"), ctx.NewString("def")},
+			{ctx.NewVector(nil), ctx.NewString("hij")},
+		})
+		assert.Equal(t, `{123.456: "abc", "foo": "def", []: "hij"}`, m.String())
+	}
+}
+
+func TestMapCopy(t *testing.T) {
+	ctx := &Context{}
+	{
+		m := ctx.NewMap(nil)
+		require.Equal(t, m.Count(), m.Copy().(*Map).Count())
+	}
+	{
+		m := ctx.NewMap([]MapPair{})
+		require.Equal(t, m.Count(), m.Copy().(*Map).Count())
+	}
+	{
+		m := ctx.NewMap([]MapPair{
+			{ctx.NewNumber(123.456), ctx.NewString("abc")},
+			{ctx.NewString("foo"), ctx.NewString("def")},
+			{ctx.NewVector(nil), ctx.NewString("hij")},
+		})
+		require.Equal(t, m.Count(), m.Copy().(*Map).Count())
+
+		require.True(t, m.Copy().(*Map).Lookup(ctx.NewNumber(123.456)).Equal(ctx.NewString("abc")))
+		require.True(t, m.Copy().(*Map).Lookup(ctx.NewString("foo")).Equal(ctx.NewString("def")))
+		require.True(t, m.Copy().(*Map).Lookup(ctx.NewVector(nil)).Equal(ctx.NewString("hij")))
+
+		require.Nil(t, m.Copy().(*Map).Lookup(ctx.NewNull()))
+		require.Nil(t, m.Copy().(*Map).Lookup(ctx.NewNumber(456.123)))
+	}
+}
+
+func TestMapCopyOnWrite(t *testing.T) {
+	ctx := &Context{}
+	a := ctx.NewMap([]MapPair{
+		{ctx.NewNumber(123.456), ctx.NewString("abc")},
+		{ctx.NewString("foo"), ctx.NewString("def")},
+		{ctx.NewVector(nil), ctx.NewString("hij")},
+	})
+	b := a.Copy().(*Map)
+	require.Equal(t, a.Count(), b.Count())
+	require.Equal(t, 2, a.data.uses)
+	require.Equal(t, 2, b.data.uses)
+	require.Same(t, a.data, b.data)
+
+	b.Insert(ctx.NewNumber(123.456), ctx.NewNull())
+	require.Equal(t, a.Count(), b.Count())
+	require.Equal(t, 1, a.data.uses)
+	require.Equal(t, 1, b.data.uses)
+	require.NotSame(t, a.data, b.data)
+
+	require.True(t, a.Lookup(ctx.NewNumber(123.456)).Equal(ctx.NewString("abc")))
+	require.True(t, a.Lookup(ctx.NewString("foo")).Equal(ctx.NewString("def")))
+	require.True(t, a.Lookup(ctx.NewVector(nil)).Equal(ctx.NewString("hij")))
+
+	require.True(t, b.Lookup(ctx.NewNumber(123.456)).Equal(ctx.NewNull()))
+	require.True(t, b.Lookup(ctx.NewString("foo")).Equal(ctx.NewString("def")))
+	require.True(t, b.Lookup(ctx.NewVector(nil)).Equal(ctx.NewString("hij")))
+
+	c := a.Copy().(*Map)
+	c.Remove(ctx.NewString("foo"))
+
+	require.Equal(t, a.Count()-1, c.Count())
+	require.Equal(t, 1, a.data.uses)
+	require.Equal(t, 1, c.data.uses)
+	require.NotSame(t, a.data, c.data)
+
+	require.True(t, a.Lookup(ctx.NewNumber(123.456)).Equal(ctx.NewString("abc")))
+	require.True(t, a.Lookup(ctx.NewString("foo")).Equal(ctx.NewString("def")))
+	require.True(t, a.Lookup(ctx.NewVector(nil)).Equal(ctx.NewString("hij")))
+
+	require.True(t, c.Lookup(ctx.NewNumber(123.456)).Equal(ctx.NewString("abc")))
+	require.Nil(t, c.Lookup(ctx.NewString("foo")))
+	require.True(t, c.Lookup(ctx.NewVector(nil)).Equal(ctx.NewString("hij")))
 }

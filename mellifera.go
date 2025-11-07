@@ -37,6 +37,7 @@ type Value interface {
 	String() string
 	Copy() Value
 	CopyOnWrite()
+	Equal(Value) bool
 }
 
 type Context struct {
@@ -74,7 +75,7 @@ func (ctx *Context) NewRegexp(text string) (*Regexp, error) {
 }
 
 func (ctx *Context) NewVector(elements []Value) *Vector {
-	if elements == nil {
+	if elements == nil || len(elements) == 0 {
 		return &Vector{}
 	}
 
@@ -84,6 +85,18 @@ func (ctx *Context) NewVector(elements []Value) *Vector {
 			uses:     1,
 		},
 	}
+}
+
+func (ctx *Context) NewMap(elements []MapPair) *Map {
+	if elements == nil || len(elements) == 0 {
+		return &Map{}
+	}
+
+	result := &Map{}
+	for _, element := range elements {
+		result.Insert(element.key, element.value)
+	}
+	return result
 }
 
 type Null struct{}
@@ -102,6 +115,11 @@ func (self *Null) Copy() Value {
 
 func (self *Null) CopyOnWrite() {
 	// immutable value
+}
+
+func (self *Null) Equal(other Value) bool {
+	_, ok := other.(*Null)
+	return ok
 }
 
 type Boolean struct {
@@ -125,6 +143,14 @@ func (self *Boolean) Copy() Value {
 
 func (self *Boolean) CopyOnWrite() {
 	// immutable value
+}
+
+func (self *Boolean) Equal(other Value) bool {
+	othr, ok := other.(*Boolean)
+	if !ok {
+		return false
+	}
+	return self.data == othr.data
 }
 
 type Number struct {
@@ -156,6 +182,14 @@ func (self *Number) CopyOnWrite() {
 	// immutable value
 }
 
+func (self *Number) Equal(other Value) bool {
+	othr, ok := other.(*Number)
+	if !ok {
+		return false
+	}
+	return self.data == othr.data
+}
+
 type String struct {
 	data string
 }
@@ -174,6 +208,14 @@ func (self *String) Copy() Value {
 
 func (self *String) CopyOnWrite() {
 	// immutable value
+}
+
+func (self *String) Equal(other Value) bool {
+	othr, ok := other.(*String)
+	if !ok {
+		return false
+	}
+	return self.data == othr.data
 }
 
 type Regexp struct {
@@ -196,6 +238,14 @@ func (self *Regexp) CopyOnWrite() {
 	// immutable value
 }
 
+func (self *Regexp) Equal(other Value) bool {
+	othr, ok := other.(*Regexp)
+	if !ok {
+		return false
+	}
+	return self.data.String() == othr.data.String()
+}
+
 type VectorData struct {
 	elements []Value
 	uses     int
@@ -210,7 +260,7 @@ func (self *Vector) Typename() string {
 }
 
 func (self *Vector) String() string {
-	if self.data == nil {
+	if self.data == nil || len(self.data.elements) == 0 {
 		return "[]"
 	}
 
@@ -246,6 +296,24 @@ func (self *Vector) CopyOnWrite() {
 	}
 }
 
+func (self *Vector) Equal(other Value) bool {
+	othr, ok := other.(*Vector)
+	if !ok {
+		return false
+	}
+	if self.Count() != othr.Count() {
+		return false
+	}
+	if self.data != nil && othr.data != nil {
+		for i := range self.data.elements {
+			if !self.data.elements[i].Equal(othr.data.elements[i]) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 func (self *Vector) Count() int {
 	if self.data == nil {
 		return 0
@@ -261,4 +329,206 @@ func (self *Vector) Get(index int) Value {
 func (self *Vector) Set(index int, value Value) {
 	self.CopyOnWrite()
 	self.data.elements[index] = value
+}
+
+type MapPair struct {
+	key   Value
+	value Value
+}
+
+type MapElement struct {
+	prev  *MapElement
+	next  *MapElement
+	key   Value
+	value Value
+}
+
+// Doubly-linked list of key-value pairs in insertion order. This MapData
+// implementation is purposefully designed to be stupid simple with the intent
+// to replace the implementation with something more performant later.
+type MapData struct {
+	head  *MapElement
+	tail  *MapElement
+	count int
+	uses  int
+}
+
+func (self *MapData) Lookup(key Value) *MapElement {
+	cur := self.head
+	for cur != nil {
+		if cur.key.Equal(key) {
+			return cur
+		}
+		cur = cur.next
+	}
+	return nil
+}
+
+func (self *MapData) Insert(key, value Value) {
+	if self.head == nil {
+		element := &MapElement{
+			key:   key,
+			value: value,
+		}
+		self.head = element
+		self.tail = element
+		self.count = 1
+		return
+	}
+
+	lookup := self.Lookup(key)
+	if lookup == nil {
+		element := &MapElement{
+			prev:  self.tail,
+			key:   key,
+			value: value,
+		}
+		self.tail.next = element
+		self.tail = element
+		self.count += 1
+		return
+	}
+
+	lookup.key = key
+	lookup.value = value
+}
+
+func (self *MapData) Remove(key Value) {
+	if self.head == nil {
+		return
+	}
+
+	lookup := self.Lookup(key)
+	if lookup == nil {
+		return
+	}
+
+	if self.head == lookup {
+		self.head = lookup.next
+	}
+	if self.tail == lookup {
+		self.tail = lookup.prev
+	}
+	if lookup.prev != nil {
+		lookup.prev.next = lookup.next
+	}
+	if lookup.next != nil {
+		lookup.next.prev = lookup.prev
+	}
+	self.count -= 1
+}
+
+type Map struct {
+	data *MapData
+}
+
+func (self *Map) Typename() string {
+	return "map"
+}
+
+func (self *Map) String() string {
+	if self.data == nil || self.data.count == 0 {
+		return "Map{}"
+	}
+
+	s := make([]string, 0)
+	cur := self.data.head
+	for cur != nil {
+		s = append(s, fmt.Sprintf("%s: %s", cur.key.String(), cur.value.String()))
+		cur = cur.next
+	}
+	return fmt.Sprintf("{%s}", strings.Join(s, ", "))
+}
+
+func (self *Map) Copy() Value {
+	if self.data == nil {
+		return &Map{}
+	}
+
+	self.data.uses += 1
+	return &Map{
+		data: self.data,
+	}
+}
+
+func (self *Map) CopyOnWrite() {
+	if self.data != nil && self.data.uses > 1 {
+		self.data.uses -= 1
+		data := &MapData{
+			uses: 1,
+		}
+
+		cur := self.data.head
+		for cur != nil {
+			data.Insert(cur.key.Copy(), cur.value.Copy())
+			cur = cur.next
+		}
+		self.data = data
+	}
+}
+
+func (self *Map) Equal(other Value) bool {
+	othr, ok := other.(*Map)
+	if !ok {
+		return false
+	}
+	if self.Count() != othr.Count() {
+		return false
+	}
+
+	selfCur := self.data.head
+	othrCur := othr.data.head
+	for selfCur != nil {
+		if !selfCur.key.Equal(othrCur.key) {
+			return false
+		}
+		if !selfCur.value.Equal(othrCur.value) {
+			return false
+		}
+		selfCur = selfCur.next
+		othrCur = othrCur.next
+	}
+
+	return true
+}
+
+func (self *Map) Count() int {
+	if self.data == nil {
+		return 0
+	}
+
+	return self.data.count
+}
+
+func (self *Map) Lookup(key Value) Value {
+	if self.data == nil {
+		return nil
+	}
+
+	element := self.data.Lookup(key)
+	if element == nil {
+		return nil
+	}
+
+	return element.value
+}
+
+func (self *Map) Insert(key, value Value) {
+	self.CopyOnWrite()
+	if self.data == nil {
+		self.data = &MapData{
+			uses: 1,
+		}
+	}
+
+	self.data.Insert(key, value)
+}
+
+func (self *Map) Remove(key Value) {
+	if self.data == nil {
+		return
+	}
+
+	self.CopyOnWrite()
+	self.data.Remove(key)
 }
