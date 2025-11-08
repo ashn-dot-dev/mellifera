@@ -370,6 +370,7 @@ type MapData struct {
 	uses  int
 }
 
+// Returns nil on lookup failure.
 func (self *MapData) Lookup(key Value) *MapElement {
 	cur := self.head
 	for cur != nil {
@@ -517,6 +518,7 @@ func (self *Map) Count() int {
 	return self.data.count
 }
 
+// Returns nil on lookup failure.
 func (self *Map) Lookup(key Value) Value {
 	if self.data == nil {
 		return nil
@@ -566,6 +568,7 @@ type SetData struct {
 	uses  int
 }
 
+// Returns nil on lookup failure.
 func (self *SetData) Lookup(value Value) *SetElement {
 	cur := self.head
 	for cur != nil {
@@ -707,6 +710,7 @@ func (self *Set) Count() int {
 	return self.data.count
 }
 
+// Returns nil on lookup failure.
 func (self *Set) Lookup(value Value) Value {
 	if self.data == nil {
 		return nil
