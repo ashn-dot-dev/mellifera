@@ -5907,11 +5907,13 @@ def main() -> None:
 
         # -c, -command
         if m := re.match(r"^-+c(?:ommand)?(?:=(.*))?$", arg):
+            # -c='println("hello world");'
             if m.group(1) is not None:
                 cmds = m.group(1)
                 argv.extend([sys.argv[0]] + sys.argv[argi + 1 :])
                 break
 
+            # -c 'println("hello world");'
             if argi + 1 < len(sys.argv):
                 cmds = sys.argv[argi + 1]
                 argv.extend([sys.argv[0]] + sys.argv[argi + 2 :])
