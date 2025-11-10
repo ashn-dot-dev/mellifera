@@ -5958,7 +5958,7 @@ def main() -> None:
                 return
             elif cmds is not None:
                 result = eval_source(cmds, env, SourceLocation("<command>", 1))
-            if file is not None and dump_tokens:
+            elif file is not None and dump_tokens:
                 dump_tokens_file(file)
                 return
             elif file is not None:
