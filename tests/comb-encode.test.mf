@@ -49,12 +49,12 @@ try { dumpln(comb::encode(function(){})); } catch err { println($"error: {err}")
 #
 # 123
 # 123.456
-# error: cannot COMB-encode value NaN of type number
-# error: cannot COMB-encode value Inf of type number
+# error: cannot comb-encode value NaN of type number
+# error: cannot comb-encode value Inf of type number
 #
 # "foo"
 # "foo\nbar"
-# error: cannot COMB-encode string with invalid UTF-8 encoding "�"
+# error: cannot comb-encode string with invalid UTF-8 encoding "�"
 #
 # []
 # ["foo", "bar", "baz"]
@@ -67,4 +67,4 @@ try { dumpln(comb::encode(function(){})); } catch err { println($"error: {err}")
 # "{\"foo\", \"bar\"}"
 #
 #
-# error: cannot COMB-encode value function@[comb-encode.test.mf, line 43] of type function
+# error: cannot comb-encode value function@[comb-encode.test.mf, line 43] of type function

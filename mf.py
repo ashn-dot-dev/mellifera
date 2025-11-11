@@ -327,7 +327,7 @@ class Number(Value):
         self, indent_text: Optional[str] = None, indent_level: int = 0
     ) -> str:
         if math.isinf(float(self)) or math.isnan(float(self)):
-            raise ValueError(f"invalid COMB value {self}")
+            raise ValueError(f"invalid comb value {self}")
         return str(self)
 
     def __copy__(self) -> "Number":
@@ -432,7 +432,7 @@ class Regexp(Value):
     def comb_encode(
         self, indent_text: Optional[str] = None, indent_level: int = 0
     ) -> str:
-        raise ValueError(f"invalid COMB value {self}")
+        raise ValueError(f"invalid comb value {self}")
 
     def __copy__(self) -> "Regexp":
         return self  # immutable value
@@ -804,7 +804,7 @@ class Reference(Value):
     def comb_encode(
         self, indent_text: Optional[str] = None, indent_level: int = 0
     ) -> str:
-        raise ValueError(f"invalid COMB value {self}")
+        raise ValueError(f"invalid comb value {self}")
 
     def __copy__(self) -> "Reference":
         return self  # immutable value
@@ -847,7 +847,7 @@ class Function(Value):
     def comb_encode(
         self, indent_text: Optional[str] = None, indent_level: int = 0
     ) -> str:
-        raise ValueError(f"invalid COMB value {self}")
+        raise ValueError(f"invalid comb value {self}")
 
     def __copy__(self) -> "Function":
         return self  # immutable value
@@ -886,7 +886,7 @@ class Builtin(Value):
     def comb_encode(
         self, indent_text: Optional[str] = None, indent_level: int = 0
     ) -> str:
-        raise ValueError(f"invalid COMB value {self}")
+        raise ValueError(f"invalid comb value {self}")
 
     def __copy__(self) -> "Builtin":
         return self  # immutable value
@@ -1027,7 +1027,7 @@ class External(Value):
     def comb_encode(
         self, indent_text: Optional[str] = None, indent_level: int = 0
     ) -> str:
-        raise ValueError(f"invalid COMB value {self}")
+        raise ValueError(f"invalid comb value {self}")
 
     def __copy__(self) -> "External":
         return self  # immutable value
@@ -4890,7 +4890,7 @@ def comb_validate(value: Value):
             return
         except UnicodeDecodeError:
             raise ValueError(
-                f"cannot COMB-encode string with invalid UTF-8 encoding {value}"
+                f"cannot comb-encode string with invalid UTF-8 encoding {value}"
             )
     if isinstance(value, Vector):
         for element in value.data:
@@ -4905,7 +4905,7 @@ def comb_validate(value: Value):
         for element in value.data:
             comb_validate(element)
         return
-    raise ValueError(f"cannot COMB-encode value {value} of type {typename(value)}")
+    raise ValueError(f"cannot comb-encode value {value} of type {typename(value)}")
 
 
 @builtin("comb::encode", [Value])

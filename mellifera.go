@@ -2,12 +2,18 @@ package mellifera
 
 import (
 	"fmt"
+	"io"
 	"math"
 	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
 )
+
+// Utility function used to get the address of literals.
+func Ptr[T any](v T) *T {
+	return &v
+}
 
 func escape(s string) string {
 	result := ""
@@ -39,6 +45,56 @@ type Value interface {
 	Copy() Value
 	CopyOnWrite()
 	Equal(Value) bool
+	CombEncode(e *CombEncoder) error
+}
+
+type CombEncoder struct {
+	w           io.Writer
+	indentText  *string // Optional: nil implies single-line default formatting.
+	indentLevel int     // Number of times the indent text is written before main text per line.
+
+	err error // Internal sticky error.
+}
+
+func NewCombEncoder(w io.Writer, indent *string) *CombEncoder {
+	return &CombEncoder{
+		w:           w,
+		indentText:  indent,
+		indentLevel: 0,
+		err:         nil,
+	}
+}
+
+func (e *CombEncoder) writeString(s string) error {
+	if e.err != nil {
+		return e.err
+	}
+
+	_, e.err = e.w.Write([]byte(s))
+
+	return e.err
+}
+
+func (e *CombEncoder) writeIndent(s string) error {
+	if e.indentText != nil {
+		for range e.indentLevel {
+			e.writeString(*e.indentText)
+		}
+	}
+
+	e.writeString(s)
+
+	return e.err
+}
+
+func (e *CombEncoder) writeEndOfLine() error {
+	if e.indentText != nil {
+		e.writeString("\n")
+	} else {
+		e.writeString(" ")
+	}
+
+	return e.err
 }
 
 type Context struct {
@@ -139,6 +195,10 @@ func (self *Null) Equal(other Value) bool {
 	return ok
 }
 
+func (self *Null) CombEncode(e *CombEncoder) error {
+	return e.writeString(self.String())
+}
+
 type Boolean struct {
 	data bool
 }
@@ -168,6 +228,10 @@ func (self *Boolean) Equal(other Value) bool {
 		return false
 	}
 	return self.data == othr.data
+}
+
+func (self *Boolean) CombEncode(e *CombEncoder) error {
+	return e.writeString(self.String())
 }
 
 type Number struct {
@@ -207,6 +271,14 @@ func (self *Number) Equal(other Value) bool {
 	return self.data == othr.data
 }
 
+func (self *Number) CombEncode(e *CombEncoder) error {
+	if e.err == nil && (math.IsInf(self.data, 0) || math.IsNaN(self.data)) {
+		e.err = fmt.Errorf("invalid comb value %s", self.String())
+		return e.err
+	}
+	return e.writeString(self.String())
+}
+
 type String struct {
 	data string
 }
@@ -235,6 +307,10 @@ func (self *String) Equal(other Value) bool {
 	return self.data == othr.data
 }
 
+func (self *String) CombEncode(e *CombEncoder) error {
+	return e.writeString(self.String())
+}
+
 type Regexp struct {
 	data *regexp.Regexp
 }
@@ -261,6 +337,13 @@ func (self *Regexp) Equal(other Value) bool {
 		return false
 	}
 	return self.data.String() == othr.data.String()
+}
+
+func (self *Regexp) CombEncode(e *CombEncoder) error {
+	if e.err == nil {
+		e.err = fmt.Errorf("invalid comb value %s", self.String())
+	}
+	return e.err
 }
 
 type VectorData struct {
@@ -329,6 +412,36 @@ func (self *Vector) Equal(other Value) bool {
 		}
 	}
 	return true
+}
+
+func (self *Vector) CombEncode(e *CombEncoder) error {
+	if self.data == nil || len(self.data.elements) == 0 {
+		e.writeString("[]")
+		return e.err
+	}
+
+	e.writeString("[")
+	if e.indentText != nil {
+		e.writeEndOfLine()
+	}
+	e.indentLevel += 1
+
+	for i, element := range self.data.elements {
+		e.writeIndent("")
+		element.CombEncode(e)
+
+		if i != len(self.data.elements)-1 {
+			e.writeString(",")
+			e.writeEndOfLine()
+		} else if e.indentText != nil {
+			e.writeEndOfLine()
+		}
+	}
+
+	e.indentLevel -= 1
+	e.writeIndent("]")
+
+	return e.err
 }
 
 func (self *Vector) Count() int {
@@ -510,6 +623,41 @@ func (self *Map) Equal(other Value) bool {
 	return true
 }
 
+func (self *Map) CombEncode(e *CombEncoder) error {
+	if self.data == nil || self.data.count == 0 {
+		e.writeString("Map{}")
+		return e.err
+	}
+
+	e.writeString("{")
+	if e.indentText != nil {
+		e.writeEndOfLine()
+	}
+	e.indentLevel += 1
+
+	cur := self.data.head
+	for cur != nil {
+		e.writeIndent("")
+		cur.key.CombEncode(e)
+		e.writeString(": ")
+		cur.value.CombEncode(e)
+
+		if cur != self.data.tail {
+			e.writeString(",")
+			e.writeEndOfLine()
+		} else if e.indentText != nil {
+			e.writeEndOfLine()
+		}
+
+		cur = cur.next
+	}
+
+	e.indentLevel -= 1
+	e.writeIndent("}")
+
+	return e.err
+}
+
 func (self *Map) Count() int {
 	if self.data == nil {
 		return 0
@@ -553,9 +701,9 @@ func (self *Map) Remove(key Value) {
 }
 
 type SetElement struct {
-	prev  *SetElement
-	next  *SetElement
-	value Value
+	prev *SetElement
+	next *SetElement
+	key  Value
 }
 
 // Doubly-linked list of elements in insertion order. This SetData
@@ -569,10 +717,10 @@ type SetData struct {
 }
 
 // Returns nil on lookup failure.
-func (self *SetData) Lookup(value Value) *SetElement {
+func (self *SetData) Lookup(key Value) *SetElement {
 	cur := self.head
 	for cur != nil {
-		if cur.value.Equal(value) {
+		if cur.key.Equal(key) {
 			return cur
 		}
 		cur = cur.next
@@ -580,10 +728,10 @@ func (self *SetData) Lookup(value Value) *SetElement {
 	return nil
 }
 
-func (self *SetData) Insert(value Value) {
+func (self *SetData) Insert(key Value) {
 	if self.head == nil {
 		element := &SetElement{
-			value: value,
+			key: key,
 		}
 		self.head = element
 		self.tail = element
@@ -591,11 +739,11 @@ func (self *SetData) Insert(value Value) {
 		return
 	}
 
-	lookup := self.Lookup(value)
+	lookup := self.Lookup(key)
 	if lookup == nil {
 		element := &SetElement{
-			prev:  self.tail,
-			value: value,
+			prev: self.tail,
+			key:  key,
 		}
 		self.tail.next = element
 		self.tail = element
@@ -603,15 +751,15 @@ func (self *SetData) Insert(value Value) {
 		return
 	}
 
-	lookup.value = value
+	lookup.key = key
 }
 
-func (self *SetData) Remove(value Value) {
+func (self *SetData) Remove(key Value) {
 	if self.head == nil {
 		return
 	}
 
-	lookup := self.Lookup(value)
+	lookup := self.Lookup(key)
 	if lookup == nil {
 		return
 	}
@@ -647,7 +795,7 @@ func (self *Set) String() string {
 	s := make([]string, 0)
 	cur := self.data.head
 	for cur != nil {
-		s = append(s, cur.value.String())
+		s = append(s, cur.key.String())
 		cur = cur.next
 	}
 	return fmt.Sprintf("{%s}", strings.Join(s, ", "))
@@ -673,7 +821,7 @@ func (self *Set) CopyOnWrite() {
 
 		cur := self.data.head
 		for cur != nil {
-			data.Insert(cur.value.Copy())
+			data.Insert(cur.key.Copy())
 			cur = cur.next
 		}
 		self.data = data
@@ -692,7 +840,7 @@ func (self *Set) Equal(other Value) bool {
 	selfCur := self.data.head
 	othrCur := othr.data.head
 	for selfCur != nil {
-		if !selfCur.value.Equal(othrCur.value) {
+		if !selfCur.key.Equal(othrCur.key) {
 			return false
 		}
 		selfCur = selfCur.next
@@ -700,6 +848,39 @@ func (self *Set) Equal(other Value) bool {
 	}
 
 	return true
+}
+
+func (self *Set) CombEncode(e *CombEncoder) error {
+	if self.data == nil || self.data.count == 0 {
+		e.writeString("Set{}")
+		return e.err
+	}
+
+	e.writeString("{")
+	if e.indentText != nil {
+		e.writeEndOfLine()
+	}
+	e.indentLevel += 1
+
+	cur := self.data.head
+	for cur != nil {
+		e.writeIndent("")
+		cur.key.CombEncode(e)
+
+		if cur != self.data.tail {
+			e.writeString(",")
+			e.writeEndOfLine()
+		} else if e.indentText != nil {
+			e.writeEndOfLine()
+		}
+
+		cur = cur.next
+	}
+
+	e.indentLevel -= 1
+	e.writeIndent("}")
+
+	return e.err
 }
 
 func (self *Set) Count() int {
@@ -721,7 +902,7 @@ func (self *Set) Lookup(value Value) Value {
 		return nil
 	}
 
-	return element.value
+	return element.key
 }
 
 func (self *Set) Insert(value Value) {
@@ -770,4 +951,11 @@ func (self *Reference) Equal(other Value) bool {
 		return false
 	}
 	return reflect.ValueOf(self.data).Pointer() == reflect.ValueOf(othr.data).Pointer()
+}
+
+func (self *Reference) CombEncode(e *CombEncoder) error {
+	if e.err == nil {
+		e.err = fmt.Errorf("invalid comb value %s", self.String())
+	}
+	return e.err
 }

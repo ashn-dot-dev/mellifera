@@ -27,6 +27,25 @@ func TestNullCopy(t *testing.T) {
 	assert.Same(t, null, null.Copy())
 }
 
+func TestNullCombEncode(t *testing.T) {
+	ctx := &Context{}
+	null := ctx.NewNull()
+	{
+		var sb strings.Builder
+		e := NewCombEncoder(&sb, nil)
+		err := null.CombEncode(e)
+		require.Nil(t, err)
+		assert.Equal(t, "null", sb.String())
+	}
+	{
+		var sb strings.Builder
+		e := NewCombEncoder(&sb, Ptr("\t"))
+		err := null.CombEncode(e)
+		require.Nil(t, err)
+		assert.Equal(t, "null", sb.String())
+	}
+}
+
 func TestBooleanTypename(t *testing.T) {
 	ctx := &Context{}
 	{
@@ -60,6 +79,25 @@ func TestBooleanCopy(t *testing.T) {
 	{
 		boolean := ctx.NewBoolean(false)
 		assert.Same(t, boolean, boolean.Copy())
+	}
+}
+
+func TestBooleanCombEncode(t *testing.T) {
+	ctx := &Context{}
+	boolean := ctx.NewBoolean(true)
+	{
+		var sb strings.Builder
+		e := NewCombEncoder(&sb, nil)
+		err := boolean.CombEncode(e)
+		require.Nil(t, err)
+		assert.Equal(t, "true", sb.String())
+	}
+	{
+		var sb strings.Builder
+		e := NewCombEncoder(&sb, Ptr("\t"))
+		err := boolean.CombEncode(e)
+		require.Nil(t, err)
+		assert.Equal(t, "true", sb.String())
 	}
 }
 
@@ -111,6 +149,50 @@ func TestNumberCopy(t *testing.T) {
 	assert.Same(t, number, number.Copy())
 }
 
+func TestNumberCombEncode(t *testing.T) {
+	ctx := &Context{}
+	number := ctx.NewNumber(123.456)
+	{
+		var sb strings.Builder
+		e := NewCombEncoder(&sb, nil)
+		err := number.CombEncode(e)
+		require.Nil(t, err)
+		assert.Equal(t, "123.456", sb.String())
+	}
+	{
+		var sb strings.Builder
+		e := NewCombEncoder(&sb, Ptr("\t"))
+		err := number.CombEncode(e)
+		require.Nil(t, err)
+		assert.Equal(t, "123.456", sb.String())
+	}
+
+	{
+		nan := ctx.NewNumber(math.NaN())
+		var sb strings.Builder
+		e := NewCombEncoder(&sb, Ptr("\t"))
+		err := nan.CombEncode(e)
+		require.NotNil(t, err)
+		assert.Equal(t, "invalid comb value NaN", err.Error())
+	}
+	{
+		positiveInf := ctx.NewNumber(math.Inf(+1))
+		var sb strings.Builder
+		e := NewCombEncoder(&sb, Ptr("\t"))
+		err := positiveInf.CombEncode(e)
+		require.NotNil(t, err)
+		assert.Equal(t, "invalid comb value Inf", err.Error())
+	}
+	{
+		negativeInf := ctx.NewNumber(math.Inf(-1))
+		var sb strings.Builder
+		e := NewCombEncoder(&sb, Ptr("\t"))
+		err := negativeInf.CombEncode(e)
+		require.NotNil(t, err)
+		assert.Equal(t, "invalid comb value -Inf", err.Error())
+	}
+}
+
 func TestStringTypename(t *testing.T) {
 	ctx := &Context{}
 	string := ctx.NewString("foo")
@@ -127,6 +209,25 @@ func TestStringCopy(t *testing.T) {
 	ctx := &Context{}
 	string := ctx.NewString("foo")
 	assert.Same(t, string, string.Copy())
+}
+
+func TestStringCombEncode(t *testing.T) {
+	ctx := &Context{}
+	string := ctx.NewString("foo\nbar")
+	{
+		var sb strings.Builder
+		e := NewCombEncoder(&sb, nil)
+		err := string.CombEncode(e)
+		require.Nil(t, err)
+		assert.Equal(t, `"foo\nbar"`, sb.String())
+	}
+	{
+		var sb strings.Builder
+		e := NewCombEncoder(&sb, Ptr("\t"))
+		err := string.CombEncode(e)
+		require.Nil(t, err)
+		assert.Equal(t, `"foo\nbar"`, sb.String())
+	}
 }
 
 func TestRegexpTypename(t *testing.T) {
@@ -148,6 +249,16 @@ func TestRegexpCopy(t *testing.T) {
 	regexp, err := ctx.NewRegexp(`^\w+$`)
 	require.NoError(t, err)
 	assert.Same(t, regexp, regexp.Copy())
+}
+
+func TestRegexpCombEncode(t *testing.T) {
+	ctx := &Context{}
+	regexp, _ := ctx.NewRegexp("^.*$")
+	var sb strings.Builder
+	e := NewCombEncoder(&sb, nil)
+	err := regexp.CombEncode(e)
+	require.NotNil(t, err)
+	assert.Equal(t, `invalid comb value r"^.*$"`, err.Error())
 }
 
 func TestRegexpInvalidText(t *testing.T) {
@@ -253,6 +364,96 @@ func TestVectorCopyOnWrite(t *testing.T) {
 	assert.Equal(t, "foo", b.Get(0).(*String).data)
 	assert.Equal(t, 123.456, b.Get(1).(*Number).data)
 	assert.Equal(t, "baz", b.Get(2).(*String).data)
+}
+
+func TestVectorCombEncode(t *testing.T) {
+	ctx := &Context{}
+
+	empty := ctx.NewVector(nil)
+	{
+		var sb strings.Builder
+		e := NewCombEncoder(&sb, nil)
+		err := empty.CombEncode(e)
+		require.Nil(t, err)
+		assert.Equal(t, "[]", sb.String())
+	}
+	{
+		var sb strings.Builder
+		e := NewCombEncoder(&sb, Ptr("\t"))
+		err := empty.CombEncode(e)
+		require.Nil(t, err)
+		assert.Equal(t, "[]", sb.String())
+	}
+
+	nonEmpty := ctx.NewVector([]Value{
+		ctx.NewNull(),
+		ctx.NewBoolean(false),
+		ctx.NewNumber(123.456),
+		ctx.NewString("foo"),
+		ctx.NewVector(nil),
+		ctx.NewVector([]Value{
+			ctx.NewString("foo"),
+			ctx.NewString("bar"),
+			ctx.NewString("baz"),
+		}),
+	})
+	{
+		var sb strings.Builder
+		e := NewCombEncoder(&sb, nil)
+		err := nonEmpty.CombEncode(e)
+		require.Nil(t, err)
+		assert.Equal(t, `[null, false, 123.456, "foo", [], ["foo", "bar", "baz"]]`, sb.String())
+	}
+	{
+		var sb strings.Builder
+		e := NewCombEncoder(&sb, Ptr("\t"))
+		err := nonEmpty.CombEncode(e)
+		require.Nil(t, err)
+		assert.Equal(t, `[
+	null,
+	false,
+	123.456,
+	"foo",
+	[],
+	[
+		"foo",
+		"bar",
+		"baz"
+	]
+]`, sb.String())
+	}
+
+	deeplyNested := ctx.NewVector([]Value{
+		ctx.NewVector([]Value{
+			ctx.NewVector([]Value{
+				ctx.NewVector([]Value{
+					ctx.NewString("foo"),
+				}),
+			}),
+		}),
+	})
+	{
+		var sb strings.Builder
+		e := NewCombEncoder(&sb, nil)
+		err := deeplyNested.CombEncode(e)
+		require.Nil(t, err)
+		assert.Equal(t, `[[[["foo"]]]]`, sb.String())
+	}
+	{
+		var sb strings.Builder
+		e := NewCombEncoder(&sb, Ptr("\t"))
+		err := deeplyNested.CombEncode(e)
+		require.Nil(t, err)
+		assert.Equal(t, `[
+	[
+		[
+			[
+				"foo"
+			]
+		]
+	]
+]`, sb.String())
+	}
 }
 
 func TestMapConstructorNilElements(t *testing.T) {
@@ -382,6 +583,96 @@ func TestMapCopyOnWrite(t *testing.T) {
 	require.True(t, c.Lookup(ctx.NewNumber(123.456)).Equal(ctx.NewString("abc")))
 	require.Nil(t, c.Lookup(ctx.NewString("foo")))
 	require.True(t, c.Lookup(ctx.NewVector(nil)).Equal(ctx.NewString("hij")))
+}
+
+func TestMapCombEncode(t *testing.T) {
+	ctx := &Context{}
+
+	empty := ctx.NewMap(nil)
+	{
+		var sb strings.Builder
+		e := NewCombEncoder(&sb, nil)
+		err := empty.CombEncode(e)
+		require.Nil(t, err)
+		assert.Equal(t, "Map{}", sb.String())
+	}
+	{
+		var sb strings.Builder
+		e := NewCombEncoder(&sb, Ptr("\t"))
+		err := empty.CombEncode(e)
+		require.Nil(t, err)
+		assert.Equal(t, "Map{}", sb.String())
+	}
+
+	nonEmpty := ctx.NewMap([]MapPair{
+		{ctx.NewNull(), ctx.NewNull()},
+		{ctx.NewBoolean(false), ctx.NewBoolean(false)},
+		{ctx.NewNumber(123.456), ctx.NewNumber(123.456)},
+		{ctx.NewString("foo"), ctx.NewString("foo")},
+		{ctx.NewString("empty"), ctx.NewMap(nil)},
+		{ctx.NewString("non-empty"), ctx.NewMap([]MapPair{
+			{ctx.NewString("abc"), ctx.NewString("foo")},
+			{ctx.NewString("def"), ctx.NewString("bar")},
+			{ctx.NewString("hij"), ctx.NewString("baz")},
+		})},
+	})
+	{
+		var sb strings.Builder
+		e := NewCombEncoder(&sb, nil)
+		err := nonEmpty.CombEncode(e)
+		require.Nil(t, err)
+		assert.Equal(t, `{null: null, false: false, 123.456: 123.456, "foo": "foo", "empty": Map{}, "non-empty": {"abc": "foo", "def": "bar", "hij": "baz"}}`, sb.String())
+	}
+	{
+		var sb strings.Builder
+		e := NewCombEncoder(&sb, Ptr("\t"))
+		err := nonEmpty.CombEncode(e)
+		require.Nil(t, err)
+		assert.Equal(t, `{
+	null: null,
+	false: false,
+	123.456: 123.456,
+	"foo": "foo",
+	"empty": Map{},
+	"non-empty": {
+		"abc": "foo",
+		"def": "bar",
+		"hij": "baz"
+	}
+}`, sb.String())
+	}
+
+	deeplyNested := ctx.NewMap([]MapPair{
+		{ctx.NewString("foo"), ctx.NewMap([]MapPair{
+			{ctx.NewString("bar"), ctx.NewMap([]MapPair{
+				{ctx.NewString("baz"), ctx.NewMap([]MapPair{
+					{ctx.NewString("qux"), ctx.NewMap(nil)},
+				})},
+			})},
+		})},
+	})
+	{
+		var sb strings.Builder
+		e := NewCombEncoder(&sb, nil)
+		err := deeplyNested.CombEncode(e)
+		require.Nil(t, err)
+		assert.Equal(t, `{"foo": {"bar": {"baz": {"qux": Map{}}}}}`, sb.String())
+	}
+	{
+		var sb strings.Builder
+		e := NewCombEncoder(&sb, Ptr("\t"))
+		err := deeplyNested.CombEncode(e)
+		require.Nil(t, err)
+		assert.Equal(t, `{
+	"foo": {
+		"bar": {
+			"baz": {
+				"qux": Map{}
+			}
+		}
+	}
+}`, sb.String())
+	}
 }
 
 func TestSetConstructorNilElements(t *testing.T) {
@@ -514,6 +805,96 @@ func TestSetCopyOnWrite(t *testing.T) {
 	require.True(t, c.Lookup(ctx.NewVector(nil)).Equal(ctx.NewVector(nil)))
 }
 
+func TestSetCombEncode(t *testing.T) {
+	ctx := &Context{}
+
+	empty := ctx.NewSet(nil)
+	{
+		var sb strings.Builder
+		e := NewCombEncoder(&sb, nil)
+		err := empty.CombEncode(e)
+		require.Nil(t, err)
+		assert.Equal(t, "Set{}", sb.String())
+	}
+	{
+		var sb strings.Builder
+		e := NewCombEncoder(&sb, Ptr("\t"))
+		err := empty.CombEncode(e)
+		require.Nil(t, err)
+		assert.Equal(t, "Set{}", sb.String())
+	}
+
+	nonEmpty := ctx.NewSet([]Value{
+		ctx.NewNull(),
+		ctx.NewBoolean(false),
+		ctx.NewNumber(123.456),
+		ctx.NewString("foo"),
+		ctx.NewSet(nil),
+		ctx.NewSet([]Value{
+			ctx.NewString("foo"),
+			ctx.NewString("bar"),
+			ctx.NewString("baz"),
+		}),
+	})
+	{
+		var sb strings.Builder
+		e := NewCombEncoder(&sb, nil)
+		err := nonEmpty.CombEncode(e)
+		require.Nil(t, err)
+		assert.Equal(t, `{null, false, 123.456, "foo", Set{}, {"foo", "bar", "baz"}}`, sb.String())
+	}
+	{
+		var sb strings.Builder
+		e := NewCombEncoder(&sb, Ptr("\t"))
+		err := nonEmpty.CombEncode(e)
+		require.Nil(t, err)
+		assert.Equal(t, `{
+	null,
+	false,
+	123.456,
+	"foo",
+	Set{},
+	{
+		"foo",
+		"bar",
+		"baz"
+	}
+}`, sb.String())
+	}
+
+	deeplyNested := ctx.NewSet([]Value{
+		ctx.NewSet([]Value{
+			ctx.NewSet([]Value{
+				ctx.NewSet([]Value{
+					ctx.NewString("foo"),
+				}),
+			}),
+		}),
+	})
+	{
+		var sb strings.Builder
+		e := NewCombEncoder(&sb, nil)
+		err := deeplyNested.CombEncode(e)
+		require.Nil(t, err)
+		assert.Equal(t, `{{{{"foo"}}}}`, sb.String())
+	}
+	{
+		var sb strings.Builder
+		e := NewCombEncoder(&sb, Ptr("\t"))
+		err := deeplyNested.CombEncode(e)
+		require.Nil(t, err)
+		assert.Equal(t, `{
+	{
+		{
+			{
+				"foo"
+			}
+		}
+	}
+}`, sb.String())
+	}
+}
+
 func TestReferenceTypename(t *testing.T) {
 	ctx := &Context{}
 	reference := ctx.NewReference(ctx.NewNumber(123.456))
@@ -530,4 +911,14 @@ func TestReferenceCopy(t *testing.T) {
 	ctx := &Context{}
 	reference := ctx.NewReference(ctx.NewNumber(123.456))
 	assert.Same(t, reference, reference.Copy())
+}
+
+func TestReferenceCombEncode(t *testing.T) {
+	ctx := &Context{}
+	reference := ctx.NewReference(ctx.NewNumber(123.456))
+	var sb strings.Builder
+	e := NewCombEncoder(&sb, nil)
+	err := reference.CombEncode(e)
+	require.NotNil(t, err)
+	assert.True(t, strings.HasPrefix(err.Error(), "invalid comb value reference@"))
 }
