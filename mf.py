@@ -968,7 +968,6 @@ class BuiltinExplicitUninitialized(Builtin):
 
 @dataclass
 class BuiltinFromSource(Builtin):
-    env: Optional["Environment"] = None
     evaluated: Union[Function, Builtin] = BuiltinImplicitUninitialized()
 
     def __post_init__(self):
@@ -983,7 +982,9 @@ class BuiltinFromSource(Builtin):
         return type(self) is type(other) and self.evaluated == other.evaluated
 
     def initialize(self):
-        evaluated = eval_source(self.source(), self.env)
+        env = Environment(BASE_ENVIRONMENT)
+        location = SourceLocation(str(self), 1)
+        evaluated = eval_source(self.source(), env, location)
         if not isinstance(evaluated, (Function, Builtin)):
             raise Exception(f"invalid builtin from source {quote(evaluated)}")
         self.evaluated = evaluated
@@ -3886,10 +3887,9 @@ def builtin_from_source(nameof: str):
         # builtin from source instance. The factory is given the builtin name
         # for clarity when debugging.
         def factory(
-            env: Optional[Environment] = None,
             evaluated: Union[Function, Builtin] = BuiltinImplicitUninitialized(),
         ) -> BuiltinFromSource:
-            return GeneratedBuiltinFromSource(env=env, evaluated=evaluated)
+            return GeneratedBuiltinFromSource(evaluated=evaluated)
 
         factory.__name__ = func.__name__
         return factory
@@ -5414,19 +5414,18 @@ def dump_tokens_file(path: Union[str, os.PathLike]):
 
 def eval_source(
     source: str,
-    env: Optional[Environment] = None,
+    env: Environment,
     loc: Optional[SourceLocation] = None,
 ) -> Optional[Union[Value, Error]]:
     lexer = Lexer(source, loc)
     parser = Parser(lexer)
     program = parser.parse_program()
-    return program.eval(env or Environment(BASE_ENVIRONMENT))
+    return program.eval(env)
 
 
 def eval_file(
     path: Union[str, os.PathLike],
-    env: Optional[Environment] = None,
-    argv: Optional[list[str]] = None,
+    env: Environment,
 ) -> Optional[Union[Value, Error]]:
     with open(path, "r", encoding="utf-8") as f:
         source = f.read()
@@ -5517,14 +5516,10 @@ _VECTOR_META = MetaMap(
         String("remove"): builtin_vector_remove(),
         String("slice"): builtin_vector_slice(),
         String("reversed"): builtin_vector_reversed(),
-        String("sorted"): builtin_vector_sorted(
-            Environment(BASE_ENVIRONMENT), evaluated=BuiltinExplicitUninitialized()
-        ),
-        String("sorted_by"): builtin_vector_sorted_by(
-            Environment(BASE_ENVIRONMENT), evaluated=BuiltinExplicitUninitialized()
-        ),
+        String("sorted"): builtin_vector_sorted(BuiltinExplicitUninitialized()),
+        String("sorted_by"): builtin_vector_sorted_by(BuiltinExplicitUninitialized()),
         String("into_iterator"): builtin_vector_into_iterator(
-            Environment(BASE_ENVIRONMENT), evaluated=BuiltinExplicitUninitialized()
+            BuiltinExplicitUninitialized()
         ),
     },
 )
@@ -5538,9 +5533,7 @@ _MAP_META = MetaMap(
         String("keys"): builtin_map_keys(),
         String("values"): builtin_map_values(),
         String("pairs"): builtin_map_pairs(),
-        String("union"): builtin_map_union(
-            Environment(BASE_ENVIRONMENT), evaluated=BuiltinExplicitUninitialized()
-        ),
+        String("union"): builtin_map_union(BuiltinExplicitUninitialized()),
     },
 )
 _SET_META = MetaMap(
@@ -5550,15 +5543,11 @@ _SET_META = MetaMap(
         String("contains"): builtin_set_contains(),
         String("insert"): builtin_set_insert(),
         String("remove"): builtin_set_remove(),
-        String("union"): builtin_set_union(
-            Environment(BASE_ENVIRONMENT), evaluated=BuiltinExplicitUninitialized()
-        ),
+        String("union"): builtin_set_union(BuiltinExplicitUninitialized()),
         String("intersection"): builtin_set_intersection(
-            Environment(BASE_ENVIRONMENT), evaluated=BuiltinExplicitUninitialized()
+            BuiltinExplicitUninitialized()
         ),
-        String("difference"): builtin_set_difference(
-            Environment(BASE_ENVIRONMENT), evaluated=BuiltinExplicitUninitialized()
-        ),
+        String("difference"): builtin_set_difference(BuiltinExplicitUninitialized()),
     },
 )
 _REFERENCE_META = MetaMap(name=String(Reference.typename()))
@@ -5636,7 +5625,10 @@ let iterator = type {
 };
 return iterator;
 """
-_ITERATOR = eval_source(_ITERATOR_SOURCE)
+_ITERATOR = eval_source(
+    _ITERATOR_SOURCE,
+    Environment(BASE_ENVIRONMENT),
+)
 _ITERATOR_META = MetaMap(
     name=String("iterator"),
     data=_ITERATOR.data if isinstance(_ITERATOR, Map) else dict(),
@@ -5669,9 +5661,7 @@ BASE_ENVIRONMENT.let(String.new("eprint"), builtin_eprint())
 BASE_ENVIRONMENT.let(String.new("eprintln"), builtin_eprintln())
 BASE_ENVIRONMENT.let(
     String.new("range"),
-    builtin_range(
-        Environment(BASE_ENVIRONMENT), evaluated=BuiltinExplicitUninitialized()
-    ),
+    builtin_range(BuiltinExplicitUninitialized()),
 )
 BASE_ENVIRONMENT.let(String.new("min"), builtin_min())
 BASE_ENVIRONMENT.let(String.new("max"), builtin_max())
@@ -5829,7 +5819,7 @@ initialize_builtin_from_source(BASE_ENVIRONMENT.store[String("range")])
 
 
 class Repl(code.InteractiveConsole):
-    def __init__(self, env: Optional[Environment] = None):
+    def __init__(self, env: Environment):
         super().__init__()
         self.env = env if env is not None else Environment(BASE_ENVIRONMENT)
 
