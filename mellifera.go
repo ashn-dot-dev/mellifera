@@ -784,45 +784,61 @@ type SetElement struct {
 	key  Value
 }
 
-// Doubly-linked list of elements in insertion order. This SetData
-// implementation is purposefully designed to be stupid simple with the intent
-// to replace the implementation with something more performant later.
 type SetData struct {
-	head  *SetElement
-	tail  *SetElement
-	count int
-	uses  int
+	buckets map[uint64][]*SetElement
+	head    *SetElement
+	tail    *SetElement
+	count   int
+	uses    int
+}
+
+// Returns nil on lookup failure.
+func (self *SetData) LookupWithHash(key Value, hash uint64) *SetElement {
+	bucket, ok := self.buckets[hash]
+	if !ok || len(bucket) == 0 {
+		return nil
+	}
+
+	for _, element := range bucket {
+		if element.key.Equal(key) {
+			return element
+		}
+	}
+
+	return nil
 }
 
 // Returns nil on lookup failure.
 func (self *SetData) Lookup(key Value) *SetElement {
-	cur := self.head
-	for cur != nil {
-		if cur.key.Equal(key) {
-			return cur
-		}
-		cur = cur.next
-	}
-	return nil
+	return self.LookupWithHash(key, key.Hash())
 }
 
 func (self *SetData) Insert(key Value) {
+	if self.buckets == nil {
+		self.buckets = make(map[uint64][]*SetElement)
+	}
+
+	hash := key.Hash()
 	if self.head == nil {
 		element := &SetElement{
 			key: key,
 		}
+
+		self.buckets[hash] = append(self.buckets[hash], element)
 		self.head = element
 		self.tail = element
 		self.count = 1
 		return
 	}
 
-	lookup := self.Lookup(key)
+	lookup := self.LookupWithHash(key, hash)
 	if lookup == nil {
 		element := &SetElement{
 			prev: self.tail,
 			key:  key,
 		}
+
+		self.buckets[hash] = append(self.buckets[hash], element)
 		self.tail.next = element
 		self.tail = element
 		self.count += 1
@@ -837,24 +853,38 @@ func (self *SetData) Remove(key Value) {
 		return
 	}
 
-	lookup := self.Lookup(key)
-	if lookup == nil {
+	hash := key.Hash()
+	bucket, ok := self.buckets[hash]
+	if !ok || len(bucket) == 0 {
 		return
 	}
+	var lookup *SetElement
+	for i := 0; i < len(bucket); i += 1 {
+		if bucket[i].key.Equal(key) {
+			lookup = bucket[i]
+			self.buckets[hash] = append(bucket[:i], bucket[i+1:]...)
+			if len(self.buckets[hash]) == 0 {
+				delete(self.buckets, hash)
+			}
+			break
+		}
+	}
 
-	if self.head == lookup {
-		self.head = lookup.next
+	if lookup != nil {
+		if self.head == lookup {
+			self.head = lookup.next
+		}
+		if self.tail == lookup {
+			self.tail = lookup.prev
+		}
+		if lookup.prev != nil {
+			lookup.prev.next = lookup.next
+		}
+		if lookup.next != nil {
+			lookup.next.prev = lookup.prev
+		}
+		self.count -= 1
 	}
-	if self.tail == lookup {
-		self.tail = lookup.prev
-	}
-	if lookup.prev != nil {
-		lookup.prev.next = lookup.next
-	}
-	if lookup.next != nil {
-		lookup.next.prev = lookup.prev
-	}
-	self.count -= 1
 }
 
 type Set struct {
