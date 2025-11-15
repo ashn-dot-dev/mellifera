@@ -39,11 +39,22 @@ func escape(s string) string {
 	return result
 }
 
+// FNV-1a
+func fnv1a(s string) uint64 {
+	var hash uint64 = 14695981039346656037 // FNV_offset_basis
+	for i := 0; i < len(s); i += 1 {
+		hash ^= uint64(s[i])
+		hash *= 1099511628211 // FNV_prime
+	}
+	return hash
+}
+
 type Value interface {
 	Typename() string
 	String() string
 	Copy() Value
 	CopyOnWrite()
+	Hash() uint64
 	Equal(Value) bool
 	CombEncode(e *CombEncoder) error
 }
@@ -190,6 +201,10 @@ func (self *Null) CopyOnWrite() {
 	// immutable value
 }
 
+func (self *Null) Hash() uint64 {
+	return 0
+}
+
 func (self *Null) Equal(other Value) bool {
 	_, ok := other.(*Null)
 	return ok
@@ -220,6 +235,13 @@ func (self *Boolean) Copy() Value {
 
 func (self *Boolean) CopyOnWrite() {
 	// immutable value
+}
+
+func (self *Boolean) Hash() uint64 {
+	if self.data {
+		return 1
+	}
+	return 0
 }
 
 func (self *Boolean) Equal(other Value) bool {
@@ -263,6 +285,10 @@ func (self *Number) CopyOnWrite() {
 	// immutable value
 }
 
+func (self *Number) Hash() uint64 {
+	return math.Float64bits(self.data)
+}
+
 func (self *Number) Equal(other Value) bool {
 	othr, ok := other.(*Number)
 	if !ok {
@@ -299,6 +325,10 @@ func (self *String) CopyOnWrite() {
 	// immutable value
 }
 
+func (self *String) Hash() uint64 {
+	return fnv1a(self.data)
+}
+
 func (self *String) Equal(other Value) bool {
 	othr, ok := other.(*String)
 	if !ok {
@@ -329,6 +359,10 @@ func (self *Regexp) Copy() Value {
 
 func (self *Regexp) CopyOnWrite() {
 	// immutable value
+}
+
+func (self *Regexp) Hash() uint64 {
+	return fnv1a(self.data.String())
 }
 
 func (self *Regexp) Equal(other Value) bool {
@@ -394,6 +428,10 @@ func (self *Vector) CopyOnWrite() {
 			uses:     1,
 		}
 	}
+}
+
+func (self *Vector) Hash() uint64 {
+	return fnv1a(self.String())
 }
 
 func (self *Vector) Equal(other Value) bool {
@@ -473,47 +511,63 @@ type MapElement struct {
 	value Value
 }
 
-// Doubly-linked list of key-value pairs in insertion order. This MapData
-// implementation is purposefully designed to be stupid simple with the intent
-// to replace the implementation with something more performant later.
 type MapData struct {
-	head  *MapElement
-	tail  *MapElement
-	count int
-	uses  int
+	buckets map[uint64][]*MapElement
+	head    *MapElement
+	tail    *MapElement
+	count   int
+	uses    int
+}
+
+// Returns nil on lookup failure.
+func (self *MapData) LookupWithHash(key Value, hash uint64) *MapElement {
+	bucket, ok := self.buckets[hash]
+	if !ok || len(bucket) == 0 {
+		return nil
+	}
+
+	for _, element := range bucket {
+		if element.key.Equal(key) {
+			return element
+		}
+	}
+
+	return nil
 }
 
 // Returns nil on lookup failure.
 func (self *MapData) Lookup(key Value) *MapElement {
-	cur := self.head
-	for cur != nil {
-		if cur.key.Equal(key) {
-			return cur
-		}
-		cur = cur.next
-	}
-	return nil
+	return self.LookupWithHash(key, key.Hash())
 }
 
 func (self *MapData) Insert(key, value Value) {
+	if self.buckets == nil {
+		self.buckets = make(map[uint64][]*MapElement)
+	}
+
+	hash := key.Hash()
 	if self.head == nil {
 		element := &MapElement{
 			key:   key,
 			value: value,
 		}
+
+		self.buckets[hash] = append(self.buckets[hash], element)
 		self.head = element
 		self.tail = element
 		self.count = 1
 		return
 	}
 
-	lookup := self.Lookup(key)
+	lookup := self.LookupWithHash(key, hash)
 	if lookup == nil {
 		element := &MapElement{
 			prev:  self.tail,
 			key:   key,
 			value: value,
 		}
+
+		self.buckets[hash] = append(self.buckets[hash], element)
 		self.tail.next = element
 		self.tail = element
 		self.count += 1
@@ -529,24 +583,38 @@ func (self *MapData) Remove(key Value) {
 		return
 	}
 
-	lookup := self.Lookup(key)
-	if lookup == nil {
+	hash := key.Hash()
+	bucket, ok := self.buckets[hash]
+	if !ok || len(bucket) == 0 {
 		return
 	}
+	var lookup *MapElement
+	for i := 0; i < len(bucket); i += 1 {
+		if bucket[i].key.Equal(key) {
+			lookup = bucket[i]
+			self.buckets[hash] = append(bucket[:i], bucket[i+1:]...)
+			if len(self.buckets[hash]) == 0 {
+				delete(self.buckets, hash)
+			}
+			break
+		}
+	}
 
-	if self.head == lookup {
-		self.head = lookup.next
+	if lookup != nil {
+		if self.head == lookup {
+			self.head = lookup.next
+		}
+		if self.tail == lookup {
+			self.tail = lookup.prev
+		}
+		if lookup.prev != nil {
+			lookup.prev.next = lookup.next
+		}
+		if lookup.next != nil {
+			lookup.next.prev = lookup.prev
+		}
+		self.count -= 1
 	}
-	if self.tail == lookup {
-		self.tail = lookup.prev
-	}
-	if lookup.prev != nil {
-		lookup.prev.next = lookup.next
-	}
-	if lookup.next != nil {
-		lookup.next.prev = lookup.prev
-	}
-	self.count -= 1
 }
 
 type Map struct {
@@ -598,6 +666,10 @@ func (self *Map) CopyOnWrite() {
 	}
 }
 
+func (self *Map) Hash() uint64 {
+	return fnv1a(self.String())
+}
+
 func (self *Map) Equal(other Value) bool {
 	othr, ok := other.(*Map)
 	if !ok {
@@ -607,6 +679,12 @@ func (self *Map) Equal(other Value) bool {
 		return false
 	}
 
+	if self.Count() == 0 {
+		// Empty maps.
+		return true
+	}
+
+	// Non-empty maps - self and other both have non-nil data.
 	selfCur := self.data.head
 	othrCur := othr.data.head
 	for selfCur != nil {
@@ -828,6 +906,10 @@ func (self *Set) CopyOnWrite() {
 	}
 }
 
+func (self *Set) Hash() uint64 {
+	return fnv1a(self.String())
+}
+
 func (self *Set) Equal(other Value) bool {
 	othr, ok := other.(*Set)
 	if !ok {
@@ -837,6 +919,12 @@ func (self *Set) Equal(other Value) bool {
 		return false
 	}
 
+	if self.Count() == 0 {
+		// Empty sets.
+		return true
+	}
+
+	// Non-empty sets - self and other both have non-nil data.
 	selfCur := self.data.head
 	othrCur := othr.data.head
 	for selfCur != nil {
@@ -943,6 +1031,10 @@ func (self *Reference) Copy() Value {
 
 func (self *Reference) CopyOnWrite() {
 	// immutable value
+}
+
+func (self *Reference) Hash() uint64 {
+	return uint64(reflect.ValueOf(self.data).Pointer())
 }
 
 func (self *Reference) Equal(other Value) bool {
