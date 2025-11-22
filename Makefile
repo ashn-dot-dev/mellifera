@@ -14,6 +14,9 @@ bin/mf: mf.py
 
 build: bin/mf
 
+build-go:
+	go build -o=bin/ cmd/mf/mf.go
+
 install: build
 	mkdir -p "$(MELLIFERA_HOME)/bin"
 	mkdir -p "$(MELLIFERA_HOME)/lib"
@@ -23,6 +26,9 @@ install: build
 
 check:
 	MELLIFERA_HOME="$(realpath .)" sh bin/mf-test
+
+check-go:
+	go test
 
 # Flake8 Ignored Errors:
 #   E203 - Conflicts with Black.
@@ -36,6 +42,10 @@ lint:
 
 format:
 	python3 -m black mf.py bin/mf-test.py
+
+format-go:
+	go fmt
+	go fmt cmd/mf/*.go
 
 clean:
 	rm -f .mellifera-history

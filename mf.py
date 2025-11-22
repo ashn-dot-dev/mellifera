@@ -1207,12 +1207,12 @@ class Lexer:
     def _is_letter(ch: str) -> bool:
         return ch.isalpha() or ch == "_"
 
-    def _current_character(self) -> str:
+    def _current_rune(self) -> str:
         if self.position >= len(self.source):
             return Lexer.EOF_LITERAL
         return self.source[self.position]
 
-    def _peek_character(self) -> str:
+    def _peek_rune(self) -> str:
         if self.position + 1 >= len(self.source):
             return Lexer.EOF_LITERAL
         return self.source[self.position + 1]
@@ -1223,16 +1223,16 @@ class Lexer:
     def _remaining(self) -> str:
         return self.source[self.position :]
 
-    def _advance_character(self) -> None:
+    def _advance_rune(self) -> None:
         if self._is_eof():
             return
-        if self.location is not None:
-            self.location.line += int(self.source[self.position] == "\n")
+        if self.location is not None and self._current_rune() == "\n":
+            self.location.line += 1
         self.position += 1
 
-    def _expect_character(self, character: str) -> None:
+    def _expect_rune(self, character: str) -> None:
         assert len(character) == 1
-        current = self._current_character()
+        current = self._current_rune()
         if self._is_eof():
             raise ParseError(
                 self.location,
@@ -1243,22 +1243,22 @@ class Lexer:
                 self.location,
                 f"expected {quote(character)}, found {quote(current)}",
             )
-        self._advance_character()
+        self._advance_rune()
 
     def _skip_whitespace(self) -> None:
-        while not self._is_eof() and self._current_character() in whitespace:
-            self._advance_character()
+        while not self._is_eof() and self._current_rune() in whitespace:
+            self._advance_rune()
 
     def _skip_comment(self) -> None:
-        if self._current_character() != "#":
+        if self._current_rune() != "#":
             return
-        while not self._is_eof() and self._current_character() != "\n":
-            self._advance_character()
-        self._advance_character()
+        while not self._is_eof() and self._current_rune() != "\n":
+            self._advance_rune()
+        self._advance_rune()
 
     def _skip_whitespace_and_comments(self) -> None:
         while not self._is_eof() and (
-            self._current_character() in whitespace or self._current_character() == "#"
+            self._current_rune() in whitespace or self._current_rune() == "#"
         ):
             self._skip_whitespace()
             self._skip_comment()
@@ -1272,7 +1272,7 @@ class Lexer:
         return Token(kind, literal, location, **kwargs)
 
     def _lex_keyword_or_identifier(self) -> Token:
-        assert Lexer._is_letter(self._current_character())
+        assert Lexer._is_letter(self._current_rune())
         match = Lexer.RE_IDENTIFIER.match(self.source[self.position :])
         assert match is not None  # guaranteed by regexp
         text = match[0]
@@ -1282,7 +1282,7 @@ class Lexer:
         return self._new_token(TokenKind.IDENTIFIER, text)
 
     def _lex_number(self) -> Token:
-        assert self._current_character() in digits
+        assert self._current_rune() in digits
         match = Lexer.RE_NUMBER_HEX.match(self.source[self.position :])
         if match is not None:
             text = match[0]
@@ -1296,51 +1296,51 @@ class Lexer:
         self.position += len(text)
         return self._new_token(TokenKind.NUMBER, text, value=Number.new(float(text)))
 
-    def _lex_string_character(self) -> bytes:
+    def _lex_string_rune(self) -> bytes:
         if self._is_eof():
             raise ParseError(
                 self.location,
                 "expected character, found end-of-file",
             )
 
-        if self._current_character() == "\n":
+        if self._current_rune() == "\n":
             raise ParseError(
                 self.location,
                 "expected character, found newline",
             )
 
-        if not self._current_character().isprintable():
+        if not self._current_rune().isprintable():
             raise ParseError(
                 self.location,
-                f"expected printable character, found {hex(ord(self._current_character()))}",
+                f"expected printable character, found {hex(ord(self._current_rune()))}",
             )
 
-        if self._current_character() == "\\" and self._peek_character() == "t":
-            self._advance_character()
-            self._advance_character()
+        if self._current_rune() == "\\" and self._peek_rune() == "t":
+            self._advance_rune()
+            self._advance_rune()
             return b"\t"
 
-        if self._current_character() == "\\" and self._peek_character() == "n":
-            self._advance_character()
-            self._advance_character()
+        if self._current_rune() == "\\" and self._peek_rune() == "n":
+            self._advance_rune()
+            self._advance_rune()
             return b"\n"
 
-        if self._current_character() == "\\" and self._peek_character() == '"':
-            self._advance_character()
-            self._advance_character()
+        if self._current_rune() == "\\" and self._peek_rune() == '"':
+            self._advance_rune()
+            self._advance_rune()
             return b'"'
 
-        if self._current_character() == "\\" and self._peek_character() == "\\":
-            self._advance_character()
-            self._advance_character()
+        if self._current_rune() == "\\" and self._peek_rune() == "\\":
+            self._advance_rune()
+            self._advance_rune()
             return b"\\"
 
-        if self._current_character() == "\\" and self._peek_character() == "x":
-            self._advance_character()
-            self._advance_character()
-            nybbles = self._current_character() + self._peek_character()
-            self._advance_character()
-            self._advance_character()
+        if self._current_rune() == "\\" and self._peek_rune() == "x":
+            self._advance_rune()
+            self._advance_rune()
+            nybbles = self._current_rune() + self._peek_rune()
+            self._advance_rune()
+            self._advance_rune()
             sequence = "\\x" + nybbles
             HEX_MAPPING = {
                 "0": 0x0,
@@ -1374,35 +1374,35 @@ class Lexer:
             byte = (HEX_MAPPING[nybbles[0]] << 4) | HEX_MAPPING[nybbles[1]]
             return bytes([byte])
 
-        if self._current_character() == "\\":
-            sequence = escape(self._current_character() + self._peek_character())
+        if self._current_rune() == "\\":
+            sequence = escape(self._current_rune() + self._peek_rune())
             raise ParseError(
                 self.location,
                 f"expected escape sequence, found {quote(sequence)}",
             )
 
-        character = self._current_character()
-        self._advance_character()
+        character = self._current_rune()
+        self._advance_rune()
         return character.encode("utf-8")
 
     def _lex_string(self) -> Token:
         start = self.position
-        self._expect_character('"')
+        self._expect_rune('"')
         string = b""
-        while not self._is_eof() and self._current_character() != '"':
-            string += self._lex_string_character()
-        self._expect_character('"')
+        while not self._is_eof() and self._current_rune() != '"':
+            string += self._lex_string_rune()
+        self._expect_rune('"')
         literal = self.source[start : self.position]
         return self._new_token(TokenKind.STRING, literal, value=String.new(string))
 
-    def _lex_raw_string_character(self) -> bytes:
+    def _lex_raw_string_rune(self) -> bytes:
         if self._is_eof():
             raise ParseError(
                 self.location,
                 "expected character, found end-of-file",
             )
-        character = self._current_character()
-        self._advance_character()
+        character = self._current_rune()
+        self._advance_rune()
         return character.encode("utf-8")
 
     def _lex_raw_string(self) -> Token:
@@ -1410,17 +1410,17 @@ class Lexer:
         start = self.position
         string = b""
         if self._remaining().startswith("```"):
-            self._expect_character("`")
-            self._expect_character("`")
-            self._expect_character("`")
+            self._expect_rune("`")
+            self._expect_rune("`")
+            self._expect_rune("`")
             while not self._is_eof():
                 if self._remaining().startswith("```"):
                     break
-                string += self._current_character().encode("utf-8")
-                self._advance_character()
-            self._expect_character("`")
-            self._expect_character("`")
-            self._expect_character("`")
+                string += self._current_rune().encode("utf-8")
+                self._advance_rune()
+            self._expect_rune("`")
+            self._expect_rune("`")
+            self._expect_rune("`")
             literal = self.source[start + 4 : self.position - 3]
             # Future-proof in case I want to add variable-number-of-tick raw
             # string literals in the future.
@@ -1430,18 +1430,18 @@ class Lexer:
                     "invalid empty multi-tick raw string",
                 )
         else:
-            self._expect_character("`")
-            while not self._is_eof() and self._current_character() != "`":
-                string += self._current_character().encode("utf-8")
-                self._advance_character()
-            self._expect_character("`")
+            self._expect_rune("`")
+            while not self._is_eof() and self._current_rune() != "`":
+                string += self._current_rune().encode("utf-8")
+                self._advance_rune()
+            self._expect_rune("`")
             literal = self.source[start : self.position]
         return self._new_token(TokenKind.STRING, literal, value=String.new(string))
 
     def _lex_template(self) -> Token:
         start = self.position
         location = copy(self.location)
-        self._expect_character("$")
+        self._expect_rune("$")
 
         template: list["AstExpression"] = list()
         string = ""  # current text being parsed
@@ -1482,46 +1482,44 @@ class Lexer:
             string += default()
 
         if self._remaining().startswith("```"):
-            self._expect_character("`")
-            self._expect_character("`")
-            self._expect_character("`")
+            self._expect_rune("`")
+            self._expect_rune("`")
+            self._expect_rune("`")
             while not self._is_eof() and not self._remaining().startswith("```"):
                 lex_template_element(
-                    lambda: self._lex_raw_string_character().decode("utf-8")
+                    lambda: self._lex_raw_string_rune().decode("utf-8")
                 )
             if len(string) != 0:
                 template.append(
                     AstExpressionString(location, String.new(string.encode("utf-8")))
                 )
-            self._expect_character("`")
-            self._expect_character("`")
-            self._expect_character("`")
-        elif self._current_character() == "`":
-            self._expect_character("`")
-            while not self._is_eof() and self._current_character() != "`":
+            self._expect_rune("`")
+            self._expect_rune("`")
+            self._expect_rune("`")
+        elif self._current_rune() == "`":
+            self._expect_rune("`")
+            while not self._is_eof() and self._current_rune() != "`":
                 lex_template_element(
-                    lambda: self._lex_raw_string_character().decode("utf-8")
+                    lambda: self._lex_raw_string_rune().decode("utf-8")
                 )
             if len(string) != 0:
                 template.append(
                     AstExpressionString(location, String.new(string.encode("utf-8")))
                 )
-            self._expect_character("`")
-        elif self._current_character() == '"':
-            self._expect_character('"')
-            while not self._is_eof() and self._current_character() != '"':
-                lex_template_element(
-                    lambda: self._lex_string_character().decode("utf-8")
-                )
+            self._expect_rune("`")
+        elif self._current_rune() == '"':
+            self._expect_rune('"')
+            while not self._is_eof() and self._current_rune() != '"':
+                lex_template_element(lambda: self._lex_string_rune().decode("utf-8"))
             if len(string) != 0:
                 template.append(
                     AstExpressionString(location, String.new(string.encode("utf-8")))
                 )
-            self._expect_character('"')
+            self._expect_rune('"')
         else:
             raise ParseError(
                 self.location,
-                f'expected template of the form $"...", $`...` or $```...```, found `$` followed by {quote(self._current_character())}',
+                f'expected template of the form $"...", $`...` or $```...```, found `$` followed by {quote(self._current_rune())}',
             )
 
         literal = self.source[start : self.position]
@@ -1529,18 +1527,18 @@ class Lexer:
 
     def _lex_regexp(self) -> Token:
         start = self.position
-        self._expect_character("r")
+        self._expect_rune("r")
         string = b""
-        if self._current_character() == '"':
-            self._expect_character('"')
-            while self._current_character() != '"':
-                string += self._lex_string_character()
-            self._expect_character('"')
-        if self._current_character() == "`":
-            self._expect_character("`")
-            while self._current_character() != "`":
-                string += self._lex_raw_string_character()
-            self._expect_character("`")
+        if self._current_rune() == '"':
+            self._expect_rune('"')
+            while self._current_rune() != '"':
+                string += self._lex_string_rune()
+            self._expect_rune('"')
+        if self._current_rune() == "`":
+            self._expect_rune("`")
+            while self._current_rune() != "`":
+                string += self._lex_raw_string_rune()
+            self._expect_rune("`")
         literal = self.source[start : self.position]
         try:
             pattern = re2.compile(string)
@@ -1561,116 +1559,116 @@ class Lexer:
             return self._new_token(TokenKind.EOF, Lexer.EOF_LITERAL)
 
         # Literals, Identifiers, and Keywords
-        if self._current_character() == '"':
+        if self._current_rune() == '"':
             return self._lex_string()
-        if self._current_character() == "`":
+        if self._current_rune() == "`":
             return self._lex_raw_string()
-        if self._current_character() == "$":
+        if self._current_rune() == "$":
             return self._lex_template()
         if self._remaining().startswith('r"') or self._remaining().startswith("r`"):
             return self._lex_regexp()
-        if Lexer._is_letter(self._current_character()):
+        if Lexer._is_letter(self._current_rune()):
             return self._lex_keyword_or_identifier()
-        if self._current_character() in digits:
+        if self._current_rune() in digits:
             return self._lex_number()
 
         # Operators
-        if self._current_character() == "+":
-            self._advance_character()
+        if self._current_rune() == "+":
+            self._advance_rune()
             return self._new_token(TokenKind.ADD, str(TokenKind.ADD))
-        if self._current_character() == "-":
-            self._advance_character()
+        if self._current_rune() == "-":
+            self._advance_rune()
             return self._new_token(TokenKind.SUB, str(TokenKind.SUB))
-        if self._current_character() == "*":
-            self._advance_character()
+        if self._current_rune() == "*":
+            self._advance_rune()
             return self._new_token(TokenKind.MUL, str(TokenKind.MUL))
-        if self._current_character() == "/":
-            self._advance_character()
+        if self._current_rune() == "/":
+            self._advance_rune()
             return self._new_token(TokenKind.DIV, str(TokenKind.DIV))
-        if self._current_character() == "%":
-            self._advance_character()
+        if self._current_rune() == "%":
+            self._advance_rune()
             return self._new_token(TokenKind.REM, str(TokenKind.REM))
-        if self._current_character() == "=" and self._peek_character() == "=":
-            self._advance_character()
-            self._advance_character()
+        if self._current_rune() == "=" and self._peek_rune() == "=":
+            self._advance_rune()
+            self._advance_rune()
             return self._new_token(TokenKind.EQ, str(TokenKind.EQ))
-        if self._current_character() == "!" and self._peek_character() == "=":
-            self._advance_character()
-            self._advance_character()
+        if self._current_rune() == "!" and self._peek_rune() == "=":
+            self._advance_rune()
+            self._advance_rune()
             return self._new_token(TokenKind.NE, str(TokenKind.NE))
-        if self._current_character() == "<" and self._peek_character() == "=":
-            self._advance_character()
-            self._advance_character()
+        if self._current_rune() == "<" and self._peek_rune() == "=":
+            self._advance_rune()
+            self._advance_rune()
             return self._new_token(TokenKind.LE, str(TokenKind.LE))
-        if self._current_character() == ">" and self._peek_character() == "=":
-            self._advance_character()
-            self._advance_character()
+        if self._current_rune() == ">" and self._peek_rune() == "=":
+            self._advance_rune()
+            self._advance_rune()
             return self._new_token(TokenKind.GE, str(TokenKind.GE))
-        if self._current_character() == "<":
-            self._advance_character()
+        if self._current_rune() == "<":
+            self._advance_rune()
             return self._new_token(TokenKind.LT, str(TokenKind.LT))
-        if self._current_character() == ">":
-            self._advance_character()
+        if self._current_rune() == ">":
+            self._advance_rune()
             return self._new_token(TokenKind.GT, str(TokenKind.GT))
-        if self._current_character() == "=" and self._peek_character() == "~":
-            self._advance_character()
-            self._advance_character()
+        if self._current_rune() == "=" and self._peek_rune() == "~":
+            self._advance_rune()
+            self._advance_rune()
             return self._new_token(TokenKind.EQ_RE, str(TokenKind.EQ_RE))
-        if self._current_character() == "!" and self._peek_character() == "~":
-            self._advance_character()
-            self._advance_character()
+        if self._current_rune() == "!" and self._peek_rune() == "~":
+            self._advance_rune()
+            self._advance_rune()
             return self._new_token(TokenKind.NE_RE, str(TokenKind.NE_RE))
-        if self._current_character() == "." and self._peek_character() == "&":
-            self._advance_character()
-            self._advance_character()
+        if self._current_rune() == "." and self._peek_rune() == "&":
+            self._advance_rune()
+            self._advance_rune()
             return self._new_token(TokenKind.MKREF, str(TokenKind.MKREF))
-        if self._current_character() == "." and self._peek_character() == "*":
-            self._advance_character()
-            self._advance_character()
+        if self._current_rune() == "." and self._peek_rune() == "*":
+            self._advance_rune()
+            self._advance_rune()
             return self._new_token(TokenKind.DEREF, str(TokenKind.DEREF))
-        if self._current_character() == ".":
-            self._advance_character()
+        if self._current_rune() == ".":
+            self._advance_rune()
             return self._new_token(TokenKind.DOT, str(TokenKind.DOT))
-        if self._current_character() == ":" and self._peek_character() == ":":
-            self._advance_character()
-            self._advance_character()
+        if self._current_rune() == ":" and self._peek_rune() == ":":
+            self._advance_rune()
+            self._advance_rune()
             return self._new_token(TokenKind.SCOPE, str(TokenKind.SCOPE))
-        if self._current_character() == "=":
-            self._advance_character()
+        if self._current_rune() == "=":
+            self._advance_rune()
             return self._new_token(TokenKind.ASSIGN, str(TokenKind.ASSIGN))
 
         # Delimiters
-        if self._current_character() == ",":
-            self._advance_character()
+        if self._current_rune() == ",":
+            self._advance_rune()
             return self._new_token(TokenKind.COMMA, str(TokenKind.COMMA))
-        if self._current_character() == ":":
-            self._advance_character()
+        if self._current_rune() == ":":
+            self._advance_rune()
             return self._new_token(TokenKind.COLON, str(TokenKind.COLON))
-        if self._current_character() == ";":
-            self._advance_character()
+        if self._current_rune() == ";":
+            self._advance_rune()
             return self._new_token(TokenKind.SEMICOLON, str(TokenKind.SEMICOLON))
-        if self._current_character() == "(":
-            self._advance_character()
+        if self._current_rune() == "(":
+            self._advance_rune()
             return self._new_token(TokenKind.LPAREN, str(TokenKind.LPAREN))
-        if self._current_character() == ")":
-            self._advance_character()
+        if self._current_rune() == ")":
+            self._advance_rune()
             return self._new_token(TokenKind.RPAREN, str(TokenKind.RPAREN))
-        if self._current_character() == "{":
-            self._advance_character()
+        if self._current_rune() == "{":
+            self._advance_rune()
             return self._new_token(TokenKind.LBRACE, str(TokenKind.LBRACE))
-        if self._current_character() == "}":
-            self._advance_character()
+        if self._current_rune() == "}":
+            self._advance_rune()
             return self._new_token(TokenKind.RBRACE, str(TokenKind.RBRACE))
-        if self._current_character() == "[":
-            self._advance_character()
+        if self._current_rune() == "[":
+            self._advance_rune()
             return self._new_token(TokenKind.LBRACKET, str(TokenKind.LBRACKET))
-        if self._current_character() == "]":
-            self._advance_character()
+        if self._current_rune() == "]":
+            self._advance_rune()
             return self._new_token(TokenKind.RBRACKET, str(TokenKind.RBRACKET))
 
         raise ParseError(
             self.location,
-            f"unknown token {quote(self._current_character())}",
+            f"unknown token {quote(self._current_rune())}",
         )
 
 
