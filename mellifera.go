@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode"
 )
 
 // Utility function used to get the address of literals.
@@ -37,6 +38,13 @@ func escape(s string) string {
 		result += string(r)
 	}
 	return result
+}
+
+func quote(s string) string {
+	if strings.Contains(s, "`") {
+		return fmt.Sprintf(`"%s"`, s)
+	}
+	return fmt.Sprintf("`%s`", s)
 }
 
 // FNV-1a
@@ -109,12 +117,12 @@ func (e *CombEncoder) writeEndOfLine() error {
 }
 
 type Context struct {
-	null *Null
+	Null *Null
 }
 
 func NewContext() Context {
 	ctx := Context{}
-	ctx.null = ctx.NewNull()
+	ctx.Null = ctx.NewNull()
 	return ctx
 }
 
@@ -497,6 +505,11 @@ func (self *Vector) Get(index int) Value {
 func (self *Vector) Set(index int, value Value) {
 	self.CopyOnWrite()
 	self.data.elements[index] = value
+}
+
+func (self *Vector) Push(value Value) {
+	self.CopyOnWrite()
+	self.data.elements = append(self.data.elements, value)
 }
 
 type MapPair struct {
@@ -1080,4 +1093,127 @@ func (self *Reference) CombEncode(e *CombEncoder) error {
 		e.err = fmt.Errorf("invalid comb value %s", self.String())
 	}
 	return e.err
+}
+
+type SourceLocation struct {
+	File string
+	Line int
+}
+
+type ParseError struct {
+	Location *SourceLocation // Optional
+	why      string
+}
+
+func (self ParseError) Error() string {
+	return self.why
+}
+
+// Token Kinds
+const (
+	// Meta
+	TOKEN_EOF = "end-of-file"
+)
+
+type Token struct {
+	Kind     string
+	Literal  string
+	Location *SourceLocation // Optional
+}
+
+func (self Token) String() string {
+	return self.Kind
+}
+
+func (self Token) IntoValue(ctx *Context) Value {
+	location := func() Value {
+		if self.Location == nil {
+			return ctx.Null
+		}
+		return ctx.NewMap([]MapPair{
+			{ctx.NewString("file"), ctx.NewString(self.Location.File)},
+			{ctx.NewString("line"), ctx.NewNumber(float64(self.Location.Line))},
+		})
+	}()
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(self.Kind)},
+		{ctx.NewString("literal"), ctx.NewString(self.Literal)},
+		{ctx.NewString("location"), location},
+	})
+}
+
+type Lexer struct {
+	ctx      *Context
+	runes    []rune
+	location *SourceLocation // optional
+	position int
+}
+
+func NewLexer(ctx *Context, source string, location *SourceLocation) Lexer {
+	return Lexer{
+		ctx:      ctx,
+		runes:    []rune(source),
+		location: location,
+		position: 0,
+	}
+}
+
+func (self *Lexer) currentRune() rune {
+	if self.position >= len(self.runes) {
+		return rune(0)
+	}
+	return self.runes[self.position]
+}
+
+func (self *Lexer) isEof() bool {
+	return self.position >= len(self.runes)
+}
+
+func (self *Lexer) advanceRune() {
+	if self.isEof() {
+		return
+	}
+	if self.location != nil && self.currentRune() == '\n' {
+		self.location.Line += 1
+	}
+	self.position += 1
+}
+
+func (self *Lexer) skipWhitespace() {
+	for !self.isEof() && unicode.IsSpace(self.currentRune()) {
+		self.advanceRune()
+	}
+}
+
+func (self *Lexer) skipComment() {
+	if self.currentRune() != '#' {
+		return
+	}
+	for !self.isEof() && self.currentRune() != '\n' {
+		self.advanceRune()
+	}
+	self.advanceRune()
+}
+
+func (self *Lexer) skipWhiteSpaceAndComments() {
+	for !self.isEof() && (unicode.IsSpace(self.currentRune()) || self.currentRune() == '#') {
+		self.skipWhitespace()
+		self.skipComment()
+	}
+}
+
+func (self *Lexer) NextToken() (Token, error) {
+	self.skipWhiteSpaceAndComments()
+	if self.isEof() {
+		return Token{
+			Kind:     TOKEN_EOF,
+			Literal:  "",
+			Location: &SourceLocation{self.location.File, self.location.Line},
+		}, nil
+	}
+
+	return Token{}, ParseError{
+		Location: &SourceLocation{self.location.File, self.location.Line},
+		why:      fmt.Sprintf("unknown token %s", quote(string([]rune{self.currentRune()}))),
+	}
 }

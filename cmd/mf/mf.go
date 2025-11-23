@@ -7,8 +7,43 @@ import (
 	"regexp"
 	"strings"
 
-	//"ashn.dev/mellifera"
+	"ashn.dev/mellifera"
 )
+
+func dumpTokensSource(ctx *mellifera.Context, source string, location *mellifera.SourceLocation) error {
+	tokens := ctx.NewVector(nil)
+	lexer := mellifera.NewLexer(ctx, source, location)
+
+	token, err := lexer.NextToken()
+	if err != nil {
+		return err
+	}
+	for token.Kind != mellifera.TOKEN_EOF {
+		tokens.Push(token.IntoValue(ctx))
+		token, err = lexer.NextToken()
+		if err != nil {
+			return err
+		}
+	}
+
+	var sb strings.Builder
+	encoder := mellifera.NewCombEncoder(&sb, mellifera.Ptr("    "))
+	err = tokens.CombEncode(encoder)
+	if err != nil {
+		return err
+	}
+	fmt.Println(sb.String())
+	return nil
+}
+
+func dumpTokensFile(ctx *mellifera.Context, path string) error {
+	bytes, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	source := string(bytes)
+	return dumpTokensSource(ctx, source, &mellifera.SourceLocation{path, 1})
+}
 
 func usage(w io.Writer) {
 	program := os.Args[0]
@@ -105,15 +140,48 @@ func main() {
 		positional()
 	}
 
-	fmt.Printf("verbatim is %v\n", verbatim)
-	fmt.Printf("cmds is %v\n", cmds)
-	if cmds != nil {
-		fmt.Printf("\t*cmds is `%v`\n", *cmds)
+	/*
+		fmt.Printf("verbatim is %v\n", verbatim)
+		fmt.Printf("cmds is %v\n", cmds)
+		if cmds != nil {
+			fmt.Printf("\t*cmds is `%v`\n", *cmds)
+		}
+		fmt.Printf("file is %v\n", file)
+		if file != nil {
+			fmt.Printf("\t*file is `%v`\n", *file)
+		}
+		fmt.Printf("argv is %v\n", argv)
+		fmt.Printf("dumpTokens is %v\n", dumpTokens)
+	*/
+
+	var err error
+	ctx := mellifera.NewContext()
+	if cmds != nil || file != nil {
+		if cmds != nil && dumpTokens {
+			err = dumpTokensSource(&ctx, *cmds, &mellifera.SourceLocation{"<command>", 1})
+		} else if cmds != nil {
+			err = fmt.Errorf("error: eval command not implemented\n")
+		} else if file != nil && dumpTokens {
+			err = dumpTokensFile(&ctx, *file)
+		} else if file != nil {
+			err = fmt.Errorf("error: eval file not implemented\n")
+		} else {
+			err = fmt.Errorf("unreachable\n")
+		}
+	} else if dumpTokens {
+		fmt.Fprintf(os.Stderr, "error: requested token dump without a command or file path\n")
+		os.Exit(1)
+	} else {
+		fmt.Fprintf(os.Stderr, "error: REPL not implemented\n")
+		os.Exit(1)
 	}
-	fmt.Printf("file is %v\n", file)
-	if file != nil {
-		fmt.Printf("\t*file is `%v`\n", *file)
+
+	if err != nil {
+		if parseError, ok := err.(mellifera.ParseError); ok && parseError.Location != nil {
+			fmt.Fprintf(os.Stderr, "[%v:%v] %v\n", parseError.Location.File, parseError.Location.Line, err)
+		} else {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+		}
+		os.Exit(1)
 	}
-	fmt.Printf("argv is %v\n", argv)
-	fmt.Printf("dumpTokens is %v\n", dumpTokens)
 }
