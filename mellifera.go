@@ -1,6 +1,7 @@
 package mellifera
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -509,6 +510,12 @@ func (self *Vector) Set(index int, value Value) {
 
 func (self *Vector) Push(value Value) {
 	self.CopyOnWrite()
+	if self.data == nil {
+		self.data = &VectorData{
+			elements: nil,
+			uses:     1,
+		}
+	}
 	self.data.elements = append(self.data.elements, value)
 }
 
@@ -1113,6 +1120,10 @@ func (self ParseError) Error() string {
 const (
 	// Meta
 	TOKEN_EOF = "end-of-file"
+	// Identifiers and Literals
+	TOKEN_IDENTIFIER = "identifier"
+	// Keywords
+	TOKEN_NULL = "null"
 )
 
 type Token struct {
@@ -1147,14 +1158,22 @@ type Lexer struct {
 	runes    []rune
 	location *SourceLocation // optional
 	position int
+
+	keywords map[string]string
 }
 
 func NewLexer(ctx *Context, source string, location *SourceLocation) Lexer {
+	keywords := map[string]string{
+		TOKEN_NULL: TOKEN_NULL,
+	}
+
 	return Lexer{
 		ctx:      ctx,
 		runes:    []rune(source),
 		location: location,
 		position: 0,
+
+		keywords: keywords,
 	}
 }
 
@@ -1202,6 +1221,31 @@ func (self *Lexer) skipWhiteSpaceAndComments() {
 	}
 }
 
+func (self *Lexer) lexKeywordOrIdentifier() (Token, error) {
+	literal := ""
+	for unicode.IsLetter(self.currentRune()) || self.currentRune() == '_' {
+		literal += string(self.currentRune())
+		self.advanceRune()
+	}
+	if len(literal) == 0 {
+		return Token{}, errors.New("empty keyword or identifier")
+	}
+
+	keyword, ok := self.keywords[literal]
+	if ok {
+		return Token{
+			Kind:     keyword,
+			Literal:  literal,
+			Location: &SourceLocation{self.location.File, self.location.Line},
+		}, nil
+	}
+	return Token{
+		Kind:     TOKEN_IDENTIFIER,
+		Literal:  literal,
+		Location: &SourceLocation{self.location.File, self.location.Line},
+	}, nil
+}
+
 func (self *Lexer) NextToken() (Token, error) {
 	self.skipWhiteSpaceAndComments()
 	if self.isEof() {
@@ -1210,6 +1254,11 @@ func (self *Lexer) NextToken() (Token, error) {
 			Literal:  "",
 			Location: &SourceLocation{self.location.File, self.location.Line},
 		}, nil
+	}
+
+	// Literals, Identifiers, and Keywords
+	if unicode.IsLetter(self.currentRune()) || self.currentRune() == '_' {
+		return self.lexKeywordOrIdentifier()
 	}
 
 	return Token{}, ParseError{

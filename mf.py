@@ -1553,8 +1553,8 @@ class Lexer:
             file = self.location.file
             line = self.location.line
             self.location = SourceLocation(file, line)
-        self._skip_whitespace_and_comments()
 
+        self._skip_whitespace_and_comments()
         if self._is_eof():
             return self._new_token(TokenKind.EOF, Lexer.EOF_LITERAL)
 
