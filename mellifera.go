@@ -118,12 +118,14 @@ func (e *CombEncoder) writeEndOfLine() error {
 }
 
 type Context struct {
-	Null *Null
+	Null            *Null
+	BaseEnvironment Environment
 }
 
 func NewContext() Context {
 	ctx := Context{}
 	ctx.Null = ctx.NewNull()
+	ctx.BaseEnvironment = NewEnvironment(nil)
 	return ctx
 }
 
@@ -1122,6 +1124,8 @@ const (
 	TOKEN_EOF = "end-of-file"
 	// Identifiers and Literals
 	TOKEN_IDENTIFIER = "identifier"
+	// Delimiters
+    TOKEN_SEMICOLON = ";"
 	// Keywords
 	TOKEN_NULL = "null"
 )
@@ -1261,8 +1265,278 @@ func (self *Lexer) NextToken() (Token, error) {
 		return self.lexKeywordOrIdentifier()
 	}
 
+	// Delimiters
+	if self.currentRune() == ';' {
+		self.advanceRune()
+		return Token{
+			Kind:     TOKEN_SEMICOLON,
+			Literal:  TOKEN_SEMICOLON,
+			Location: &SourceLocation{self.location.File, self.location.Line},
+		}, nil
+	}
+
 	return Token{}, ParseError{
 		Location: &SourceLocation{self.location.File, self.location.Line},
 		why:      fmt.Sprintf("unknown token %s", quote(string([]rune{self.currentRune()}))),
 	}
+}
+
+type TraceElement struct {
+	Location *SourceLocation // Optional
+	// TODO: Add Function/Builtin field.
+}
+
+type Error struct {
+	Location *SourceLocation // Optional
+	Value    Value
+	Trace    []TraceElement
+}
+
+func (self Error) Error() string {
+	return self.Value.String()
+}
+
+func NewError(location *SourceLocation, value Value) Error {
+	return Error{
+		Location: location,
+		Value:    value,
+		Trace:    []TraceElement{},
+	}
+}
+
+type Environment struct {
+	outer *Environment // Optional
+	store map[string]Value
+}
+
+func NewEnvironment(outer *Environment) Environment {
+	return Environment{
+		outer: outer,
+		store: map[string]Value{},
+	}
+}
+
+func (self *Environment) Let(name string, value Value) {
+	self.store[name] = value
+}
+
+func (self *Environment) Set(name string, value Value) error {
+	env := self
+	for env != nil {
+		_, ok := self.store[name]
+		if ok {
+			self.store[name] = value
+			return nil
+		}
+		env = env.outer
+	}
+	return fmt.Errorf("identifier %s is not defined", name)
+}
+
+func (self *Environment) Get(name string) (Value, error) {
+	env := self
+	for env != nil {
+		value, ok := self.store[name]
+		if ok {
+			return value, nil
+		}
+		env = env.outer
+	}
+	return nil, fmt.Errorf("identifier %s is not defined", name)
+}
+
+type ControlFlow interface {
+	ControlFlowLocation() *SourceLocation
+}
+
+type Return struct {
+	Location *SourceLocation // Optional
+	Value    Value
+}
+
+func (self Return) ControlFlowLocation() *SourceLocation {
+	return self.Location
+}
+
+type Break struct {
+	Location *SourceLocation // Optional
+}
+
+func (self Break) ControlFlowLocation() *SourceLocation {
+	return self.Location
+}
+
+type Continue struct {
+	Location *SourceLocation // Optional
+}
+
+func (self Continue) ControlFlowLocation() *SourceLocation {
+	return self.Location
+}
+
+type AstExpression interface {
+	ExpressionLocation() *SourceLocation
+	Eval(*Context, *Environment) (Value, error)
+}
+
+type AstStatement interface {
+	StatementLocation() *SourceLocation
+	Eval(*Context, *Environment) (ControlFlow, error)
+}
+
+type AstProgram struct {
+	Location   *SourceLocation // Optional
+	Statements []AstStatement
+}
+
+func (self AstProgram) Eval(ctx *Context, env *Environment) (Value, error) {
+	var result Value = ctx.Null
+	for _, statement := range self.Statements {
+		if statementExpression, ok := statement.(AstStatementExpression); ok {
+			// If a top-level statement is an expression, directly evaluate
+			// that expression and save the result. This allows the result of
+			// the last top-level expression statement to be used as the
+			// result of program execution.
+			value, error := statementExpression.Expression.Eval(ctx, env)
+			if error != nil {
+				return nil, error
+			}
+			result = value
+			continue
+		}
+
+		cflow, error := statement.Eval(ctx, env)
+		if error != nil {
+			return nil, error
+		}
+		if result, ok := cflow.(Return); ok {
+			return result.Value, nil
+		}
+		if result, ok := cflow.(Break); ok {
+			return nil, NewError(result.Location, ctx.NewString("attempted to break outside of a loop"))
+		}
+		if result, ok := cflow.(Continue); ok {
+			return nil, NewError(result.Location, ctx.NewString("attempted to continue outside of a loop"))
+		}
+	}
+	return result, nil
+}
+
+type AstExpressionNull struct {
+	Location *SourceLocation // Optional
+}
+
+func (self AstExpressionNull) ExpressionLocation() *SourceLocation {
+	return self.Location
+}
+
+func (self AstExpressionNull) Eval(ctx *Context, env *Environment) (Value, error) {
+	return ctx.Null, nil
+}
+
+type AstStatementExpression struct {
+	Location   *SourceLocation // Optional
+	Expression AstExpression
+}
+
+func (self AstStatementExpression) StatementLocation() *SourceLocation {
+	return self.Location
+}
+
+func (self AstStatementExpression) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
+	_, error := self.Expression.Eval(ctx, env)
+	if error != nil {
+		return nil, error
+	}
+	return nil, nil
+}
+
+type Parser struct {
+	lexer        *Lexer
+	currentToken Token
+}
+
+func NewParser(lexer *Lexer) Parser {
+	self := Parser{
+		lexer:        lexer,
+		currentToken: Token{"invalid program", "", lexer.location},
+	}
+	self.advanceToken()
+	return self
+}
+
+func (self *Parser) advanceToken() (Token, error) {
+	current := self.currentToken
+	token, err := self.lexer.NextToken()
+	if err != nil {
+		return token, err
+	}
+	self.currentToken = token
+	return current, nil
+}
+
+func (self *Parser) checkCurrent(kind string) bool {
+	return self.currentToken.Kind == kind
+}
+
+func (self *Parser) expectCurrent(kind string) (Token, error) {
+	current := self.currentToken
+	if current.Kind != kind {
+		return Token{}, ParseError{
+			current.Location,
+			fmt.Sprintf("expected %s, found %s", quote(kind), quote(current.String())),
+		}
+	}
+	if _, err := self.advanceToken(); err != nil {
+		return Token{}, err
+	}
+	return current, nil
+}
+
+func (self *Parser) ParseProgram() (AstProgram, error) {
+	location := self.currentToken.Location
+	statements := []AstStatement{}
+	for !self.checkCurrent(TOKEN_EOF) {
+		statement, err := self.ParseStatement()
+		if err != nil {
+			return AstProgram{}, err
+		}
+		statements = append(statements, statement)
+	}
+	return AstProgram{location, statements}, nil
+}
+
+func (self *Parser) ParseExpression() (AstExpression, error) {
+	// TODO: Add Pratt parsing.
+	if self.checkCurrent(TOKEN_NULL) {
+		token, err := self.expectCurrent(TOKEN_NULL)
+		if err != nil {
+			return nil, err
+		}
+		return AstExpressionNull{token.Location}, nil
+	}
+
+	return nil, ParseError{
+		self.currentToken.Location,
+		fmt.Sprintf("expected expression, found %v", self.currentToken),
+	}
+}
+
+func (self *Parser) ParseStatement() (AstStatement, error) {
+	return self.ParseStatementExpressionOrAssignment()
+}
+
+func (self *Parser) ParseStatementExpressionOrAssignment() (AstStatement, error) {
+	expression, err := self.ParseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = self.expectCurrent(TOKEN_SEMICOLON)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: Parse statement assignment.
+	return AstStatementExpression{expression.ExpressionLocation(), expression}, nil
 }

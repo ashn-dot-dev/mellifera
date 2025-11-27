@@ -1692,19 +1692,22 @@ class Environment:
         self.store[name] = value
 
     def set(self, name: String, value: Value) -> None:
-        if name in self.store:
-            self.store[name] = value
-            return
-        if self.outer is not None:
-            self.outer.set(name, value)
-            return
+        env: Optional[Environment] = self
+        while env is not None:
+            if name in env.store:
+                env.store[name] = value
+                return
+            env = env.outer
         raise Exception(f"identifier {quote(name.runes)} is not defined")
 
-    def get(self, name: String) -> Optional[Value]:
-        value = self.store.get(name, None)
-        if value is None and self.outer is not None:
-            return self.outer.get(name)
-        return value
+    def get(self, name: String) -> Value:
+        env: Optional[Environment] = self
+        while env is not None:
+            value = env.store.get(name, None)
+            if value is not None:
+                return value
+            env = env.outer
+        raise Exception(f"identifier {quote(name.runes)} is not defined")
 
 
 @dataclass
@@ -1801,7 +1804,7 @@ class AstProgram(AstNode):
     location: Optional[SourceLocation]
     statements: list[AstStatement]
 
-    def eval(self, env: Environment) -> Optional[Union[Value, Error]]:
+    def eval(self, env: Environment) -> Union[Value, Error]:
         result: Optional[Union[Value, ControlFlow]] = None
         for statement in self.statements:
             if isinstance(statement, AstStatementExpression):
@@ -1813,15 +1816,15 @@ class AstProgram(AstNode):
             else:
                 result = statement.eval(env)
 
+            if isinstance(result, Error):
+                return result
             if isinstance(result, Return):
                 return result.value
             if isinstance(result, Break):
-                return Error(self.location, "attempted to break outside of a loop")
+                return Error(result.location, "attempted to break outside of a loop")
             if isinstance(result, Continue):
-                return Error(self.location, "attempted to continue outside of a loop")
-            if isinstance(result, Error):
-                return result
-        return result if isinstance(result, (Value, Error)) else None
+                return Error(result.location, "attempted to continue outside of a loop")
+        return result if isinstance(result, (Value, Error)) else null
 
 
 @final
@@ -1846,12 +1849,10 @@ class AstExpressionIdentifier(AstExpression):
     name: String  # cached
 
     def eval(self, env: Environment) -> Union[Value, Error]:
-        value: Optional[Value] = env.get(self.name)
-        if value is None:
-            return Error(
-                self.location, f"identifier {quote(self.name.runes)} is not defined"
-            )
-        return value
+        try:
+            return env.get(self.name)
+        except Exception as e:
+            return Error(self.location, str(e))
 
 
 @final
@@ -1889,10 +1890,9 @@ class AstExpressionTemplate(AstExpression):
 @dataclass
 class AstExpressionNull(AstExpression):
     location: Optional[SourceLocation]
-    data: Null
 
     def eval(self, env: Environment) -> Union[Value, Error]:
-        return copy(self.data)
+        return null
 
 
 @final
@@ -3163,8 +3163,8 @@ class Parser:
     }
 
     def __init__(self, lexer: Lexer):
-        self.lexer: Lexer = lexer
-        self.current_token: Token = Token(TokenKind.EOF, "DEFAULT CURRENT TOKEN")
+        self.lexer = lexer
+        self.current_token = Token(TokenKind.EOF, "DEFAULT CURRENT TOKEN")
 
         self._advance_token()
 
@@ -3284,7 +3284,7 @@ class Parser:
 
     def parse_expression_null(self) -> AstExpressionNull:
         location = self._expect_current(TokenKind.NULL).location
-        return AstExpressionNull(location, null)
+        return AstExpressionNull(location)
 
     def parse_expression_boolean(self) -> AstExpressionBoolean:
         if self._check_current(TokenKind.TRUE):
@@ -3759,27 +3759,24 @@ class Parser:
     def parse_comb_expression(self) -> AstExpression:
         if self._check_current(TokenKind.NULL):
             return self.parse_expression_null()
-        elif self._check_current(TokenKind.TRUE) or self._check_current(
-            TokenKind.FALSE
-        ):
+        if self._check_current(TokenKind.TRUE) or self._check_current(TokenKind.FALSE):
             return self.parse_expression_boolean()
-        elif self._check_current(TokenKind.NUMBER):
+        if self._check_current(TokenKind.NUMBER):
             return self.parse_expression_number()
-        elif self._check_current(TokenKind.STRING):
+        if self._check_current(TokenKind.STRING):
             return self.parse_expression_string()
-        elif self._check_current(TokenKind.LBRACKET):
+        if self._check_current(TokenKind.LBRACKET):
             return self.parse_expression_vector(mode=ParseMode.COMB)
-        elif (
+        if (
             self._check_current(TokenKind.MAP)
             or self._check_current(TokenKind.SET)
             or self._check_current(TokenKind.LBRACE)
         ):
             return self.parse_expression_map_or_set(mode=ParseMode.COMB)
-        else:
-            raise ParseError(
-                self.current_token.location,
-                f"expected comb value, found {self.current_token}",
-            )
+        raise ParseError(
+            self.current_token.location,
+            f"expected comb value, found {self.current_token}",
+        )
 
 
 def call(
@@ -4826,7 +4823,6 @@ def builtin_max():
 def builtin_import(target: String) -> Union[Value, Error]:
     env = Environment(BASE_ENVIRONMENT)
     module = env.get(CONST_STRING_MODULE)
-    assert module is not None, "expected `module` to be in the environment"
     module_path = module[CONST_STRING_PATH]
     module_file = module[CONST_STRING_FILE]
     module_directory = module[CONST_STRING_DIRECTORY]
@@ -5931,7 +5927,6 @@ def main() -> None:
 
     env = Environment(BASE_ENVIRONMENT)
     module = env.get(CONST_STRING_MODULE)
-    assert module is not None, "expected `module` to be in the environment"
     path = os.path.realpath(file) if file is not None else os.path.abspath(__file__)
     module[String.new("path")] = String.new(path)
     module[String.new("file")] = String.new(os.path.basename(path))
