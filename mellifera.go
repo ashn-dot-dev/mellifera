@@ -1137,7 +1137,9 @@ const (
 	// Delimiters
 	TOKEN_SEMICOLON = ";"
 	// Keywords
-	TOKEN_NULL = "null"
+	TOKEN_NULL  = "null"
+	TOKEN_TRUE  = "true"
+	TOKEN_FALSE = "false"
 )
 
 type Token struct {
@@ -1169,7 +1171,9 @@ type Lexer struct {
 
 func NewLexer(ctx *Context, source string, location *SourceLocation) Lexer {
 	keywords := map[string]string{
-		TOKEN_NULL: TOKEN_NULL,
+		TOKEN_NULL:  TOKEN_NULL,
+		TOKEN_TRUE:  TOKEN_TRUE,
+		TOKEN_FALSE: TOKEN_FALSE,
 	}
 
 	return Lexer{
@@ -1457,7 +1461,28 @@ func (self AstExpressionNull) IntoValue(ctx *Context) Value {
 }
 
 func (self AstExpressionNull) Eval(ctx *Context, env *Environment) (Value, error) {
-	return ctx.Null, nil
+	return ctx.Null.Copy(), nil
+}
+
+type AstExpressionBoolean struct {
+	Location *SourceLocation // Optional
+	Data     *Boolean
+}
+
+func (self AstExpressionBoolean) ExpressionLocation() *SourceLocation {
+	return self.Location
+}
+
+func (self AstExpressionBoolean) IntoValue(ctx *Context) Value {
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+		{ctx.NewString("data"), self.Data.Copy()},
+	})
+}
+
+func (self AstExpressionBoolean) Eval(ctx *Context, env *Environment) (Value, error) {
+	return self.Data.Copy(), nil
 }
 
 type AstStatementExpression struct {
@@ -1488,15 +1513,27 @@ func (self AstStatementExpression) Eval(ctx *Context, env *Environment) (Control
 type Parser struct {
 	lexer        *Lexer
 	currentToken Token
+
+	parseNudFunctions map[string]func(*Parser) (AstExpression, error)
 }
 
 func NewParser(lexer *Lexer) Parser {
 	self := Parser{
 		lexer:        lexer,
 		currentToken: Token{"invalid program", "", lexer.location},
+
+		parseNudFunctions: map[string]func(*Parser) (AstExpression, error){
+			TOKEN_NULL:  (*Parser).ParseExpressionNull,
+			TOKEN_TRUE:  (*Parser).ParseExpressionBoolean,
+			TOKEN_FALSE: (*Parser).ParseExpressionBoolean,
+		},
 	}
 	self.advanceToken()
 	return self
+}
+
+func (self *Parser) context() *Context {
+	return self.lexer.ctx
 }
 
 func (self *Parser) advanceToken() (Token, error) {
@@ -1541,18 +1578,47 @@ func (self *Parser) ParseProgram() (AstProgram, error) {
 }
 
 func (self *Parser) ParseExpression() (AstExpression, error) {
-	// TODO: Add Pratt parsing.
-	if self.checkCurrent(TOKEN_NULL) {
-		token, err := self.expectCurrent(TOKEN_NULL)
+	parseNud, ok := self.parseNudFunctions[self.currentToken.Kind]
+	if !ok {
+		return nil, ParseError{
+			self.currentToken.Location,
+			fmt.Sprintf("expected expression, found %v", self.currentToken),
+		}
+	}
+
+	expression, err := parseNud(self)
+	if err != nil {
+		return nil, err
+	}
+	return expression, nil
+}
+
+func (self *Parser) ParseExpressionNull() (AstExpression, error) {
+	token, err := self.expectCurrent(TOKEN_NULL)
+	if err != nil {
+		return nil, err
+	}
+	return AstExpressionNull{token.Location}, nil
+}
+
+func (self *Parser) ParseExpressionBoolean() (AstExpression, error) {
+	if self.checkCurrent(TOKEN_TRUE) {
+		token, err := self.expectCurrent(TOKEN_TRUE)
 		if err != nil {
 			return nil, err
 		}
-		return AstExpressionNull{token.Location}, nil
+		return AstExpressionBoolean{token.Location, self.context().NewBoolean(true)}, nil
 	}
-
+	if self.checkCurrent(TOKEN_FALSE) {
+		token, err := self.expectCurrent(TOKEN_FALSE)
+		if err != nil {
+			return nil, err
+		}
+		return AstExpressionBoolean{token.Location, self.context().NewBoolean(false)}, nil
+	}
 	return nil, ParseError{
 		self.currentToken.Location,
-		fmt.Sprintf("expected expression, found %v", self.currentToken),
+		fmt.Sprintf("expected boolean, found %v", self.currentToken),
 	}
 }
 

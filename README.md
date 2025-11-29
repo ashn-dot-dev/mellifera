@@ -374,6 +374,7 @@ python3 -m venv .venv-mellifera
 . .venv-mellifera/bin/activate
 python3 -m pip install -r requirements.txt
 MELLIFERA_HOME=$(pwd)
+. ./env
 
 make check   # run tests
 make lint    # lint with mypy and flake8

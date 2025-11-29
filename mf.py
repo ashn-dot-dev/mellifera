@@ -1923,7 +1923,7 @@ class AstExpressionNull(AstExpression):
         )
 
     def eval(self, env: Environment) -> Union[Value, Error]:
-        return null
+        return copy(null)
 
 
 @final
@@ -1931,6 +1931,17 @@ class AstExpressionNull(AstExpression):
 class AstExpressionBoolean(AstExpression):
     location: Optional[SourceLocation]
     data: Boolean
+
+    def into_value(self) -> Value:
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+                String.new("data"): copy(self.data),
+            }
+        )
 
     def eval(self, env: Environment) -> Union[Value, Error]:
         return copy(self.data)
