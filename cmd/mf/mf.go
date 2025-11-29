@@ -41,8 +41,33 @@ func dumpTokensFile(ctx *mellifera.Context, path string) error {
 	if err != nil {
 		return err
 	}
-	source := string(bytes)
-	return dumpTokensSource(ctx, source, &mellifera.SourceLocation{path, 1})
+	return dumpTokensSource(ctx, string(bytes), &mellifera.SourceLocation{path, 1})
+}
+
+func dumpAstSource(ctx *mellifera.Context, source string, location *mellifera.SourceLocation) error {
+	lexer := mellifera.NewLexer(ctx, source, location)
+	parser := mellifera.NewParser(&lexer)
+	program, err := parser.ParseProgram()
+	if err != nil {
+		return err
+	}
+
+	var sb strings.Builder
+	encoder := mellifera.NewCombEncoder(&sb, mellifera.Ptr("    "))
+	err = program.IntoValue(ctx).CombEncode(encoder)
+	if err != nil {
+		return err
+	}
+	fmt.Println(sb.String())
+	return nil
+}
+
+func dumpAstFile(ctx *mellifera.Context, path string) error {
+	bytes, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	return dumpAstSource(ctx, string(bytes), &mellifera.SourceLocation{path, 1})
 }
 
 func evalSource(ctx *mellifera.Context, source string, location *mellifera.SourceLocation) (mellifera.Value, error) {
@@ -60,8 +85,7 @@ func evalFile(ctx *mellifera.Context, path string) (mellifera.Value, error) {
 	if err != nil {
 		return nil, err
 	}
-	source := string(bytes)
-	return evalSource(ctx, source, &mellifera.SourceLocation{path, 1})
+	return evalSource(ctx, string(bytes), &mellifera.SourceLocation{path, 1})
 }
 
 func usage(w io.Writer) {
@@ -72,7 +96,8 @@ func usage(w io.Writer) {
 
 options:
   -c, --command     Execute the provided command.
-  --dump-tokens     Dump a comb-encoded a vector of lexed tokens to stdout.
+  --dump-tokens     Dump a comb-encoded vector of lexed tokens to stdout.
+  --dump-ast        Dump a comb-encoded abstract syntax tree to stdout.
   -h, --help        Display this help text and exit.
 `, program, program)
 }
@@ -80,6 +105,7 @@ options:
 func main() {
 	reCommand := regexp.MustCompile(`^-+c(?:ommand)?(?:=(.*))?$`)
 	reDumpTokens := regexp.MustCompile(`^-+dump-tokens$`)
+	reDumpAst := regexp.MustCompile(`^-+dump-ast$`)
 	reHelp := regexp.MustCompile(`^-+h(?:elp)?(?:=(.*))?$`)
 
 	verbatim := false
@@ -87,6 +113,7 @@ func main() {
 	var file *string
 	var argv []string
 	dumpTokens := false
+	dumpAst := false
 	argi := 1
 	for argi < len(os.Args) {
 		arg := os.Args[argi]
@@ -144,6 +171,13 @@ func main() {
 			continue
 		}
 
+		// -dump-ast
+		if m := reDumpAst.FindStringSubmatch(arg); m != nil {
+			dumpAst = true
+			argi += 1
+			continue
+		}
+
 		// -h, -help
 		if m := reHelp.FindStringSubmatch(arg); m != nil {
 			usage(os.Stdout)
@@ -161,13 +195,20 @@ func main() {
 
 	var err error
 	ctx := mellifera.NewContext()
-	if cmds != nil || file != nil {
+	if dumpTokens && dumpAst {
+		fmt.Fprintf(os.Stderr, "error: requested token dump and AST dump which are mutually exclusive\n")
+		os.Exit(1)
+	} else if cmds != nil || file != nil {
 		if cmds != nil && dumpTokens {
 			err = dumpTokensSource(&ctx, *cmds, &mellifera.SourceLocation{"<command>", 1})
+		} else if cmds != nil && dumpAst {
+			err = dumpAstSource(&ctx, *cmds, &mellifera.SourceLocation{"<command>", 1})
 		} else if cmds != nil {
 			_, err = evalSource(&ctx, *cmds, &mellifera.SourceLocation{"<command>", 1})
 		} else if file != nil && dumpTokens {
 			err = dumpTokensFile(&ctx, *file)
+		} else if file != nil && dumpAst {
+			err = dumpAstFile(&ctx, *file)
 		} else if file != nil {
 			_, err = evalFile(&ctx, *file)
 		} else {

@@ -1047,6 +1047,17 @@ class SourceLocation:
     def __str__(self):
         return f"{self.file}, line {self.line}"
 
+    @staticmethod
+    def optional_into_value(location: Optional["SourceLocation"]) -> Value:
+        if location is None:
+            return null
+        return Map.new(
+            {
+                String.new("file"): String.new(location.file),
+                String.new("line"): Number.new(location.line),
+            }
+        )
+
 
 class TokenKind(enum.Enum):
     # Meta
@@ -1167,21 +1178,13 @@ class Token:
         return f"{self.kind.value}"
 
     def into_value(self) -> Value:
-        location = (
-            null
-            if self.location is None
-            else Map.new(
-                {
-                    String.new("file"): String.new(self.location.file),
-                    String.new("line"): Number.new(self.location.line),
-                }
-            )
-        )
         return Map.new(
             {
                 String.new("kind"): String.new(self.kind.value),
                 String.new("literal"): String.new(self.literal),
-                String.new("location"): location,
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
             }
         )
 
@@ -1781,6 +1784,12 @@ def update_named_functions(map: "AstExpressionMap", prefix: bytes = b""):
 class AstNode(ABC):
     location: Optional[SourceLocation]
 
+    # TODO: Make `into_value` an @abstractmethod once it has been implemented
+    # for all concrete ast node types. Currently, `into_value` is being added
+    # to individual nodes as those nodes are implemented within mellifera.go.
+    def into_value(self) -> Value:
+        raise NotImplementedError()
+
 
 class AstExpression(AstNode):
     location: Optional[SourceLocation]
@@ -1803,6 +1812,18 @@ class AstStatement(AstNode):
 class AstProgram(AstNode):
     location: Optional[SourceLocation]
     statements: list[AstStatement]
+
+    def into_value(self) -> Value:
+        statements = Vector.new([x.into_value() for x in self.statements])
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+                String.new("statements"): statements,
+            }
+        )
 
     def eval(self, env: Environment) -> Union[Value, Error]:
         result: Optional[Union[Value, ControlFlow]] = None
@@ -1890,6 +1911,16 @@ class AstExpressionTemplate(AstExpression):
 @dataclass
 class AstExpressionNull(AstExpression):
     location: Optional[SourceLocation]
+
+    def into_value(self) -> Value:
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+            }
+        )
 
     def eval(self, env: Environment) -> Union[Value, Error]:
         return null
@@ -3018,6 +3049,17 @@ class AstStatementReturn(AstStatement):
 class AstStatementExpression(AstStatement):
     location: Optional[SourceLocation]
     expression: AstExpression
+
+    def into_value(self) -> Value:
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+                String.new("expression"): self.expression.into_value(),
+            }
+        )
 
     def eval(self, env: Environment) -> Optional[ControlFlow]:
         result = self.expression.eval(env)
@@ -5406,6 +5448,19 @@ def dump_tokens_file(path: Union[str, os.PathLike]):
     dump_tokens_source(source, SourceLocation(str(path), 1))
 
 
+def dump_ast_source(source: str, loc: Optional[SourceLocation] = None):
+    lexer = Lexer(source, loc)
+    parser = Parser(lexer)
+    program = parser.parse_program()
+    print(program.into_value().comb_encode(indent_text=" " * 4))
+
+
+def dump_ast_file(path: Union[str, os.PathLike]):
+    with open(path, "r", encoding="utf-8") as f:
+        source = f.read()
+    return dump_ast_source(source, SourceLocation(str(path), 1))
+
+
 def eval_source(
     source: str,
     env: Environment,
@@ -5850,7 +5905,8 @@ usage:
 
 options:
   -c, --command     Execute the provided command.
-  --dump-tokens     Dump a comb-encoded a vector of lexed tokens to stdout.
+  --dump-tokens     Dump a comb-encoded vector of lexed tokens to stdout.
+  --dump-ast        Dump a comb-encoded abstract syntax tree to stdout.
   -h, --help        Display this help text and exit.
     """.replace(
         "${PROGRAM}", sys.argv[0]
@@ -5864,6 +5920,7 @@ def main() -> None:
     file: Optional[str] = None  # mf source file
     argv: list[str] = []  # program arguments
     dump_tokens = False
+    dump_ast = False
     argi = 1
     while argi < len(sys.argv):
         arg = sys.argv[argi]
@@ -5913,6 +5970,12 @@ def main() -> None:
             argi += 1
             continue
 
+        # -dump-ast
+        if m := re.match(r"^-+dump-ast$", arg):
+            dump_ast = True
+            argi += 1
+            continue
+
         # -h, -help
         if m := re.match(r"^-+h(?:elp)?(?:=(.*))?$", arg):
             usage(file=sys.stdout)
@@ -5936,15 +5999,27 @@ def main() -> None:
         Vector.new([String.new(x) for x in argv]),
     )
 
-    if cmds is not None or file is not None:
+    if dump_tokens and dump_ast:
+        print(
+            "error: requested token dump and AST dump which are mutually exclusive",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    elif cmds is not None or file is not None:
         try:
             if cmds is not None and dump_tokens:
                 dump_tokens_source(cmds, SourceLocation("<command>", 1))
+                return
+            if cmds is not None and dump_ast:
+                dump_ast_source(cmds, SourceLocation("<command>", 1))
                 return
             elif cmds is not None:
                 result = eval_source(cmds, env, SourceLocation("<command>", 1))
             elif file is not None and dump_tokens:
                 dump_tokens_file(file)
+                return
+            elif file is not None and dump_ast:
+                dump_ast_file(file)
                 return
             elif file is not None:
                 result = eval_file(file, env)
@@ -5955,7 +6030,10 @@ def main() -> None:
         except KeyboardInterrupt:
             return
         except Exception as e:
-            print(e, file=sys.stderr)
+            if len(str(e)) != 0:
+                print(e, file=sys.stderr)
+            else:
+                print(traceback.format_exc(), file=sys.stderr)
             sys.exit(1)
         if isinstance(result, Return):
             print(result.value)
@@ -5973,6 +6051,12 @@ def main() -> None:
     elif dump_tokens:
         print(
             "error: requested token dump without a command or file path",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    elif dump_ast:
+        print(
+            "error: requested AST dump without a command or file path",
             file=sys.stderr,
         )
         sys.exit(1)

@@ -1109,6 +1109,16 @@ type SourceLocation struct {
 	Line int
 }
 
+func optionalSourceLocationIntoValue(ctx *Context, location *SourceLocation) Value {
+	if location == nil {
+		return ctx.Null
+	}
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("file"), ctx.NewString(location.File)},
+		{ctx.NewString("line"), ctx.NewNumber(float64(location.Line))},
+	})
+}
+
 type ParseError struct {
 	Location *SourceLocation // Optional
 	why      string
@@ -1125,7 +1135,7 @@ const (
 	// Identifiers and Literals
 	TOKEN_IDENTIFIER = "identifier"
 	// Delimiters
-    TOKEN_SEMICOLON = ";"
+	TOKEN_SEMICOLON = ";"
 	// Keywords
 	TOKEN_NULL = "null"
 )
@@ -1141,19 +1151,10 @@ func (self Token) String() string {
 }
 
 func (self Token) IntoValue(ctx *Context) Value {
-	location := func() Value {
-		if self.Location == nil {
-			return ctx.Null
-		}
-		return ctx.NewMap([]MapPair{
-			{ctx.NewString("file"), ctx.NewString(self.Location.File)},
-			{ctx.NewString("line"), ctx.NewNumber(float64(self.Location.Line))},
-		})
-	}()
 	return ctx.NewMap([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(self.Kind)},
 		{ctx.NewString("literal"), ctx.NewString(self.Literal)},
-		{ctx.NewString("location"), location},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 	})
 }
 
@@ -1374,19 +1375,37 @@ func (self Continue) ControlFlowLocation() *SourceLocation {
 	return self.Location
 }
 
+type AstNode interface {
+	IntoValue(*Context) Value
+}
+
 type AstExpression interface {
 	ExpressionLocation() *SourceLocation
+	IntoValue(*Context) Value
 	Eval(*Context, *Environment) (Value, error)
 }
 
 type AstStatement interface {
 	StatementLocation() *SourceLocation
+	IntoValue(*Context) Value
 	Eval(*Context, *Environment) (ControlFlow, error)
 }
 
 type AstProgram struct {
 	Location   *SourceLocation // Optional
 	Statements []AstStatement
+}
+
+func (self AstProgram) IntoValue(ctx *Context) Value {
+	statements := ctx.NewVector(nil)
+	for _, statement := range self.Statements {
+		statements.Push(statement.IntoValue(ctx))
+	}
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+		{ctx.NewString("statements"), statements},
+	})
 }
 
 func (self AstProgram) Eval(ctx *Context, env *Environment) (Value, error) {
@@ -1430,6 +1449,13 @@ func (self AstExpressionNull) ExpressionLocation() *SourceLocation {
 	return self.Location
 }
 
+func (self AstExpressionNull) IntoValue(ctx *Context) Value {
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+	})
+}
+
 func (self AstExpressionNull) Eval(ctx *Context, env *Environment) (Value, error) {
 	return ctx.Null, nil
 }
@@ -1441,6 +1467,14 @@ type AstStatementExpression struct {
 
 func (self AstStatementExpression) StatementLocation() *SourceLocation {
 	return self.Location
+}
+
+func (self AstStatementExpression) IntoValue(ctx *Context) Value {
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+		{ctx.NewString("expression"), self.Expression.IntoValue(ctx)},
+	})
 }
 
 func (self AstStatementExpression) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
