@@ -10,25 +10,25 @@ import (
 )
 
 func TestNullTypename(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	null := ctx.NewNull()
 	assert.Equal(t, "null", null.Typename())
 }
 
 func TestNullString(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	null := ctx.NewNull()
 	assert.Equal(t, "null", null.String())
 }
 
 func TestNullCopy(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	null := ctx.NewNull()
 	assert.Same(t, null, null.Copy())
 }
 
 func TestNullCombEncode(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	null := ctx.NewNull()
 	{
 		var sb strings.Builder
@@ -47,7 +47,7 @@ func TestNullCombEncode(t *testing.T) {
 }
 
 func TestBooleanTypename(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	{
 		boolean := ctx.NewBoolean(true)
 		assert.Equal(t, "boolean", boolean.Typename())
@@ -59,7 +59,7 @@ func TestBooleanTypename(t *testing.T) {
 }
 
 func TestBooleanString(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	{
 		boolean := ctx.NewBoolean(true)
 		assert.Equal(t, "true", boolean.String())
@@ -71,7 +71,7 @@ func TestBooleanString(t *testing.T) {
 }
 
 func TestBooleanCopy(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	{
 		boolean := ctx.NewBoolean(true)
 		assert.Same(t, boolean, boolean.Copy())
@@ -83,7 +83,7 @@ func TestBooleanCopy(t *testing.T) {
 }
 
 func TestBooleanCombEncode(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	boolean := ctx.NewBoolean(true)
 	{
 		var sb strings.Builder
@@ -102,13 +102,13 @@ func TestBooleanCombEncode(t *testing.T) {
 }
 
 func TestNumberTypename(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	number := ctx.NewNumber(123.456)
 	assert.Equal(t, "number", number.Typename())
 }
 
 func TestNumberString(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	{
 		number := ctx.NewNumber(0)
 		assert.Equal(t, "0", number.String())
@@ -144,13 +144,13 @@ func TestNumberString(t *testing.T) {
 }
 
 func TestNumberCopy(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	number := ctx.NewNumber(123.456)
 	assert.Same(t, number, number.Copy())
 }
 
 func TestNumberCombEncode(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	number := ctx.NewNumber(123.456)
 	{
 		var sb strings.Builder
@@ -194,25 +194,25 @@ func TestNumberCombEncode(t *testing.T) {
 }
 
 func TestStringTypename(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	string := ctx.NewString("foo")
 	assert.Equal(t, "string", string.Typename())
 }
 
 func TestStringString(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	string := ctx.NewString("foo\t\n\"\\bar")
 	assert.Equal(t, "\"foo\\t\\n\\\"\\\\bar\"", string.String())
 }
 
 func TestStringCopy(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	string := ctx.NewString("foo")
 	assert.Same(t, string, string.Copy())
 }
 
 func TestStringCombEncode(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	string := ctx.NewString("foo\nbar")
 	{
 		var sb strings.Builder
@@ -231,28 +231,28 @@ func TestStringCombEncode(t *testing.T) {
 }
 
 func TestRegexpTypename(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	regexp, err := ctx.NewRegexp(`^\w+$`)
 	require.NoError(t, err)
 	assert.Equal(t, "regexp", regexp.Typename())
 }
 
 func TestRegexpString(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	regexp, err := ctx.NewRegexp(`^\w+$`)
 	require.NoError(t, err)
 	assert.Equal(t, `r"^\\w+$"`, regexp.String())
 }
 
 func TestRegexpCopy(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	regexp, err := ctx.NewRegexp(`^\w+$`)
 	require.NoError(t, err)
 	assert.Same(t, regexp, regexp.Copy())
 }
 
 func TestRegexpCombEncode(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	regexp, _ := ctx.NewRegexp("^.*$")
 	var sb strings.Builder
 	e := NewCombEncoder(&sb, nil)
@@ -262,19 +262,19 @@ func TestRegexpCombEncode(t *testing.T) {
 }
 
 func TestRegexpInvalidText(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	_, err := ctx.NewRegexp(`\q`)
 	assert.EqualError(t, err, `invalid regular expression "\\q"`)
 }
 
 func TestVectorConstructorNilElements(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	vector := ctx.NewVector(nil)
 	assert.Equal(t, 0, vector.Count())
 }
 
 func TestVectorConstructorNonNilElements(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	{
 		vector := ctx.NewVector([]Value{})
 		assert.Equal(t, 0, vector.Count())
@@ -290,13 +290,13 @@ func TestVectorConstructorNonNilElements(t *testing.T) {
 }
 
 func TestVectorTypename(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	vector := ctx.NewVector(nil)
 	assert.Equal(t, "vector", vector.Typename())
 }
 
 func TestVectorString(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	{
 		vector := ctx.NewVector(nil)
 		assert.Equal(t, "[]", vector.String())
@@ -316,7 +316,7 @@ func TestVectorString(t *testing.T) {
 }
 
 func TestVectorCopy(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	{
 		vector := ctx.NewVector(nil)
 		require.Equal(t, vector.Count(), vector.Copy().(*Vector).Count())
@@ -339,7 +339,7 @@ func TestVectorCopy(t *testing.T) {
 }
 
 func TestVectorCopyOnWrite(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	a := ctx.NewVector([]Value{
 		ctx.NewString("foo"),
 		ctx.NewString("bar"),
@@ -367,7 +367,7 @@ func TestVectorCopyOnWrite(t *testing.T) {
 }
 
 func TestVectorCombEncode(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 
 	empty := ctx.NewVector(nil)
 	{
@@ -457,7 +457,7 @@ func TestVectorCombEncode(t *testing.T) {
 }
 
 func TestMapConstructorNilElements(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	m := ctx.NewMap(nil)
 	require.Equal(t, 0, m.Count())
 
@@ -466,7 +466,7 @@ func TestMapConstructorNilElements(t *testing.T) {
 }
 
 func TestMapConstructorNonNilElements(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	{
 		m := ctx.NewMap([]MapPair{})
 		assert.Equal(t, 0, m.Count())
@@ -489,13 +489,13 @@ func TestMapConstructorNonNilElements(t *testing.T) {
 }
 
 func TestMapTypename(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	m := ctx.NewMap(nil)
 	assert.Equal(t, "map", m.Typename())
 }
 
 func TestMapString(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	{
 		m := ctx.NewMap(nil)
 		assert.Equal(t, "Map{}", m.String())
@@ -515,7 +515,7 @@ func TestMapString(t *testing.T) {
 }
 
 func TestMapCopy(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	{
 		m := ctx.NewMap(nil)
 		require.Equal(t, m.Count(), m.Copy().(*Map).Count())
@@ -542,7 +542,7 @@ func TestMapCopy(t *testing.T) {
 }
 
 func TestMapCopyOnWrite(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	a := ctx.NewMap([]MapPair{
 		{ctx.NewNumber(123.456), ctx.NewString("abc")},
 		{ctx.NewString("foo"), ctx.NewString("def")},
@@ -586,7 +586,7 @@ func TestMapCopyOnWrite(t *testing.T) {
 }
 
 func TestMapCombEncode(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 
 	empty := ctx.NewMap(nil)
 	{
@@ -676,7 +676,7 @@ func TestMapCombEncode(t *testing.T) {
 }
 
 func TestSetConstructorNilElements(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	set := ctx.NewSet(nil)
 	require.Equal(t, 0, set.Count())
 
@@ -685,7 +685,7 @@ func TestSetConstructorNilElements(t *testing.T) {
 }
 
 func TestSetConstructorNonNilElements(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	{
 		set := ctx.NewSet([]Value{})
 		assert.Equal(t, 0, set.Count())
@@ -708,13 +708,13 @@ func TestSetConstructorNonNilElements(t *testing.T) {
 }
 
 func TestSetTypename(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	set := ctx.NewSet(nil)
 	assert.Equal(t, "set", set.Typename())
 }
 
 func TestSetString(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	{
 		set := ctx.NewSet(nil)
 		assert.Equal(t, "Set{}", set.String())
@@ -734,7 +734,7 @@ func TestSetString(t *testing.T) {
 }
 
 func TestSetCopy(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	{
 		set := ctx.NewSet(nil)
 		require.Equal(t, set.Count(), set.Copy().(*Set).Count())
@@ -761,7 +761,7 @@ func TestSetCopy(t *testing.T) {
 }
 
 func TestSetCopyOnWrite(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	a := ctx.NewSet([]Value{
 		ctx.NewNumber(123.456),
 		ctx.NewString("foo"),
@@ -806,7 +806,7 @@ func TestSetCopyOnWrite(t *testing.T) {
 }
 
 func TestSetCombEncode(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 
 	empty := ctx.NewSet(nil)
 	{
@@ -896,25 +896,25 @@ func TestSetCombEncode(t *testing.T) {
 }
 
 func TestReferenceTypename(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	reference := ctx.NewReference(ctx.NewNumber(123.456))
 	assert.Equal(t, "reference", reference.Typename())
 }
 
 func TestReferenceString(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	reference := ctx.NewReference(ctx.NewNumber(123.456))
 	assert.True(t, strings.HasPrefix(reference.String(), "reference@"))
 }
 
 func TestReferenceCopy(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	reference := ctx.NewReference(ctx.NewNumber(123.456))
 	assert.Same(t, reference, reference.Copy())
 }
 
 func TestReferenceCombEncode(t *testing.T) {
-	ctx := &Context{}
+	ctx := NewContext()
 	reference := ctx.NewReference(ctx.NewNumber(123.456))
 	var sb strings.Builder
 	e := NewCombEncoder(&sb, nil)

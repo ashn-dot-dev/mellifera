@@ -16,6 +16,10 @@ assert(null.& == null.&); # all null values should use a single null object
 let a = true;
 let b = a;
 assert(a.& == b.&);
+let c = true;
+assert(a.& == c.&); # all boolean values should use a single true/false object
+assert(true.& == true.&); # all boolean values should use a single true/false object
+assert(false.& == false.&); # all boolean values should use a single true/false object
 
 let a = 123;
 let b = a;

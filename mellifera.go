@@ -118,23 +118,33 @@ func (e *CombEncoder) writeEndOfLine() error {
 }
 
 type Context struct {
-	Null            *Null
+	// Null singleton.
+	Null *Null
+	// Boolean singletons.
+	True  *Boolean
+	False *Boolean
+	// Base Environment.
 	BaseEnvironment Environment
 }
 
 func NewContext() Context {
 	ctx := Context{}
-	ctx.Null = ctx.NewNull()
+	ctx.Null = &Null{}
+	ctx.True = &Boolean{true}
+	ctx.False = &Boolean{false}
 	ctx.BaseEnvironment = NewEnvironment(nil)
 	return ctx
 }
 
 func (ctx *Context) NewNull() *Null {
-	return &Null{}
+	return ctx.Null
 }
 
 func (ctx *Context) NewBoolean(data bool) *Boolean {
-	return &Boolean{data}
+	if data {
+		return ctx.True
+	}
+	return ctx.False
 }
 
 func (ctx *Context) NewNumber(data float64) *Number {

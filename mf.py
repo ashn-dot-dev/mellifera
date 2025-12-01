@@ -220,7 +220,7 @@ class Null(Value):
 
     @staticmethod
     def new() -> "Null":
-        return Null(meta=None)
+        return null  # singleton
 
     def __hash__(self):
         return 0
@@ -252,7 +252,7 @@ class Boolean(Value):
 
     @staticmethod
     def new(data: bool) -> "Boolean":
-        return Boolean(data, _BOOLEAN_META)
+        return true if data else false
 
     def __hash__(self):
         return hash(self.data)
@@ -5501,9 +5501,6 @@ BASE_ENVIRONMENT = Environment()
 # or None. Non-None implies that the last pattern was a successful match.
 re_match_result = None
 
-# Null singleton.
-null = Null.new()
-
 # Metamaps for fundamental types *must* not be modified after program startup.
 # These metamaps are used during AST construction, and values created via the
 # `TYPE.new` initializers share these metamap references as an optimization.
@@ -5611,6 +5608,12 @@ _SET_META = MetaMap(
     },
 )
 _REFERENCE_META = MetaMap(name=String(Reference.typename()))
+
+# Null singleton.
+null = Null(meta=None)
+# Boolean singletons.
+true = Boolean(True, _BOOLEAN_META)
+false = Boolean(False, _BOOLEAN_META)
 
 _ITERATOR_SOURCE = """
 let iterator = type {
