@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 )
 
 // Utility function used to get the address of literals.
@@ -1172,7 +1173,7 @@ func (self Token) IntoValue(ctx *Context) Value {
 
 type Lexer struct {
 	ctx      *Context
-	runes    []rune
+	source   string
 	location *SourceLocation // optional
 	position int
 
@@ -1188,7 +1189,7 @@ func NewLexer(ctx *Context, source string, location *SourceLocation) Lexer {
 
 	return Lexer{
 		ctx:      ctx,
-		runes:    []rune(source),
+		source:   source,
 		location: location,
 		position: 0,
 
@@ -1197,14 +1198,15 @@ func NewLexer(ctx *Context, source string, location *SourceLocation) Lexer {
 }
 
 func (self *Lexer) currentRune() rune {
-	if self.position >= len(self.runes) {
+	if self.position >= len(self.source) {
 		return rune(0)
 	}
-	return self.runes[self.position]
+	current, _ := utf8.DecodeRuneInString(self.source[self.position:])
+	return current
 }
 
 func (self *Lexer) isEof() bool {
-	return self.position >= len(self.runes)
+	return self.position >= len(self.source)
 }
 
 func (self *Lexer) advanceRune() {
@@ -1214,7 +1216,8 @@ func (self *Lexer) advanceRune() {
 	if self.location != nil && self.currentRune() == '\n' {
 		self.location.Line += 1
 	}
-	self.position += 1
+	_, size := utf8.DecodeRuneInString(self.source[self.position:])
+	self.position += size
 }
 
 func (self *Lexer) skipWhitespace() {

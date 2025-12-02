@@ -1200,11 +1200,11 @@ class Lexer:
     RE_NUMBER_DEC = re.compile(r"^\d+(\.\d+)?", re.ASCII)
 
     def __init__(self, source: str, location: Optional[SourceLocation] = None):
-        self.source: str = source
+        self.source = source
         # What position does the source "start" being parsed from.
         # None if the source is being lexed in a location-independent manner.
-        self.location: Optional[SourceLocation] = location
-        self.position: int = 0
+        self.location = location
+        self.position = 0
 
     @staticmethod
     def _is_letter(ch: str) -> bool:
