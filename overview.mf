@@ -19,27 +19,27 @@ print("\n");
 
 println("number values");
 println("-------------");
-dumpln( 123    );
-dumpln( 123.0  );
-dumpln( 123.45 );
+dumpln( 123        );
+dumpln( 123.0      );
+dumpln( 123.456    );
 dumpln( 0xdeadbeef );
 
 print("\n");
 
 println("string values");
 println("-------------");
-dumpln( "hello"        );
-dumpln( "hello world"  );
-dumpln( "hello\tworld" );
-dumpln( "hello\nworld" );
-dumpln( "hello\\world" );
-dumpln( "hello\"world" );
-dumpln( "hello\x5Fworld" ); # 0x5F is ASCII _
-dumpln( "hello\x5fworld" ); # 0x5f is ASCII _
+dumpln( "hello"                      );
+dumpln( "hello world"                );
+dumpln( "hello\tworld"               );
+dumpln( "hello\nworld"               );
+dumpln( "hello\\world"               );
+dumpln( "hello\"world"               );
+dumpln( "hello\x5Fworld"             ); # 0x5F is ASCII _
+dumpln( "hello\x5fworld"             ); # 0x5f is ASCII _
 dumpln( "hello\xf0\x9f\x8d\x94world" ); # 0xf0, 0x9f, 0x8d, 0x94 is UTF-8 🍔
-dumpln( "hello🍔world" );
-dumpln( "hello, 世界" );
-dumpln( `hello world` );
+dumpln( "hello🍔world"               );
+dumpln( "hello, 世界"                );
+dumpln( `hello world`                );
 dumpln(
 `hello
 world`

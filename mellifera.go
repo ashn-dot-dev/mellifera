@@ -119,13 +119,16 @@ func (e *CombEncoder) writeEndOfLine() error {
 }
 
 type Context struct {
-	// Null singleton.
+	// Null Singleton.
 	Null *Null
-	// Boolean singletons.
+	// Boolean Singletons
 	True  *Boolean
 	False *Boolean
-	// Base Environment.
+	// Base Environment
 	BaseEnvironment Environment
+	// Miscellaneous State and Definitions
+	reNumberDec *regexp.Regexp
+	reNumberHex *regexp.Regexp
 }
 
 func NewContext() Context {
@@ -134,6 +137,8 @@ func NewContext() Context {
 	ctx.True = &Boolean{true}
 	ctx.False = &Boolean{false}
 	ctx.BaseEnvironment = NewEnvironment(nil)
+	ctx.reNumberDec = regexp.MustCompile(`^\d+(\.\d+)?`)
+	ctx.reNumberHex = regexp.MustCompile(`^0x[0-9a-fA-F]+`)
 	return ctx
 }
 
@@ -296,7 +301,7 @@ func (self *Number) String() string {
 	if self.data == math.Inf(-1) {
 		return "-Inf"
 	}
-	return strconv.FormatFloat(self.data, 'g', -1, 64)
+	return strconv.FormatFloat(self.data, 'f', -1, 64)
 }
 
 func (self *Number) Copy() Value {
@@ -1145,6 +1150,7 @@ const (
 	TOKEN_EOF = "end-of-file"
 	// Identifiers and Literals
 	TOKEN_IDENTIFIER = "identifier"
+	TOKEN_NUMBER     = "number"
 	// Delimiters
 	TOKEN_SEMICOLON = ";"
 	// Keywords
@@ -1157,6 +1163,7 @@ type Token struct {
 	Kind     string
 	Literal  string
 	Location *SourceLocation // Optional
+	Value    Value           // Optional
 }
 
 func (self Token) String() string {
@@ -1195,6 +1202,13 @@ func NewLexer(ctx *Context, source string, location *SourceLocation) Lexer {
 
 		keywords: keywords,
 	}
+}
+
+func (self *Lexer) currentLocation() *SourceLocation {
+	if self.location == nil {
+		return nil
+	}
+	return &SourceLocation{self.location.File, self.location.Line}
 }
 
 func (self *Lexer) currentRune() rune {
@@ -1258,14 +1272,48 @@ func (self *Lexer) lexKeywordOrIdentifier() (Token, error) {
 		return Token{
 			Kind:     keyword,
 			Literal:  literal,
-			Location: &SourceLocation{self.location.File, self.location.Line},
+			Location: self.currentLocation(),
 		}, nil
 	}
 	return Token{
 		Kind:     TOKEN_IDENTIFIER,
 		Literal:  literal,
-		Location: &SourceLocation{self.location.File, self.location.Line},
+		Location: self.currentLocation(),
 	}, nil
+}
+
+func (self *Lexer) lexNumber() (Token, error) {
+	hex := self.ctx.reNumberHex.FindString(self.source[self.position:])
+	if hex != "" {
+		self.position += len(hex)
+		parsed, err := strconv.ParseInt(hex, 0, 64)
+		if err != nil {
+			return Token{}, err
+		}
+		return Token{
+			Kind:     TOKEN_NUMBER,
+			Literal:  hex,
+			Location: self.currentLocation(),
+			Value:    self.ctx.NewNumber(float64(parsed)),
+		}, nil
+	}
+
+	dec := self.ctx.reNumberDec.FindString(self.source[self.position:])
+	if dec != "" {
+		self.position += len(dec)
+		parsed, err := strconv.ParseFloat(dec, 64)
+		if err != nil {
+			return Token{}, err
+		}
+		return Token{
+			Kind:     TOKEN_NUMBER,
+			Literal:  dec,
+			Location: self.currentLocation(),
+			Value:    self.ctx.NewNumber(parsed),
+		}, nil
+	}
+
+	return Token{}, errors.New("invalid number")
 }
 
 func (self *Lexer) NextToken() (Token, error) {
@@ -1274,13 +1322,16 @@ func (self *Lexer) NextToken() (Token, error) {
 		return Token{
 			Kind:     TOKEN_EOF,
 			Literal:  "",
-			Location: &SourceLocation{self.location.File, self.location.Line},
+			Location: self.currentLocation(),
 		}, nil
 	}
 
 	// Literals, Identifiers, and Keywords
 	if unicode.IsLetter(self.currentRune()) || self.currentRune() == '_' {
 		return self.lexKeywordOrIdentifier()
+	}
+	if '0' <= self.currentRune() && self.currentRune() <= '9' {
+		return self.lexNumber()
 	}
 
 	// Delimiters
@@ -1289,12 +1340,12 @@ func (self *Lexer) NextToken() (Token, error) {
 		return Token{
 			Kind:     TOKEN_SEMICOLON,
 			Literal:  TOKEN_SEMICOLON,
-			Location: &SourceLocation{self.location.File, self.location.Line},
+			Location: self.currentLocation(),
 		}, nil
 	}
 
 	return Token{}, ParseError{
-		Location: &SourceLocation{self.location.File, self.location.Line},
+		Location: self.currentLocation(),
 		why:      fmt.Sprintf("unknown token %s", quote(string([]rune{self.currentRune()}))),
 	}
 }
@@ -1498,6 +1549,27 @@ func (self AstExpressionBoolean) Eval(ctx *Context, env *Environment) (Value, er
 	return self.Data.Copy(), nil
 }
 
+type AstExpressionNumber struct {
+	Location *SourceLocation // Optional
+	Data     *Number
+}
+
+func (self AstExpressionNumber) ExpressionLocation() *SourceLocation {
+	return self.Location
+}
+
+func (self AstExpressionNumber) IntoValue(ctx *Context) Value {
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+		{ctx.NewString("data"), self.Data.Copy()},
+	})
+}
+
+func (self AstExpressionNumber) Eval(ctx *Context, env *Environment) (Value, error) {
+	return self.Data.Copy(), nil
+}
+
 type AstStatementExpression struct {
 	Location   *SourceLocation // Optional
 	Expression AstExpression
@@ -1533,12 +1605,13 @@ type Parser struct {
 func NewParser(lexer *Lexer) Parser {
 	self := Parser{
 		lexer:        lexer,
-		currentToken: Token{"invalid program", "", lexer.location},
+		currentToken: Token{"invalid program", "", lexer.location, nil},
 
 		parseNudFunctions: map[string]func(*Parser) (AstExpression, error){
-			TOKEN_NULL:  (*Parser).ParseExpressionNull,
-			TOKEN_TRUE:  (*Parser).ParseExpressionBoolean,
-			TOKEN_FALSE: (*Parser).ParseExpressionBoolean,
+			TOKEN_NULL:   (*Parser).ParseExpressionNull,
+			TOKEN_TRUE:   (*Parser).ParseExpressionBoolean,
+			TOKEN_FALSE:  (*Parser).ParseExpressionBoolean,
+			TOKEN_NUMBER: (*Parser).ParseExpressionNumber,
 		},
 	}
 	self.advanceToken()
@@ -1633,6 +1706,21 @@ func (self *Parser) ParseExpressionBoolean() (AstExpression, error) {
 		self.currentToken.Location,
 		fmt.Sprintf("expected boolean, found %v", self.currentToken),
 	}
+}
+
+func (self *Parser) ParseExpressionNumber() (AstExpression, error) {
+	token, err := self.expectCurrent(TOKEN_NUMBER)
+	if err != nil {
+		return nil, ParseError{
+			self.currentToken.Location,
+			fmt.Sprintf("expected number, found %v", self.currentToken),
+		}
+	}
+	value, ok := token.Value.(*Number)
+	if !ok {
+		return AstExpressionNumber{}, errors.New("missing number token value")
+	}
+	return AstExpressionNumber{token.Location, value}, nil
 }
 
 func (self *Parser) ParseStatement() (AstStatement, error) {

@@ -1196,8 +1196,8 @@ class Token:
 class Lexer:
     EOF_LITERAL = ""
     RE_IDENTIFIER = re.compile(r"^[a-zA-Z_]\w*", re.ASCII)
-    RE_NUMBER_HEX = re.compile(r"^0x[0-9a-fA-F]+", re.ASCII)
     RE_NUMBER_DEC = re.compile(r"^\d+(\.\d+)?", re.ASCII)
+    RE_NUMBER_HEX = re.compile(r"^0x[0-9a-fA-F]+", re.ASCII)
 
     def __init__(self, source: str, location: Optional[SourceLocation] = None):
         self.source = source
@@ -1290,6 +1290,8 @@ class Lexer:
         if match is not None:
             text = match[0]
             self.position += len(text)
+            # TODO: Handle the case where the hexadecimal integer does not fit
+            # into in IEEE-754 double precision floating point number.
             return self._new_token(
                 TokenKind.NUMBER, text, value=Number.new(float(int(text, 16)))
             )
@@ -1952,6 +1954,17 @@ class AstExpressionBoolean(AstExpression):
 class AstExpressionNumber(AstExpression):
     location: Optional[SourceLocation]
     data: Number
+
+    def into_value(self) -> Value:
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+                String.new("data"): copy(self.data),
+            }
+        )
 
     def eval(self, env: Environment) -> Union[Value, Error]:
         return copy(self.data)

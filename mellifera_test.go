@@ -130,6 +130,10 @@ func TestNumberString(t *testing.T) {
 		assert.Equal(t, "-123.456", number.String())
 	}
 	{
+		number := ctx.NewNumber(float64(0xdeadbeef))
+		assert.Equal(t, "3735928559", number.String())
+	}
+	{
 		number := ctx.NewNumber(math.NaN())
 		assert.Equal(t, "NaN", number.String())
 	}
