@@ -9,3 +9,15 @@ false;
 123.0;
 123.456;
 0xdeadbeef;
+
+"hello";
+"hello world";
+"hello\tworld";
+"hello\nworld";
+"hello\\world";
+"hello\"world";
+"hello\x5Fworld";             # 0x5F is ASCII _
+"hello\x5fworld";             # 0x5f is ASCII _
+"hello\xf0\x9f\x8d\x94world"; # 0xf0, 0x9f, 0x8d, 0x94 is UTF-8 🍔
+"hello🍔world";
+"hello, 世界";

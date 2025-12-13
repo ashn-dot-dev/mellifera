@@ -1233,18 +1233,18 @@ class Lexer:
             self.location.line += 1
         self.position += 1
 
-    def _expect_rune(self, character: str) -> None:
-        assert len(character) == 1
-        current = self._current_rune()
+    def _expect_rune(self, r: str) -> None:
+        assert len(r) == 1
         if self._is_eof():
             raise ParseError(
                 self.location,
-                f"expected {quote(character)}, found end-of-file",
+                f"expected {quote(r)}, found end-of-file",
             )
-        if current != character:
+        current = self._current_rune()
+        if current != r:
             raise ParseError(
                 self.location,
-                f"expected {quote(character)}, found {quote(current)}",
+                f"expected {quote(r)}, found {quote(current)}",
             )
         self._advance_rune()
 
@@ -1346,7 +1346,6 @@ class Lexer:
             nybbles = self._current_rune() + self._peek_rune()
             self._advance_rune()
             self._advance_rune()
-            sequence = "\\x" + nybbles
             HEX_MAPPING = {
                 "0": 0x0,
                 "1": 0x1,
@@ -1372,6 +1371,7 @@ class Lexer:
                 "f": 0xF,
             }
             if not (nybbles[0] in HEX_MAPPING and nybbles[1] in HEX_MAPPING):
+                sequence = "\\x" + nybbles
                 raise ParseError(
                     self.location,
                     f"expected hexadecimal escape sequence, found {quote(sequence)}",
@@ -1564,6 +1564,8 @@ class Lexer:
             return self._new_token(TokenKind.EOF, Lexer.EOF_LITERAL)
 
         # Literals, Identifiers, and Keywords
+        if self._current_rune() in digits:
+            return self._lex_number()
         if self._current_rune() == '"':
             return self._lex_string()
         if self._current_rune() == "`":
@@ -1574,8 +1576,6 @@ class Lexer:
             return self._lex_regexp()
         if Lexer._is_letter(self._current_rune()):
             return self._lex_keyword_or_identifier()
-        if self._current_rune() in digits:
-            return self._lex_number()
 
         # Operators
         if self._current_rune() == "+":
@@ -1975,6 +1975,17 @@ class AstExpressionNumber(AstExpression):
 class AstExpressionString(AstExpression):
     location: Optional[SourceLocation]
     data: String
+
+    def into_value(self) -> Value:
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+                String.new("data"): copy(self.data),
+            }
+        )
 
     def eval(self, env: Environment) -> Union[Value, Error]:
         return copy(self.data)

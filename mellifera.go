@@ -1151,6 +1151,7 @@ const (
 	// Identifiers and Literals
 	TOKEN_IDENTIFIER = "identifier"
 	TOKEN_NUMBER     = "number"
+	TOKEN_STRING     = "string"
 	// Delimiters
 	TOKEN_SEMICOLON = ";"
 	// Keywords
@@ -1219,6 +1220,15 @@ func (self *Lexer) currentRune() rune {
 	return current
 }
 
+func (self *Lexer) peekRune() rune {
+	if self.position+1 >= len(self.source) {
+		return rune(0)
+	}
+	_, currentSize := utf8.DecodeRuneInString(self.source[self.position:])
+	peek, _ := utf8.DecodeRuneInString(self.source[self.position+currentSize:])
+	return peek
+}
+
 func (self *Lexer) isEof() bool {
 	return self.position >= len(self.source)
 }
@@ -1232,6 +1242,24 @@ func (self *Lexer) advanceRune() {
 	}
 	_, size := utf8.DecodeRuneInString(self.source[self.position:])
 	self.position += size
+}
+
+func (self *Lexer) expectRune(r rune) error {
+	if self.isEof() {
+		return ParseError{
+			Location: self.currentLocation(),
+			why:      fmt.Sprintf("expected %s, found end-of-file", quote(string([]rune{r}))),
+		}
+	}
+	current := self.currentRune()
+	if current != r {
+		return ParseError{
+			Location: self.currentLocation(),
+			why:      fmt.Sprintf("expected %s, found %s", quote(string([]rune{r})), quote(string([]rune{current}))),
+		}
+	}
+	self.advanceRune()
+	return nil
 }
 
 func (self *Lexer) skipWhitespace() {
@@ -1316,6 +1344,132 @@ func (self *Lexer) lexNumber() (Token, error) {
 	return Token{}, errors.New("invalid number")
 }
 
+func (self *Lexer) lexStringRune() (rune, error) {
+	if self.isEof() {
+		return rune(0), ParseError{
+			Location: self.currentLocation(),
+			why:      "expected character, found end-of-file",
+		}
+	}
+
+	if self.currentRune() == '\n' {
+		return rune(0), ParseError{
+			Location: self.currentLocation(),
+			why:      "expected character, found newline",
+		}
+	}
+
+	if !unicode.IsPrint(self.currentRune()) {
+		return rune(0), ParseError{
+			Location: self.currentLocation(),
+			why:      fmt.Sprintf("expected prinable character, found %#x", self.currentRune()),
+		}
+	}
+
+	if self.currentRune() == '\\' && self.peekRune() == 't' {
+		self.advanceRune()
+		self.advanceRune()
+		return '\t', nil
+	}
+
+	if self.currentRune() == '\\' && self.peekRune() == 'n' {
+		self.advanceRune()
+		self.advanceRune()
+		return '\n', nil
+	}
+
+	if self.currentRune() == '\\' && self.peekRune() == '"' {
+		self.advanceRune()
+		self.advanceRune()
+		return '"', nil
+	}
+
+	if self.currentRune() == '\\' && self.peekRune() == '\\' {
+		self.advanceRune()
+		self.advanceRune()
+		return '\\', nil
+	}
+
+	if self.currentRune() == '\\' && self.peekRune() == 'x' {
+		self.advanceRune()
+		self.advanceRune()
+		nybbles := []rune{self.currentRune(), self.peekRune()}
+		self.advanceRune()
+		self.advanceRune()
+		mapping := map[rune]int{
+			'0': 0x0,
+			'1': 0x1,
+			'2': 0x2,
+			'3': 0x3,
+			'4': 0x4,
+			'5': 0x5,
+			'6': 0x6,
+			'7': 0x7,
+			'8': 0x8,
+			'9': 0x9,
+			'A': 0xA,
+			'B': 0xB,
+			'C': 0xC,
+			'D': 0xD,
+			'E': 0xE,
+			'F': 0xF,
+			'a': 0xA,
+			'b': 0xB,
+			'c': 0xC,
+			'd': 0xD,
+			'e': 0xE,
+			'f': 0xF,
+		}
+		nybble0, foundNybble0 := mapping[nybbles[0]]
+		nybble1, foundNybble1 := mapping[nybbles[1]]
+		if !(foundNybble0 && foundNybble1) {
+			sequence := "\\x" + string(nybbles)
+			return rune(0), ParseError{
+				Location: self.currentLocation(),
+				why:      fmt.Sprintf("expected hexadecimal escape sequence, found %s", quote(sequence)),
+			}
+		}
+		return rune(nybble0<<4 | nybble1), nil
+	}
+
+	if self.currentRune() == '\\' {
+		sequence := string([]rune{self.currentRune(), self.peekRune()})
+		return rune(0), ParseError{
+			Location: self.currentLocation(),
+			why:      fmt.Sprintf("expected escape sequence, found %s", sequence),
+		}
+	}
+
+	character := self.currentRune()
+	self.advanceRune()
+	return character, nil
+}
+
+func (self *Lexer) lexString() (Token, error) {
+	start := self.position
+	if err := self.expectRune('"'); err != nil {
+		return Token{}, err
+	}
+	runes := []rune{}
+	for !self.isEof() && self.currentRune() != '"' {
+		r, err := self.lexStringRune()
+		if err != nil {
+			return Token{}, err
+		}
+		runes = append(runes, r)
+	}
+	if err := self.expectRune('"'); err != nil {
+		return Token{}, err
+	}
+	literal := self.source[start:self.position]
+	return Token{
+		Kind:     TOKEN_STRING,
+		Literal:  literal,
+		Location: self.currentLocation(),
+		Value:    self.ctx.NewString(string(runes)),
+	}, nil
+}
+
 func (self *Lexer) NextToken() (Token, error) {
 	self.skipWhiteSpaceAndComments()
 	if self.isEof() {
@@ -1327,11 +1481,14 @@ func (self *Lexer) NextToken() (Token, error) {
 	}
 
 	// Literals, Identifiers, and Keywords
-	if unicode.IsLetter(self.currentRune()) || self.currentRune() == '_' {
-		return self.lexKeywordOrIdentifier()
-	}
 	if '0' <= self.currentRune() && self.currentRune() <= '9' {
 		return self.lexNumber()
+	}
+	if self.currentRune() == '"' {
+		return self.lexString()
+	}
+	if unicode.IsLetter(self.currentRune()) || self.currentRune() == '_' {
+		return self.lexKeywordOrIdentifier()
 	}
 
 	// Delimiters
@@ -1570,6 +1727,27 @@ func (self AstExpressionNumber) Eval(ctx *Context, env *Environment) (Value, err
 	return self.Data.Copy(), nil
 }
 
+type AstExpressionString struct {
+	Location *SourceLocation // Optional
+	Data     *String
+}
+
+func (self AstExpressionString) ExpressionLocation() *SourceLocation {
+	return self.Location
+}
+
+func (self AstExpressionString) IntoValue(ctx *Context) Value {
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+		{ctx.NewString("data"), self.Data.Copy()},
+	})
+}
+
+func (self AstExpressionString) Eval(ctx *Context, env *Environment) (Value, error) {
+	return self.Data.Copy(), nil
+}
+
 type AstStatementExpression struct {
 	Location   *SourceLocation // Optional
 	Expression AstExpression
@@ -1612,6 +1790,7 @@ func NewParser(lexer *Lexer) Parser {
 			TOKEN_TRUE:   (*Parser).ParseExpressionBoolean,
 			TOKEN_FALSE:  (*Parser).ParseExpressionBoolean,
 			TOKEN_NUMBER: (*Parser).ParseExpressionNumber,
+			TOKEN_STRING: (*Parser).ParseExpressionString,
 		},
 	}
 	self.advanceToken()
@@ -1718,9 +1897,24 @@ func (self *Parser) ParseExpressionNumber() (AstExpression, error) {
 	}
 	value, ok := token.Value.(*Number)
 	if !ok {
-		return AstExpressionNumber{}, errors.New("missing number token value")
+		return nil, errors.New("missing number token value")
 	}
 	return AstExpressionNumber{token.Location, value}, nil
+}
+
+func (self *Parser) ParseExpressionString() (AstExpression, error) {
+	token, err := self.expectCurrent(TOKEN_STRING)
+	if err != nil {
+		return nil, ParseError{
+			self.currentToken.Location,
+			fmt.Sprintf("expected string, found %v", self.currentToken),
+		}
+	}
+	value, ok := token.Value.(*String)
+	if !ok {
+		return nil, errors.New("missing string token value")
+	}
+	return AstExpressionString{token.Location, value}, nil
 }
 
 func (self *Parser) ParseStatement() (AstStatement, error) {
