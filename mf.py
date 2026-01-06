@@ -1301,7 +1301,7 @@ class Lexer:
         self.position += len(text)
         return self._new_token(TokenKind.NUMBER, text, value=Number.new(float(text)))
 
-    def _lex_string_rune(self) -> bytes:
+    def _lex_esc_string_rune(self) -> bytes:
         if self._is_eof():
             raise ParseError(
                 self.location,
@@ -1390,12 +1390,12 @@ class Lexer:
         self._advance_rune()
         return character.encode("utf-8")
 
-    def _lex_string(self) -> Token:
+    def _lex_esc_string(self) -> Token:
         start = self.position
         self._expect_rune('"')
         string = b""
         while not self._is_eof() and self._current_rune() != '"':
-            string += self._lex_string_rune()
+            string += self._lex_esc_string_rune()
         self._expect_rune('"')
         literal = self.source[start : self.position]
         return self._new_token(TokenKind.STRING, literal, value=String.new(string))
@@ -1515,7 +1515,9 @@ class Lexer:
         elif self._current_rune() == '"':
             self._expect_rune('"')
             while not self._is_eof() and self._current_rune() != '"':
-                lex_template_element(lambda: self._lex_string_rune().decode("utf-8"))
+                lex_template_element(
+                    lambda: self._lex_esc_string_rune().decode("utf-8")
+                )
             if len(string) != 0:
                 template.append(
                     AstExpressionString(location, String.new(string.encode("utf-8")))
@@ -1537,7 +1539,7 @@ class Lexer:
         if self._current_rune() == '"':
             self._expect_rune('"')
             while self._current_rune() != '"':
-                string += self._lex_string_rune()
+                string += self._lex_esc_string_rune()
             self._expect_rune('"')
         if self._current_rune() == "`":
             self._expect_rune("`")
@@ -1567,7 +1569,7 @@ class Lexer:
         if self._current_rune() in digits:
             return self._lex_number()
         if self._current_rune() == '"':
-            return self._lex_string()
+            return self._lex_esc_string()
         if self._current_rune() == "`":
             return self._lex_raw_string()
         if self._current_rune() == "$":
