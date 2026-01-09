@@ -28,3 +28,6 @@ world`;
 hello
 world
 ```;
+
+r"foo";
+r`(\w+) (\w+)`;

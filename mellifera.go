@@ -1152,6 +1152,7 @@ const (
 	TOKEN_IDENTIFIER = "identifier"
 	TOKEN_NUMBER     = "number"
 	TOKEN_STRING     = "string"
+	TOKEN_REGEXP     = "regexp"
 	// Delimiters
 	TOKEN_SEMICOLON = ";"
 	// Keywords
@@ -1490,7 +1491,7 @@ func (self *Lexer) lexRawStringRune() (rune, error) {
 func (self *Lexer) lexRawString() (Token, error) {
 	location := self.currentLocation()
 	start := self.position
-	var runes []rune
+	runes := []rune{}
 	var literal string
 	if strings.HasPrefix(self.remaining(), "```") {
 		if err := self.expectRune('`'); err != nil {
@@ -1553,6 +1554,64 @@ func (self *Lexer) lexRawString() (Token, error) {
 	}, nil
 }
 
+func (self *Lexer) lexRegexp() (Token, error) {
+	location := self.currentLocation()
+	start := self.position
+	if err := self.expectRune('r'); err != nil {
+		return Token{}, err
+	}
+
+	runes := []rune{}
+	if self.currentRune() == '"' {
+		if err := self.expectRune('"'); err != nil {
+			return Token{}, err
+		}
+		for self.currentRune() != '"' {
+			r, err := self.lexEscStringRune()
+			if err != nil {
+				return Token{}, err
+			}
+			runes = append(runes, r)
+		}
+		if err := self.expectRune('"'); err != nil {
+			return Token{}, err
+		}
+	} else if self.currentRune() == '`' {
+		if err := self.expectRune('`'); err != nil {
+			return Token{}, err
+		}
+		for self.currentRune() != '`' {
+			r, err := self.lexRawStringRune()
+			if err != nil {
+				return Token{}, err
+			}
+			runes = append(runes, r)
+		}
+		if err := self.expectRune('`'); err != nil {
+			return Token{}, err
+		}
+	} else {
+		return Token{}, ParseError{
+			Location: location,
+			why:      fmt.Sprintf("expected %s or %s, found %s", quote("\""), quote("`"), quote(string(self.currentRune()))),
+		}
+	}
+	literal := self.source[start:self.position]
+	regexp, err := self.ctx.NewRegexp(string(runes))
+	if err != nil {
+		return Token{}, ParseError{
+			Location: location,
+			why:      err.Error(),
+		}
+	}
+	return Token{
+		Kind:     TOKEN_REGEXP,
+		Literal:  literal,
+		Location: location,
+		Value:    regexp,
+	}, nil
+}
+
 func (self *Lexer) NextToken() (Token, error) {
 	self.skipWhiteSpaceAndComments()
 	if self.isEof() {
@@ -1572,6 +1631,9 @@ func (self *Lexer) NextToken() (Token, error) {
 	}
 	if self.currentRune() == '`' {
 		return self.lexRawString()
+	}
+	if strings.HasPrefix(self.remaining(), "r\"") || strings.HasPrefix(self.remaining(), "r`") {
+		return self.lexRegexp()
 	}
 	if unicode.IsLetter(self.currentRune()) || self.currentRune() == '_' {
 		return self.lexKeywordOrIdentifier()
@@ -1834,6 +1896,27 @@ func (self AstExpressionString) Eval(ctx *Context, env *Environment) (Value, err
 	return self.Data.Copy(), nil
 }
 
+type AstExpressionRegexp struct {
+	Location *SourceLocation // Optional
+	Data     *Regexp
+}
+
+func (self AstExpressionRegexp) ExpressionLocation() *SourceLocation {
+	return self.Location
+}
+
+func (self AstExpressionRegexp) IntoValue(ctx *Context) Value {
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+		{ctx.NewString("data"), ctx.NewString(self.Data.String())},
+	})
+}
+
+func (self AstExpressionRegexp) Eval(ctx *Context, env *Environment) (Value, error) {
+	return self.Data.Copy(), nil
+}
+
 type AstStatementExpression struct {
 	Location   *SourceLocation // Optional
 	Expression AstExpression
@@ -1877,6 +1960,7 @@ func NewParser(lexer *Lexer) Parser {
 			TOKEN_FALSE:  (*Parser).ParseExpressionBoolean,
 			TOKEN_NUMBER: (*Parser).ParseExpressionNumber,
 			TOKEN_STRING: (*Parser).ParseExpressionString,
+			TOKEN_REGEXP: (*Parser).ParseExpressionRegexp,
 		},
 	}
 	self.advanceToken()
@@ -2001,6 +2085,21 @@ func (self *Parser) ParseExpressionString() (AstExpression, error) {
 		return nil, errors.New("missing string token value")
 	}
 	return AstExpressionString{token.Location, value}, nil
+}
+
+func (self *Parser) ParseExpressionRegexp() (AstExpression, error) {
+	token, err := self.expectCurrent(TOKEN_REGEXP)
+	if err != nil {
+		return nil, ParseError{
+			self.currentToken.Location,
+			fmt.Sprintf("expected regexp, found %v", self.currentToken),
+		}
+	}
+	value, ok := token.Value.(*Regexp)
+	if !ok {
+		return nil, errors.New("missing regexp token value")
+	}
+	return AstExpressionRegexp{token.Location, value}, nil
 }
 
 func (self *Parser) ParseStatement() (AstStatement, error) {

@@ -55,7 +55,7 @@ print("\n");
 
 println("regex values");
 println("------------");
-dumpln( r`foo`         );
+dumpln( r"foo"         );
 dumpln( r`(\w+) (\w+)` );
 
 print("\n");

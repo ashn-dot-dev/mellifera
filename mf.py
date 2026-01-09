@@ -1536,6 +1536,7 @@ class Lexer:
         return self._new_token(TokenKind.TEMPLATE, literal, template=template)
 
     def _lex_regexp(self) -> Token:
+        location = copy(self.location)
         start = self.position
         self._expect_rune("r")
         string = b""
@@ -1544,11 +1545,16 @@ class Lexer:
             while self._current_rune() != '"':
                 string += self._lex_esc_string_rune()
             self._expect_rune('"')
-        if self._current_rune() == "`":
+        elif self._current_rune() == "`":
             self._expect_rune("`")
             while self._current_rune() != "`":
                 string += self._lex_raw_string_rune()
             self._expect_rune("`")
+        else:
+            raise ParseError(
+                location,
+                f"expected {quote('"')} or {quote("`")}, found {quote(self._current_rune())}",
+            )
         literal = self.source[start : self.position]
         try:
             pattern = re2.compile(string)
@@ -2001,6 +2007,17 @@ class AstExpressionString(AstExpression):
 class AstExpressionRegexp(AstExpression):
     location: Optional[SourceLocation]
     data: Regexp
+
+    def into_value(self) -> Value:
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+                String.new("data"): String.new(str(self.data)),
+            }
+        )
 
     def eval(self, env: Environment) -> Union[Value, Error]:
         return copy(self.data)
