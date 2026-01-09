@@ -1047,6 +1047,9 @@ class SourceLocation:
     def __str__(self):
         return f"{self.file}, line {self.line}"
 
+    def __copy__(self) -> "SourceLocation":
+        return SourceLocation(self.file, self.line)
+
     @staticmethod
     def optional_into_value(location: Optional["SourceLocation"]) -> Value:
         if location is None:
@@ -1418,9 +1421,7 @@ class Lexer:
             self._expect_rune("`")
             self._expect_rune("`")
             self._expect_rune("`")
-            while not self._is_eof():
-                if self._remaining().startswith("```"):
-                    break
+            while not self._is_eof() and not self._remaining().startswith("```"):
                 string += self._current_rune().encode("utf-8")
                 self._advance_rune()
             self._expect_rune("`")
@@ -1441,7 +1442,9 @@ class Lexer:
                 self._advance_rune()
             self._expect_rune("`")
             literal = self.source[start : self.position]
-        return self._new_token(TokenKind.STRING, literal, value=String.new(string))
+        return Token(
+            TokenKind.STRING, literal, location=location, value=String.new(string)
+        )
 
     def _lex_template(self) -> Token:
         start = self.position

@@ -1233,6 +1233,10 @@ func (self *Lexer) isEof() bool {
 	return self.position >= len(self.source)
 }
 
+func (self *Lexer) remaining() string {
+	return self.source[self.position:]
+}
+
 func (self *Lexer) advanceRune() {
 	if self.isEof() {
 		return
@@ -1484,26 +1488,67 @@ func (self *Lexer) lexRawStringRune() (rune, error) {
 }
 
 func (self *Lexer) lexRawString() (Token, error) {
+	location := self.currentLocation()
 	start := self.position
-	if err := self.expectRune('`'); err != nil {
-		return Token{}, err
-	}
-	runes := []rune{}
-	for !self.isEof() && self.currentRune() != '`' {
-		r, err := self.lexRawStringRune()
-		if err != nil {
+	var runes []rune
+	var literal string
+	if strings.HasPrefix(self.remaining(), "```") {
+		if err := self.expectRune('`'); err != nil {
 			return Token{}, err
 		}
-		runes = append(runes, r)
+		if err := self.expectRune('`'); err != nil {
+			return Token{}, err
+		}
+		if err := self.expectRune('`'); err != nil {
+			return Token{}, err
+		}
+		for !self.isEof() && !strings.HasPrefix(self.remaining(), "```") {
+			r, err := self.lexRawStringRune()
+			if err != nil {
+				return Token{}, err
+			}
+			runes = append(runes, r)
+		}
+		if err := self.expectRune('`'); err != nil {
+			return Token{}, err
+		}
+		if err := self.expectRune('`'); err != nil {
+			return Token{}, err
+		}
+		if err := self.expectRune('`'); err != nil {
+			return Token{}, err
+		}
+		literal = self.source[start+4 : self.position-3]
+		// Future-proof in case I want to add variable-number-of-tick raw
+		// string literals in the future.
+		if len(literal) == 0 {
+			if err := self.expectRune('`'); err != nil {
+				return Token{}, ParseError{
+					Location: location,
+					why:      "invalid empty multi-tick raw string",
+				}
+			}
+		}
+	} else {
+		if err := self.expectRune('`'); err != nil {
+			return Token{}, err
+		}
+		for !self.isEof() && self.currentRune() != '`' {
+			r, err := self.lexRawStringRune()
+			if err != nil {
+				return Token{}, err
+			}
+			runes = append(runes, r)
+		}
+		if err := self.expectRune('`'); err != nil {
+			return Token{}, err
+		}
+		literal = self.source[start:self.position]
 	}
-	if err := self.expectRune('`'); err != nil {
-		return Token{}, err
-	}
-	literal := self.source[start:self.position]
 	return Token{
 		Kind:     TOKEN_STRING,
 		Literal:  literal,
-		Location: self.currentLocation(),
+		Location: location,
 		Value:    self.ctx.NewString(string(runes)),
 	}, nil
 }
