@@ -1344,7 +1344,7 @@ func (self *Lexer) lexNumber() (Token, error) {
 	return Token{}, errors.New("invalid number")
 }
 
-func (self *Lexer) lexStringRune() (rune, error) {
+func (self *Lexer) lexEscStringRune() (rune, error) {
 	if self.isEof() {
 		return rune(0), ParseError{
 			Location: self.currentLocation(),
@@ -1445,20 +1445,58 @@ func (self *Lexer) lexStringRune() (rune, error) {
 	return character, nil
 }
 
-func (self *Lexer) lexString() (Token, error) {
+func (self *Lexer) lexEscString() (Token, error) {
 	start := self.position
 	if err := self.expectRune('"'); err != nil {
 		return Token{}, err
 	}
 	runes := []rune{}
 	for !self.isEof() && self.currentRune() != '"' {
-		r, err := self.lexStringRune()
+		r, err := self.lexEscStringRune()
 		if err != nil {
 			return Token{}, err
 		}
 		runes = append(runes, r)
 	}
 	if err := self.expectRune('"'); err != nil {
+		return Token{}, err
+	}
+	literal := self.source[start:self.position]
+	return Token{
+		Kind:     TOKEN_STRING,
+		Literal:  literal,
+		Location: self.currentLocation(),
+		Value:    self.ctx.NewString(string(runes)),
+	}, nil
+}
+
+func (self *Lexer) lexRawStringRune() (rune, error) {
+	if self.isEof() {
+		return rune(0), ParseError{
+			Location: self.currentLocation(),
+			why:      "expected character, found end-of-file",
+		}
+	}
+
+	character := self.currentRune()
+	self.advanceRune()
+	return character, nil
+}
+
+func (self *Lexer) lexRawString() (Token, error) {
+	start := self.position
+	if err := self.expectRune('`'); err != nil {
+		return Token{}, err
+	}
+	runes := []rune{}
+	for !self.isEof() && self.currentRune() != '`' {
+		r, err := self.lexRawStringRune()
+		if err != nil {
+			return Token{}, err
+		}
+		runes = append(runes, r)
+	}
+	if err := self.expectRune('`'); err != nil {
 		return Token{}, err
 	}
 	literal := self.source[start:self.position]
@@ -1485,7 +1523,10 @@ func (self *Lexer) NextToken() (Token, error) {
 		return self.lexNumber()
 	}
 	if self.currentRune() == '"' {
-		return self.lexString()
+		return self.lexEscString()
+	}
+	if self.currentRune() == '`' {
+		return self.lexRawString()
 	}
 	if unicode.IsLetter(self.currentRune()) || self.currentRune() == '_' {
 		return self.lexKeywordOrIdentifier()

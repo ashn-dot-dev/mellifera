@@ -21,3 +21,6 @@ false;
 "hello\xf0\x9f\x8d\x94world"; # 0xf0, 0x9f, 0x8d, 0x94 is UTF-8 🍔
 "hello🍔world";
 "hello, 世界";
+`hello world`;
+`hello
+world`;
