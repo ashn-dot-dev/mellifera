@@ -1427,10 +1427,10 @@ class Lexer:
             self._expect_rune("`")
             self._expect_rune("`")
             self._expect_rune("`")
-            literal = self.source[start + 4 : self.position - 3]
+            literal = self.source[start + 3 : self.position - 3]
             # Future-proof in case I want to add variable-number-of-tick raw
             # string literals in the future.
-            if len(literal) == 0:
+            if len(string) == 0:
                 raise ParseError(
                     location,
                     "invalid empty multi-tick raw string",

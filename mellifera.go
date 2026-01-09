@@ -1519,10 +1519,10 @@ func (self *Lexer) lexRawString() (Token, error) {
 		if err := self.expectRune('`'); err != nil {
 			return Token{}, err
 		}
-		literal = self.source[start+4 : self.position-3]
+		literal = self.source[start+3 : self.position-3]
 		// Future-proof in case I want to add variable-number-of-tick raw
 		// string literals in the future.
-		if len(literal) == 0 {
+		if len(runes) == 0 {
 			if err := self.expectRune('`'); err != nil {
 				return Token{}, ParseError{
 					Location: location,
