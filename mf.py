@@ -2029,14 +2029,27 @@ class AstExpressionVector(AstExpression):
     location: Optional[SourceLocation]
     elements: list[AstExpression]
 
+    def into_value(self) -> Value:
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+                String.new("elements"): Vector.new(
+                    [element.into_value() for element in self.elements]
+                ),
+            }
+        )
+
     def eval(self, env: Environment) -> Union[Value, Error]:
-        values = SharedVectorData()
+        elements = SharedVectorData()
         for x in self.elements:
             result = x.eval(env)
             if isinstance(result, Error):
                 return result
-            values.append(copy(result))
-        return Vector.new(values)
+            elements.append(copy(result))
+        return Vector.new(elements)
 
 
 @final

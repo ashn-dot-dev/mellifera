@@ -34,3 +34,7 @@ world
 
 r"foo";
 r`(\w+) (\w+)`;
+
+[];
+["foo", "bar", "baz"];
+["foo", "bar", "baz",];

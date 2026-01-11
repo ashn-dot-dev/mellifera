@@ -1154,7 +1154,10 @@ const (
 	TOKEN_STRING     = "string"
 	TOKEN_REGEXP     = "regexp"
 	// Delimiters
+	TOKEN_COMMA     = ","
 	TOKEN_SEMICOLON = ";"
+	TOKEN_LBRACKET  = "["
+	TOKEN_RBRACKET  = "]"
 	// Keywords
 	TOKEN_NULL  = "null"
 	TOKEN_TRUE  = "true"
@@ -1622,6 +1625,8 @@ func (self *Lexer) NextToken() (Token, error) {
 		}, nil
 	}
 
+	location := self.currentLocation()
+
 	// Literals, Identifiers, and Keywords
 	if '0' <= self.currentRune() && self.currentRune() <= '9' {
 		return self.lexNumber()
@@ -1640,13 +1645,28 @@ func (self *Lexer) NextToken() (Token, error) {
 	}
 
 	// Delimiters
-	if self.currentRune() == ';' {
-		self.advanceRune()
-		return Token{
-			Kind:     TOKEN_SEMICOLON,
-			Literal:  TOKEN_SEMICOLON,
-			Location: self.currentLocation(),
-		}, nil
+	matchDelimiter := func(kind string) (Token, bool) {
+		if strings.HasPrefix(self.remaining(), kind) {
+			literal := self.source[self.position : self.position+len(kind)]
+			self.position += len(kind)
+			return Token{
+				Kind:     kind,
+				Literal:  literal,
+				Location: location,
+			}, true
+		}
+		return Token{}, false
+	}
+	delimiters := []string{
+		TOKEN_COMMA,
+		TOKEN_SEMICOLON,
+		TOKEN_LBRACKET,
+		TOKEN_RBRACKET,
+	}
+	for _, d := range delimiters {
+		if token, match := matchDelimiter(d); match {
+			return token, nil
+		}
 	}
 
 	return Token{}, ParseError{
@@ -1917,6 +1937,39 @@ func (self AstExpressionRegexp) Eval(ctx *Context, env *Environment) (Value, err
 	return self.Data.Copy(), nil
 }
 
+type AstExpressionVector struct {
+	Location *SourceLocation // Optional
+	Elements []AstExpression
+}
+
+func (self AstExpressionVector) ExpressionLocation() *SourceLocation {
+	return self.Location
+}
+
+func (self AstExpressionVector) IntoValue(ctx *Context) Value {
+	elements := []Value{}
+	for _, element := range self.Elements {
+		elements = append(elements, element.IntoValue(ctx))
+	}
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+		{ctx.NewString("elements"), ctx.NewVector(elements)},
+	})
+}
+
+func (self AstExpressionVector) Eval(ctx *Context, env *Environment) (Value, error) {
+	elements := []Value{}
+	for _, element := range self.Elements {
+		value, err := element.Eval(ctx, env)
+		if err != nil {
+			return nil, err
+		}
+		elements = append(elements, value)
+	}
+	return ctx.NewVector(elements), nil
+}
+
 type AstStatementExpression struct {
 	Location   *SourceLocation // Optional
 	Expression AstExpression
@@ -1955,12 +2008,13 @@ func NewParser(lexer *Lexer) Parser {
 		currentToken: Token{"invalid program", "", lexer.location, nil},
 
 		parseNudFunctions: map[string]func(*Parser) (AstExpression, error){
-			TOKEN_NULL:   (*Parser).ParseExpressionNull,
-			TOKEN_TRUE:   (*Parser).ParseExpressionBoolean,
-			TOKEN_FALSE:  (*Parser).ParseExpressionBoolean,
-			TOKEN_NUMBER: (*Parser).ParseExpressionNumber,
-			TOKEN_STRING: (*Parser).ParseExpressionString,
-			TOKEN_REGEXP: (*Parser).ParseExpressionRegexp,
+			TOKEN_NULL:     (*Parser).ParseExpressionNull,
+			TOKEN_TRUE:     (*Parser).ParseExpressionBoolean,
+			TOKEN_FALSE:    (*Parser).ParseExpressionBoolean,
+			TOKEN_NUMBER:   (*Parser).ParseExpressionNumber,
+			TOKEN_STRING:   (*Parser).ParseExpressionString,
+			TOKEN_REGEXP:   (*Parser).ParseExpressionRegexp,
+			TOKEN_LBRACKET: (*Parser).ParseExpressionVector,
 		},
 	}
 	self.advanceToken()
@@ -2100,6 +2154,38 @@ func (self *Parser) ParseExpressionRegexp() (AstExpression, error) {
 		return nil, errors.New("missing regexp token value")
 	}
 	return AstExpressionRegexp{token.Location, value}, nil
+}
+
+func (self *Parser) ParseExpressionVector() (AstExpression, error) {
+	token, err := self.expectCurrent(TOKEN_LBRACKET)
+	if err != nil {
+		return nil, err
+	}
+	location := token.Location
+
+	elements := []AstExpression{}
+	for !self.checkCurrent(TOKEN_RBRACKET) {
+		if len(elements) != 0 {
+			if _, err := self.expectCurrent(TOKEN_COMMA); err != nil {
+				return nil, err
+			}
+		}
+		if self.checkCurrent(TOKEN_RBRACKET) {
+			break
+		}
+
+		expression, err := self.ParseExpression()
+		if err != nil {
+			return nil, err
+		}
+		elements = append(elements, expression)
+	}
+
+	if _, err := self.expectCurrent(TOKEN_RBRACKET); err != nil {
+		return nil, err
+	}
+
+	return AstExpressionVector{location, elements}, nil
 }
 
 func (self *Parser) ParseStatement() (AstStatement, error) {
