@@ -1882,6 +1882,17 @@ class AstExpressionIdentifier(AstExpression):
     location: Optional[SourceLocation]
     name: String  # cached
 
+    def into_value(self) -> Value:
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+                String.new("name"): copy(self.name),
+            }
+        )
+
     def eval(self, env: Environment) -> Union[Value, Error]:
         try:
             return env.get(self.name)
@@ -2058,6 +2069,22 @@ class AstExpressionMap(AstExpression):
     location: Optional[SourceLocation]
     elements: list[Tuple[AstExpression, AstExpression]]
 
+    def into_value(self) -> Value:
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+                String.new("elements"): Vector.new(
+                    [
+                        Vector.new([k.into_value(), v.into_value()])
+                        for k, v in self.elements
+                    ]
+                ),
+            }
+        )
+
     def eval(self, env: Environment) -> Union[Value, Error]:
         elements = SharedMapData()
         for k, v in self.elements:
@@ -2076,6 +2103,19 @@ class AstExpressionMap(AstExpression):
 class AstExpressionSet(AstExpression):
     location: Optional[SourceLocation]
     elements: list[AstExpression]
+
+    def into_value(self) -> Value:
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+                String.new("elements"): Vector.new(
+                    [element.into_value() for element in self.elements]
+                ),
+            }
+        )
 
     def eval(self, env: Environment) -> Union[Value, Error]:
         elements = SharedSetData()
@@ -3460,16 +3500,21 @@ class Parser:
         map_or_set = ParseMapOrSet.UNKNOWN
         if self._check_current(TokenKind.MAP):
             map_or_set = ParseMapOrSet.MAP
+            location = self.current_token.location
             self._advance_token()
+            self._expect_current(TokenKind.LBRACE)
         elif self._check_current(TokenKind.SET):
             map_or_set = ParseMapOrSet.SET
+            location = self.current_token.location
             self._advance_token()
+            self._expect_current(TokenKind.LBRACE)
+        else:
+            location = self._expect_current(TokenKind.LBRACE).location
+
         map_elements: list[Tuple[AstExpression, AstExpression]] = list()
         set_elements: list[AstExpression] = list()
-
-        location = self._expect_current(TokenKind.LBRACE).location
         while not self._check_current(TokenKind.RBRACE):
-            if len(map_elements) != 0 or len(set_elements):
+            if len(map_elements) != 0 or len(set_elements) != 0:
                 self._expect_current(TokenKind.COMMA)
             if self._check_current(TokenKind.RBRACE):
                 break
@@ -3477,7 +3522,7 @@ class Parser:
             if self._check_current(TokenKind.DOT):
                 if map_or_set == ParseMapOrSet.UNKNOWN:
                     map_or_set = ParseMapOrSet.MAP
-                if map_or_set == ParseMapOrSet.SET:
+                elif map_or_set == ParseMapOrSet.SET:
                     raise ParseError(
                         self.current_token.location,
                         f"expected expression, found {self.current_token}",

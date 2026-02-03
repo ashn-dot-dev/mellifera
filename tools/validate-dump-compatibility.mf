@@ -38,3 +38,21 @@ r`(\w+) (\w+)`;
 [];
 ["foo", "bar", "baz"];
 ["foo", "bar", "baz",];
+
+Map{};
+Map{"foo": 123, "bar": 456, "baz": 789};
+Map{"foo": 123, "bar": 456, "baz": 789,};
+{"foo": 123, "bar": 456, "baz": 789};
+{"foo": 123, "bar": 456, "baz": 789,};
+{.foo: 123, .bar: 456, .baz: 789};
+{.foo: 123, .bar: 456, .baz: 789,};
+{"foo" = 123, "bar" = 456, "baz" = 789};
+{"foo" = 123, "bar" = 456, "baz" = 789,};
+{.foo = 123, .bar = 456, .baz = 789};
+{.foo = 123, .bar = 456, .baz = 789,};
+
+Set{};
+Set{"foo", "bar", "baz"};
+Set{"foo", "bar", "baz",};
+{"foo", "bar", "baz"};
+{"foo", "bar", "baz",};
