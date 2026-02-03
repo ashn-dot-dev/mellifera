@@ -1,5 +1,4 @@
-The Mellifera Programming Language
-==================================
+![The Mellifera Programming Language](https://ashn.dev/mellifera/mellifera-logo.svg)
 
 Mellifera is a simple, modern, batteries-included scripting language featuring
 value semantics, structural equality, copy-on-write data sharing, strong
@@ -412,9 +411,11 @@ $ printf 'println("Hello world!");' | mf /dev/stdin
 Hello world!
 ```
 
-## License
+## License and Credits
 
 All content in this repository, unless otherwise noted, is licensed under the
 Zero-Clause BSD license.
 
 See LICENSE for more information.
+
+The Mellifera logo and Melli character were designed by Natalie Jara.
