@@ -1156,6 +1156,8 @@ const (
 	TOKEN_STRING     = "string"
 	TOKEN_REGEXP     = "regexp"
 	// Operators
+	TOKEN_MKREF  = ".&"
+	TOKEN_DEREF  = ".*"
 	TOKEN_DOT    = "."
 	TOKEN_ASSIGN = "="
 	// Delimiters
@@ -1671,6 +1673,8 @@ func (self *Lexer) NextToken() (Token, error) {
 	}
 	operatorsAndDelimiters := []string{
 		// Operators
+		TOKEN_MKREF,
+		TOKEN_DEREF,
 		TOKEN_DOT,
 		TOKEN_ASSIGN,
 		// Delmimiters
@@ -2091,6 +2095,56 @@ func (self AstExpressionSet) Eval(ctx *Context, env *Environment) (Value, error)
 	return ctx.NewVector(elements), nil
 }
 
+type AstExpressionMkref struct {
+	Location *SourceLocation // Optional
+	lhs      AstExpression
+}
+
+func (self AstExpressionMkref) ExpressionLocation() *SourceLocation {
+	return self.Location
+}
+
+func (self AstExpressionMkref) IntoValue(ctx *Context) Value {
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+		{ctx.NewString("lhs"), self.lhs.IntoValue(ctx)},
+	})
+}
+
+func (self AstExpressionMkref) Eval(ctx *Context, env *Environment) (Value, error) {
+	value, err := self.lhs.Eval(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+	return ctx.NewReference(value), nil
+}
+
+type AstExpressionDeref struct {
+	Location *SourceLocation // Optional
+	lhs      AstExpression
+}
+
+func (self AstExpressionDeref) ExpressionLocation() *SourceLocation {
+	return self.Location
+}
+
+func (self AstExpressionDeref) IntoValue(ctx *Context) Value {
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+		{ctx.NewString("lhs"), self.lhs.IntoValue(ctx)},
+	})
+}
+
+func (self AstExpressionDeref) Eval(ctx *Context, env *Environment) (Value, error) {
+	value, err := self.lhs.Eval(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+	return ctx.NewReference(value), nil
+}
+
 type AstStatementExpression struct {
 	Location   *SourceLocation // Optional
 	Expression AstExpression
@@ -2116,11 +2170,25 @@ func (self AstStatementExpression) Eval(ctx *Context, env *Environment) (Control
 	return nil, nil
 }
 
+// Precedence Levels
+const (
+	PRECEDENCE_LOWEST  = iota
+	PRECEDENCE_OR      = iota // or
+	PRECEDENCE_AND     = iota // and
+	PRECEDENCE_COMPARE = iota // == != <= >= < > =~ !~
+	PRECEDENCE_ADD_SUB = iota // + -
+	PRECEDENCE_MUL_DIV = iota // * /
+	PRECEDENCE_PREFIX  = iota // +x -x
+	PRECEDENCE_POSTFIX = iota // foo(bar, 123) foo[42] .& .*
+)
+
 type Parser struct {
 	lexer        *Lexer
 	currentToken Token
 
+	precedences       map[string]int
 	parseNudFunctions map[string]func(*Parser) (AstExpression, error)
+	parseLedFunctions map[string]func(*Parser, AstExpression) (AstExpression, error)
 }
 
 func NewParser(lexer *Lexer) Parser {
@@ -2128,6 +2196,10 @@ func NewParser(lexer *Lexer) Parser {
 		lexer:        lexer,
 		currentToken: Token{"invalid program", "", lexer.location, nil},
 
+		precedences: map[string]int{
+			TOKEN_MKREF: PRECEDENCE_POSTFIX,
+			TOKEN_DEREF: PRECEDENCE_POSTFIX,
+		},
 		parseNudFunctions: map[string]func(*Parser) (AstExpression, error){
 			TOKEN_IDENTIFIER: (*Parser).ParseExpressionIdentifier,
 			TOKEN_NULL:       (*Parser).ParseExpressionNull,
@@ -2140,6 +2212,10 @@ func NewParser(lexer *Lexer) Parser {
 			TOKEN_MAP:        (*Parser).ParseExpressionMapOrSet,
 			TOKEN_SET:        (*Parser).ParseExpressionMapOrSet,
 			TOKEN_LBRACE:     (*Parser).ParseExpressionMapOrSet,
+		},
+		parseLedFunctions: map[string]func(*Parser, AstExpression) (AstExpression, error){
+			TOKEN_MKREF: (*Parser).ParseExpressionMkref,
+			TOKEN_DEREF: (*Parser).ParseExpressionDeref,
 		},
 	}
 	self.advanceToken()
@@ -2201,6 +2277,10 @@ func (self *Parser) ParseProgram() (AstProgram, error) {
 }
 
 func (self *Parser) ParseExpression() (AstExpression, error) {
+	return self.parseExpression(PRECEDENCE_LOWEST)
+}
+
+func (self *Parser) parseExpression(precedence int) (AstExpression, error) {
 	parseNud, ok := self.parseNudFunctions[self.currentToken.Kind]
 	if !ok {
 		return nil, ParseError{
@@ -2208,11 +2288,30 @@ func (self *Parser) ParseExpression() (AstExpression, error) {
 			fmt.Sprintf("expected expression, found %v", self.currentToken),
 		}
 	}
-
 	expression, err := parseNud(self)
 	if err != nil {
 		return nil, err
 	}
+
+	getPrecedence := func(kind string) int {
+		precedence, ok := self.precedences[kind]
+		if !ok {
+			return PRECEDENCE_LOWEST
+		}
+		return precedence
+	}
+
+	for precedence < getPrecedence(self.currentToken.Kind) {
+		parseLed, ok := self.parseLedFunctions[self.currentToken.Kind]
+		if !ok {
+			return expression, nil
+		}
+		expression, err = parseLed(self, expression)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return expression, nil
 }
 
@@ -2447,6 +2546,22 @@ func (self *Parser) ParseExpressionMapOrSet() (AstExpression, error) {
 		Location: location,
 		why:      "ambiguous empty map or set",
 	}
+}
+
+func (self *Parser) ParseExpressionMkref(lhs AstExpression) (AstExpression, error) {
+	token, err := self.expectCurrent(TOKEN_MKREF)
+	if err != nil {
+		return nil, err
+	}
+	return AstExpressionMkref{token.Location, lhs}, nil
+}
+
+func (self *Parser) ParseExpressionDeref(lhs AstExpression) (AstExpression, error) {
+	token, err := self.expectCurrent(TOKEN_DEREF)
+	if err != nil {
+		return nil, err
+	}
+	return AstExpressionDeref{token.Location, lhs}, nil
 }
 
 func (self *Parser) ParseStatement() (AstStatement, error) {

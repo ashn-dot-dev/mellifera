@@ -56,3 +56,9 @@ Set{"foo", "bar", "baz"};
 Set{"foo", "bar", "baz",};
 {"foo", "bar", "baz"};
 {"foo", "bar", "baz",};
+
+123.&;
+{"foo": 123, "bar": 456, "baz": 456}.&;
+
+123.&.*;
+{"foo": 123, "bar": 456, "baz": 456}.&.*;

@@ -2800,6 +2800,17 @@ class AstExpressionMkref(AstExpression):
     location: Optional[SourceLocation]
     lhs: AstExpression
 
+    def into_value(self) -> Value:
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+                String.new("lhs"): self.lhs.into_value(),
+            }
+        )
+
     def eval(self, env: Environment) -> Union[Value, Error]:
         result = self.lhs.eval(env)
         if isinstance(result, Error):
@@ -2812,6 +2823,17 @@ class AstExpressionMkref(AstExpression):
 class AstExpressionDeref(AstExpression):
     location: Optional[SourceLocation]
     lhs: AstExpression
+
+    def into_value(self) -> Value:
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+                String.new("lhs"): self.lhs.into_value(),
+            }
+        )
 
     def eval(self, env: Environment) -> Union[Value, Error]:
         result = self.lhs.eval(env)
@@ -3408,9 +3430,6 @@ class Parser:
     def parse_expression(
         self, precedence: Precedence = Precedence.LOWEST
     ) -> AstExpression:
-        def get_precedence(kind: TokenKind) -> Precedence:
-            return Parser.PRECEDENCES.get(kind, Precedence.LOWEST)
-
         parse_nud = self.parse_nud_functions.get(self.current_token.kind)
         if parse_nud is None:
             raise ParseError(
@@ -3418,6 +3437,10 @@ class Parser:
                 f"expected expression, found {self.current_token}",
             )
         expression = parse_nud(self)
+
+        def get_precedence(kind: TokenKind) -> Precedence:
+            return Parser.PRECEDENCES.get(kind, Precedence.LOWEST)
+
         while precedence < get_precedence(self.current_token.kind):
             parse_led = self.parse_led_functions.get(self.current_token.kind, None)
             if parse_led is None:
