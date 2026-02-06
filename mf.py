@@ -842,7 +842,7 @@ class Function(Value):
         name = f'"{escape(name)}"' if ugly else name
         if self.ast.location is not None:
             return f"{name}@[{self.ast.location}]"
-        return f"{name}"
+        return name
 
     def comb_encode(
         self, indent_text: Optional[str] = None, indent_level: int = 0
@@ -1801,7 +1801,7 @@ class AstNode(ABC):
     # for all concrete ast node types. Currently, `into_value` is being added
     # to individual nodes as those nodes are implemented within mellifera.go.
     def into_value(self) -> Value:
-        raise NotImplementedError()
+        raise Exception(f"into_value not implemented for type {type(self).__name__}")
 
 
 class AstExpression(AstNode):
@@ -1870,6 +1870,17 @@ class AstIdentifier(AstNode):
 
     location: Optional[SourceLocation]
     name: String  # cached
+
+    def into_value(self) -> Value:
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+                String.new("name"): copy(self.name),
+            }
+        )
 
 
 @final
@@ -2134,6 +2145,21 @@ class AstExpressionFunction(AstExpression):
     parameters: list[AstIdentifier]
     body: "AstBlock"
     name: Optional[String] = None
+
+    def into_value(self) -> Value:
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+                String.new("paramters"): Vector.new(
+                    [parameter.into_value() for parameter in self.parameters]
+                ),
+                String.new("body"): self.body.into_value(),
+                String.new("name"): copy(self.name) if self.name is not None else null,
+            }
+        )
 
     def eval(self, env: Environment) -> Union[Value, Error]:
         return Function.new(self, env)
@@ -2852,6 +2878,18 @@ class AstExpressionDeref(AstExpression):
 class AstBlock(AstNode):
     location: Optional[SourceLocation]
     statements: list[AstStatement]
+
+    def into_value(self) -> Value:
+        statements = Vector.new([x.into_value() for x in self.statements])
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+                String.new("statements"): statements,
+            }
+        )
 
     def eval(self, env: Environment) -> Optional[ControlFlow]:
         env = Environment(env)  # Blocks execute with a new lexical scope.
@@ -3596,8 +3634,8 @@ class Parser:
 
     def parse_expression_function(self) -> AstExpressionFunction:
         location = self._expect_current(TokenKind.FUNCTION).location
-        parameters: list[AstIdentifier] = list()
         self._expect_current(TokenKind.LPAREN)
+        parameters: list[AstIdentifier] = list()
         while not self._check_current(TokenKind.RPAREN):
             if len(parameters) != 0:
                 self._expect_current(TokenKind.COMMA)

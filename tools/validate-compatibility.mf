@@ -57,6 +57,10 @@ Set{"foo", "bar", "baz",};
 {"foo", "bar", "baz"};
 {"foo", "bar", "baz",};
 
+function() { };
+function(a, b, c) { };
+function(a, b, c) { 123; };
+
 123.&;
 {"foo": 123, "bar": 456, "baz": 456}.&;
 
