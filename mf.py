@@ -891,25 +891,6 @@ class Builtin(Value):
     def __copy__(self) -> "Builtin":
         return self  # immutable value
 
-    def call(self, arguments: list[Value]) -> Union[Value, "Error"]:
-        try:
-            result = self.function(arguments)
-            if isinstance(result, Error):
-                return result
-            if isinstance(result, Value):
-                return result
-            # Special cases in which a builtin does not return a mellifera
-            # value or error. If None is returned, likely due to a missing
-            # return statement, automatically return a null value. If a
-            # non-None object is returned, automatically convert that object
-            # into an external value wrapping the object.
-            return null if result is None else External.new(result)
-        except Exception as e:
-            message = f"{e}"
-            if len(message) == 0:
-                message = f"encountered exception {type(e).__name__}"
-            return Error(None, String.new(message))
-
     @staticmethod
     def expect_argument_count(arguments: list[Value], count: int) -> None:
         if len(arguments) != count:
@@ -3999,34 +3980,52 @@ class Parser:
 
 def call(
     location: Optional[SourceLocation],
-    function: Union[Function, Builtin],
+    callable: Union[Function, Builtin],
     arguments: list[Value],
 ) -> Union[Value, Error]:
-    if isinstance(function, Builtin):
-        produced = function.call(arguments)
-        if isinstance(produced, Error):
-            produced.trace.append(Error.TraceElement(location, function))
-        return produced
-    assert isinstance(function, Function)
-    if len(arguments) != len(function.ast.parameters):
-        return Error(
-            location,
-            f"invalid function argument count (expected {len(function.ast.parameters)}, received {len(arguments)})",
-        )
-    env = Environment(function.env)
-    for i in range(len(function.ast.parameters)):
-        env.let(function.ast.parameters[i].name, arguments[i])
-    result = function.ast.body.eval(env)
-    if isinstance(result, Return):
-        return result.value
-    if isinstance(result, Break):
-        return Error(result.location, "attempted to break outside of a loop")
-    if isinstance(result, Continue):
-        return Error(result.location, "attempted to continue outside of a loop")
-    if isinstance(result, Error):
-        result.trace.append(Error.TraceElement(location, function))
-        return result
-    return null
+    if isinstance(callable, Function):
+        if len(arguments) != len(callable.ast.parameters):
+            return Error(
+                location,
+                f"invalid function argument count (expected {len(callable.ast.parameters)}, received {len(arguments)})",
+            )
+        env = Environment(callable.env)
+        for i in range(len(callable.ast.parameters)):
+            env.let(callable.ast.parameters[i].name, arguments[i])
+        result = callable.ast.body.eval(env)
+        if isinstance(result, Return):
+            return result.value
+        if isinstance(result, Break):
+            return Error(result.location, "attempted to break outside of a loop")
+        if isinstance(result, Continue):
+            return Error(result.location, "attempted to continue outside of a loop")
+        if isinstance(result, Error):
+            result.trace.append(Error.TraceElement(location, callable))
+            return result
+        assert result is None
+        return null
+
+    if isinstance(callable, Builtin):
+        try:
+            produced = callable.function(arguments)
+            if isinstance(produced, Value):
+                return produced
+            if isinstance(produced, Error):
+                produced.trace.append(Error.TraceElement(location, callable))
+                return produced
+            # Special cases in which a builtin does not return a mellifera
+            # value or error. If None is returned, likely due to a missing
+            # return statement, automatically return a null value. If a
+            # non-None object is returned, automatically convert that object
+            # into an external value wrapping the object.
+            return null if result is None else External.new(result)
+        except Exception as e:
+            message = f"{e}"
+            if len(message) == 0:
+                message = f"encountered exception {type(e).__name__}"
+            return Error(None, String.new(message))
+
+    raise Exception("unreachable")
 
 
 # Used to indicate reference arguments when defining builtin functions.
