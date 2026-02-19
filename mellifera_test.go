@@ -679,6 +679,52 @@ func TestMapCombEncode(t *testing.T) {
 	}
 }
 
+func TestMapInsert(t *testing.T) {
+	ctx := NewContext()
+
+	a := ctx.NewMap([]MapPair{
+		{ctx.NewNumber(123.456), ctx.NewString("abc")},
+		{ctx.NewString("foo"), ctx.NewString("def")},
+		{ctx.NewVector(nil), ctx.NewString("hij")},
+	})
+	aInsertErr := a.Insert(ctx.NewString("xyz"), ctx.NewString("inserted"))
+	require.Nil(t, aInsertErr)
+	require.Equal(t, `{123.456: "abc", "foo": "def", []: "hij", "xyz": "inserted"}`, a.String())
+
+	b := ctx.NewMetaMap("meta", []MapPair{
+		{ctx.NewNumber(123.456), ctx.NewString("abc")},
+		{ctx.NewString("foo"), ctx.NewString("def")},
+		{ctx.NewVector(nil), ctx.NewString("hij")},
+	})
+	bInsertErr := b.Insert(ctx.NewString("xyz"), ctx.NewString("inserted"))
+	require.NotNil(t, bInsertErr)
+	require.Equal(t, `attempted to modify immutable map {123.456: "abc", "foo": "def", []: "hij"}`, bInsertErr.Error())
+	require.Equal(t, `{123.456: "abc", "foo": "def", []: "hij"}`, b.String())
+}
+
+func TestMapRemove(t *testing.T) {
+	ctx := NewContext()
+
+	a := ctx.NewMap([]MapPair{
+		{ctx.NewNumber(123.456), ctx.NewString("abc")},
+		{ctx.NewString("foo"), ctx.NewString("def")},
+		{ctx.NewVector(nil), ctx.NewString("hij")},
+	})
+	aRemoveErr := a.Remove(ctx.NewString("foo"))
+	require.Nil(t, aRemoveErr)
+	require.Equal(t, `{123.456: "abc", []: "hij"}`, a.String())
+
+	b := ctx.NewMetaMap("meta", []MapPair{
+		{ctx.NewNumber(123.456), ctx.NewString("abc")},
+		{ctx.NewString("foo"), ctx.NewString("def")},
+		{ctx.NewVector(nil), ctx.NewString("hij")},
+	})
+	bRemoveErr := b.Remove(ctx.NewString("foo"))
+	require.NotNil(t, bRemoveErr)
+	require.Equal(t, `attempted to modify immutable map {123.456: "abc", "foo": "def", []: "hij"}`, bRemoveErr.Error())
+	require.Equal(t, `{123.456: "abc", "foo": "def", []: "hij"}`, b.String())
+}
+
 func TestSetConstructorNilElements(t *testing.T) {
 	ctx := NewContext()
 	set := ctx.NewSet(nil)

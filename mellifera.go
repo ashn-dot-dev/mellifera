@@ -62,6 +62,7 @@ func fnv1a(s string) uint64 {
 type Value interface {
 	Typename() string
 	String() string
+	Meta() *Map
 	Copy() Value
 	CopyOnWrite()
 	Hash() uint64
@@ -119,6 +120,16 @@ func (e *CombEncoder) writeEndOfLine() error {
 }
 
 type Context struct {
+	functionMeta  *Map
+	booleanMeta   *Map
+	numberMeta    *Map
+	stringMeta    *Map
+	regexpMeta    *Map
+	vectorMeta    *Map
+	mapMeta       *Map
+	setMeta       *Map
+	referenceMeta *Map
+
 	// Null Singleton.
 	Null *Null
 	// Boolean Singletons
@@ -134,9 +145,20 @@ type Context struct {
 
 func NewContext() Context {
 	ctx := Context{}
-	ctx.Null = &Null{}
-	ctx.True = &Boolean{true}
-	ctx.False = &Boolean{false}
+
+	ctx.functionMeta = ctx.NewMetaMap("function", nil)
+	ctx.booleanMeta = ctx.NewMetaMap("boolean", nil)
+	ctx.numberMeta = ctx.NewMetaMap("number", nil)
+	ctx.stringMeta = ctx.NewMetaMap("string", nil)
+	ctx.regexpMeta = ctx.NewMetaMap("regexp", nil)
+	ctx.vectorMeta = ctx.NewMetaMap("vector", nil)
+	ctx.mapMeta = ctx.NewMetaMap("map", nil)
+	ctx.setMeta = ctx.NewMetaMap("set", nil)
+	ctx.referenceMeta = ctx.NewMetaMap("reference", nil)
+
+	ctx.Null = &Null{nil}
+	ctx.True = &Boolean{true, ctx.booleanMeta}
+	ctx.False = &Boolean{false, ctx.booleanMeta}
 	ctx.BaseEnvironment = NewEnvironment(nil)
 	ctx.reNumberDec = regexp.MustCompile(`^\d+(\.\d+)?`)
 	ctx.reNumberHex = regexp.MustCompile(`^0x[0-9a-fA-F]+`)
@@ -156,11 +178,11 @@ func (ctx *Context) NewBoolean(data bool) *Boolean {
 }
 
 func (ctx *Context) NewNumber(data float64) *Number {
-	return &Number{data}
+	return &Number{data, ctx.numberMeta}
 }
 
 func (ctx *Context) NewString(data string) *String {
-	return &String{data}
+	return &String{data, ctx.stringMeta}
 }
 
 func (ctx *Context) NewRegexp(text string) (*Regexp, error) {
@@ -168,12 +190,15 @@ func (ctx *Context) NewRegexp(text string) (*Regexp, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid regular expression \"%s\"", escape(text))
 	}
-	return &Regexp{data}, nil
+	return &Regexp{data, ctx.regexpMeta}, nil
 }
 
 func (ctx *Context) NewVector(elements []Value) *Vector {
 	if elements == nil || len(elements) == 0 {
-		return &Vector{}
+		return &Vector{
+			data: nil,
+			meta: ctx.vectorMeta,
+		}
 	}
 
 	return &Vector{
@@ -181,27 +206,56 @@ func (ctx *Context) NewVector(elements []Value) *Vector {
 			elements: elements,
 			uses:     1,
 		},
+		meta: ctx.vectorMeta,
 	}
 }
 
 func (ctx *Context) NewMap(elements []MapPair) *Map {
 	if elements == nil || len(elements) == 0 {
-		return &Map{}
+		return &Map{
+			data: nil,
+			meta: ctx.mapMeta,
+		}
 	}
 
-	result := &Map{}
+	result := &Map{
+		data: nil,
+		meta: ctx.mapMeta,
+	}
 	for _, element := range elements {
 		result.Insert(element.key, element.value)
 	}
 	return result
 }
 
-func (ctx *Context) NewSet(elements []Value) *Set {
+func (ctx *Context) NewMetaMap(name string, elements []MapPair) *Map {
 	if elements == nil || len(elements) == 0 {
-		return &Set{}
+		return &Map{
+			data: nil,
+			name: &name,
+		}
 	}
 
-	result := &Set{}
+	result := &Map{}
+	for _, element := range elements {
+		result.Insert(element.key, element.value)
+	}
+	result.name = &name // freeze
+	return result
+}
+
+func (ctx *Context) NewSet(elements []Value) *Set {
+	if elements == nil || len(elements) == 0 {
+		return &Set{
+			data: nil,
+			meta: ctx.setMeta,
+		}
+	}
+
+	result := &Set{
+		data: nil,
+		meta: ctx.setMeta,
+	}
 	for _, element := range elements {
 		result.Insert(element)
 	}
@@ -209,14 +263,16 @@ func (ctx *Context) NewSet(elements []Value) *Set {
 }
 
 func (ctx *Context) NewReference(value Value) *Reference {
-	return &Reference{value}
+	return &Reference{value, ctx.referenceMeta}
 }
 
 func (ctx *Context) NewFunction(ast *AstExpressionFunction, env *Environment) *Function {
-	return &Function{ast, env}
+	return &Function{ast, env, ctx.functionMeta}
 }
 
-type Null struct{}
+type Null struct {
+	meta *Map // Optional
+}
 
 func (self *Null) Typename() string {
 	return "null"
@@ -224,6 +280,10 @@ func (self *Null) Typename() string {
 
 func (self *Null) String() string {
 	return "null"
+}
+
+func (self *Null) Meta() *Map {
+	return self.meta
 }
 
 func (self *Null) Copy() Value {
@@ -249,6 +309,7 @@ func (self *Null) CombEncode(e *CombEncoder) error {
 
 type Boolean struct {
 	data bool
+	meta *Map // Optional
 }
 
 func (self *Boolean) Typename() string {
@@ -260,6 +321,10 @@ func (self *Boolean) String() string {
 		return "true"
 	}
 	return "false"
+}
+
+func (self *Boolean) Meta() *Map {
+	return self.meta
 }
 
 func (self *Boolean) Copy() Value {
@@ -291,6 +356,7 @@ func (self *Boolean) CombEncode(e *CombEncoder) error {
 
 type Number struct {
 	data float64
+	meta *Map // Optional
 }
 
 func (self *Number) Typename() string {
@@ -308,6 +374,10 @@ func (self *Number) String() string {
 		return "-Inf"
 	}
 	return strconv.FormatFloat(self.data, 'f', -1, 64)
+}
+
+func (self *Number) Meta() *Map {
+	return self.meta
 }
 
 func (self *Number) Copy() Value {
@@ -340,6 +410,7 @@ func (self *Number) CombEncode(e *CombEncoder) error {
 
 type String struct {
 	data string
+	meta *Map // Optional
 }
 
 func (self *String) Typename() string {
@@ -348,6 +419,10 @@ func (self *String) Typename() string {
 
 func (self *String) String() string {
 	return fmt.Sprintf("\"%s\"", escape(self.data))
+}
+
+func (self *String) Meta() *Map {
+	return self.meta
 }
 
 func (self *String) Copy() Value {
@@ -376,6 +451,7 @@ func (self *String) CombEncode(e *CombEncoder) error {
 
 type Regexp struct {
 	data *regexp.Regexp
+	meta *Map // Optional
 }
 
 func (self *Regexp) Typename() string {
@@ -384,6 +460,10 @@ func (self *Regexp) Typename() string {
 
 func (self *Regexp) String() string {
 	return fmt.Sprintf("r\"%s\"", escape(self.data.String()))
+}
+
+func (self *Regexp) Meta() *Map {
+	return self.meta
 }
 
 func (self *Regexp) Copy() Value {
@@ -420,6 +500,7 @@ type VectorData struct {
 
 type Vector struct {
 	data *VectorData
+	meta *Map // Optional
 }
 
 func (self *Vector) Typename() string {
@@ -436,6 +517,10 @@ func (self *Vector) String() string {
 		s[i] = element.String()
 	}
 	return fmt.Sprintf("[%s]", strings.Join(s, ", "))
+}
+
+func (self *Vector) Meta() *Map {
+	return self.meta
 }
 
 func (self *Vector) Copy() Value {
@@ -663,6 +748,8 @@ func (self *MapData) Remove(key Value) {
 
 type Map struct {
 	data *MapData
+	meta *Map    // Optional
+	name *string // Optional (non-nil implies that this is a frozen metamap)
 }
 
 func (self *Map) Typename() string {
@@ -681,6 +768,10 @@ func (self *Map) String() string {
 		cur = cur.next
 	}
 	return fmt.Sprintf("{%s}", strings.Join(s, ", "))
+}
+
+func (self *Map) Meta() *Map {
+	return self.meta
 }
 
 func (self *Map) Copy() Value {
@@ -788,6 +879,10 @@ func (self *Map) Count() int {
 	return self.data.count
 }
 
+func (self *Map) IsFrozen() bool {
+	return self.name != nil
+}
+
 // Returns nil on lookup failure.
 func (self *Map) Lookup(key Value) Value {
 	if self.data == nil {
@@ -802,7 +897,12 @@ func (self *Map) Lookup(key Value) Value {
 	return element.value
 }
 
-func (self *Map) Insert(key, value Value) {
+// Returns an error when attempting to insert into a frozen map.
+func (self *Map) Insert(key, value Value) error {
+	if self.IsFrozen() {
+		return fmt.Errorf("attempted to modify immutable map %v", self)
+	}
+
 	self.CopyOnWrite()
 	if self.data == nil {
 		self.data = &MapData{
@@ -811,15 +911,22 @@ func (self *Map) Insert(key, value Value) {
 	}
 
 	self.data.Insert(key, value)
+	return nil
 }
 
-func (self *Map) Remove(key Value) {
+// Returns an error when attempting to remove from a frozen map.
+func (self *Map) Remove(key Value) error {
+	if self.IsFrozen() {
+		return fmt.Errorf("attempted to modify immutable map %v", self)
+	}
+
 	if self.data == nil {
-		return
+		return nil
 	}
 
 	self.CopyOnWrite()
 	self.data.Remove(key)
+	return nil
 }
 
 type SetElement struct {
@@ -933,6 +1040,7 @@ func (self *SetData) Remove(key Value) {
 
 type Set struct {
 	data *SetData
+	meta *Map // Optional
 }
 
 func (self *Set) Typename() string {
@@ -951,6 +1059,10 @@ func (self *Set) String() string {
 		cur = cur.next
 	}
 	return fmt.Sprintf("{%s}", strings.Join(s, ", "))
+}
+
+func (self *Set) Meta() *Map {
+	return self.meta
 }
 
 func (self *Set) Copy() Value {
@@ -1089,6 +1201,7 @@ func (self *Set) Remove(value Value) {
 
 type Reference struct {
 	data Value
+	meta *Map // Optional
 }
 
 func (self *Reference) Typename() string {
@@ -1097,6 +1210,10 @@ func (self *Reference) Typename() string {
 
 func (self *Reference) String() string {
 	return fmt.Sprintf("reference@%p", self.data)
+}
+
+func (self *Reference) Meta() *Map {
+	return self.meta
 }
 
 func (self *Reference) Copy() Value {
@@ -1127,8 +1244,9 @@ func (self *Reference) CombEncode(e *CombEncoder) error {
 }
 
 type Function struct {
-	Ast *AstExpressionFunction
-	Env *Environment
+	Ast  *AstExpressionFunction
+	Env  *Environment
+	meta *Map // Optional
 }
 
 func (self *Function) Typename() string {
@@ -1150,6 +1268,10 @@ func (self *Function) String() string {
 		return fmt.Sprintf("%s@[%v:%v]", name, self.Ast.Location.File, self.Ast.Location.Line)
 	}
 	return name
+}
+
+func (self *Function) Meta() *Map {
+	return self.meta
 }
 
 func (self *Function) Copy() Value {
@@ -1258,7 +1380,7 @@ func (self Token) IntoValue(ctx *Context) Value {
 type Lexer struct {
 	ctx      *Context
 	source   string
-	location *SourceLocation // optional
+	location *SourceLocation // Optional
 	position int
 
 	keywords map[string]string

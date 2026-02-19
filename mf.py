@@ -555,7 +555,7 @@ class Vector(Value):
 class Map(Value):
     data: SharedMapData
     meta: Optional["Map"]
-    # A non-None name indicates that this is a frozen metamap.
+    # A non-None name implies that this is a frozen metamap.
     name: Optional[String]
 
     @staticmethod
