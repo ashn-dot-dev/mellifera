@@ -368,6 +368,14 @@ programs can be found under the `examples` directory.
 
 ## Development
 
+Mellifera currently has two implementations: a reference interpreter written in
+Python (`mf.py`), and a work-in-progress library & interpreter in Go
+(`mellifera.go` and `cmd/mf/mf.go`). The reference interpreter written in
+Python is the source of truth for the language, and is the implementation that
+most users will want to interact with for the time being.
+
+### Development on the Python Reference Interpreter
+
 ```sh
 python3 -m venv .venv-mellifera
 . .venv-mellifera/bin/activate
@@ -378,8 +386,18 @@ MELLIFERA_HOME=$(pwd)
 make check   # run tests
 make lint    # lint with mypy and flake8
 make format  # format using black
-make build   # build standalone executable
+make build   # build standalone interpreter executable
 make install # install standalone mellifera tooling
+```
+
+### Development on the Go Library & Interpreter
+
+```sh
+make check-go  # run tests with go test
+make format-go # format using go fmt
+make build-go  # build standalone interpreter executable
+
+sh tools/validate-compatibility.sh # check compatibility between the Python and Go implementations
 ```
 
 ## Installing
