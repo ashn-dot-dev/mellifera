@@ -147,7 +147,7 @@ ValueType = TypeVar("ValueType", bound="Value")
 
 
 class Value(ABC):
-    meta: Optional["MetaMap"]
+    meta: Optional["Map"]
 
     @staticmethod
     @abstractmethod
@@ -212,7 +212,7 @@ class Value(ABC):
 @final
 @dataclass
 class Null(Value):
-    meta: Optional["MetaMap"] = None
+    meta: Optional["Map"] = None
 
     @staticmethod
     def typename() -> str:
@@ -244,7 +244,7 @@ class Null(Value):
 @dataclass
 class Boolean(Value):
     data: bool
-    meta: Optional["MetaMap"] = None
+    meta: Optional["Map"] = None
 
     @staticmethod
     def typename() -> str:
@@ -276,7 +276,7 @@ class Boolean(Value):
 @dataclass
 class Number(Value):
     data: SupportsFloat
-    meta: Optional["MetaMap"]
+    meta: Optional["Map"]
 
     @staticmethod
     def typename() -> str:
@@ -286,7 +286,7 @@ class Number(Value):
     def new(data: SupportsFloat) -> "Number":
         return Number(data, _NUMBER_META)
 
-    def __init__(self, data: SupportsFloat, meta: Optional["MetaMap"] = None):
+    def __init__(self, data: SupportsFloat, meta: Optional["Map"] = None):
         # PEP 484 specifies that when an argument is annotated as having type
         # `float`, an argument of type `int` is accepted by the type checker.
         # The mellifera number type is specifically an IEEE-754 double
@@ -344,7 +344,7 @@ class String(Value):
     def new(data: Union[bytes, str]) -> "String":
         return String(data, _STRING_META)
 
-    def __init__(self, data: Union[bytes, str], meta: Optional["MetaMap"] = None):
+    def __init__(self, data: Union[bytes, str], meta: Optional["Map"] = None):
         match data:
             case bytes():
                 self.data = data
@@ -396,7 +396,7 @@ class Regexp(Value):
     def typename() -> str:
         return "regexp"
 
-    def __init__(self, text: bytes, pattern=None, meta: Optional["MetaMap"] = None):
+    def __init__(self, text: bytes, pattern=None, meta: Optional["Map"] = None):
         # The Google re2 library, whose C++ implementation uses Abseil
         # internally, will emit a log message of the form:
         #
@@ -442,7 +442,7 @@ class Regexp(Value):
 @dataclass
 class Vector(Value):
     data: SharedVectorData
-    meta: Optional["MetaMap"]
+    meta: Optional["Map"]
 
     @staticmethod
     def typename() -> str:
@@ -457,7 +457,7 @@ class Vector(Value):
     def __init__(
         self,
         data: Optional[Union[SharedVectorData, Iterable[Value]]] = None,
-        meta: Optional["MetaMap"] = None,
+        meta: Optional["Map"] = None,
     ):
         if data is not None and not isinstance(data, SharedVectorData):
             data = SharedVectorData(data)
@@ -554,7 +554,9 @@ class Vector(Value):
 @dataclass
 class Map(Value):
     data: SharedMapData
-    meta: Optional["MetaMap"]
+    meta: Optional["Map"]
+    # A non-None name indicates that this is a frozen metamap.
+    name: Optional[String]
 
     @staticmethod
     def typename() -> str:
@@ -566,16 +568,29 @@ class Map(Value):
     ) -> "Map":
         return Map(data, _MAP_META)
 
+    @staticmethod
+    def new_meta(
+        name: String,
+        data: Optional[Union[SharedMapData, dict[Value, Value]]] = None,
+    ) -> "Map":
+        # Metamaps may not have metamaps themselves.
+        return Map(data=data, meta=None, name=name)
+
     def __init__(
         self,
         data: Optional[Union[SharedMapData, dict[Value, Value]]] = None,
-        meta: Optional["MetaMap"] = None,
+        meta: Optional["Map"] = None,
+        # Attempting to modify a frozen map is a runtime error. This allows us
+        # to use a single Python reference for each frozen map rather than
+        # creating new maps for each created/copied value.
+        name: Optional[String] = None,
     ):
         if data is not None and not isinstance(data, SharedMapData):
             data = SharedMapData(data)
         self.data = data if data is not None else SharedMapData()
         self.data.uses += 1
         self.meta = meta
+        self.name = name
 
     def __del__(self):
         assert self.data.uses >= 1
@@ -621,10 +636,15 @@ class Map(Value):
         )
         return f"{{{elements}}}"
 
+    def is_frozen(self) -> bool:
+        return self.name is not None
+
     def __contains__(self, item) -> bool:
         return item in self.data
 
     def __setitem__(self, key: Value, value: Value) -> None:
+        if self.is_frozen():
+            raise Exception(f"attempted to modify immutable map {self}")
         if self.data.uses > 1:
             self.data.uses -= 1
             self.data = copy(self.data)  # copy-on-write
@@ -641,6 +661,8 @@ class Map(Value):
             raise InvalidFieldAccess(self, key)
 
     def __delitem__(self, key: Value) -> None:
+        if self.is_frozen():
+            raise Exception(f"attempted to modify immutable map {self}")
         if self.data.uses > 1:
             self.data.uses -= 1
             self.data = copy(self.data)  # copy-on-write
@@ -651,6 +673,8 @@ class Map(Value):
             raise InvalidFieldAccess(self, key)
 
     def __copy__(self) -> "Map":
+        if self.is_frozen():
+            return self  # immutable value
         return Map(self.data, self.meta)
 
     def cow(self) -> None:
@@ -662,31 +686,9 @@ class Map(Value):
 
 @final
 @dataclass
-class MetaMap(Map):
-    def __init__(
-        self,
-        name: String,
-        data: Optional[Union[SharedMapData, dict[Value, Value]]] = None,
-    ):
-        # Metamaps may not have metamaps themselves.
-        super().__init__(data=data, meta=None)
-        self.name = name
-
-    def __setitem__(self, key: Value, value: Value) -> None:
-        # Attempting to alter a metamap is a runtime error. This allows us to
-        # use a single Python reference for each metamap rather than creating
-        # new metamaps for each created/copied value.
-        raise Exception(f"attempted to modify metamap {self}")
-
-    def __copy__(self) -> "MetaMap":
-        return self  # immutable value
-
-
-@final
-@dataclass
 class Set(Value):
     data: SharedSetData
-    meta: Optional["MetaMap"]
+    meta: Optional["Map"]
 
     @staticmethod
     def typename() -> str:
@@ -701,7 +703,7 @@ class Set(Value):
     def __init__(
         self,
         data: Optional[Union[SharedSetData, Iterable[Value]]] = None,
-        meta: Optional["MetaMap"] = None,
+        meta: Optional["Map"] = None,
     ):
         if data is not None and not isinstance(data, SharedSetData):
             data = SharedSetData(data)
@@ -782,7 +784,7 @@ class Set(Value):
 @dataclass
 class Reference(Value):
     data: Value
-    meta: Optional["MetaMap"] = None
+    meta: Optional["Map"] = None
 
     @staticmethod
     def typename() -> str:
@@ -820,7 +822,7 @@ class Reference(Value):
 class Function(Value):
     ast: "AstExpressionFunction"
     env: "Environment"
-    meta: Optional["MetaMap"] = None
+    meta: Optional["Map"] = None
 
     @staticmethod
     def typename() -> str:
@@ -855,7 +857,7 @@ class Function(Value):
 
 @dataclass
 class Builtin(Value):
-    meta: Optional["MetaMap"] = None
+    meta: Optional["Map"] = None
 
     def __post_init__(self):
         if self.meta is None:
@@ -987,7 +989,7 @@ class BuiltinFromSource(Builtin):
 @dataclass
 class External(Value):
     data: Any
-    meta: Optional["MetaMap"] = None
+    meta: Optional["Map"] = None
 
     @staticmethod
     def typename() -> str:
@@ -1756,7 +1758,7 @@ CONST_STRING_MODULE = String("module")
 
 
 def typename(value: Value) -> str:
-    if value.meta is not None:
+    if value.meta is not None and value.meta.name is not None:
         return value.meta.name.runes
     return value.typename()
 
@@ -2162,7 +2164,7 @@ class AstExpressionType(AstExpression):
                 self.expression.location,
                 f"expected map-like value, received {typename(type)}",
             )
-        return MetaMap(name=self.name, data=type.data)
+        return Map.new_meta(name=self.name, data=type.data)
 
 
 @final
@@ -2179,14 +2181,14 @@ class AstExpressionNew(AstExpression):
         expression = self.expression.eval(env)
         if isinstance(expression, Error):
             return expression
-        if isinstance(meta, MetaMap):
+        if isinstance(meta, Map):
+            if not meta.name:
+                return Error(
+                    self.meta.location,
+                    f"expected map-like value created with the {quote(TokenKind.TYPE)} expression, received regular map value {meta}",
+                )
             expression.meta = copy(meta)
             return expression
-        if isinstance(meta, Map):
-            return Error(
-                self.meta.location,
-                f"expected map-like value created with the {quote(TokenKind.TYPE)} expression, received regular map value {meta}",
-            )
         return Error(
             self.meta.location,
             f"expected map-like value, received {typename(meta)}",
@@ -5550,7 +5552,7 @@ def builtin_re_replace():
 def builtin_ty_is(value: Value, type: Value) -> Union[Value, Error]:
     if isinstance(type, Null):
         return Boolean.new(value.meta is None)
-    if isinstance(type, MetaMap):
+    if isinstance(type, Map) and type.is_frozen():
         return Boolean.new(value.meta is type)
     raise Exception(
         f"expected null or map value created with the `type` keyword, received {type}"
@@ -5671,14 +5673,14 @@ re_match_result = None
 #
 # The function metamap is created first, as all other builtin functions will
 # use _FUNCTION_META for their type/metamap.
-_FUNCTION_META = MetaMap(name=String(Function.typename()))
-_BOOLEAN_META = MetaMap(
+_FUNCTION_META = Map.new_meta(name=String(Function.typename()))
+_BOOLEAN_META = Map.new_meta(
     name=String(Boolean.typename()),
     data={
         String("init"): builtin_boolean_init(),
     },
 )
-_NUMBER_META = MetaMap(
+_NUMBER_META = Map.new_meta(
     name=String(Number.typename()),
     data={
         String("init"): builtin_number_init(),
@@ -5692,7 +5694,7 @@ _NUMBER_META = MetaMap(
         String("ceil"): builtin_number_ceil(),
     },
 )
-_STRING_META = MetaMap(
+_STRING_META = Map.new_meta(
     name=String(String.typename()),
     data={
         String("init"): builtin_string_init(),
@@ -5715,7 +5717,7 @@ _STRING_META = MetaMap(
         String("to_lower"): builtin_string_to_lower(),
     },
 )
-_REGEXP_META = MetaMap(
+_REGEXP_META = Map.new_meta(
     name=String(Regexp.typename()),
     data={
         String.new("init"): builtin_regexp_init(),
@@ -5723,7 +5725,7 @@ _REGEXP_META = MetaMap(
         String.new("replace"): builtin_regexp_replace(),
     },
 )
-_VECTOR_META = MetaMap(
+_VECTOR_META = Map.new_meta(
     name=String(Vector.typename()),
     data={
         String.new("init"): builtin_vector_init(),
@@ -5744,7 +5746,7 @@ _VECTOR_META = MetaMap(
         ),
     },
 )
-_MAP_META = MetaMap(
+_MAP_META = Map.new_meta(
     name=String(Map.typename()),
     data={
         String("count"): builtin_map_count(),
@@ -5757,7 +5759,7 @@ _MAP_META = MetaMap(
         String("union"): builtin_map_union(BuiltinExplicitUninitialized()),
     },
 )
-_SET_META = MetaMap(
+_SET_META = Map.new_meta(
     name=String(Set.typename()),
     data={
         String("count"): builtin_set_count(),
@@ -5771,7 +5773,7 @@ _SET_META = MetaMap(
         String("difference"): builtin_set_difference(BuiltinExplicitUninitialized()),
     },
 )
-_REFERENCE_META = MetaMap(name=String(Reference.typename()))
+_REFERENCE_META = Map.new_meta(name=String(Reference.typename()))
 
 # Null singleton.
 null = Null(meta=None)
@@ -5856,7 +5858,7 @@ _ITERATOR = eval_source(
     _ITERATOR_SOURCE,
     Environment(BASE_ENVIRONMENT),
 )
-_ITERATOR_META = MetaMap(
+_ITERATOR_META = Map.new_meta(
     name=String("iterator"),
     data=_ITERATOR.data if isinstance(_ITERATOR, Map) else dict(),
 )
