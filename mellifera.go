@@ -1885,7 +1885,7 @@ func (self *Lexer) NextToken() (Token, error) {
 
 type TraceElement struct {
 	Location *SourceLocation // Optional
-	// TODO: Add Function/Builtin field.
+	FuncName string
 }
 
 type Error struct {
@@ -1974,6 +1974,13 @@ type Continue struct {
 
 func (self Continue) ControlFlowLocation() *SourceLocation {
 	return self.Location
+}
+
+func Typename(value Value) string {
+	if value.Meta() != nil && value.Meta().name != nil {
+		return *value.Meta().name
+	}
+	return value.Typename()
 }
 
 type AstNode interface {
@@ -2328,7 +2335,7 @@ func (self *AstExpressionFunction) Eval(ctx *Context, env *Environment) (Value, 
 
 type AstExpressionMkref struct {
 	Location *SourceLocation // Optional
-	lhs      AstExpression
+	Lhs      AstExpression
 }
 
 func (self AstExpressionMkref) ExpressionLocation() *SourceLocation {
@@ -2339,12 +2346,12 @@ func (self AstExpressionMkref) IntoValue(ctx *Context) Value {
 	return ctx.NewMap([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
-		{ctx.NewString("lhs"), self.lhs.IntoValue(ctx)},
+		{ctx.NewString("lhs"), self.Lhs.IntoValue(ctx)},
 	})
 }
 
 func (self AstExpressionMkref) Eval(ctx *Context, env *Environment) (Value, error) {
-	value, err := self.lhs.Eval(ctx, env)
+	value, err := self.Lhs.Eval(ctx, env)
 	if err != nil {
 		return nil, err
 	}
@@ -2353,7 +2360,7 @@ func (self AstExpressionMkref) Eval(ctx *Context, env *Environment) (Value, erro
 
 type AstExpressionDeref struct {
 	Location *SourceLocation // Optional
-	lhs      AstExpression
+	Lhs      AstExpression
 }
 
 func (self AstExpressionDeref) ExpressionLocation() *SourceLocation {
@@ -2364,16 +2371,60 @@ func (self AstExpressionDeref) IntoValue(ctx *Context) Value {
 	return ctx.NewMap([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
-		{ctx.NewString("lhs"), self.lhs.IntoValue(ctx)},
+		{ctx.NewString("lhs"), self.Lhs.IntoValue(ctx)},
 	})
 }
 
 func (self AstExpressionDeref) Eval(ctx *Context, env *Environment) (Value, error) {
-	value, err := self.lhs.Eval(ctx, env)
+	value, err := self.Lhs.Eval(ctx, env)
 	if err != nil {
 		return nil, err
 	}
 	return ctx.NewReference(value), nil
+}
+
+type AstExpressionFunctionCall struct {
+	Location  *SourceLocation // Optional
+	Function  AstExpression
+	Arguments []AstExpression
+}
+
+func (self AstExpressionFunctionCall) ExpressionLocation() *SourceLocation {
+	return self.Location
+}
+
+func (self AstExpressionFunctionCall) IntoValue(ctx *Context) Value {
+	arguments := ctx.NewVector(nil)
+	for _, argument := range self.Arguments {
+		arguments.Push(argument.IntoValue(ctx))
+	}
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+		{ctx.NewString("function"), self.Function.IntoValue(ctx)},
+		{ctx.NewString("arguments"), arguments},
+	})
+}
+
+func (self AstExpressionFunctionCall) Eval(ctx *Context, env *Environment) (Value, error) {
+	// TODO: Handle case with dot access passing an implicit self parameter.
+
+	function, err := self.Function.Eval(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+
+	arguments := []Value{}
+	// TODO: Insert self argument once implicit self argument is handled.
+	for _, argument := range self.Arguments {
+		result, err := argument.Eval(ctx, env)
+		if err != nil {
+			return nil, err
+		}
+		arguments = append(arguments, result)
+	}
+
+	return Call(ctx, self.Location, function, arguments)
 }
 
 type AstBlock struct {
@@ -2458,8 +2509,9 @@ func NewParser(lexer *Lexer) Parser {
 		currentToken: Token{"invalid program", "", lexer.location, nil},
 
 		precedences: map[string]int{
-			TOKEN_MKREF: PRECEDENCE_POSTFIX,
-			TOKEN_DEREF: PRECEDENCE_POSTFIX,
+			TOKEN_LPAREN: PRECEDENCE_POSTFIX,
+			TOKEN_MKREF:  PRECEDENCE_POSTFIX,
+			TOKEN_DEREF:  PRECEDENCE_POSTFIX,
 		},
 		parseNudFunctions: map[string]func(*Parser) (AstExpression, error){
 			TOKEN_IDENTIFIER: (*Parser).ParseExpressionIdentifier,
@@ -2476,8 +2528,9 @@ func NewParser(lexer *Lexer) Parser {
 			TOKEN_FUNCTION:   (*Parser).ParseExpressionFunction,
 		},
 		parseLedFunctions: map[string]func(*Parser, AstExpression) (AstExpression, error){
-			TOKEN_MKREF: (*Parser).ParseExpressionMkref,
-			TOKEN_DEREF: (*Parser).ParseExpressionDeref,
+			TOKEN_LPAREN: (*Parser).ParseExpressionFunctionCall,
+			TOKEN_MKREF:  (*Parser).ParseExpressionMkref,
+			TOKEN_DEREF:  (*Parser).ParseExpressionDeref,
 		},
 	}
 	self.advanceToken()
@@ -2868,6 +2921,38 @@ func (self *Parser) ParseExpressionFunction() (AstExpression, error) {
 	return &AstExpressionFunction{location, parameters, body, nil}, nil
 }
 
+func (self *Parser) ParseExpressionFunctionCall(lhs AstExpression) (AstExpression, error) {
+	token, err := self.expectCurrent(TOKEN_LPAREN)
+	if err != nil {
+		return nil, err
+	}
+	location := token.Location
+
+	arguments := []AstExpression{}
+	for !self.checkCurrent(TOKEN_RPAREN) {
+		if len(arguments) != 0 {
+			if _, err := self.expectCurrent(TOKEN_COMMA); err != nil {
+				return nil, err
+			}
+		}
+		if self.checkCurrent(TOKEN_RPAREN) {
+			break
+		}
+
+		expression, err := self.ParseExpression()
+		if err != nil {
+			return nil, err
+		}
+		arguments = append(arguments, expression)
+	}
+
+	if _, err := self.expectCurrent(TOKEN_RPAREN); err != nil {
+		return nil, err
+	}
+
+	return AstExpressionFunctionCall{location, lhs, arguments}, nil
+}
+
 func (self *Parser) ParseExpressionMkref(lhs AstExpression) (AstExpression, error) {
 	token, err := self.expectCurrent(TOKEN_MKREF)
 	if err != nil {
@@ -2924,4 +3009,52 @@ func (self *Parser) ParseStatementExpressionOrAssignment() (AstStatement, error)
 
 	// TODO: Parse statement assignment.
 	return AstStatementExpression{expression.ExpressionLocation(), expression}, nil
+}
+
+func Call(ctx *Context, location *SourceLocation, callable Value, arguments []Value) (Value, error) {
+	function, ok := callable.(*Function)
+	if ok {
+		if len(arguments) != len(function.Ast.Parameters) {
+			return nil, NewError(
+				location,
+				ctx.NewString(fmt.Sprintf("invalid function argument count (expected %v, received %v)", len(function.Ast.Parameters), len(arguments))),
+			)
+		}
+
+		env := NewEnvironment(function.Env)
+		for i, parameter := range function.Ast.Parameters {
+			env.Let(parameter.Name.data, arguments[i])
+		}
+
+		result, err := function.Ast.Body.Eval(ctx, &env)
+		if err != nil {
+			if error, ok := err.(*Error); ok {
+				error.Trace = append(error.Trace, TraceElement{location, function.String()})
+			}
+			return nil, err
+		}
+
+		if flow, ok := result.(*Return); ok {
+			return flow.Value, nil
+		}
+		if _, ok := result.(*Break); ok {
+			return nil, NewError(
+				result.ControlFlowLocation(),
+				ctx.NewString("attempted to break outside of a loop"),
+			)
+		}
+		if _, ok := result.(*Continue); ok {
+			return nil, NewError(
+				result.ControlFlowLocation(),
+				ctx.NewString("attempted to continue outside of a loop"),
+			)
+		}
+
+		return ctx.NewNull(), nil
+	}
+
+	return nil, NewError(
+		location,
+		ctx.NewString(fmt.Sprintf("attempted to call non-function type %s with value %s", quote(Typename(callable)), callable.String())),
+	)
 }

@@ -65,4 +65,8 @@ Set{"foo", "bar", "baz",};
 
 function() { };
 function(a, b, c) { };
-function(a, b, c) { 123; };
+function(a, b, c) { "foo"; };
+
+function(){}();
+function(a, b, c) { }(123, 456, 789);
+function(a, b, c) { "foo"; }(123, 456, 789);

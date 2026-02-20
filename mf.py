@@ -1729,7 +1729,7 @@ class Error:
     @dataclass
     class TraceElement:
         location: Optional[SourceLocation]
-        function: Union[Function, Builtin]
+        funcname: str
 
     location: Optional[SourceLocation]
     value: Value
@@ -2624,6 +2624,19 @@ class AstExpressionFunctionCall(AstExpression):
     function: AstExpression
     arguments: list[AstExpression]
 
+    def into_value(self) -> Value:
+        arguments = Vector.new([x.into_value() for x in self.arguments])
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+                String.new("function"): self.function.into_value(),
+                String.new("arguments"): arguments,
+            }
+        )
+
     def eval(self, env: Environment) -> Union[Value, Error]:
         self_argument: Optional[Value] = None
         if isinstance(self.function, AstExpressionAccessDot):
@@ -2673,11 +2686,6 @@ class AstExpressionFunctionCall(AstExpression):
             if isinstance(result, Error):
                 return result
             function = result
-        if not isinstance(function, (Function, Builtin)):
-            return Error(
-                self.location,
-                f"attempted to call non-function type {quote(typename(function))} with value {function}",
-            )
 
         arguments: list[Value] = list()
         if self_argument is not None:
@@ -3982,7 +3990,7 @@ class Parser:
 
 def call(
     location: Optional[SourceLocation],
-    callable: Union[Function, Builtin],
+    callable: Value,
     arguments: list[Value],
 ) -> Union[Value, Error]:
     if isinstance(callable, Function):
@@ -4002,7 +4010,7 @@ def call(
         if isinstance(result, Continue):
             return Error(result.location, "attempted to continue outside of a loop")
         if isinstance(result, Error):
-            result.trace.append(Error.TraceElement(location, callable))
+            result.trace.append(Error.TraceElement(location, str(callable)))
             return result
         assert result is None
         return null
@@ -4013,7 +4021,7 @@ def call(
             if isinstance(produced, Value):
                 return produced
             if isinstance(produced, Error):
-                produced.trace.append(Error.TraceElement(location, callable))
+                produced.trace.append(Error.TraceElement(location, str(callable)))
                 return produced
             # Special cases in which a builtin does not return a mellifera
             # value or error. If None is returned, likely due to a missing
@@ -4027,7 +4035,10 @@ def call(
                 message = f"encountered exception {type(e).__name__}"
             return Error(None, String.new(message))
 
-    raise Exception("unreachable")
+    return Error(
+        location,
+        f"attempted to call non-function type {quote(typename(callable))} with value {callable}",
+    )
 
 
 # Used to indicate reference arguments when defining builtin functions.
@@ -6223,7 +6234,7 @@ def main() -> None:
             else:
                 print(f"error: {result}", file=sys.stderr)
             for element in result.trace:
-                s = f"...within {element.function}"
+                s = f"...within {element.funcname}"
                 if element.location is not None:
                     s += f" called from {element.location}"
                 print(s, file=sys.stderr)
