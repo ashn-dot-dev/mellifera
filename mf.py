@@ -877,10 +877,10 @@ class Builtin(Value):
         return "function"
 
     def __hash__(self):
-        return hash(id(self.function))
+        return hash(self.name)
 
     def __eq__(self, other):
-        return type(self) is type(other)
+        return self.name == other.name and self.function == other.function
 
     def __str__(self):
         return f"{self.name}@builtin"
@@ -897,7 +897,7 @@ class Builtin(Value):
     def expect_argument_count(arguments: list[Value], count: int) -> None:
         if len(arguments) != count:
             raise Exception(
-                f"invalid argument count (expected {count}, received {len(arguments)})"
+                f"invalid function argument count (expected {count}, received {len(arguments)})"
             )
 
     @staticmethod

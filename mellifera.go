@@ -163,6 +163,10 @@ func NewContext() Context {
 	ctx.reNumberDec = regexp.MustCompile(`^\d+(\.\d+)?`)
 	ctx.reNumberHex = regexp.MustCompile(`^0x[0-9a-fA-F]+`)
 	ctx.identifierCache = map[string]*String{}
+
+	ctx.BaseEnvironment.Let("dump", BuiltinDump(&ctx))
+	ctx.BaseEnvironment.Let("dumpln", BuiltinDumpln(&ctx))
+
 	return ctx
 }
 
@@ -268,6 +272,10 @@ func (ctx *Context) NewReference(value Value) *Reference {
 
 func (ctx *Context) NewFunction(ast *AstExpressionFunction, env *Environment) *Function {
 	return &Function{ast, env, ctx.functionMeta}
+}
+
+func (ctx *Context) NewBuiltin(name string, types []Type, impl func(*Context, []Value) (Value, error)) *Builtin {
+	return &Builtin{name, types, impl, ctx.functionMeta}
 }
 
 type Null struct {
@@ -1301,6 +1309,52 @@ func (self *Function) CombEncode(e *CombEncoder) error {
 	return e.err
 }
 
+type Builtin struct {
+	name  string
+	types []Type
+	impl  func(*Context, []Value) (Value, error)
+	meta  *Map // Optional
+}
+
+func (self *Builtin) Typename() string {
+	return "function"
+}
+
+func (self *Builtin) String() string {
+	return fmt.Sprintf("%s@builtin", self.name)
+}
+
+func (self *Builtin) Meta() *Map {
+	return self.meta
+}
+
+func (self *Builtin) Copy() Value {
+	return self // immutable value
+}
+
+func (self *Builtin) CopyOnWrite() {
+	// immutable value
+}
+
+func (self *Builtin) Hash() uint64 {
+	return fnv1a(self.name)
+}
+
+func (self *Builtin) Equal(other Value) bool {
+	othr, ok := other.(*Builtin)
+	if !ok {
+		return false
+	}
+	return self.name == othr.name && reflect.ValueOf(self.impl).Pointer() == reflect.ValueOf(othr.impl).Pointer()
+}
+
+func (self *Builtin) CombEncode(e *CombEncoder) error {
+	if e.err == nil {
+		e.err = fmt.Errorf("invalid comb value %s", self.String())
+	}
+	return e.err
+}
+
 type SourceLocation struct {
 	File string
 	Line int
@@ -2252,19 +2306,19 @@ func (self AstExpressionMap) IntoValue(ctx *Context) Value {
 }
 
 func (self AstExpressionMap) Eval(ctx *Context, env *Environment) (Value, error) {
-	elements := []Value{}
+	pairs := []MapPair{}
 	for _, element := range self.Elements {
-		k_value, err := element.Key.Eval(ctx, env)
+		k, err := element.Key.Eval(ctx, env)
 		if err != nil {
 			return nil, err
 		}
-		v_value, err := element.Value.Eval(ctx, env)
+		v, err := element.Value.Eval(ctx, env)
 		if err != nil {
 			return nil, err
 		}
-		elements = append(elements, ctx.NewVector([]Value{k_value.Copy(), v_value.Copy()}))
+		pairs = append(pairs, MapPair{k.Copy(), v.Copy()})
 	}
-	return ctx.NewVector(elements), nil
+	return ctx.NewMap(pairs), nil
 }
 
 type AstExpressionSet struct {
@@ -2297,7 +2351,7 @@ func (self AstExpressionSet) Eval(ctx *Context, env *Environment) (Value, error)
 		}
 		elements = append(elements, value.Copy())
 	}
-	return ctx.NewVector(elements), nil
+	return ctx.NewSet(elements), nil
 }
 
 type AstExpressionFunction struct {
@@ -3012,8 +3066,7 @@ func (self *Parser) ParseStatementExpressionOrAssignment() (AstStatement, error)
 }
 
 func Call(ctx *Context, location *SourceLocation, callable Value, arguments []Value) (Value, error) {
-	function, ok := callable.(*Function)
-	if ok {
+	if function, ok := callable.(*Function); ok {
 		if len(arguments) != len(function.Ast.Parameters) {
 			return nil, NewError(
 				location,
@@ -3053,8 +3106,147 @@ func Call(ctx *Context, location *SourceLocation, callable Value, arguments []Va
 		return ctx.NewNull(), nil
 	}
 
+	if builtin, ok := callable.(*Builtin); ok {
+		if err := TypeCheckArguments(builtin.types, arguments); err != nil {
+			return nil, NewError(
+				location,
+				ctx.NewString(err.Error()),
+			)
+		}
+		result, err := builtin.impl(ctx, arguments)
+		if err != nil {
+			if error, ok := err.(*Error); ok {
+				error.Trace = append(error.Trace, TraceElement{location, builtin.String()})
+			}
+			return nil, err
+		}
+
+		return result, nil
+	}
+
 	return nil, NewError(
 		location,
 		ctx.NewString(fmt.Sprintf("attempted to call non-function type %s with value %s", quote(Typename(callable)), callable.String())),
 	)
+}
+
+const (
+	ANY       = "any"
+	NULL      = "null"
+	BOOLEAN   = "boolean"
+	NUMBER    = "number"
+	STRING    = "string"
+	REGEXP    = "regexp"
+	VECTOR    = "vector"
+	MAP       = "map"
+	SET       = "set"
+	REFERENCE = "reference"
+	FUNCTION  = "function"
+)
+
+type Type struct {
+	Kind string
+	Base *Type
+}
+
+func (self Type) String() string {
+	if self.Kind == REFERENCE && self.Base != nil {
+		return fmt.Sprintf("refrence to %s", self.Base.String())
+	}
+	return self.Kind
+}
+
+func TVal(kind string) Type {
+	return Type{kind, nil}
+}
+
+func TRef(base Type) Type {
+	return Type{REFERENCE, &base}
+}
+
+func TypeCheckArgument(index int, expected Type, received Value) error {
+	switch expected.Kind {
+	case ANY:
+		return nil
+	case NULL:
+		if _, ok := received.(*Null); ok {
+			return nil
+		}
+	case BOOLEAN:
+		if _, ok := received.(*Boolean); ok {
+			return nil
+		}
+	case NUMBER:
+		if _, ok := received.(*Number); ok {
+			return nil
+		}
+	case STRING:
+		if _, ok := received.(*String); ok {
+			return nil
+		}
+	case REGEXP:
+		if _, ok := received.(*Regexp); ok {
+			return nil
+		}
+	case VECTOR:
+		if _, ok := received.(*Vector); ok {
+			return nil
+		}
+	case MAP:
+		if _, ok := received.(*Map); ok {
+			return nil
+		}
+	case SET:
+		if _, ok := received.(*Set); ok {
+			return nil
+		}
+	case REFERENCE:
+		reference, ok := received.(*Reference)
+		if !ok {
+			break
+		}
+		if expected.Base == nil {
+			return nil // No required base type.
+		}
+		if err := TypeCheckArgument(index, *expected.Base, reference.data); err != nil {
+			return fmt.Errorf("expected reference to %s-like value for argument %v, received reference to %s", expected.Base, index, reference.data.Typename())
+		}
+		return nil
+	case FUNCTION:
+		if _, ok := received.(*Reference); ok {
+			return nil
+		}
+		if _, ok := received.(*Builtin); ok {
+			return nil
+		}
+	}
+	return fmt.Errorf("expected %s-like value for argument %v, received %s", expected, index, received.Typename())
+}
+
+func TypeCheckArguments(types []Type, arguments []Value) error {
+	if len(types) != len(arguments) {
+		return fmt.Errorf("invalid function argument count (expected %v, received %v)", len(types), len(arguments))
+	}
+
+	for i := range types {
+		if err := TypeCheckArgument(i, types[i], arguments[i]); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func BuiltinDump(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("dump", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		fmt.Printf("%v", arguments[0])
+		return ctx.NewNull(), nil
+	})
+}
+
+func BuiltinDumpln(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("dumpln", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		fmt.Printf("%v\n", arguments[0])
+		return ctx.NewNull(), nil
+	})
 }
