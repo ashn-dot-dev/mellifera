@@ -1,75 +1,76 @@
 # comment
 
-null;
+dumpln( null );
 
-true;
-false;
+dumpln( true  );
+dumpln( false );
 
-123;
-123.0;
-123.456;
-0xdeadbeef;
+dumpln( 123        );
+dumpln( 123.0      );
+dumpln( 123.456    );
+dumpln( 0xdeadbeef );
 
-"";
-"hello";
-"hello world";
-"hello\tworld";
-"hello\nworld";
-"hello\\world";
-"hello\"world";
-"hello\x5Fworld";             # 0x5F is ASCII _
-"hello\x5fworld";             # 0x5f is ASCII _
-"hello\xf0\x9f\x8d\x94world"; # 0xf0, 0x9f, 0x8d, 0x94 is UTF-8 🍔
-"hello🍔world";
-"hello, 世界";
-``;
-`hello world`;
+dumpln( ""                           );
+dumpln( "hello"                      );
+dumpln( "hello world"                );
+dumpln( "hello\tworld"               );
+dumpln( "hello\nworld"               );
+dumpln( "hello\\world"               );
+dumpln( "hello\"world"               );
+dumpln( "hello\x5Fworld"             ); # 0x5F is ASCII _
+dumpln( "hello\x5fworld"             ); # 0x5f is ASCII _
+dumpln( "hello\xf0\x9f\x8d\x94world" ); # 0xf0, 0x9f, 0x8d, 0x94 is UTF-8 🍔
+dumpln( "hello🍔world"               );
+dumpln( "hello, 世界"                );
+dumpln( ``                           );
+dumpln( `hello world`                );
+dumpln(
 `hello
-world`;
-``` ```;
+world`
+);
+dumpln( ``` ``` );
+dumpln(
 ```
 hello
 world
-```;
+```
+);
 
-r"foo";
-r`(\w+) (\w+)`;
+dumpln( r"foo"         );
+dumpln( r`(\w+) (\w+)` );
 
-[];
-["foo", "bar", "baz"];
-["foo", "bar", "baz",];
+dumpln( []                     );
+dumpln( ["foo", "bar", "baz"]  );
+dumpln( ["foo", "bar", "baz",] );
 
-Map{};
-Map{"foo": 123, "bar": 456, "baz": 789};
-Map{"foo": 123, "bar": 456, "baz": 789,};
-{"foo": 123, "bar": 456, "baz": 789};
-{"foo": 123, "bar": 456, "baz": 789,};
-{.foo: 123, .bar: 456, .baz: 789};
-{.foo: 123, .bar: 456, .baz: 789,};
-{"foo" = 123, "bar" = 456, "baz" = 789};
-{"foo" = 123, "bar" = 456, "baz" = 789,};
-{.foo = 123, .bar = 456, .baz = 789};
-{.foo = 123, .bar = 456, .baz = 789,};
+dumpln( Map{}                                    );
+dumpln( Map{"foo": 123, "bar": 456, "baz": 789}  );
+dumpln( Map{"foo": 123, "bar": 456, "baz": 789,} );
+dumpln( {"foo": 123, "bar": 456, "baz": 789}     );
+dumpln( {"foo": 123, "bar": 456, "baz": 789,}    );
+dumpln( {.foo: 123, .bar: 456, .baz: 789}        );
+dumpln( {.foo: 123, .bar: 456, .baz: 789,}       );
+dumpln( {"foo" = 123, "bar" = 456, "baz" = 789}  );
+dumpln( {"foo" = 123, "bar" = 456, "baz" = 789,} );
+dumpln( {.foo = 123, .bar = 456, .baz = 789}     );
+dumpln( {.foo = 123, .bar = 456, .baz = 789,}    );
 
-Set{};
-Set{"foo", "bar", "baz"};
-Set{"foo", "bar", "baz",};
-{"foo", "bar", "baz"};
-{"foo", "bar", "baz",};
+dumpln( Set{}                     );
+dumpln( Set{"foo", "bar", "baz"}  );
+dumpln( Set{"foo", "bar", "baz",} );
+dumpln( {"foo", "bar", "baz"}     );
+dumpln( {"foo", "bar", "baz",}    );
 
 123.&;
 {"foo": 123, "bar": 456, "baz": 456}.&;
 
 123.&.*;
-{"foo": 123, "bar": 456, "baz": 456}.&.*;
+#dumpln ( {"foo": 123, "bar": 456, "baz": 456}.&.* );
 
-function() { };
-function(a, b, c) { };
-function(a, b, c) { "foo"; };
+dumpln( function() { }               );
+dumpln( function(a, b, c) { }        );
+dumpln( function(a, b, c) { "foo"; } );
 
 function(){}();
 function(a, b, c) { }(123, 456, 789);
 function(a, b, c) { "foo"; }(123, 456, 789);
-
-dump(123);
-dumpln(456);

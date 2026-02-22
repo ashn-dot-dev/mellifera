@@ -1273,7 +1273,7 @@ func (self *Function) String() string {
 		}
 	}
 	if self.Ast.Location != nil {
-		return fmt.Sprintf("%s@[%v:%v]", name, self.Ast.Location.File, self.Ast.Location.Line)
+		return fmt.Sprintf("%s@[%v, line %v]", name, self.Ast.Location.File, self.Ast.Location.Line)
 	}
 	return name
 }
@@ -1603,23 +1603,23 @@ func (self *Lexer) lexNumber() (Token, error) {
 	return Token{}, errors.New("invalid number")
 }
 
-func (self *Lexer) lexEscStringRune() (rune, error) {
+func (self *Lexer) lexEscStringPart() ([]byte, error) {
 	if self.isEof() {
-		return rune(0), ParseError{
+		return nil, ParseError{
 			Location: self.currentLocation(),
 			why:      "expected character, found end-of-file",
 		}
 	}
 
 	if self.currentRune() == '\n' {
-		return rune(0), ParseError{
+		return nil, ParseError{
 			Location: self.currentLocation(),
 			why:      "expected character, found newline",
 		}
 	}
 
 	if !unicode.IsPrint(self.currentRune()) {
-		return rune(0), ParseError{
+		return nil, ParseError{
 			Location: self.currentLocation(),
 			why:      fmt.Sprintf("expected prinable character, found %#x", self.currentRune()),
 		}
@@ -1628,25 +1628,25 @@ func (self *Lexer) lexEscStringRune() (rune, error) {
 	if self.currentRune() == '\\' && self.peekRune() == 't' {
 		self.advanceRune()
 		self.advanceRune()
-		return '\t', nil
+		return []byte("\t"), nil
 	}
 
 	if self.currentRune() == '\\' && self.peekRune() == 'n' {
 		self.advanceRune()
 		self.advanceRune()
-		return '\n', nil
+		return []byte("\n"), nil
 	}
 
 	if self.currentRune() == '\\' && self.peekRune() == '"' {
 		self.advanceRune()
 		self.advanceRune()
-		return '"', nil
+		return []byte("\""), nil
 	}
 
 	if self.currentRune() == '\\' && self.peekRune() == '\\' {
 		self.advanceRune()
 		self.advanceRune()
-		return '\\', nil
+		return []byte("\\"), nil
 	}
 
 	if self.currentRune() == '\\' && self.peekRune() == 'x' {
@@ -1683,17 +1683,17 @@ func (self *Lexer) lexEscStringRune() (rune, error) {
 		nybble1, foundNybble1 := mapping[nybbles[1]]
 		if !(foundNybble0 && foundNybble1) {
 			sequence := "\\x" + string(nybbles)
-			return rune(0), ParseError{
+			return nil, ParseError{
 				Location: self.currentLocation(),
 				why:      fmt.Sprintf("expected hexadecimal escape sequence, found %s", quote(sequence)),
 			}
 		}
-		return rune(nybble0<<4 | nybble1), nil
+		return []byte{byte(nybble0<<4 | nybble1)}, nil
 	}
 
 	if self.currentRune() == '\\' {
 		sequence := string([]rune{self.currentRune(), self.peekRune()})
-		return rune(0), ParseError{
+		return nil, ParseError{
 			Location: self.currentLocation(),
 			why:      fmt.Sprintf("expected escape sequence, found %s", sequence),
 		}
@@ -1701,7 +1701,7 @@ func (self *Lexer) lexEscStringRune() (rune, error) {
 
 	character := self.currentRune()
 	self.advanceRune()
-	return character, nil
+	return []byte(string(character)), nil
 }
 
 func (self *Lexer) lexEscString() (Token, error) {
@@ -1709,13 +1709,13 @@ func (self *Lexer) lexEscString() (Token, error) {
 	if err := self.expectRune('"'); err != nil {
 		return Token{}, err
 	}
-	runes := []rune{}
+	bytes := []byte{}
 	for !self.isEof() && self.currentRune() != '"' {
-		r, err := self.lexEscStringRune()
+		part, err := self.lexEscStringPart()
 		if err != nil {
 			return Token{}, err
 		}
-		runes = append(runes, r)
+		bytes = append(bytes, part...)
 	}
 	if err := self.expectRune('"'); err != nil {
 		return Token{}, err
@@ -1725,13 +1725,13 @@ func (self *Lexer) lexEscString() (Token, error) {
 		Kind:     TOKEN_STRING,
 		Literal:  literal,
 		Location: self.currentLocation(),
-		Value:    self.ctx.NewString(string(runes)),
+		Value:    self.ctx.NewString(string(bytes)),
 	}, nil
 }
 
-func (self *Lexer) lexRawStringRune() (rune, error) {
+func (self *Lexer) lexRawStringPart() (string, error) {
 	if self.isEof() {
-		return rune(0), ParseError{
+		return "", ParseError{
 			Location: self.currentLocation(),
 			why:      "expected character, found end-of-file",
 		}
@@ -1739,13 +1739,13 @@ func (self *Lexer) lexRawStringRune() (rune, error) {
 
 	character := self.currentRune()
 	self.advanceRune()
-	return character, nil
+	return string(character), nil
 }
 
 func (self *Lexer) lexRawString() (Token, error) {
 	location := self.currentLocation()
 	start := self.position
-	runes := []rune{}
+	bytes := []byte{}
 	var literal string
 	if strings.HasPrefix(self.remaining(), "```") {
 		if err := self.expectRune('`'); err != nil {
@@ -1758,11 +1758,11 @@ func (self *Lexer) lexRawString() (Token, error) {
 			return Token{}, err
 		}
 		for !self.isEof() && !strings.HasPrefix(self.remaining(), "```") {
-			r, err := self.lexRawStringRune()
+			part, err := self.lexRawStringPart()
 			if err != nil {
 				return Token{}, err
 			}
-			runes = append(runes, r)
+			bytes = append(bytes, part...)
 		}
 		if err := self.expectRune('`'); err != nil {
 			return Token{}, err
@@ -1776,7 +1776,7 @@ func (self *Lexer) lexRawString() (Token, error) {
 		literal = self.source[start+3 : self.position-3]
 		// Future-proof in case I want to add variable-number-of-tick raw
 		// string literals in the future.
-		if len(runes) == 0 {
+		if len(bytes) == 0 {
 			if err := self.expectRune('`'); err != nil {
 				return Token{}, ParseError{
 					Location: location,
@@ -1789,11 +1789,11 @@ func (self *Lexer) lexRawString() (Token, error) {
 			return Token{}, err
 		}
 		for !self.isEof() && self.currentRune() != '`' {
-			r, err := self.lexRawStringRune()
+			part, err := self.lexRawStringPart()
 			if err != nil {
 				return Token{}, err
 			}
-			runes = append(runes, r)
+			bytes = append(bytes, part...)
 		}
 		if err := self.expectRune('`'); err != nil {
 			return Token{}, err
@@ -1804,7 +1804,7 @@ func (self *Lexer) lexRawString() (Token, error) {
 		Kind:     TOKEN_STRING,
 		Literal:  literal,
 		Location: location,
-		Value:    self.ctx.NewString(string(runes)),
+		Value:    self.ctx.NewString(string(bytes)),
 	}, nil
 }
 
@@ -1815,17 +1815,17 @@ func (self *Lexer) lexRegexp() (Token, error) {
 		return Token{}, err
 	}
 
-	runes := []rune{}
+	bytes := []byte{}
 	if self.currentRune() == '"' {
 		if err := self.expectRune('"'); err != nil {
 			return Token{}, err
 		}
 		for self.currentRune() != '"' {
-			r, err := self.lexEscStringRune()
+			part, err := self.lexEscStringPart()
 			if err != nil {
 				return Token{}, err
 			}
-			runes = append(runes, r)
+			bytes = append(bytes, part...)
 		}
 		if err := self.expectRune('"'); err != nil {
 			return Token{}, err
@@ -1835,11 +1835,11 @@ func (self *Lexer) lexRegexp() (Token, error) {
 			return Token{}, err
 		}
 		for self.currentRune() != '`' {
-			r, err := self.lexRawStringRune()
+			part, err := self.lexRawStringPart()
 			if err != nil {
 				return Token{}, err
 			}
-			runes = append(runes, r)
+			bytes = append(bytes, part...)
 		}
 		if err := self.expectRune('`'); err != nil {
 			return Token{}, err
@@ -1851,7 +1851,7 @@ func (self *Lexer) lexRegexp() (Token, error) {
 		}
 	}
 	literal := self.source[start:self.position]
-	regexp, err := self.ctx.NewRegexp(string(runes))
+	regexp, err := self.ctx.NewRegexp(string(bytes))
 	if err != nil {
 		return Token{}, ParseError{
 			Location: location,

@@ -1287,7 +1287,7 @@ class Lexer:
         self.position += len(text)
         return self._new_token(TokenKind.NUMBER, text, value=Number.new(float(text)))
 
-    def _lex_esc_string_rune(self) -> bytes:
+    def _lex_esc_string_part(self) -> bytes:
         if self._is_eof():
             raise ParseError(
                 self.location,
@@ -1381,12 +1381,12 @@ class Lexer:
         self._expect_rune('"')
         string = b""
         while not self._is_eof() and self._current_rune() != '"':
-            string += self._lex_esc_string_rune()
+            string += self._lex_esc_string_part()
         self._expect_rune('"')
         literal = self.source[start : self.position]
         return self._new_token(TokenKind.STRING, literal, value=String.new(string))
 
-    def _lex_raw_string_rune(self) -> bytes:
+    def _lex_raw_string_part(self) -> bytes:
         if self._is_eof():
             raise ParseError(
                 self.location,
@@ -1478,7 +1478,7 @@ class Lexer:
             self._expect_rune("`")
             while not self._is_eof() and not self._remaining().startswith("```"):
                 lex_template_element(
-                    lambda: self._lex_raw_string_rune().decode("utf-8")
+                    lambda: self._lex_raw_string_part().decode("utf-8")
                 )
             if len(string) != 0:
                 template.append(
@@ -1491,7 +1491,7 @@ class Lexer:
             self._expect_rune("`")
             while not self._is_eof() and self._current_rune() != "`":
                 lex_template_element(
-                    lambda: self._lex_raw_string_rune().decode("utf-8")
+                    lambda: self._lex_raw_string_part().decode("utf-8")
                 )
             if len(string) != 0:
                 template.append(
@@ -1502,7 +1502,7 @@ class Lexer:
             self._expect_rune('"')
             while not self._is_eof() and self._current_rune() != '"':
                 lex_template_element(
-                    lambda: self._lex_esc_string_rune().decode("utf-8")
+                    lambda: self._lex_esc_string_part().decode("utf-8")
                 )
             if len(string) != 0:
                 template.append(
@@ -1526,12 +1526,12 @@ class Lexer:
         if self._current_rune() == '"':
             self._expect_rune('"')
             while self._current_rune() != '"':
-                string += self._lex_esc_string_rune()
+                string += self._lex_esc_string_part()
             self._expect_rune('"')
         elif self._current_rune() == "`":
             self._expect_rune("`")
             while self._current_rune() != "`":
-                string += self._lex_raw_string_rune()
+                string += self._lex_raw_string_part()
             self._expect_rune("`")
         else:
             raise ParseError(
