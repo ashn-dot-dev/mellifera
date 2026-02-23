@@ -2747,6 +2747,18 @@ class AstExpressionAccessScope(AstExpression):
     store: AstExpression
     field: AstIdentifier
 
+    def into_value(self) -> Value:
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+                String.new("store"): self.store.into_value(),
+                String.new("field"): self.field.into_value(),
+            }
+        )
+
     def eval(self, env: Environment) -> Union[Value, Error]:
         store = self.store.eval(env)
         if isinstance(store, Error):
@@ -3370,8 +3382,8 @@ class Parser:
         TokenKind.REM:      Precedence.MUL_DIV,
         TokenKind.LPAREN:   Precedence.POSTFIX,
         TokenKind.LBRACKET: Precedence.POSTFIX,
-        TokenKind.DOT:      Precedence.POSTFIX,
         TokenKind.SCOPE:    Precedence.POSTFIX,
+        TokenKind.DOT:      Precedence.POSTFIX,
         TokenKind.MKREF:    Precedence.POSTFIX,
         TokenKind.DEREF:    Precedence.POSTFIX,
         # fmt: on
@@ -3423,8 +3435,8 @@ class Parser:
         self._register_led(TokenKind.REM, Parser.parse_expression_rem)
         self._register_led(TokenKind.LPAREN, Parser.parse_expression_function_call)
         self._register_led(TokenKind.LBRACKET, Parser.parse_expression_access_index)
-        self._register_led(TokenKind.DOT, Parser.parse_expression_access_dot)
         self._register_led(TokenKind.SCOPE, Parser.parse_expression_access_scope)
+        self._register_led(TokenKind.DOT, Parser.parse_expression_access_dot)
         self._register_led(TokenKind.MKREF, Parser.parse_expression_mkref)
         self._register_led(TokenKind.DEREF, Parser.parse_expression_deref)
 
@@ -3783,17 +3795,17 @@ class Parser:
         self._expect_current(TokenKind.RBRACKET)
         return AstExpressionAccessIndex(location, lhs, field)
 
-    def parse_expression_access_dot(self, lhs: AstExpression) -> AstExpressionAccessDot:
-        location = self._expect_current(TokenKind.DOT).location
-        field = self.parse_identifier()
-        return AstExpressionAccessDot(location, lhs, field)
-
     def parse_expression_access_scope(
         self, lhs: AstExpression
     ) -> AstExpressionAccessScope:
         location = self._expect_current(TokenKind.SCOPE).location
         field = self.parse_identifier()
         return AstExpressionAccessScope(location, lhs, field)
+
+    def parse_expression_access_dot(self, lhs: AstExpression) -> AstExpressionAccessDot:
+        location = self._expect_current(TokenKind.DOT).location
+        field = self.parse_identifier()
+        return AstExpressionAccessDot(location, lhs, field)
 
     def parse_expression_mkref(self, lhs: AstExpression) -> AstExpressionMkref:
         location = self._expect_current(TokenKind.MKREF).location

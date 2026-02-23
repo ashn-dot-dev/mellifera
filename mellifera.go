@@ -1415,6 +1415,7 @@ const (
 	TOKEN_MKREF  = ".&"
 	TOKEN_DEREF  = ".*"
 	TOKEN_DOT    = "."
+	TOKEN_SCOPE  = "::"
 	TOKEN_ASSIGN = "="
 	// Delimiters
 	TOKEN_COMMA     = ","
@@ -1936,6 +1937,7 @@ func (self *Lexer) NextToken() (Token, error) {
 		TOKEN_MKREF,
 		TOKEN_DEREF,
 		TOKEN_DOT,
+		TOKEN_SCOPE,
 		TOKEN_ASSIGN,
 		// Delmimiters
 		TOKEN_COMMA,
@@ -2458,6 +2460,48 @@ func (self AstExpressionAccessIndex) Eval(ctx *Context, env *Environment) (Value
 	)
 }
 
+type AstExpressionAccessScope struct {
+	Location *SourceLocation // Optional
+	Store    AstExpression
+	Field    AstIdentifier
+}
+
+func (self AstExpressionAccessScope) ExpressionLocation() *SourceLocation {
+	return self.Location
+}
+
+func (self AstExpressionAccessScope) IntoValue(ctx *Context) Value {
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+		{ctx.NewString("store"), self.Store.IntoValue(ctx)},
+		{ctx.NewString("field"), self.Field.IntoValue(ctx)},
+	})
+}
+
+func (self AstExpressionAccessScope) Eval(ctx *Context, env *Environment) (Value, error) {
+	store, err := self.Store.Eval(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+	field := self.Field.Name
+	if err != nil {
+		return nil, err
+	}
+	m, ok := store.(*Map)
+	if !ok {
+		return nil, NewError(
+			self.Location,
+			ctx.NewString(fmt.Sprintf("attempted to access field of type %s", quote(Typename(store)))),
+		)
+	}
+	lookup := m.Lookup(field)
+	if lookup == nil {
+		return nil, fmt.Errorf("invalid map access with field %v", field)
+	}
+	return lookup, nil
+}
+
 type AstExpressionMkref struct {
 	Location *SourceLocation // Optional
 	Lhs      AstExpression
@@ -2636,6 +2680,7 @@ func NewParser(lexer *Lexer) Parser {
 		precedences: map[string]int{
 			TOKEN_LPAREN:   PRECEDENCE_POSTFIX,
 			TOKEN_LBRACKET: PRECEDENCE_POSTFIX,
+			TOKEN_SCOPE:    PRECEDENCE_POSTFIX,
 			TOKEN_MKREF:    PRECEDENCE_POSTFIX,
 			TOKEN_DEREF:    PRECEDENCE_POSTFIX,
 		},
@@ -2656,6 +2701,7 @@ func NewParser(lexer *Lexer) Parser {
 		parseLedFunctions: map[string]func(*Parser, AstExpression) (AstExpression, error){
 			TOKEN_LPAREN:   (*Parser).ParseExpressionFunctionCall,
 			TOKEN_LBRACKET: (*Parser).ParseExpressionAccessIndex,
+			TOKEN_SCOPE:    (*Parser).ParseExpressionAccessScope,
 			TOKEN_MKREF:    (*Parser).ParseExpressionMkref,
 			TOKEN_DEREF:    (*Parser).ParseExpressionDeref,
 		},
@@ -3094,6 +3140,18 @@ func (self *Parser) ParseExpressionAccessIndex(lhs AstExpression) (AstExpression
 		return nil, err
 	}
 	return AstExpressionAccessIndex{token.Location, lhs, field}, nil
+}
+
+func (self *Parser) ParseExpressionAccessScope(lhs AstExpression) (AstExpression, error) {
+	token, err := self.expectCurrent(TOKEN_SCOPE)
+	if err != nil {
+		return nil, err
+	}
+	field, err := self.ParseIdentifier()
+	if err != nil {
+		return nil, err
+	}
+	return AstExpressionAccessScope{token.Location, lhs, field}, nil
 }
 
 func (self *Parser) ParseExpressionMkref(lhs AstExpression) (AstExpression, error) {
