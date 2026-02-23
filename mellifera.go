@@ -1413,6 +1413,19 @@ const (
 	TOKEN_STRING     = "string"
 	TOKEN_REGEXP     = "regexp"
 	// Operators
+	TOKEN_ADD    = "+"
+	TOKEN_SUB    = "-"
+	TOKEN_MUL    = "*"
+	TOKEN_DIV    = "/"
+	TOKEN_REM    = "%"
+	TOKEN_EQ     = "=="
+	TOKEN_NE     = "!="
+	TOKEN_LE     = "<="
+	TOKEN_GE     = ">="
+	TOKEN_LT     = "<"
+	TOKEN_GT     = ">"
+	TOKEN_EQ_RE  = "=~"
+	TOKEN_NE_RE  = "!~"
 	TOKEN_MKREF  = ".&"
 	TOKEN_DEREF  = ".*"
 	TOKEN_DOT    = "."
@@ -1434,6 +1447,9 @@ const (
 	TOKEN_FALSE    = "false"
 	TOKEN_MAP      = "Map"
 	TOKEN_SET      = "Set"
+	TOKEN_NOT      = "not"
+	TOKEN_AND      = "and"
+	TOKEN_OR       = "or"
 	TOKEN_FUNCTION = "function"
 )
 
@@ -1473,6 +1489,9 @@ func NewLexer(ctx *Context, source string, location *SourceLocation) Lexer {
 		TOKEN_FALSE:    TOKEN_FALSE,
 		TOKEN_MAP:      TOKEN_MAP,
 		TOKEN_SET:      TOKEN_SET,
+		TOKEN_NOT:      TOKEN_NOT,
+		TOKEN_AND:      TOKEN_AND,
+		TOKEN_OR:       TOKEN_OR,
 		TOKEN_FUNCTION: TOKEN_FUNCTION,
 	}
 
@@ -2081,6 +2100,19 @@ func (self *Lexer) NextToken() (Token, error) {
 	}
 	operatorsAndDelimiters := []string{
 		// Operators
+		TOKEN_ADD,
+		TOKEN_SUB,
+		TOKEN_MUL,
+		TOKEN_DIV,
+		TOKEN_REM,
+		TOKEN_EQ,
+		TOKEN_NE,
+		TOKEN_LE,
+		TOKEN_GE,
+		TOKEN_LT,
+		TOKEN_GT,
+		TOKEN_EQ_RE,
+		TOKEN_NE_RE,
 		TOKEN_MKREF,
 		TOKEN_DEREF,
 		TOKEN_DOT,
@@ -2619,6 +2651,39 @@ func (self AstExpressionGrouped) Eval(ctx *Context, env *Environment) (Value, er
 	return self.Expression.Eval(ctx, env)
 }
 
+type AstExpressionPositive struct {
+	Location   *SourceLocation // Optional
+	Expression AstExpression
+}
+
+func (self AstExpressionPositive) ExpressionLocation() *SourceLocation {
+	return self.Location
+}
+
+func (self AstExpressionPositive) IntoValue(ctx *Context) Value {
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+		{ctx.NewString("expression"), self.Expression.IntoValue(ctx)},
+	})
+}
+
+func (self AstExpressionPositive) Eval(ctx *Context, env *Environment) (Value, error) {
+	value, err := self.Expression.Eval(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+
+	if number, ok := value.(*Number); ok {
+		return ctx.NewNumber(+number.data), nil
+	}
+
+	return nil, NewError(
+		self.Location,
+		ctx.NewString(fmt.Sprintf("attempted unary + operation with type %s", quote(Typename(value)))),
+	)
+}
+
 type AstExpressionAccessIndex struct {
 	Location *SourceLocation // Optional
 	Store    AstExpression
@@ -2971,6 +3036,21 @@ func NewParser(lexer *Lexer) Parser {
 		currentToken: Token{"invalid program", "", lexer.location, nil, nil},
 
 		precedences: map[string]int{
+			TOKEN_OR:       PRECEDENCE_OR,
+			TOKEN_AND:      PRECEDENCE_AND,
+			TOKEN_EQ:       PRECEDENCE_COMPARE,
+			TOKEN_NE:       PRECEDENCE_COMPARE,
+			TOKEN_LE:       PRECEDENCE_COMPARE,
+			TOKEN_GE:       PRECEDENCE_COMPARE,
+			TOKEN_LT:       PRECEDENCE_COMPARE,
+			TOKEN_GT:       PRECEDENCE_COMPARE,
+			TOKEN_EQ_RE:    PRECEDENCE_COMPARE,
+			TOKEN_NE_RE:    PRECEDENCE_COMPARE,
+			TOKEN_ADD:      PRECEDENCE_ADD_SUB,
+			TOKEN_SUB:      PRECEDENCE_ADD_SUB,
+			TOKEN_MUL:      PRECEDENCE_MUL_DIV,
+			TOKEN_DIV:      PRECEDENCE_MUL_DIV,
+			TOKEN_REM:      PRECEDENCE_MUL_DIV,
 			TOKEN_LPAREN:   PRECEDENCE_POSTFIX,
 			TOKEN_LBRACKET: PRECEDENCE_POSTFIX,
 			TOKEN_SCOPE:    PRECEDENCE_POSTFIX,
@@ -2993,6 +3073,7 @@ func NewParser(lexer *Lexer) Parser {
 			TOKEN_LBRACE:     (*Parser).ParseExpressionMapOrSet,
 			TOKEN_FUNCTION:   (*Parser).ParseExpressionFunction,
 			TOKEN_LPAREN:     (*Parser).ParseExpressionGrouped,
+			TOKEN_ADD:        (*Parser).ParseExpressionPositive,
 		},
 		parseLedFunctions: map[string]func(*Parser, AstExpression) (AstExpression, error){
 			TOKEN_LPAREN:   (*Parser).ParseExpressionFunctionCall,
@@ -3417,6 +3498,21 @@ func (self *Parser) ParseExpressionGrouped() (AstExpression, error) {
 	}
 
 	return AstExpressionGrouped{location, expression}, nil
+}
+
+func (self *Parser) ParseExpressionPositive() (AstExpression, error) {
+	token, err := self.expectCurrent(TOKEN_ADD)
+	if err != nil {
+		return nil, err
+	}
+	location := token.Location
+
+	expression, err := self.ParseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	return AstExpressionPositive{location, expression}, nil
 }
 
 func (self *Parser) ParseExpressionFunctionCall(lhs AstExpression) (AstExpression, error) {

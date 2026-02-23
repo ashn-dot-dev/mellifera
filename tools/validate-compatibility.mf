@@ -91,3 +91,5 @@ dumpln($"foo{[123, 456, 789][0]}baz{Map{"foo": 456}.foo}qux");
 
 dumpln( (123) );
 dumpln( ((({"foo": 123}.foo))) );
+
+dumpln( +123.456 );
