@@ -2598,6 +2598,27 @@ func (self *AstExpressionFunction) Eval(ctx *Context, env *Environment) (Value, 
 	return ctx.NewFunction(self, env), nil
 }
 
+type AstExpressionGrouped struct {
+	Location   *SourceLocation // Optional
+	Expression AstExpression
+}
+
+func (self AstExpressionGrouped) ExpressionLocation() *SourceLocation {
+	return self.Location
+}
+
+func (self AstExpressionGrouped) IntoValue(ctx *Context) Value {
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+		{ctx.NewString("expression"), self.Expression.IntoValue(ctx)},
+	})
+}
+
+func (self AstExpressionGrouped) Eval(ctx *Context, env *Environment) (Value, error) {
+	return self.Expression.Eval(ctx, env)
+}
+
 type AstExpressionAccessIndex struct {
 	Location *SourceLocation // Optional
 	Store    AstExpression
@@ -2971,6 +2992,7 @@ func NewParser(lexer *Lexer) Parser {
 			TOKEN_SET:        (*Parser).ParseExpressionMapOrSet,
 			TOKEN_LBRACE:     (*Parser).ParseExpressionMapOrSet,
 			TOKEN_FUNCTION:   (*Parser).ParseExpressionFunction,
+			TOKEN_LPAREN:     (*Parser).ParseExpressionGrouped,
 		},
 		parseLedFunctions: map[string]func(*Parser, AstExpression) (AstExpression, error){
 			TOKEN_LPAREN:   (*Parser).ParseExpressionFunctionCall,
@@ -3375,6 +3397,26 @@ func (self *Parser) ParseExpressionFunction() (AstExpression, error) {
 	}
 
 	return &AstExpressionFunction{location, parameters, body, nil}, nil
+}
+
+func (self *Parser) ParseExpressionGrouped() (AstExpression, error) {
+	token, err := self.expectCurrent(TOKEN_LPAREN)
+	if err != nil {
+		return nil, err
+	}
+	location := token.Location
+
+	expression, err := self.ParseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = self.expectCurrent(TOKEN_RPAREN)
+	if err != nil {
+		return nil, err
+	}
+
+	return AstExpressionGrouped{location, expression}, nil
 }
 
 func (self *Parser) ParseExpressionFunctionCall(lhs AstExpression) (AstExpression, error) {
