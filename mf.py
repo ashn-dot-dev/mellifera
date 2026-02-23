@@ -2782,6 +2782,18 @@ class AstExpressionAccessDot(AstExpression):
     store: AstExpression
     field: AstIdentifier
 
+    def into_value(self) -> Value:
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+                String.new("store"): self.store.into_value(),
+                String.new("field"): self.field.into_value(),
+            }
+        )
+
     def eval(self, env: Environment) -> Union[Value, Error]:
         store = self.store.eval(env)
         if isinstance(store, Error):

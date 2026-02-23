@@ -79,3 +79,6 @@ dumpln([123, 456, 789][1]);
 dumpln(Map{"foo": 123, "bar": 456}["foo"]);
 
 dumpln(Map{"foo": 123, "bar": 456}::foo);
+
+dumpln(Map{"foo": 123, "bar": 456}.foo);
+dumpln(Map{"foo": 123, "bar": 456}.&.foo);

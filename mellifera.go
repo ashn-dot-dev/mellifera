@@ -2436,10 +2436,12 @@ func (self AstExpressionAccessIndex) Eval(ctx *Context, env *Environment) (Value
 	if err != nil {
 		return nil, err
 	}
+
 	field, err := self.Field.Eval(ctx, env)
 	if err != nil {
 		return nil, err
 	}
+
 	if v, ok := store.(*Vector); ok {
 		integer, err := ValueAsInt(field)
 		if err != nil {
@@ -2454,6 +2456,7 @@ func (self AstExpressionAccessIndex) Eval(ctx *Context, env *Environment) (Value
 		}
 		return lookup, nil
 	}
+
 	return nil, NewError(
 		self.Location,
 		ctx.NewString(fmt.Sprintf("attempted to access field of type %s with type %s", quote(Typename(store)), quote(Typename(field)))),
@@ -2484,10 +2487,12 @@ func (self AstExpressionAccessScope) Eval(ctx *Context, env *Environment) (Value
 	if err != nil {
 		return nil, err
 	}
+
 	field := self.Field.Name
 	if err != nil {
 		return nil, err
 	}
+
 	m, ok := store.(*Map)
 	if !ok {
 		return nil, NewError(
@@ -2499,7 +2504,88 @@ func (self AstExpressionAccessScope) Eval(ctx *Context, env *Environment) (Value
 	if lookup == nil {
 		return nil, fmt.Errorf("invalid map access with field %v", field)
 	}
+
 	return lookup, nil
+}
+
+type AstExpressionAccessDot struct {
+	Location *SourceLocation // Optional
+	Store    AstExpression
+	Field    AstIdentifier
+}
+
+func (self AstExpressionAccessDot) ExpressionLocation() *SourceLocation {
+	return self.Location
+}
+
+func (self AstExpressionAccessDot) IntoValue(ctx *Context) Value {
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+		{ctx.NewString("store"), self.Store.IntoValue(ctx)},
+		{ctx.NewString("field"), self.Field.IntoValue(ctx)},
+	})
+}
+
+func (self AstExpressionAccessDot) Eval(ctx *Context, env *Environment) (Value, error) {
+	store, err := self.Store.Eval(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+
+	field := self.Field.Name
+	if err != nil {
+		return nil, err
+	}
+
+	// When directly reading property via dot access, prioritize the fields
+	// of value itself *before* looking at the fields of the value's
+	// metamap. This is done so that operations such as:
+	//
+	//   somemap.foo
+	//
+	// will find the field "foo" rather than a metafunction `foo` in the
+	// map, which is almost certainly the desired behavior for nominal
+	// property lookup.
+	if m, ok := store.(*Map); ok {
+		lookup := m.Lookup(field)
+		if lookup != nil {
+			return lookup, nil
+		}
+
+		if m.meta != nil {
+			lookup = m.meta.Lookup(field)
+			if lookup != nil {
+				return lookup, nil
+			}
+		}
+	}
+
+	// Special case where a reference value is implicitly dereferenced when
+	// accessing the target field.
+	if reference, ok := store.(*Reference); ok {
+		derefStore := reference.data
+
+		// Prioritize fields of the value itself *before* looking at the
+		// fields of the value's metamap.
+		if m, ok := derefStore.(*Map); ok {
+			lookup := m.Lookup(field)
+			if lookup != nil {
+				return lookup, nil
+			}
+
+			if m.meta != nil {
+				lookup = m.meta.Lookup(field)
+				if lookup != nil {
+					return lookup, nil
+				}
+			}
+
+			return nil, fmt.Errorf("invalid %s to %s access with field %v", store.Typename(), derefStore.Typename(), field)
+		}
+	}
+
+	return nil, fmt.Errorf("invalid %s access with field %v", store.Typename(), field)
 }
 
 type AstExpressionMkref struct {
@@ -2681,6 +2767,7 @@ func NewParser(lexer *Lexer) Parser {
 			TOKEN_LPAREN:   PRECEDENCE_POSTFIX,
 			TOKEN_LBRACKET: PRECEDENCE_POSTFIX,
 			TOKEN_SCOPE:    PRECEDENCE_POSTFIX,
+			TOKEN_DOT:      PRECEDENCE_POSTFIX,
 			TOKEN_MKREF:    PRECEDENCE_POSTFIX,
 			TOKEN_DEREF:    PRECEDENCE_POSTFIX,
 		},
@@ -2702,6 +2789,7 @@ func NewParser(lexer *Lexer) Parser {
 			TOKEN_LPAREN:   (*Parser).ParseExpressionFunctionCall,
 			TOKEN_LBRACKET: (*Parser).ParseExpressionAccessIndex,
 			TOKEN_SCOPE:    (*Parser).ParseExpressionAccessScope,
+			TOKEN_DOT:      (*Parser).ParseExpressionAccessDot,
 			TOKEN_MKREF:    (*Parser).ParseExpressionMkref,
 			TOKEN_DEREF:    (*Parser).ParseExpressionDeref,
 		},
@@ -3152,6 +3240,18 @@ func (self *Parser) ParseExpressionAccessScope(lhs AstExpression) (AstExpression
 		return nil, err
 	}
 	return AstExpressionAccessScope{token.Location, lhs, field}, nil
+}
+
+func (self *Parser) ParseExpressionAccessDot(lhs AstExpression) (AstExpression, error) {
+	token, err := self.expectCurrent(TOKEN_DOT)
+	if err != nil {
+		return nil, err
+	}
+	field, err := self.ParseIdentifier()
+	if err != nil {
+		return nil, err
+	}
+	return AstExpressionAccessDot{token.Location, lhs, field}, nil
 }
 
 func (self *Parser) ParseExpressionMkref(lhs AstExpression) (AstExpression, error) {
