@@ -70,6 +70,29 @@ type Value interface {
 	CombEncode(e *CombEncoder) error
 }
 
+func ValueAsInt(value Value) (int, error) {
+	integer, err := ValueAsInt64(value)
+	if err != nil {
+		return 0, err
+	}
+	if int64(int(integer)) != integer {
+		return 0, fmt.Errorf("cannot convert %v into an int without truncation", value)
+	}
+	return int(integer), nil
+}
+
+func ValueAsInt64(value Value) (int64, error) {
+	number, ok := value.(*Number)
+	if !ok {
+		return 0, fmt.Errorf("cannot convert %s-like value into an integer", value.Typename())
+	}
+	truncated := math.Trunc(number.data)
+	if truncated != number.data {
+		return 0, fmt.Errorf("cannot convert %v into an int64 without truncation", value)
+	}
+	return int64(truncated), nil
+}
+
 type CombEncoder struct {
 	w           io.Writer
 	indentText  *string // Optional: nil implies single-line default formatting.
@@ -2387,6 +2410,54 @@ func (self *AstExpressionFunction) Eval(ctx *Context, env *Environment) (Value, 
 	return ctx.NewFunction(self, env), nil
 }
 
+type AstExpressionAccessIndex struct {
+	Location *SourceLocation // Optional
+	Store    AstExpression
+	Field    AstExpression
+}
+
+func (self AstExpressionAccessIndex) ExpressionLocation() *SourceLocation {
+	return self.Location
+}
+
+func (self AstExpressionAccessIndex) IntoValue(ctx *Context) Value {
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+		{ctx.NewString("store"), self.Store.IntoValue(ctx)},
+		{ctx.NewString("field"), self.Field.IntoValue(ctx)},
+	})
+}
+
+func (self AstExpressionAccessIndex) Eval(ctx *Context, env *Environment) (Value, error) {
+	store, err := self.Store.Eval(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+	field, err := self.Field.Eval(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+	if v, ok := store.(*Vector); ok {
+		integer, err := ValueAsInt(field)
+		if err != nil {
+			return nil, fmt.Errorf("invalid vector access with field %v", field)
+		}
+		return v.Get(integer), nil
+	}
+	if m, ok := store.(*Map); ok {
+		lookup := m.Lookup(field)
+		if lookup == nil {
+			return nil, fmt.Errorf("invalid map access with field %v", field)
+		}
+		return lookup, nil
+	}
+	return nil, NewError(
+		self.Location,
+		ctx.NewString(fmt.Sprintf("attempted to access field of type %s with type %s", quote(Typename(store)), quote(Typename(field)))),
+	)
+}
+
 type AstExpressionMkref struct {
 	Location *SourceLocation // Optional
 	Lhs      AstExpression
@@ -2563,9 +2634,10 @@ func NewParser(lexer *Lexer) Parser {
 		currentToken: Token{"invalid program", "", lexer.location, nil},
 
 		precedences: map[string]int{
-			TOKEN_LPAREN: PRECEDENCE_POSTFIX,
-			TOKEN_MKREF:  PRECEDENCE_POSTFIX,
-			TOKEN_DEREF:  PRECEDENCE_POSTFIX,
+			TOKEN_LPAREN:   PRECEDENCE_POSTFIX,
+			TOKEN_LBRACKET: PRECEDENCE_POSTFIX,
+			TOKEN_MKREF:    PRECEDENCE_POSTFIX,
+			TOKEN_DEREF:    PRECEDENCE_POSTFIX,
 		},
 		parseNudFunctions: map[string]func(*Parser) (AstExpression, error){
 			TOKEN_IDENTIFIER: (*Parser).ParseExpressionIdentifier,
@@ -2582,9 +2654,10 @@ func NewParser(lexer *Lexer) Parser {
 			TOKEN_FUNCTION:   (*Parser).ParseExpressionFunction,
 		},
 		parseLedFunctions: map[string]func(*Parser, AstExpression) (AstExpression, error){
-			TOKEN_LPAREN: (*Parser).ParseExpressionFunctionCall,
-			TOKEN_MKREF:  (*Parser).ParseExpressionMkref,
-			TOKEN_DEREF:  (*Parser).ParseExpressionDeref,
+			TOKEN_LPAREN:   (*Parser).ParseExpressionFunctionCall,
+			TOKEN_LBRACKET: (*Parser).ParseExpressionAccessIndex,
+			TOKEN_MKREF:    (*Parser).ParseExpressionMkref,
+			TOKEN_DEREF:    (*Parser).ParseExpressionDeref,
 		},
 	}
 	self.advanceToken()
@@ -3005,6 +3078,22 @@ func (self *Parser) ParseExpressionFunctionCall(lhs AstExpression) (AstExpressio
 	}
 
 	return AstExpressionFunctionCall{location, lhs, arguments}, nil
+}
+
+func (self *Parser) ParseExpressionAccessIndex(lhs AstExpression) (AstExpression, error) {
+	token, err := self.expectCurrent(TOKEN_LBRACKET)
+	if err != nil {
+		return nil, err
+	}
+	field, err := self.ParseExpression()
+	if err != nil {
+		return nil, err
+	}
+	_, err = self.expectCurrent(TOKEN_RBRACKET)
+	if err != nil {
+		return nil, err
+	}
+	return AstExpressionAccessIndex{token.Location, lhs, field}, nil
 }
 
 func (self *Parser) ParseExpressionMkref(lhs AstExpression) (AstExpression, error) {
