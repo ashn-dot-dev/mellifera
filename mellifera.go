@@ -2717,6 +2717,39 @@ func (self AstExpressionNegative) Eval(ctx *Context, env *Environment) (Value, e
 	)
 }
 
+type AstExpressionNot struct {
+	Location   *SourceLocation // Optional
+	Expression AstExpression
+}
+
+func (self AstExpressionNot) ExpressionLocation() *SourceLocation {
+	return self.Location
+}
+
+func (self AstExpressionNot) IntoValue(ctx *Context) Value {
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+		{ctx.NewString("expression"), self.Expression.IntoValue(ctx)},
+	})
+}
+
+func (self AstExpressionNot) Eval(ctx *Context, env *Environment) (Value, error) {
+	value, err := self.Expression.Eval(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+
+	if boolean, ok := value.(*Boolean); ok {
+		return ctx.NewBoolean(!boolean.data), nil
+	}
+
+	return nil, NewError(
+		self.Location,
+		ctx.NewString(fmt.Sprintf("attempted unary not operation with type %s", quote(Typename(value)))),
+	)
+}
+
 type AstExpressionAccessIndex struct {
 	Location *SourceLocation // Optional
 	Store    AstExpression
@@ -3108,6 +3141,7 @@ func NewParser(lexer *Lexer) Parser {
 			TOKEN_LPAREN:     (*Parser).ParseExpressionGrouped,
 			TOKEN_ADD:        (*Parser).ParseExpressionPositive,
 			TOKEN_SUB:        (*Parser).ParseExpressionNegative,
+			TOKEN_NOT:        (*Parser).ParseExpressionNot,
 		},
 		parseLedFunctions: map[string]func(*Parser, AstExpression) (AstExpression, error){
 			TOKEN_LPAREN:   (*Parser).ParseExpressionFunctionCall,
@@ -3562,6 +3596,21 @@ func (self *Parser) ParseExpressionNegative() (AstExpression, error) {
 	}
 
 	return AstExpressionNegative{location, expression}, nil
+}
+
+func (self *Parser) ParseExpressionNot() (AstExpression, error) {
+	token, err := self.expectCurrent(TOKEN_NOT)
+	if err != nil {
+		return nil, err
+	}
+	location := token.Location
+
+	expression, err := self.ParseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	return AstExpressionNot{location, expression}, nil
 }
 
 func (self *Parser) ParseExpressionFunctionCall(lhs AstExpression) (AstExpression, error) {

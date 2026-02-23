@@ -95,3 +95,5 @@ dumpln( ((({"foo": 123}.foo))) );
 dumpln( +123.456 );
 
 dumpln( -123.456 );
+
+dumpln( not true );

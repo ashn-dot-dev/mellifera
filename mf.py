@@ -2293,6 +2293,17 @@ class AstExpressionNot(AstExpression):
     location: Optional[SourceLocation]
     expression: AstExpression
 
+    def into_value(self) -> Value:
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+                String.new("expression"): self.expression.into_value(),
+            }
+        )
+
     def eval(self, env: Environment) -> Union[Value, Error]:
         result = self.expression.eval(env)
         if isinstance(result, Error):
