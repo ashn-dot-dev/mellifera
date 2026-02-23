@@ -1437,7 +1437,7 @@ class Lexer:
         template: list["AstExpression"] = list()
         string = ""  # current text being parsed
 
-        def lex_template_element(default):
+        def lex_template_element(default_func):
             nonlocal string
             if self._remaining().startswith("{{"):
                 string += "{"
@@ -1470,7 +1470,7 @@ class Lexer:
                     )
                 self.position += self._remaining().rfind(lexer._remaining())
                 return
-            string += default()
+            string += default_func()
 
         if self._remaining().startswith("```"):
             self._expect_rune("`")
@@ -1900,8 +1900,21 @@ class AstExpressionTemplate(AstExpression):
     location: Optional[SourceLocation]
     template: list["AstExpression"]
 
+    def into_value(self) -> Value:
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+                String.new("template"): Vector.new(
+                    [element.into_value() for element in self.template]
+                ),
+            }
+        )
+
     def eval(self, env: Environment) -> Union[Value, Error]:
-        output: list[bytes] = list()
+        output = bytes()
         for element in self.template:
             result = element.eval(Environment(env))
             if isinstance(result, Error):
@@ -1916,13 +1929,13 @@ class AstExpressionTemplate(AstExpression):
                         None,
                         f"metafunction {quote(CONST_STRING_INTO_STRING.runes)} returned {result}",
                     )
-                output.append(result.bytes)
+                output += result.bytes
                 continue
             if isinstance(result, String):
-                output.append(result.bytes)
+                output += result.bytes
                 continue
-            output.append(str(result).encode("utf-8"))
-        return String.new(b"".join(output))
+            output += str(result).encode("utf-8")
+        return String.new(output)
 
 
 @final

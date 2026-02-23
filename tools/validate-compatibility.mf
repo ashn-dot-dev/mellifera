@@ -82,3 +82,9 @@ dumpln(Map{"foo": 123, "bar": 456}::foo);
 
 dumpln(Map{"foo": 123, "bar": 456}.foo);
 dumpln(Map{"foo": 123, "bar": 456}.&.foo);
+
+dumpln($"foo");
+dumpln($`bar`);
+dumpln($```baz```);
+dumpln($"foo{123}baz");
+dumpln($"foo{[123, 456, 789][0]}baz{Map{"foo": 456}.foo}qux");

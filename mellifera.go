@@ -1408,6 +1408,7 @@ const (
 	TOKEN_EOF = "end-of-file"
 	// Identifiers and Literals
 	TOKEN_IDENTIFIER = "identifier"
+	TOKEN_TEMPLATE   = "template"
 	TOKEN_NUMBER     = "number"
 	TOKEN_STRING     = "string"
 	TOKEN_REGEXP     = "regexp"
@@ -1441,6 +1442,7 @@ type Token struct {
 	Literal  string
 	Location *SourceLocation // Optional
 	Value    Value           // Optional
+	Template []AstExpression // Optional
 }
 
 func (self Token) String() string {
@@ -1753,9 +1755,9 @@ func (self *Lexer) lexEscString() (Token, error) {
 	}, nil
 }
 
-func (self *Lexer) lexRawStringPart() (string, error) {
+func (self *Lexer) lexRawStringPart() ([]byte, error) {
 	if self.isEof() {
-		return "", ParseError{
+		return []byte{}, ParseError{
 			Location: self.currentLocation(),
 			why:      "expected character, found end-of-file",
 		}
@@ -1763,7 +1765,7 @@ func (self *Lexer) lexRawStringPart() (string, error) {
 
 	character := self.currentRune()
 	self.advanceRune()
-	return string(character), nil
+	return []byte(string(character)), nil
 }
 
 func (self *Lexer) lexRawString() (Token, error) {
@@ -1829,6 +1831,148 @@ func (self *Lexer) lexRawString() (Token, error) {
 		Literal:  literal,
 		Location: location,
 		Value:    self.ctx.NewString(string(bytes)),
+	}, nil
+}
+
+func (self *Lexer) lexTemplate() (Token, error) {
+	location := self.currentLocation()
+	start := self.position
+	if err := self.expectRune('$'); err != nil {
+		return Token{}, err
+	}
+
+	template := []AstExpression{}
+	bytes := []byte{} // current text being parsed
+
+	lexTemplateElement := func(defaultFunc func() ([]byte, error)) error {
+		if strings.HasPrefix(self.remaining(), "{{") {
+			bytes = append(bytes, []byte("{")...)
+			self.position += len("{{")
+			return nil
+		}
+
+		if strings.HasPrefix(self.remaining(), "}}") {
+			bytes = append(bytes, []byte("}")...)
+			self.position += len("}}")
+			return nil
+		}
+
+		if strings.HasPrefix(self.remaining(), "{") {
+			if len(bytes) != 0 {
+				template = append(template, AstExpressionString{location, self.ctx.NewString(string(bytes))})
+			}
+			bytes = []byte{}
+			self.position += len("{")
+
+			lexer := NewLexer(self.ctx, self.remaining(), nil)
+			parser := NewParser(&lexer)
+			expression, err := parser.ParseExpression()
+			if err != nil {
+				return ParseError{
+					Location: location,
+					why:      err.Error(),
+				}
+			}
+			template = append(template, expression)
+
+			if parser.currentToken.Kind != TOKEN_RBRACE {
+				return ParseError{
+					Location: location,
+					why:      fmt.Sprintf("expected `}}` to close template expression, found %s", quote(parser.currentToken.Kind)),
+				}
+			}
+			self.position += strings.LastIndex(self.remaining(), lexer.remaining())
+
+			return nil
+		}
+
+		text, err := defaultFunc()
+		if err != nil {
+			return err
+		}
+		bytes = append(bytes, text...)
+		return nil
+	}
+
+	if strings.HasPrefix(self.remaining(), "```") {
+		if err := self.expectRune('`'); err != nil {
+			return Token{}, err
+		}
+		if err := self.expectRune('`'); err != nil {
+			return Token{}, err
+		}
+		if err := self.expectRune('`'); err != nil {
+			return Token{}, err
+		}
+		for !self.isEof() && !strings.HasPrefix(self.remaining(), "```") {
+			err := lexTemplateElement(func() ([]byte, error) {
+				return self.lexRawStringPart()
+			})
+			if err != nil {
+				return Token{}, err
+			}
+		}
+		if len(bytes) != 0 {
+			template = append(template, AstExpressionString{location, self.ctx.NewString(string(bytes))})
+		}
+		if err := self.expectRune('`'); err != nil {
+			return Token{}, err
+		}
+		if err := self.expectRune('`'); err != nil {
+			return Token{}, err
+		}
+		if err := self.expectRune('`'); err != nil {
+			return Token{}, err
+		}
+	} else if strings.HasPrefix(self.remaining(), "`") {
+		if err := self.expectRune('`'); err != nil {
+			return Token{}, err
+		}
+		for !self.isEof() && self.currentRune() != '`' {
+			err := lexTemplateElement(func() ([]byte, error) {
+				return self.lexRawStringPart()
+			})
+			if err != nil {
+				return Token{}, err
+			}
+		}
+		if len(bytes) != 0 {
+			template = append(template, AstExpressionString{location, self.ctx.NewString(string(bytes))})
+		}
+		if err := self.expectRune('`'); err != nil {
+			return Token{}, err
+		}
+	} else if self.currentRune() == '"' {
+		if err := self.expectRune('"'); err != nil {
+			return Token{}, err
+		}
+		for self.currentRune() != '"' {
+			err := lexTemplateElement(func() ([]byte, error) {
+				return self.lexEscStringPart()
+			})
+			if err != nil {
+				return Token{}, err
+			}
+		}
+		if len(bytes) != 0 {
+			template = append(template, AstExpressionString{location, self.ctx.NewString(string(bytes))})
+		}
+		if err := self.expectRune('"'); err != nil {
+			return Token{}, err
+		}
+	} else {
+		return Token{}, ParseError{
+			Location: location,
+			why:      fmt.Sprintf("expected template of the form $\"...\", $`...` or $```...```, found `$` followed by %s", quote(string(self.currentRune()))),
+		}
+	}
+
+	literal := self.source[start:self.position]
+	return Token{
+		Kind:     TOKEN_TEMPLATE,
+		Literal:  literal,
+		Location: location,
+		Template: template,
 	}, nil
 }
 
@@ -1911,6 +2055,9 @@ func (self *Lexer) NextToken() (Token, error) {
 	}
 	if self.currentRune() == '`' {
 		return self.lexRawString()
+	}
+	if self.currentRune() == '$' {
+		return self.lexTemplate()
 	}
 	if strings.HasPrefix(self.remaining(), "r\"") || strings.HasPrefix(self.remaining(), "r`") {
 		return self.lexRegexp()
@@ -2164,7 +2311,46 @@ func (self AstExpressionIdentifier) Eval(ctx *Context, env *Environment) (Value,
 		return nil, Error{self.Location, ctx.NewString(err.Error()), nil}
 	}
 	return value, err
+}
 
+type AstExpressionTemplate struct {
+	Location *SourceLocation // Optional
+	Template []AstExpression
+}
+
+func (self AstExpressionTemplate) ExpressionLocation() *SourceLocation {
+	return self.Location
+}
+
+func (self AstExpressionTemplate) IntoValue(ctx *Context) Value {
+	elements := []Value{}
+	for _, element := range self.Template {
+		elements = append(elements, element.IntoValue(ctx))
+	}
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+		{ctx.NewString("template"), ctx.NewVector(elements)},
+	})
+}
+
+func (self AstExpressionTemplate) Eval(ctx *Context, env *Environment) (Value, error) {
+	output := []byte{}
+	for _, element := range self.Template {
+		value, err := element.Eval(ctx, env)
+		if err != nil {
+			return nil, err
+		}
+
+		// TODO: Handle into_string metafunction.
+
+		if s, ok := value.(*String); ok {
+			output = append(output, s.data...)
+			continue
+		}
+		output = append(output, []byte(value.String())...)
+	}
+	return ctx.NewString(string(output)), nil
 }
 
 type AstExpressionNull struct {
@@ -2761,7 +2947,7 @@ type Parser struct {
 func NewParser(lexer *Lexer) Parser {
 	self := Parser{
 		lexer:        lexer,
-		currentToken: Token{"invalid program", "", lexer.location, nil},
+		currentToken: Token{"invalid program", "", lexer.location, nil, nil},
 
 		precedences: map[string]int{
 			TOKEN_LPAREN:   PRECEDENCE_POSTFIX,
@@ -2773,6 +2959,7 @@ func NewParser(lexer *Lexer) Parser {
 		},
 		parseNudFunctions: map[string]func(*Parser) (AstExpression, error){
 			TOKEN_IDENTIFIER: (*Parser).ParseExpressionIdentifier,
+			TOKEN_TEMPLATE:   (*Parser).ParseExpressionTemplate,
 			TOKEN_NULL:       (*Parser).ParseExpressionNull,
 			TOKEN_TRUE:       (*Parser).ParseExpressionBoolean,
 			TOKEN_FALSE:      (*Parser).ParseExpressionBoolean,
@@ -2905,6 +3092,14 @@ func (self *Parser) ParseExpressionIdentifier() (AstExpression, error) {
 		return nil, err
 	}
 	return AstExpressionIdentifier{token.Location, self.identifier(token.Literal)}, nil
+}
+
+func (self *Parser) ParseExpressionTemplate() (AstExpression, error) {
+	token, err := self.expectCurrent(TOKEN_TEMPLATE)
+	if err != nil {
+		return nil, err
+	}
+	return AstExpressionTemplate{token.Location, token.Template}, nil
 }
 
 func (self *Parser) ParseExpressionNull() (AstExpression, error) {
