@@ -2340,7 +2340,7 @@ func (self AstExpressionIdentifier) IntoValue(ctx *Context) Value {
 func (self AstExpressionIdentifier) Eval(ctx *Context, env *Environment) (Value, error) {
 	value, err := env.Get(self.Name.data)
 	if err != nil {
-		return nil, Error{self.Location, ctx.NewString(err.Error()), nil}
+		return nil, NewError(self.Location, ctx.NewString(err.Error()))
 	}
 	return value, err
 }
@@ -3073,7 +3073,16 @@ func (self AstExpressionDeref) Eval(ctx *Context, env *Environment) (Value, erro
 	if err != nil {
 		return nil, err
 	}
-	return ctx.NewReference(value), nil
+
+	reference, ok := value.(*Reference)
+	if !ok {
+		return nil, NewError(
+			self.Location,
+			ctx.NewString(fmt.Sprintf("attempted dereference of non-reference type %s", quote(Typename(value)))),
+		)
+	}
+
+	return reference.data, nil
 }
 
 type AstExpressionFunctionCall struct {

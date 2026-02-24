@@ -65,7 +65,7 @@ dumpln( {"foo", "bar", "baz",}    );
 {"foo": 123, "bar": 456, "baz": 456}.&;
 
 123.&.*;
-#dumpln ( {"foo": 123, "bar": 456, "baz": 456}.&.* );
+dumpln( {"foo": 123, "bar": 456, "baz": 456}.&.* );
 
 dumpln( function() { }               );
 dumpln( function(a, b, c) { }        );
@@ -75,19 +75,19 @@ function(){}();
 function(a, b, c) { }(123, 456, 789);
 function(a, b, c) { "foo"; }(123, 456, 789);
 
-dumpln([123, 456, 789][1]);
-dumpln(Map{"foo": 123, "bar": 456}["foo"]);
+dumpln( [123, 456, 789][1]);
+dumpln( Map{"foo": 123, "bar": 456}["foo"] );
 
-dumpln(Map{"foo": 123, "bar": 456}::foo);
+dumpln( Map{"foo": 123, "bar": 456}::foo );
 
-dumpln(Map{"foo": 123, "bar": 456}.foo);
-dumpln(Map{"foo": 123, "bar": 456}.&.foo);
+dumpln( Map{"foo": 123, "bar": 456}.foo );
+dumpln( Map{"foo": 123, "bar": 456}.&.foo );
 
-dumpln($"foo");
-dumpln($`bar`);
-dumpln($```baz```);
-dumpln($"foo{123}baz");
-dumpln($"foo{[123, 456, 789][0]}baz{Map{"foo": 456}.foo}qux");
+dumpln( $"foo" );
+dumpln( $`bar` );
+dumpln( $```baz``` );
+dumpln( $"foo{123}baz" );
+dumpln( $"foo{[123, 456, 789][0]}baz{Map{"foo": 456}.foo}qux" );
 
 dumpln( (123) );
 dumpln( ((({"foo": 123}.foo))) );
