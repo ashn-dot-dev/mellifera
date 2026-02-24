@@ -114,3 +114,6 @@ dumpln( 123 <= 456 );
 dumpln( 123 >= 456 );
 dumpln( 123 < 456 );
 dumpln( 123 > 456 );
+
+dumpln( "abc def" =~ r`(\w+) (\w+)` );
+dumpln( "abc def" !~ r`(\w+) (\w+)` );

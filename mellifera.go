@@ -160,6 +160,10 @@ type Context struct {
 	False *Boolean
 	// Base Environment
 	BaseEnvironment Environment
+	// Result of the last regular expression operation (=~, !~). Either a slice
+	// of match groups or nil. Non-nil implies that the last pattern was a
+	// successful match.
+	reMatchResult []string
 	// Miscellaneous State and Definitions
 	reNumberDec     *regexp.Regexp
 	reNumberHex     *regexp.Regexp
@@ -183,6 +187,7 @@ func NewContext() Context {
 	ctx.True = &Boolean{true, ctx.booleanMeta}
 	ctx.False = &Boolean{false, ctx.booleanMeta}
 	ctx.BaseEnvironment = NewEnvironment(nil)
+	ctx.reMatchResult = nil // no initial match
 	ctx.reNumberDec = regexp.MustCompile(`^\d+(\.\d+)?`)
 	ctx.reNumberHex = regexp.MustCompile(`^0x[0-9a-fA-F]+`)
 	ctx.identifierCache = map[string]*String{}
@@ -3124,6 +3129,96 @@ func (self AstExpressionGt) Eval(ctx *Context, env *Environment) (Value, error) 
 	)
 }
 
+type AstExpressionEqRe struct {
+	Location *SourceLocation // Optional
+	Lhs      AstExpression
+	Rhs      AstExpression
+}
+
+func (self AstExpressionEqRe) ExpressionLocation() *SourceLocation {
+	return self.Location
+}
+
+func (self AstExpressionEqRe) IntoValue(ctx *Context) Value {
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+		{ctx.NewString("lhs"), self.Lhs.IntoValue(ctx)},
+		{ctx.NewString("rhs"), self.Rhs.IntoValue(ctx)},
+	})
+}
+
+func (self AstExpressionEqRe) Eval(ctx *Context, env *Environment) (Value, error) {
+	lhs, err := self.Lhs.Eval(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+
+	rhs, err := self.Rhs.Eval(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+
+	lhsString, lhsIsString := lhs.(*String)
+	if lhsIsString {
+		rhsRegexp, rhsIsRegexp := rhs.(*Regexp)
+		if rhsIsRegexp {
+			ctx.reMatchResult = rhsRegexp.data.FindStringSubmatch(lhsString.data)
+			return ctx.NewBoolean(ctx.reMatchResult != nil), nil
+		}
+	}
+
+	return nil, NewError(
+		self.Location,
+		ctx.NewString(fmt.Sprintf("attempted =~ operation with types %s and %s", quote(Typename(lhs)), quote(Typename(rhs)))),
+	)
+}
+
+type AstExpressionNeRe struct {
+	Location *SourceLocation // Optional
+	Lhs      AstExpression
+	Rhs      AstExpression
+}
+
+func (self AstExpressionNeRe) ExpressionLocation() *SourceLocation {
+	return self.Location
+}
+
+func (self AstExpressionNeRe) IntoValue(ctx *Context) Value {
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+		{ctx.NewString("lhs"), self.Lhs.IntoValue(ctx)},
+		{ctx.NewString("rhs"), self.Rhs.IntoValue(ctx)},
+	})
+}
+
+func (self AstExpressionNeRe) Eval(ctx *Context, env *Environment) (Value, error) {
+	lhs, err := self.Lhs.Eval(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+
+	rhs, err := self.Rhs.Eval(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+
+	lhsString, lhsIsString := lhs.(*String)
+	if lhsIsString {
+		rhsRegexp, rhsIsRegexp := rhs.(*Regexp)
+		if rhsIsRegexp {
+			ctx.reMatchResult = rhsRegexp.data.FindStringSubmatch(lhsString.data)
+			return ctx.NewBoolean(ctx.reMatchResult == nil), nil
+		}
+	}
+
+	return nil, NewError(
+		self.Location,
+		ctx.NewString(fmt.Sprintf("attempted =~ operation with types %s and %s", quote(Typename(lhs)), quote(Typename(rhs)))),
+	)
+}
+
 type AstExpressionAccessIndex struct {
 	Location *SourceLocation // Optional
 	Store    AstExpression
@@ -3535,6 +3630,8 @@ func NewParser(lexer *Lexer) Parser {
 			TOKEN_GE:       (*Parser).ParseExpressionGe,
 			TOKEN_LT:       (*Parser).ParseExpressionLt,
 			TOKEN_GT:       (*Parser).ParseExpressionGt,
+			TOKEN_EQ_RE:    (*Parser).ParseExpressionEqRe,
+			TOKEN_NE_RE:    (*Parser).ParseExpressionNeRe,
 			TOKEN_LPAREN:   (*Parser).ParseExpressionFunctionCall,
 			TOKEN_LBRACKET: (*Parser).ParseExpressionAccessIndex,
 			TOKEN_SCOPE:    (*Parser).ParseExpressionAccessScope,
@@ -4122,6 +4219,36 @@ func (self *Parser) ParseExpressionGt(lhs AstExpression) (AstExpression, error) 
 	}
 
 	return AstExpressionGt{location, lhs, rhs}, nil
+}
+
+func (self *Parser) ParseExpressionEqRe(lhs AstExpression) (AstExpression, error) {
+	token, err := self.expectCurrent(TOKEN_EQ_RE)
+	if err != nil {
+		return nil, err
+	}
+	location := token.Location
+
+	rhs, err := self.ParseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	return AstExpressionEqRe{location, lhs, rhs}, nil
+}
+
+func (self *Parser) ParseExpressionNeRe(lhs AstExpression) (AstExpression, error) {
+	token, err := self.expectCurrent(TOKEN_NE_RE)
+	if err != nil {
+		return nil, err
+	}
+	location := token.Location
+
+	rhs, err := self.ParseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	return AstExpressionNeRe{location, lhs, rhs}, nil
 }
 
 func (self *Parser) ParseExpressionFunctionCall(lhs AstExpression) (AstExpression, error) {
