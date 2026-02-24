@@ -2850,6 +2850,280 @@ func (self AstExpressionOr) Eval(ctx *Context, env *Environment) (Value, error) 
 	)
 }
 
+type AstExpressionEq struct {
+	Location *SourceLocation // Optional
+	Lhs      AstExpression
+	Rhs      AstExpression
+}
+
+func (self AstExpressionEq) ExpressionLocation() *SourceLocation {
+	return self.Location
+}
+
+func (self AstExpressionEq) IntoValue(ctx *Context) Value {
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+		{ctx.NewString("lhs"), self.Lhs.IntoValue(ctx)},
+		{ctx.NewString("rhs"), self.Rhs.IntoValue(ctx)},
+	})
+}
+
+func (self AstExpressionEq) Eval(ctx *Context, env *Environment) (Value, error) {
+	lhs, err := self.Lhs.Eval(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+
+	rhs, err := self.Rhs.Eval(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+
+	return ctx.NewBoolean(lhs.Equal(rhs)), nil
+}
+
+type AstExpressionNe struct {
+	Location *SourceLocation // Optional
+	Lhs      AstExpression
+	Rhs      AstExpression
+}
+
+func (self AstExpressionNe) ExpressionLocation() *SourceLocation {
+	return self.Location
+}
+
+func (self AstExpressionNe) IntoValue(ctx *Context) Value {
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+		{ctx.NewString("lhs"), self.Lhs.IntoValue(ctx)},
+		{ctx.NewString("rhs"), self.Rhs.IntoValue(ctx)},
+	})
+}
+
+func (self AstExpressionNe) Eval(ctx *Context, env *Environment) (Value, error) {
+	lhs, err := self.Lhs.Eval(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+
+	rhs, err := self.Rhs.Eval(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+
+	return ctx.NewBoolean(!lhs.Equal(rhs)), nil
+}
+
+type AstExpressionLe struct {
+	Location *SourceLocation // Optional
+	Lhs      AstExpression
+	Rhs      AstExpression
+}
+
+func (self AstExpressionLe) ExpressionLocation() *SourceLocation {
+	return self.Location
+}
+
+func (self AstExpressionLe) IntoValue(ctx *Context) Value {
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+		{ctx.NewString("lhs"), self.Lhs.IntoValue(ctx)},
+		{ctx.NewString("rhs"), self.Rhs.IntoValue(ctx)},
+	})
+}
+
+func (self AstExpressionLe) Eval(ctx *Context, env *Environment) (Value, error) {
+	lhs, err := self.Lhs.Eval(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+
+	rhs, err := self.Rhs.Eval(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+
+	lhsNumber, lhsIsNumber := lhs.(*Number)
+	if lhsIsNumber {
+		rhsNumber, rhsIsNumber := rhs.(*Number)
+		if rhsIsNumber {
+			return ctx.NewBoolean(lhsNumber.data <= rhsNumber.data), nil
+		}
+	}
+
+	lhsString, lhsIsString := lhs.(*String)
+	if lhsIsString {
+		rhsString, rhsIsString := rhs.(*String)
+		if rhsIsString {
+			return ctx.NewBoolean(lhsString.data <= rhsString.data), nil
+		}
+	}
+
+	return nil, NewError(
+		self.Location,
+		ctx.NewString(fmt.Sprintf("attempted <= operation with types %s and %s", quote(Typename(lhs)), quote(Typename(rhs)))),
+	)
+}
+
+type AstExpressionGe struct {
+	Location *SourceLocation // Optional
+	Lhs      AstExpression
+	Rhs      AstExpression
+}
+
+func (self AstExpressionGe) ExpressionLocation() *SourceLocation {
+	return self.Location
+}
+
+func (self AstExpressionGe) IntoValue(ctx *Context) Value {
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+		{ctx.NewString("lhs"), self.Lhs.IntoValue(ctx)},
+		{ctx.NewString("rhs"), self.Rhs.IntoValue(ctx)},
+	})
+}
+
+func (self AstExpressionGe) Eval(ctx *Context, env *Environment) (Value, error) {
+	lhs, err := self.Lhs.Eval(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+
+	rhs, err := self.Rhs.Eval(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+
+	lhsNumber, lhsIsNumber := lhs.(*Number)
+	if lhsIsNumber {
+		rhsNumber, rhsIsNumber := rhs.(*Number)
+		if rhsIsNumber {
+			return ctx.NewBoolean(lhsNumber.data >= rhsNumber.data), nil
+		}
+	}
+
+	lhsString, lhsIsString := lhs.(*String)
+	if lhsIsString {
+		rhsString, rhsIsString := rhs.(*String)
+		if rhsIsString {
+			return ctx.NewBoolean(lhsString.data >= rhsString.data), nil
+		}
+	}
+
+	return nil, NewError(
+		self.Location,
+		ctx.NewString(fmt.Sprintf("attempted >= operation with types %s and %s", quote(Typename(lhs)), quote(Typename(rhs)))),
+	)
+}
+
+type AstExpressionLt struct {
+	Location *SourceLocation // Optional
+	Lhs      AstExpression
+	Rhs      AstExpression
+}
+
+func (self AstExpressionLt) ExpressionLocation() *SourceLocation {
+	return self.Location
+}
+
+func (self AstExpressionLt) IntoValue(ctx *Context) Value {
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+		{ctx.NewString("lhs"), self.Lhs.IntoValue(ctx)},
+		{ctx.NewString("rhs"), self.Rhs.IntoValue(ctx)},
+	})
+}
+
+func (self AstExpressionLt) Eval(ctx *Context, env *Environment) (Value, error) {
+	lhs, err := self.Lhs.Eval(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+
+	rhs, err := self.Rhs.Eval(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+
+	lhsNumber, lhsIsNumber := lhs.(*Number)
+	if lhsIsNumber {
+		rhsNumber, rhsIsNumber := rhs.(*Number)
+		if rhsIsNumber {
+			return ctx.NewBoolean(lhsNumber.data < rhsNumber.data), nil
+		}
+	}
+
+	lhsString, lhsIsString := lhs.(*String)
+	if lhsIsString {
+		rhsString, rhsIsString := rhs.(*String)
+		if rhsIsString {
+			return ctx.NewBoolean(lhsString.data < rhsString.data), nil
+		}
+	}
+
+	return nil, NewError(
+		self.Location,
+		ctx.NewString(fmt.Sprintf("attempted < operation with types %s and %s", quote(Typename(lhs)), quote(Typename(rhs)))),
+	)
+}
+
+type AstExpressionGt struct {
+	Location *SourceLocation // Optional
+	Lhs      AstExpression
+	Rhs      AstExpression
+}
+
+func (self AstExpressionGt) ExpressionLocation() *SourceLocation {
+	return self.Location
+}
+
+func (self AstExpressionGt) IntoValue(ctx *Context) Value {
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+		{ctx.NewString("lhs"), self.Lhs.IntoValue(ctx)},
+		{ctx.NewString("rhs"), self.Rhs.IntoValue(ctx)},
+	})
+}
+
+func (self AstExpressionGt) Eval(ctx *Context, env *Environment) (Value, error) {
+	lhs, err := self.Lhs.Eval(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+
+	rhs, err := self.Rhs.Eval(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+
+	lhsNumber, lhsIsNumber := lhs.(*Number)
+	if lhsIsNumber {
+		rhsNumber, rhsIsNumber := rhs.(*Number)
+		if rhsIsNumber {
+			return ctx.NewBoolean(lhsNumber.data > rhsNumber.data), nil
+		}
+	}
+
+	lhsString, lhsIsString := lhs.(*String)
+	if lhsIsString {
+		rhsString, rhsIsString := rhs.(*String)
+		if rhsIsString {
+			return ctx.NewBoolean(lhsString.data > rhsString.data), nil
+		}
+	}
+
+	return nil, NewError(
+		self.Location,
+		ctx.NewString(fmt.Sprintf("attempted > operation with types %s and %s", quote(Typename(lhs)), quote(Typename(rhs)))),
+	)
+}
+
 type AstExpressionAccessIndex struct {
 	Location *SourceLocation // Optional
 	Store    AstExpression
@@ -3255,6 +3529,12 @@ func NewParser(lexer *Lexer) Parser {
 		parseLedFunctions: map[string]func(*Parser, AstExpression) (AstExpression, error){
 			TOKEN_AND:      (*Parser).ParseExpressionAnd,
 			TOKEN_OR:       (*Parser).ParseExpressionOr,
+			TOKEN_EQ:       (*Parser).ParseExpressionEq,
+			TOKEN_NE:       (*Parser).ParseExpressionNe,
+			TOKEN_LE:       (*Parser).ParseExpressionLe,
+			TOKEN_GE:       (*Parser).ParseExpressionGe,
+			TOKEN_LT:       (*Parser).ParseExpressionLt,
+			TOKEN_GT:       (*Parser).ParseExpressionGt,
 			TOKEN_LPAREN:   (*Parser).ParseExpressionFunctionCall,
 			TOKEN_LBRACKET: (*Parser).ParseExpressionAccessIndex,
 			TOKEN_SCOPE:    (*Parser).ParseExpressionAccessScope,
@@ -3752,6 +4032,96 @@ func (self *Parser) ParseExpressionOr(lhs AstExpression) (AstExpression, error) 
 	}
 
 	return AstExpressionOr{location, lhs, rhs}, nil
+}
+
+func (self *Parser) ParseExpressionEq(lhs AstExpression) (AstExpression, error) {
+	token, err := self.expectCurrent(TOKEN_EQ)
+	if err != nil {
+		return nil, err
+	}
+	location := token.Location
+
+	rhs, err := self.ParseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	return AstExpressionEq{location, lhs, rhs}, nil
+}
+
+func (self *Parser) ParseExpressionNe(lhs AstExpression) (AstExpression, error) {
+	token, err := self.expectCurrent(TOKEN_NE)
+	if err != nil {
+		return nil, err
+	}
+	location := token.Location
+
+	rhs, err := self.ParseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	return AstExpressionNe{location, lhs, rhs}, nil
+}
+
+func (self *Parser) ParseExpressionLe(lhs AstExpression) (AstExpression, error) {
+	token, err := self.expectCurrent(TOKEN_LE)
+	if err != nil {
+		return nil, err
+	}
+	location := token.Location
+
+	rhs, err := self.ParseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	return AstExpressionLe{location, lhs, rhs}, nil
+}
+
+func (self *Parser) ParseExpressionGe(lhs AstExpression) (AstExpression, error) {
+	token, err := self.expectCurrent(TOKEN_GE)
+	if err != nil {
+		return nil, err
+	}
+	location := token.Location
+
+	rhs, err := self.ParseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	return AstExpressionGe{location, lhs, rhs}, nil
+}
+
+func (self *Parser) ParseExpressionLt(lhs AstExpression) (AstExpression, error) {
+	token, err := self.expectCurrent(TOKEN_LT)
+	if err != nil {
+		return nil, err
+	}
+	location := token.Location
+
+	rhs, err := self.ParseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	return AstExpressionLt{location, lhs, rhs}, nil
+}
+
+func (self *Parser) ParseExpressionGt(lhs AstExpression) (AstExpression, error) {
+	token, err := self.expectCurrent(TOKEN_GT)
+	if err != nil {
+		return nil, err
+	}
+	location := token.Location
+
+	rhs, err := self.ParseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	return AstExpressionGt{location, lhs, rhs}, nil
 }
 
 func (self *Parser) ParseExpressionFunctionCall(lhs AstExpression) (AstExpression, error) {

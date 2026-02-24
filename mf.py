@@ -2403,6 +2403,18 @@ class AstExpressionEq(AstExpression):
     lhs: AstExpression
     rhs: AstExpression
 
+    def into_value(self) -> Value:
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+                String.new("lhs"): self.lhs.into_value(),
+                String.new("rhs"): self.rhs.into_value(),
+            }
+        )
+
     def eval(self, env: Environment) -> Union[Value, Error]:
         lhs = self.lhs.eval(env)
         if isinstance(lhs, Error):
@@ -2420,6 +2432,18 @@ class AstExpressionNe(AstExpression):
     lhs: AstExpression
     rhs: AstExpression
 
+    def into_value(self) -> Value:
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+                String.new("lhs"): self.lhs.into_value(),
+                String.new("rhs"): self.rhs.into_value(),
+            }
+        )
+
     def eval(self, env: Environment) -> Union[Value, Error]:
         lhs = self.lhs.eval(env)
         if isinstance(lhs, Error):
@@ -2436,6 +2460,18 @@ class AstExpressionLe(AstExpression):
     location: Optional[SourceLocation]
     lhs: AstExpression
     rhs: AstExpression
+
+    def into_value(self) -> Value:
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+                String.new("lhs"): self.lhs.into_value(),
+                String.new("rhs"): self.rhs.into_value(),
+            }
+        )
 
     def eval(self, env: Environment) -> Union[Value, Error]:
         lhs = self.lhs.eval(env)
@@ -2461,6 +2497,18 @@ class AstExpressionGe(AstExpression):
     lhs: AstExpression
     rhs: AstExpression
 
+    def into_value(self) -> Value:
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+                String.new("lhs"): self.lhs.into_value(),
+                String.new("rhs"): self.rhs.into_value(),
+            }
+        )
+
     def eval(self, env: Environment) -> Union[Value, Error]:
         lhs = self.lhs.eval(env)
         if isinstance(lhs, Error):
@@ -2485,6 +2533,18 @@ class AstExpressionLt(AstExpression):
     lhs: AstExpression
     rhs: AstExpression
 
+    def into_value(self) -> Value:
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+                String.new("lhs"): self.lhs.into_value(),
+                String.new("rhs"): self.rhs.into_value(),
+            }
+        )
+
     def eval(self, env: Environment) -> Union[Value, Error]:
         lhs = self.lhs.eval(env)
         if isinstance(lhs, Error):
@@ -2508,6 +2568,18 @@ class AstExpressionGt(AstExpression):
     location: Optional[SourceLocation]
     lhs: AstExpression
     rhs: AstExpression
+
+    def into_value(self) -> Value:
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+                String.new("lhs"): self.lhs.into_value(),
+                String.new("rhs"): self.rhs.into_value(),
+            }
+        )
 
     def eval(self, env: Environment) -> Union[Value, Error]:
         lhs = self.lhs.eval(env)

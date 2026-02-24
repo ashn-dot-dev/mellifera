@@ -107,3 +107,10 @@ dumpln( false or false );
 dumpln( false or true );
 dumpln( true or false );
 dumpln( true or true );
+
+dumpln( 123 == 456 );
+dumpln( 123 != 123 );
+dumpln( 123 <= 456 );
+dumpln( 123 >= 456 );
+dumpln( 123 < 456 );
+dumpln( 123 > 456 );
