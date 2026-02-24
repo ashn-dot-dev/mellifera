@@ -97,3 +97,13 @@ dumpln( +123.456 );
 dumpln( -123.456 );
 
 dumpln( not true );
+
+dumpln( false and false );
+dumpln( false and true );
+dumpln( true and false );
+dumpln( true and true );
+
+dumpln( false or false );
+dumpln( false or true );
+dumpln( true or false );
+dumpln( true or true );

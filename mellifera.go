@@ -2750,6 +2750,106 @@ func (self AstExpressionNot) Eval(ctx *Context, env *Environment) (Value, error)
 	)
 }
 
+type AstExpressionAnd struct {
+	Location *SourceLocation // Optional
+	Lhs      AstExpression
+	Rhs      AstExpression
+}
+
+func (self AstExpressionAnd) ExpressionLocation() *SourceLocation {
+	return self.Location
+}
+
+func (self AstExpressionAnd) IntoValue(ctx *Context) Value {
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+		{ctx.NewString("lhs"), self.Lhs.IntoValue(ctx)},
+		{ctx.NewString("rhs"), self.Rhs.IntoValue(ctx)},
+	})
+}
+
+func (self AstExpressionAnd) Eval(ctx *Context, env *Environment) (Value, error) {
+	lhs, err := self.Lhs.Eval(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+
+	lhsBoolean, lhsIsBoolean := lhs.(*Boolean)
+	if lhsIsBoolean && !lhsBoolean.data {
+		return ctx.NewBoolean(false), nil // short circuit
+	}
+
+	rhs, err := self.Rhs.Eval(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+
+	rhsBoolean, rhsIsBoolean := rhs.(*Boolean)
+	if rhsIsBoolean && !rhsBoolean.data {
+		return ctx.NewBoolean(false), nil // short circuit
+	}
+
+	if lhsIsBoolean && rhsIsBoolean {
+		return ctx.NewBoolean(lhsBoolean.data && rhsBoolean.data), nil
+	}
+
+	return nil, NewError(
+		self.Location,
+		ctx.NewString(fmt.Sprintf("attempted binary and operation with types %s and %s", quote(Typename(lhs)), quote(Typename(rhs)))),
+	)
+}
+
+type AstExpressionOr struct {
+	Location *SourceLocation // Optional
+	Lhs      AstExpression
+	Rhs      AstExpression
+}
+
+func (self AstExpressionOr) ExpressionLocation() *SourceLocation {
+	return self.Location
+}
+
+func (self AstExpressionOr) IntoValue(ctx *Context) Value {
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+		{ctx.NewString("lhs"), self.Lhs.IntoValue(ctx)},
+		{ctx.NewString("rhs"), self.Rhs.IntoValue(ctx)},
+	})
+}
+
+func (self AstExpressionOr) Eval(ctx *Context, env *Environment) (Value, error) {
+	lhs, err := self.Lhs.Eval(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+
+	lhsBoolean, lhsIsBoolean := lhs.(*Boolean)
+	if lhsIsBoolean && lhsBoolean.data {
+		return ctx.NewBoolean(true), nil // short circuit
+	}
+
+	rhs, err := self.Rhs.Eval(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+
+	rhsBoolean, rhsIsBoolean := rhs.(*Boolean)
+	if rhsIsBoolean && rhsBoolean.data {
+		return ctx.NewBoolean(true), nil // short circuit
+	}
+
+	if lhsIsBoolean && rhsIsBoolean {
+		return ctx.NewBoolean(lhsBoolean.data || rhsBoolean.data), nil
+	}
+
+	return nil, NewError(
+		self.Location,
+		ctx.NewString(fmt.Sprintf("attempted binary or operation with types %s and %s", quote(Typename(lhs)), quote(Typename(rhs)))),
+	)
+}
+
 type AstExpressionAccessIndex struct {
 	Location *SourceLocation // Optional
 	Store    AstExpression
@@ -3144,6 +3244,8 @@ func NewParser(lexer *Lexer) Parser {
 			TOKEN_NOT:        (*Parser).ParseExpressionNot,
 		},
 		parseLedFunctions: map[string]func(*Parser, AstExpression) (AstExpression, error){
+			TOKEN_AND:      (*Parser).ParseExpressionAnd,
+			TOKEN_OR:       (*Parser).ParseExpressionOr,
 			TOKEN_LPAREN:   (*Parser).ParseExpressionFunctionCall,
 			TOKEN_LBRACKET: (*Parser).ParseExpressionAccessIndex,
 			TOKEN_SCOPE:    (*Parser).ParseExpressionAccessScope,
@@ -3611,6 +3713,36 @@ func (self *Parser) ParseExpressionNot() (AstExpression, error) {
 	}
 
 	return AstExpressionNot{location, expression}, nil
+}
+
+func (self *Parser) ParseExpressionAnd(lhs AstExpression) (AstExpression, error) {
+	token, err := self.expectCurrent(TOKEN_AND)
+	if err != nil {
+		return nil, err
+	}
+	location := token.Location
+
+	rhs, err := self.ParseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	return AstExpressionAnd{location, lhs, rhs}, nil
+}
+
+func (self *Parser) ParseExpressionOr(lhs AstExpression) (AstExpression, error) {
+	token, err := self.expectCurrent(TOKEN_OR)
+	if err != nil {
+		return nil, err
+	}
+	location := token.Location
+
+	rhs, err := self.ParseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	return AstExpressionOr{location, lhs, rhs}, nil
 }
 
 func (self *Parser) ParseExpressionFunctionCall(lhs AstExpression) (AstExpression, error) {
