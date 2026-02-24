@@ -117,3 +117,14 @@ dumpln( 123 > 456 );
 
 dumpln( "abc def" =~ r`(\w+) (\w+)` );
 dumpln( "abc def" !~ r`(\w+) (\w+)` );
+
+dumpln( 123 + 456 );
+dumpln( "foo" + "bar" );
+dumpln( [123] + [456] );
+dumpln( 123 - 456 );
+dumpln( 123 * 456 );
+dumpln( 123 / 456 );
+dumpln( +7 % +3 );
+dumpln( +7 % -3 );
+dumpln( -7 % +3 );
+dumpln( -7 % -3 );
