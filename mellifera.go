@@ -1457,6 +1457,7 @@ const (
 	TOKEN_NOT      = "not"
 	TOKEN_AND      = "and"
 	TOKEN_OR       = "or"
+	TOKEN_LET      = "let"
 	TOKEN_FUNCTION = "function"
 )
 
@@ -1501,6 +1502,7 @@ func NewLexer(ctx *Context, source string, location *SourceLocation) Lexer {
 		TOKEN_NOT:      TOKEN_NOT,
 		TOKEN_AND:      TOKEN_AND,
 		TOKEN_OR:       TOKEN_OR,
+		TOKEN_LET:      TOKEN_LET,
 		TOKEN_FUNCTION: TOKEN_FUNCTION,
 	}
 
@@ -2205,7 +2207,7 @@ func (self *Environment) Set(name string, value Value) error {
 func (self *Environment) Get(name string) (Value, error) {
 	env := self
 	for env != nil {
-		value, ok := self.store[name]
+		value, ok := env.store[name]
 		if ok {
 			return value, nil
 		}
@@ -2248,6 +2250,30 @@ func Typename(value Value) string {
 		return *value.Meta().name
 	}
 	return value.Typename()
+}
+
+// Update the name values of named functions that are children somewhere in
+// this map, either direct map-level values or a decendent of another map.
+func UpdateNamedFunctions(ctx *Context, ast *AstExpressionMap, prefix string) {
+	for _, pair := range ast.Elements {
+		k := pair.Key
+		v := pair.Value
+
+		kAstExpressionString, ok := k.(*AstExpressionString)
+		if !ok {
+			continue
+		}
+
+		if vAstExpressionFunction, ok := v.(*AstExpressionFunction); ok {
+			vAstExpressionFunction.Name = ctx.NewString(prefix + kAstExpressionString.Data.data)
+			continue
+		}
+
+		if vAstExpressionMap, ok := v.(*AstExpressionMap); ok {
+			UpdateNamedFunctions(ctx, vAstExpressionMap, prefix+kAstExpressionString.Data.data+TOKEN_SCOPE)
+			continue
+		}
+	}
 }
 
 type AstNode interface {
@@ -3872,6 +3898,36 @@ func (self AstBlock) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
 	return nil, nil
 }
 
+type AstStatementLet struct {
+	Location   *SourceLocation // Optional
+	Identifier AstIdentifier
+	Expression AstExpression
+}
+
+func (self AstStatementLet) StatementLocation() *SourceLocation {
+	return self.Location
+}
+
+func (self AstStatementLet) IntoValue(ctx *Context) Value {
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+		{ctx.NewString("identifier"), self.Identifier.IntoValue(ctx)},
+		{ctx.NewString("expression"), self.Expression.IntoValue(ctx)},
+	})
+}
+
+func (self AstStatementLet) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
+	value, error := self.Expression.Eval(ctx, env)
+	if error != nil {
+		return nil, error
+	}
+
+	env.Let(self.Identifier.Name.data, value.Copy())
+
+	return nil, nil
+}
+
 type AstStatementExpression struct {
 	Location   *SourceLocation // Optional
 	Expression AstExpression
@@ -4824,7 +4880,52 @@ func (self *Parser) ParseBlock() (AstBlock, error) {
 }
 
 func (self *Parser) ParseStatement() (AstStatement, error) {
+	if self.checkCurrent(TOKEN_LET) {
+		return self.ParseStatementLet()
+	}
+
 	return self.ParseStatementExpressionOrAssignment()
+}
+
+func (self *Parser) ParseStatementLet() (AstStatement, error) {
+	token, err := self.expectCurrent(TOKEN_LET)
+	if err != nil {
+		return nil, err
+	}
+	location := token.Location
+
+	identifier, err := self.ParseIdentifier()
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = self.expectCurrent(TOKEN_ASSIGN)
+	if err != nil {
+		return nil, err
+	}
+
+	expression, err := self.ParseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = self.expectCurrent(TOKEN_SEMICOLON)
+	if err != nil {
+		return nil, err
+	}
+
+	if astExpressionFunction, ok := expression.(*AstExpressionFunction); ok {
+		astExpressionFunction.Name = identifier.Name
+	} else if astExpressionType, ok := expression.(*AstExpressionType); ok {
+		astExpressionType.Name = identifier.Name.data
+		if astExpressionTypeExpressionMap, ok := astExpressionType.Expression.(*AstExpressionMap); ok {
+			UpdateNamedFunctions(self.lexer.ctx, astExpressionTypeExpressionMap, identifier.Name.data+TOKEN_SCOPE)
+		}
+	} else if astExpressionMap, ok := expression.(*AstExpressionMap); ok {
+		UpdateNamedFunctions(self.lexer.ctx, astExpressionMap, identifier.Name.data+TOKEN_SCOPE)
+	}
+
+	return AstStatementLet{location, identifier, expression}, nil
 }
 
 func (self *Parser) ParseStatementExpressionOrAssignment() (AstStatement, error) {

@@ -1763,18 +1763,24 @@ def typename(value: Value) -> str:
     return value.typename()
 
 
-def update_named_functions(map: "AstExpressionMap", prefix: bytes = b""):
+def update_named_functions(ast: "AstExpressionMap", prefix: bytes = b""):
     """
     Update the name values of named functions that are children somewhere in
-    this map, either direct map-level value or a decendent of another map.
+    this map, either direct map-level values or a decendent of another map.
     """
-    for k, v in map.elements:
-        if isinstance(k, AstExpressionString) and isinstance(v, AstExpressionFunction):
+    for k, v in ast.elements:
+        if not isinstance(k, AstExpressionString):
+            continue
+
+        if isinstance(v, AstExpressionFunction):
             v.name = String.new(prefix + k.data.bytes)
-        if isinstance(k, AstExpressionString) and isinstance(v, AstExpressionMap):
+            continue
+
+        if isinstance(v, AstExpressionMap):
             update_named_functions(
                 v, prefix + k.data.bytes + str(TokenKind.SCOPE).encode("utf-8")
             )
+            continue
 
 
 class AstNode(ABC):
@@ -3228,6 +3234,18 @@ class AstStatementLet(AstStatement):
     identifier: AstIdentifier
     expression: AstExpression
 
+    def into_value(self) -> Value:
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+                String.new("identifier"): self.identifier.into_value(),
+                String.new("expression"): self.expression.into_value(),
+            }
+        )
+
     def eval(self, env: Environment) -> Optional[ControlFlow]:
         result = self.expression.eval(env)
         if isinstance(result, Error):
@@ -4130,18 +4148,16 @@ class Parser:
         self._expect_current(TokenKind.SEMICOLON)
         if isinstance(expression, AstExpressionFunction):
             expression.name = identifier.name
-        if isinstance(expression, AstExpressionType):
+        elif isinstance(expression, AstExpressionType):
             expression.name = identifier.name
-        if isinstance(expression, AstExpressionMap):
+            if isinstance(expression.expression, AstExpressionMap):
+                update_named_functions(
+                    expression.expression,
+                    identifier.name.bytes + str(TokenKind.SCOPE).encode("utf-8"),
+                )
+        elif isinstance(expression, AstExpressionMap):
             update_named_functions(
                 expression,
-                identifier.name.bytes + str(TokenKind.SCOPE).encode("utf-8"),
-            )
-        if isinstance(expression, AstExpressionType) and isinstance(
-            expression.expression, AstExpressionMap
-        ):
-            update_named_functions(
-                expression.expression,
                 identifier.name.bytes + str(TokenKind.SCOPE).encode("utf-8"),
             )
         return AstStatementLet(location, identifier, expression)

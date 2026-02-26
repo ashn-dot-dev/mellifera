@@ -132,3 +132,17 @@ dumpln( -7 % -3 );
 dumpln( type Map{"foo": 123} );
 
 dumpln( new type Map{"foo": 123} Map{"abc": 456} );
+
+let a = 123;
+let b = "foo";
+let c = Map{"abc": "xyz"};
+dumpln(a);
+dumpln(b);
+dumpln(c);
+function() { let d = null; dumpln(d); }();
+let m = {
+    .foo = function() {},
+    .bar = {
+        .baz = null,
+    },
+};
