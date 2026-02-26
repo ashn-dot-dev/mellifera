@@ -146,3 +146,9 @@ let m = {
         .baz = null,
     },
 };
+
+
+if true { dumpln("A"); }
+if false { dumpln("A"); } elif true { dumpln("B"); }
+if false { dumpln("A"); } elif false { dumpln("B"); } else { dumpln("C"); }
+if false { dumpln("A"); } else { dumpln("D"); }

@@ -3206,6 +3206,18 @@ class AstConditional(AstNode):
     condition: AstExpression
     body: AstBlock
 
+    def into_value(self) -> Value:
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+                String.new("condition"): self.condition.into_value(),
+                String.new("body"): self.body.into_value(),
+            }
+        )
+
     def exec(self, env: Environment) -> Tuple[Optional[ControlFlow], bool]:
         result = self.condition.eval(env)
         if isinstance(result, Error):
@@ -3251,6 +3263,43 @@ class AstStatementLet(AstStatement):
         if isinstance(result, Error):
             return result
         env.let(self.identifier.name, copy(result))
+        return None
+
+
+@final
+@dataclass
+class AstStatementIfElifElse(AstStatement):
+    location: Optional[SourceLocation]
+    conditionals: list[AstConditional]
+    else_block: Optional[AstBlock]
+
+    def into_value(self) -> Value:
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+                String.new("conditionals"): Vector.new(
+                    [conditional.into_value() for conditional in self.conditionals]
+                ),
+                String.new("else_block"): (
+                    self.else_block.into_value()
+                    if self.else_block is not None
+                    else null
+                ),
+            }
+        )
+
+    def eval(self, env: Environment) -> Optional[ControlFlow]:
+        for conditional in self.conditionals:
+            (result, executed) = conditional.exec(env)
+            if result is not None:
+                return result
+            if executed:
+                return result
+        if self.else_block is not None:
+            return self.else_block.eval(env)
         return None
 
 
@@ -3452,25 +3501,6 @@ class AstStatementContinue(AstStatement):
 
     def eval(self, env: Environment) -> Optional[ControlFlow]:
         return Continue(self.location)
-
-
-@final
-@dataclass
-class AstStatementIfElifElse(AstStatement):
-    location: Optional[SourceLocation]
-    conditionals: list[AstConditional]
-    else_block: Optional[AstBlock]
-
-    def eval(self, env: Environment) -> Optional[ControlFlow]:
-        for conditional in self.conditionals:
-            (result, executed) = conditional.exec(env)
-            if result is not None:
-                return result
-            if executed:
-                return result
-        if self.else_block is not None:
-            return self.else_block.eval(env)
-        return None
 
 
 @final

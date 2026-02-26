@@ -1458,6 +1458,9 @@ const (
 	TOKEN_AND      = "and"
 	TOKEN_OR       = "or"
 	TOKEN_LET      = "let"
+	TOKEN_IF       = "if"
+	TOKEN_ELIF     = "elif"
+	TOKEN_ELSE     = "else"
 	TOKEN_FUNCTION = "function"
 )
 
@@ -1503,6 +1506,9 @@ func NewLexer(ctx *Context, source string, location *SourceLocation) Lexer {
 		TOKEN_AND:      TOKEN_AND,
 		TOKEN_OR:       TOKEN_OR,
 		TOKEN_LET:      TOKEN_LET,
+		TOKEN_IF:       TOKEN_IF,
+		TOKEN_ELIF:     TOKEN_ELIF,
+		TOKEN_ELSE:     TOKEN_ELSE,
 		TOKEN_FUNCTION: TOKEN_FUNCTION,
 	}
 
@@ -3898,6 +3904,49 @@ func (self AstBlock) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
 	return nil, nil
 }
 
+type AstConditional struct {
+	Location  *SourceLocation // Optional
+	Condition AstExpression
+	Body      AstBlock
+}
+
+func (self AstConditional) IntoValue(ctx *Context) Value {
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+		{ctx.NewString("condition"), self.Condition.IntoValue(ctx)},
+		{ctx.NewString("body"), self.Body.IntoValue(ctx)},
+	})
+}
+
+func (self AstConditional) exec(ctx *Context, env *Environment) (ControlFlow, bool, error) {
+	value, error := self.Condition.Eval(ctx, env)
+	if error != nil {
+		return nil, false, error
+	}
+
+	valueBoolean, ok := value.(*Boolean)
+	if !ok {
+		return nil, false, NewError(
+			self.Location,
+			ctx.NewString(fmt.Sprintf("conditional with non-boolean type %s", quote(Typename(value)))),
+		)
+	}
+
+	if valueBoolean.data {
+		env := NewEnvironment(env)
+		result, err := self.Body.Eval(ctx, &env)
+		return result, true, err
+	}
+
+	return nil, false, nil
+}
+
+func (self AstConditional) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
+	result, _, err := self.exec(ctx, env)
+	return result, err
+}
+
 type AstStatementLet struct {
 	Location   *SourceLocation // Optional
 	Identifier AstIdentifier
@@ -3924,6 +3973,51 @@ func (self AstStatementLet) Eval(ctx *Context, env *Environment) (ControlFlow, e
 	}
 
 	env.Let(self.Identifier.Name.data, value.Copy())
+
+	return nil, nil
+}
+
+type AstStatementIfElifElse struct {
+	Location     *SourceLocation // Optional
+	Conditionals []AstConditional
+	ElseBlock    *AstBlock // Optional
+}
+
+func (self AstStatementIfElifElse) StatementLocation() *SourceLocation {
+	return self.Location
+}
+
+func (self AstStatementIfElifElse) IntoValue(ctx *Context) Value {
+	conditionals := ctx.NewVector(nil)
+	for _, conditional := range self.Conditionals {
+		conditionals.Push(conditional.IntoValue(ctx))
+	}
+	var elseBlock Value = ctx.NewNull()
+	if self.ElseBlock != nil {
+		elseBlock = self.ElseBlock.IntoValue(ctx)
+	}
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+		{ctx.NewString("conditionals"), conditionals},
+		{ctx.NewString("else_block"), elseBlock},
+	})
+}
+
+func (self AstStatementIfElifElse) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
+	for _, conditional := range self.Conditionals {
+		result, executed, err := conditional.exec(ctx, env)
+		if err != nil {
+			return nil, err
+		}
+		if executed {
+			return result, nil
+		}
+	}
+
+	if self.ElseBlock != nil {
+		return self.ElseBlock.Eval(ctx, env)
+	}
 
 	return nil, nil
 }
@@ -4884,6 +4978,10 @@ func (self *Parser) ParseStatement() (AstStatement, error) {
 		return self.ParseStatementLet()
 	}
 
+	if self.checkCurrent(TOKEN_IF) {
+		return self.ParseStatementIfElifElse()
+	}
+
 	return self.ParseStatementExpressionOrAssignment()
 }
 
@@ -4926,6 +5024,75 @@ func (self *Parser) ParseStatementLet() (AstStatement, error) {
 	}
 
 	return AstStatementLet{location, identifier, expression}, nil
+}
+
+func (self *Parser) ParseStatementIfElifElse() (AstStatement, error) {
+	if !self.checkCurrent(TOKEN_IF) {
+		_, err := self.expectCurrent(TOKEN_IF)
+		if err != nil {
+			return nil, err
+		}
+	}
+	location := self.currentToken.Location
+
+	parseConditional := func() (AstConditional, error) {
+		token, err := self.advanceToken()
+		if err != nil {
+			return AstConditional{}, err
+		}
+		location := token.Location
+
+		condition, err := self.ParseExpression()
+		if err != nil {
+			return AstConditional{}, err
+		}
+
+		body, err := self.ParseBlock()
+		if err != nil {
+			return AstConditional{}, err
+		}
+
+		return AstConditional{location, condition, body}, nil
+	}
+
+	conditionals := []AstConditional{}
+	for {
+		if len(conditionals) == 0 && self.checkCurrent(TOKEN_IF) {
+			conditional, err := parseConditional()
+			if err != nil {
+				return nil, err
+			}
+			conditionals = append(conditionals, conditional)
+			continue
+		}
+
+		if len(conditionals) != 0 && self.checkCurrent(TOKEN_ELIF) {
+			conditional, err := parseConditional()
+			if err != nil {
+				return nil, err
+			}
+			conditionals = append(conditionals, conditional)
+			continue
+		}
+
+		break
+	}
+
+	var elseBlock *AstBlock = nil
+	if self.checkCurrent(TOKEN_ELSE) {
+		_, err := self.expectCurrent(TOKEN_ELSE)
+		if err != nil {
+			return nil, err
+		}
+
+		block, err := self.ParseBlock()
+		if err != nil {
+			return nil, err
+		}
+		elseBlock = &block
+	}
+
+	return AstStatementIfElifElse{location, conditionals, elseBlock}, nil
 }
 
 func (self *Parser) ParseStatementExpressionOrAssignment() (AstStatement, error) {
