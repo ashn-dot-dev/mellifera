@@ -25,7 +25,7 @@ echo 'VALIDATE AST DUMP COMPATIBILITY...'
 set -x
 "${MELLIFERA_PROG_PY}" --dump-ast tools/validate-compatibility.mf >"${TMPDIR}/dump-ast.py.comb"
 "${MELLIFERA_PROG_GO}" --dump-ast tools/validate-compatibility.mf >"${TMPDIR}/dump-ast.go.comb"
-diff "${TMPDIR}/dump-tokens.py.comb" "${TMPDIR}/dump-tokens.go.comb"
+diff "${TMPDIR}/dump-ast.py.comb" "${TMPDIR}/dump-ast.go.comb"
 { set +x; } 2>/dev/null
 
 echo 'VALIDATE EVAL OUTPUT COMPATIBILITY...'

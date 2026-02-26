@@ -2271,11 +2271,11 @@ func Typename(value Value) string {
 // Update the name values of named functions that are children somewhere in
 // this map, either direct map-level values or a decendent of another map.
 func UpdateNamedFunctions(ctx *Context, ast *AstExpressionMap, prefix string) {
-	for _, pair := range ast.Elements {
+	for i, pair := range ast.Elements {
 		k := pair.Key
 		v := pair.Value
 
-		kAstExpressionString, ok := k.(*AstExpressionString)
+		kAstExpressionString, ok := k.(AstExpressionString)
 		if !ok {
 			continue
 		}
@@ -2285,8 +2285,9 @@ func UpdateNamedFunctions(ctx *Context, ast *AstExpressionMap, prefix string) {
 			continue
 		}
 
-		if vAstExpressionMap, ok := v.(*AstExpressionMap); ok {
-			UpdateNamedFunctions(ctx, vAstExpressionMap, prefix+kAstExpressionString.Data.data+TOKEN_SCOPE)
+		if vAstExpressionMap, ok := v.(AstExpressionMap); ok {
+			UpdateNamedFunctions(ctx, &vAstExpressionMap, prefix+kAstExpressionString.Data.data+TOKEN_SCOPE)
+			ast.Elements[i].Value = vAstExpressionMap
 			continue
 		}
 	}
@@ -4054,7 +4055,7 @@ func (self AstStatementFor) IntoValue(ctx *Context) Value {
 
 	var vIsReference Value = ctx.NewNull()
 	if self.IdentifierV != nil {
-		identifierV = ctx.NewBoolean(self.VIsReference)
+		vIsReference = ctx.NewBoolean(self.VIsReference)
 	}
 
 	return ctx.NewMap([]MapPair{
@@ -4846,7 +4847,12 @@ func (self *Parser) ParseExpressionType() (AstExpression, error) {
 		return nil, err
 	}
 
-	return AstExpressionType{location, "type", expression}, nil
+	name := "anonymous type"
+	if location != nil {
+		name = fmt.Sprintf("type@[%s, line %v]", location.File, location.Line)
+	}
+
+	return AstExpressionType{location, name, expression}, nil
 }
 
 func (self *Parser) ParseExpressionNew() (AstExpression, error) {
@@ -4896,7 +4902,7 @@ func (self *Parser) ParseExpressionPositive() (AstExpression, error) {
 	}
 	location := token.Location
 
-	expression, err := self.ParseExpression()
+	expression, err := self.parseExpression(PRECEDENCE_PREFIX)
 	if err != nil {
 		return nil, err
 	}
@@ -4911,7 +4917,7 @@ func (self *Parser) ParseExpressionNegative() (AstExpression, error) {
 	}
 	location := token.Location
 
-	expression, err := self.ParseExpression()
+	expression, err := self.parseExpression(PRECEDENCE_PREFIX)
 	if err != nil {
 		return nil, err
 	}
@@ -4926,7 +4932,7 @@ func (self *Parser) ParseExpressionNot() (AstExpression, error) {
 	}
 	location := token.Location
 
-	expression, err := self.ParseExpression()
+	expression, err := self.parseExpression(PRECEDENCE_PREFIX)
 	if err != nil {
 		return nil, err
 	}
@@ -5327,13 +5333,18 @@ func (self *Parser) ParseStatementLet() (AstStatement, error) {
 
 	if astExpressionFunction, ok := expression.(*AstExpressionFunction); ok {
 		astExpressionFunction.Name = identifier.Name
-	} else if astExpressionType, ok := expression.(*AstExpressionType); ok {
+	} else if astExpressionType, ok := expression.(AstExpressionType); ok {
 		astExpressionType.Name = identifier.Name.data
-		if astExpressionTypeExpressionMap, ok := astExpressionType.Expression.(*AstExpressionMap); ok {
-			UpdateNamedFunctions(self.lexer.ctx, astExpressionTypeExpressionMap, identifier.Name.data+TOKEN_SCOPE)
+		expression = astExpressionType
+
+		if astExpressionTypeExpressionMap, ok := astExpressionType.Expression.(AstExpressionMap); ok {
+			UpdateNamedFunctions(self.lexer.ctx, &astExpressionTypeExpressionMap, identifier.Name.data+TOKEN_SCOPE)
+			astExpressionType.Expression = astExpressionTypeExpressionMap
+			expression = astExpressionType
 		}
-	} else if astExpressionMap, ok := expression.(*AstExpressionMap); ok {
-		UpdateNamedFunctions(self.lexer.ctx, astExpressionMap, identifier.Name.data+TOKEN_SCOPE)
+	} else if astExpressionMap, ok := expression.(AstExpressionMap); ok {
+		UpdateNamedFunctions(self.lexer.ctx, &astExpressionMap, identifier.Name.data+TOKEN_SCOPE)
+		expression = astExpressionMap
 	}
 
 	return AstStatementLet{location, identifier, expression}, nil

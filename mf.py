@@ -4055,7 +4055,12 @@ class Parser:
     def parse_expression_type(self) -> AstExpressionType:
         location = self._expect_current(TokenKind.TYPE).location
         expression = self.parse_expression()
-        return AstExpressionType(location, String.new("type"), expression)
+        name = (
+            f"type@[{location.file}, line {location.line}]"
+            if location is not None
+            else "anonymous type"
+        )
+        return AstExpressionType(location, String.new(name), expression)
 
     def parse_expression_new(self) -> AstExpressionNew:
         location = self._expect_current(TokenKind.NEW).location

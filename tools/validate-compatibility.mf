@@ -139,14 +139,16 @@ let c = Map{"abc": "xyz"};
 dumpln(a);
 dumpln(b);
 dumpln(c);
-function() { let d = null; dumpln(d); }();
+let T = type Map{};
+let f = function() { let d = null; dumpln(d); };
+f();
 let m = {
-    .foo = function() {},
+    .foo = function() { let d = null; dumpln(d); },
     .bar = {
         .baz = null,
     },
 };
-
+m::foo();
 
 if true { dumpln("A"); }
 if false { dumpln("A"); } elif true { dumpln("B"); }
