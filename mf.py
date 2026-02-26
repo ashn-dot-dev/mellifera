@@ -3314,6 +3314,30 @@ class AstStatementFor(AstStatement):
     collection: AstExpression
     block: AstBlock
 
+    def into_value(self) -> Value:
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+                String.new("identifier_k"): self.identifier_k.into_value(),
+                String.new("identifier_v"): (
+                    self.identifier_v.into_value()
+                    if self.identifier_v is not None
+                    else null
+                ),
+                String.new("k_is_reference"): Boolean.new(self.k_is_reference),
+                String.new("v_is_reference"): (
+                    Boolean.new(self.v_is_reference)
+                    if self.identifier_v is not None
+                    else null
+                ),
+                String.new("collection"): self.collection.into_value(),
+                String.new("block"): self.block.into_value(),
+            }
+        )
+
     def eval(self, env: Environment) -> Optional[ControlFlow]:
         collection = self.collection.eval(env)
         if isinstance(collection, Error):
@@ -3433,8 +3457,6 @@ class AstStatementFor(AstStatement):
                     self.location,
                     f"cannot use a key-reference over type {quote(typename(collection))}",
                 )
-            # Iterate over a shallow copy of the set data in order to allow set
-            # modification during iteration.
             for x in dict(collection.data).keys():
                 loop_env.let(self.identifier_k.name, copy(x))
                 result = self.block.eval(loop_env)
@@ -4215,23 +4237,6 @@ class Parser:
 
         return AstStatementIfElifElse(location, conditionals, else_block)
 
-    def parse_statement_try(self) -> AstStatementTry:
-        location = self._expect_current(TokenKind.TRY).location
-        try_block = self.parse_block()
-        self._expect_current(TokenKind.CATCH)
-        if self._check_current(TokenKind.IDENTIFIER):
-            catch_identifier = self.parse_identifier()
-        else:
-            catch_identifier = None
-        catch_block = self.parse_block()
-        return AstStatementTry(location, try_block, catch_identifier, catch_block)
-
-    def parse_statement_error(self) -> AstStatementError:
-        location = self._expect_current(TokenKind.ERROR).location
-        expression = self.parse_expression()
-        self._expect_current(TokenKind.SEMICOLON)
-        return AstStatementError(location, expression)
-
     def parse_statement_for(self) -> AstStatementFor:
         location = self._expect_current(TokenKind.FOR).location
         identifier_k = self.parse_identifier()
@@ -4280,6 +4285,23 @@ class Parser:
         location = self._expect_current(TokenKind.CONTINUE).location
         self._expect_current(TokenKind.SEMICOLON)
         return AstStatementContinue(location)
+
+    def parse_statement_try(self) -> AstStatementTry:
+        location = self._expect_current(TokenKind.TRY).location
+        try_block = self.parse_block()
+        self._expect_current(TokenKind.CATCH)
+        if self._check_current(TokenKind.IDENTIFIER):
+            catch_identifier = self.parse_identifier()
+        else:
+            catch_identifier = None
+        catch_block = self.parse_block()
+        return AstStatementTry(location, try_block, catch_identifier, catch_block)
+
+    def parse_statement_error(self) -> AstStatementError:
+        location = self._expect_current(TokenKind.ERROR).location
+        expression = self.parse_expression()
+        self._expect_current(TokenKind.SEMICOLON)
+        return AstStatementError(location, expression)
 
     def parse_statement_return(self) -> AstStatementReturn:
         location = self._expect_current(TokenKind.RETURN).location

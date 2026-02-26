@@ -152,3 +152,11 @@ if true { dumpln("A"); }
 if false { dumpln("A"); } elif true { dumpln("B"); }
 if false { dumpln("A"); } elif false { dumpln("B"); } else { dumpln("C"); }
 if false { dumpln("A"); } else { dumpln("D"); }
+
+for x in 3 { dumpln(x); }
+for x in ["a", "b", "c"] { dumpln(x); }
+for x.& in [{"value": 123}, {"value": 456}, {"value": 789}] { dumpln(x.*); }
+for k in Map{"a": 123, "b": 456, "c": 789} { dumpln(k); }
+for k, v in Map{"a": 123, "b": 456, "c": 789} { dumpln(k); dumpln(v); }
+for k, v.& in Map{"a": {"value": 123}, "b": {"value": 456}, "c": {"value": 789}} { v.*.value; }
+for x in Set{"a", "b", "c"} { dumpln(x); }

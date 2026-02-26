@@ -1461,6 +1461,8 @@ const (
 	TOKEN_IF       = "if"
 	TOKEN_ELIF     = "elif"
 	TOKEN_ELSE     = "else"
+	TOKEN_FOR      = "for"
+	TOKEN_IN       = "in"
 	TOKEN_FUNCTION = "function"
 )
 
@@ -1509,6 +1511,8 @@ func NewLexer(ctx *Context, source string, location *SourceLocation) Lexer {
 		TOKEN_IF:       TOKEN_IF,
 		TOKEN_ELIF:     TOKEN_ELIF,
 		TOKEN_ELSE:     TOKEN_ELSE,
+		TOKEN_FOR:      TOKEN_FOR,
+		TOKEN_IN:       TOKEN_IN,
 		TOKEN_FUNCTION: TOKEN_FUNCTION,
 	}
 
@@ -4022,6 +4026,198 @@ func (self AstStatementIfElifElse) Eval(ctx *Context, env *Environment) (Control
 	return nil, nil
 }
 
+type AstStatementFor struct {
+	Location     *SourceLocation // Optional
+	IdentifierK  AstIdentifier
+	IdentifierV  *AstIdentifier // Optional
+	KIsReference bool
+	VIsReference bool
+	Collection   AstExpression
+	Block        AstBlock
+}
+
+func (self AstStatementFor) StatementLocation() *SourceLocation {
+	return self.Location
+}
+
+func (self AstStatementFor) IntoValue(ctx *Context) Value {
+	var identifierV Value = ctx.NewNull()
+	if self.IdentifierV != nil {
+		identifierV = self.IdentifierV.IntoValue(ctx)
+	}
+
+	var vIsReference Value = ctx.NewNull()
+	if self.IdentifierV != nil {
+		identifierV = ctx.NewBoolean(self.VIsReference)
+	}
+
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+		{ctx.NewString("identifier_k"), self.IdentifierK.IntoValue(ctx)},
+		{ctx.NewString("identifier_v"), identifierV},
+		{ctx.NewString("k_is_reference"), ctx.NewBoolean(self.KIsReference)},
+		{ctx.NewString("v_is_reference"), vIsReference},
+		{ctx.NewString("block"), self.Collection.IntoValue(ctx)},
+		{ctx.NewString("block"), self.Block.IntoValue(ctx)},
+	})
+}
+
+func (self AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
+	collection, error := self.Collection.Eval(ctx, env)
+	if error != nil {
+		return nil, error
+	}
+	collection = collection.Copy()
+
+	loopEnv := NewEnvironment(env)
+
+	// TODO: Handle user-defined iterators.
+	if collectionNumber, ok := collection.(*Number); ok {
+		if self.IdentifierV != nil {
+			return nil, NewError(
+				self.Location,
+				ctx.NewString(fmt.Sprintf("attempted key-value iteration over type %s", quote(Typename(collection)))),
+			)
+		}
+		if self.KIsReference {
+			return nil, NewError(
+				self.Location,
+				ctx.NewString(fmt.Sprintf("cannot use key-reference over type %s", quote(Typename(collection)))),
+			)
+		}
+		collectionInt, err := ValueAsInt(collectionNumber)
+		if err != nil {
+			return nil, err
+		}
+		for i := range collectionInt {
+			loopEnv.Let(self.IdentifierK.Name.data, ctx.NewNumber(float64(i)))
+			result, err := self.Block.Eval(ctx, &loopEnv)
+			if err != nil {
+				return nil, err
+			}
+			if _, ok := result.(*Return); ok {
+				return result, nil
+			}
+			if _, ok := result.(*Break); ok {
+				return nil, nil
+			}
+			if _, ok := result.(*Continue); ok {
+				continue
+			}
+		}
+	} else if collectionVector, ok := collection.(*Vector); ok {
+		if self.IdentifierV != nil {
+			return nil, NewError(
+				self.Location,
+				ctx.NewString(fmt.Sprintf("attempted key-value iteration over type %s", quote(Typename(collection)))),
+			)
+		}
+		// Iterate over a shallow copy of the vector data in order to allow
+		// vector modification during iteration.
+		collectionVector = collectionVector.Copy().(*Vector)
+		for _, x := range collectionVector.data.elements {
+			var k Value = nil
+			if self.KIsReference {
+				k = ctx.NewReference(x)
+			} else {
+				k = x.Copy()
+			}
+			loopEnv.Let(self.IdentifierK.Name.data, k)
+			result, err := self.Block.Eval(ctx, &loopEnv)
+			if err != nil {
+				return nil, err
+			}
+			if _, ok := result.(*Return); ok {
+				return result, nil
+			}
+			if _, ok := result.(*Break); ok {
+				return nil, nil
+			}
+			if _, ok := result.(*Continue); ok {
+				continue
+			}
+		}
+	} else if collectionMap, ok := collection.(*Map); ok {
+		if self.KIsReference {
+			return nil, NewError(
+				self.Location,
+				ctx.NewString(fmt.Sprintf("cannot use key-reference over type %s", quote(Typename(collection)))),
+			)
+		}
+		// Iterate over a shallow copy of the map data in order to allow map
+		// modification during iteration.
+		collectionMap = collectionMap.Copy().(*Map)
+		cur := collectionMap.data.head
+		for cur != nil {
+			loopEnv.Let(self.IdentifierK.Name.data, cur.key.Copy())
+			if self.IdentifierV != nil {
+				var v Value = nil
+				if self.VIsReference {
+					v = ctx.NewReference(cur.value)
+				} else {
+					v = cur.value.Copy()
+				}
+				loopEnv.Let(self.IdentifierV.Name.data, v)
+			}
+			result, err := self.Block.Eval(ctx, &loopEnv)
+			if err != nil {
+				return nil, err
+			}
+			if _, ok := result.(*Return); ok {
+				return result, nil
+			}
+			if _, ok := result.(*Break); ok {
+				return nil, nil
+			}
+			if _, ok := result.(*Continue); ok {
+				cur = cur.next
+				continue
+			}
+			cur = cur.next
+		}
+	} else if collectionSet, ok := collection.(*Set); ok {
+		if self.IdentifierV != nil {
+			return nil, NewError(
+				self.Location,
+				ctx.NewString(fmt.Sprintf("attempted key-value iteration over type %s", quote(Typename(collection)))),
+			)
+		}
+		if self.KIsReference {
+			return nil, NewError(
+				self.Location,
+				ctx.NewString(fmt.Sprintf("cannot use key-reference over type %s", quote(Typename(collection)))),
+			)
+		}
+		cur := collectionSet.data.head
+		for cur != nil {
+			loopEnv.Let(self.IdentifierK.Name.data, cur.key.Copy())
+			result, err := self.Block.Eval(ctx, &loopEnv)
+			if err != nil {
+				return nil, err
+			}
+			if _, ok := result.(*Return); ok {
+				return result, nil
+			}
+			if _, ok := result.(*Break); ok {
+				return nil, nil
+			}
+			if _, ok := result.(*Continue); ok {
+				cur = cur.next
+				continue
+			}
+			cur = cur.next
+		}
+	} else {
+		return nil, NewError(
+			self.Location,
+			ctx.NewString(fmt.Sprintf("attempted iteration over type %s", quote(Typename(collection)))),
+		)
+	}
+
+	return nil, nil
+}
+
 type AstStatementExpression struct {
 	Location   *SourceLocation // Optional
 	Expression AstExpression
@@ -4982,6 +5178,10 @@ func (self *Parser) ParseStatement() (AstStatement, error) {
 		return self.ParseStatementIfElifElse()
 	}
 
+	if self.checkCurrent(TOKEN_FOR) {
+		return self.ParseStatementFor()
+	}
+
 	return self.ParseStatementExpressionOrAssignment()
 }
 
@@ -5093,6 +5293,75 @@ func (self *Parser) ParseStatementIfElifElse() (AstStatement, error) {
 	}
 
 	return AstStatementIfElifElse{location, conditionals, elseBlock}, nil
+}
+
+func (self *Parser) ParseStatementFor() (AstStatement, error) {
+	token, err := self.expectCurrent(TOKEN_FOR)
+	if err != nil {
+		return nil, err
+	}
+	location := token.Location
+
+	identifierK, err := self.ParseIdentifier()
+	if err != nil {
+		return nil, err
+	}
+	kIsReference := false
+	vIsReference := false
+
+	if self.checkCurrent(TOKEN_MKREF) {
+		_, err := self.expectCurrent(TOKEN_MKREF)
+		if err != nil {
+			return nil, err
+		}
+		kIsReference = true
+	}
+
+	var identifierV *AstIdentifier = nil
+	if self.checkCurrent(TOKEN_COMMA) {
+		_, err := self.expectCurrent(TOKEN_COMMA)
+		if err != nil {
+			return nil, err
+		}
+
+		identifier, err := self.ParseIdentifier()
+		if err != nil {
+			return nil, err
+		}
+		identifierV = &identifier
+
+		if self.checkCurrent(TOKEN_MKREF) {
+			_, err := self.expectCurrent(TOKEN_MKREF)
+			if err != nil {
+				return nil, err
+			}
+			vIsReference = true
+		}
+	}
+
+	_, err = self.expectCurrent(TOKEN_IN)
+	if err != nil {
+		return nil, err
+	}
+
+	collection, err := self.ParseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	block, err := self.ParseBlock()
+	if err != nil {
+		return nil, err
+	}
+
+	if identifierV != nil && identifierK.Name.data == identifierV.Name.data {
+		return nil, ParseError{
+			Location: location,
+			why:      fmt.Sprintf("duplicate iterator name %s", quote(identifierK.Name.data)),
+		}
+	}
+
+	return AstStatementFor{location, identifierK, identifierV, kIsReference, vIsReference, collection, block}, nil
 }
 
 func (self *Parser) ParseStatementExpressionOrAssignment() (AstStatement, error) {
