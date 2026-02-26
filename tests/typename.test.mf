@@ -9,7 +9,7 @@ println(typename(123.&));
 println(typename(function(){}));
 
 let T = type Map{};
-println(typename(new T null));
+println(typename(new T Map{}));
 ################################################################################
 # null
 # boolean

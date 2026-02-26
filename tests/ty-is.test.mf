@@ -11,7 +11,7 @@ dumpln(ty::is(function() {}, typeof(function() {})));
 dumpln(ty::is(dumpln, typeof(function() {})));
 
 let t = type Map{};
-dumpln(ty::is(new t null, t));
+dumpln(ty::is(new t Map{}, t));
 
 print("\n");
 

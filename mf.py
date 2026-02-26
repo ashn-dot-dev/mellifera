@@ -2168,6 +2168,18 @@ class AstExpressionType(AstExpression):
     name: String
     expression: AstExpression
 
+    def into_value(self) -> Value:
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+                String.new("name"): copy(self.name),
+                String.new("expression"): self.expression.into_value(),
+            }
+        )
+
     def eval(self, env: Environment) -> Union[Value, Error]:
         type = self.expression.eval(env)
         if isinstance(type, Error):
@@ -2187,25 +2199,44 @@ class AstExpressionNew(AstExpression):
     meta: AstExpression
     expression: AstExpression
 
+    def into_value(self) -> Value:
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+                String.new("meta"): self.meta.into_value(),
+                String.new("expression"): self.expression.into_value(),
+            }
+        )
+
     def eval(self, env: Environment) -> Union[Value, Error]:
         meta = self.meta.eval(env)
         if isinstance(meta, Error):
             return meta
-        expression = self.expression.eval(env)
-        if isinstance(expression, Error):
-            return expression
-        if isinstance(meta, Map):
-            if not meta.name:
-                return Error(
-                    self.meta.location,
-                    f"expected map-like value created with the {quote(TokenKind.TYPE)} expression, received regular map value {meta}",
-                )
-            expression.meta = copy(meta)
-            return expression
-        return Error(
-            self.meta.location,
-            f"expected map-like value, received {typename(meta)}",
-        )
+        value = self.expression.eval(env)
+        if isinstance(value, Error):
+            return value
+        if not isinstance(meta, Map):
+            return Error(
+                self.meta.location,
+                f"expected map-like value, received {typename(meta)}",
+            )
+        if not isinstance(value, Map):
+            return Error(
+                self.meta.location,
+                f"expected map-like value, received {typename(value)}",
+            )
+        if not meta.name:
+            return Error(
+                self.meta.location,
+                f"expected map-like value created with the {quote(TokenKind.TYPE)} expression, received regular map value {meta}",
+            )
+        value = copy(value)
+        value.cow()
+        value.meta = copy(meta)
+        return value
 
 
 @final
@@ -3922,7 +3953,7 @@ class Parser:
     def parse_expression_type(self) -> AstExpressionType:
         location = self._expect_current(TokenKind.TYPE).location
         expression = self.parse_expression()
-        return AstExpressionType(location, String.new("type@[{location}]"), expression)
+        return AstExpressionType(location, String.new("type"), expression)
 
     def parse_expression_new(self) -> AstExpressionNew:
         location = self._expect_current(TokenKind.NEW).location

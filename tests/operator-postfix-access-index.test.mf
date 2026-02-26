@@ -24,12 +24,6 @@ dumpln(x);
 x["foo"] = "xyz";
 dumpln(x);
 try { dumpln(x["baz"]); } catch err { dumpln(err); }
-
-print("\n");
-
-let meta = type {"f": function(self) { println("inside metafunction f"); }};
-let x = new meta 123;
-try { dumpln(x["f"]); } catch err { dumpln(err); }
 ################################################################################
 # "attempted to access field of type `null` with type `number`"
 # "attempted to access field of type `boolean` with type `number`"
@@ -49,5 +43,3 @@ try { dumpln(x["f"]); } catch err { dumpln(err); }
 # {"foo": 123, "bar": 456}
 # {"foo": "xyz", "bar": 456}
 # "invalid map access with field \"baz\""
-#
-# "attempted to access field of type `meta` with type `string`"

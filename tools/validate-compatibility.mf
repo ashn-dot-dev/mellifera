@@ -128,3 +128,7 @@ dumpln( +7 % +3 );
 dumpln( +7 % -3 );
 dumpln( -7 % +3 );
 dumpln( -7 % -3 );
+
+dumpln( type Map{"foo": 123} );
+
+dumpln( new type Map{"foo": 123} Map{"abc": 456} );

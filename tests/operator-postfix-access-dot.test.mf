@@ -12,16 +12,6 @@ try { dumpln( println.foo                     ); } catch err { dumpln(err); }
 print("\n");
 
 let meta = type {"f": function(self) { println("inside metafunction f"); }};
-let x = new meta 123;
-try { dumpln(x.f); } catch err { dumpln(err); }
-try { x.f(); } catch err { dumpln(err); }
-try { x.f = 456; } catch err { dumpln(err); }
-try { dumpln(x.f); } catch err { dumpln(err); }
-try { x.f(); } catch err { dumpln(err); }
-
-print("\n");
-
-let meta = type {"f": function(self) { println("inside metafunction f"); }};
 let x = new meta Map{};
 try { dumpln(x.f); } catch err { dumpln(err); }
 try { x.f(); } catch err { dumpln(err); }
@@ -90,12 +80,6 @@ try { y.nope = null; } catch err { dumpln(err); }
 #
 # meta::f@[operator-postfix-access-dot.test.mf, line 14]
 # inside metafunction f
-# "attempted access into type `meta` with type `string`"
-# meta::f@[operator-postfix-access-dot.test.mf, line 14]
-# inside metafunction f
-#
-# meta::f@[operator-postfix-access-dot.test.mf, line 24]
-# inside metafunction f
 # 456
 # inside metafunction f
 #
@@ -109,7 +93,7 @@ try { y.nope = null; } catch err { dumpln(err); }
 #
 # {"value": "foo"}
 # "foo"
-# meta::f@[operator-postfix-access-dot.test.mf, line 53]
+# meta::f@[operator-postfix-access-dot.test.mf, line 43]
 # {"value": "bar"}
 # {"value": "baz"}
 #

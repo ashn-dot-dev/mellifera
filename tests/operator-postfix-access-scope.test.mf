@@ -12,14 +12,6 @@ try { dumpln( println::foo                     ); } catch err { dumpln(err); }
 print("\n");
 
 let meta = type {"f": function(self) { println("inside metafunction f"); }};
-let x = new meta 123;
-try { dumpln(x::f); } catch err { dumpln(err); }
-try { x::f = 456; } catch err { dumpln(err); }
-try { dumpln(x::f); } catch err { dumpln(err); }
-
-print("\n");
-
-let meta = type {"f": function(self) { println("inside metafunction f"); }};
 let x = new meta Map{};
 try { dumpln(x::f); } catch err { dumpln(err); }
 x::f = 456;
@@ -43,10 +35,6 @@ try { dumpln(x::f); } catch err { dumpln(err); }
 # "attempted to access field of type `reference`"
 # "attempted to access field of type `function`"
 # "attempted to access field of type `function`"
-#
-# "attempted to access field of type `meta`"
-# "attempted access into type `meta` with type `string`"
-# "attempted to access field of type `meta`"
 #
 # "invalid map access with field \"f\""
 # 456

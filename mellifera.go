@@ -1447,11 +1447,13 @@ const (
 	TOKEN_LBRACKET  = "["
 	TOKEN_RBRACKET  = "]"
 	// Keywords
+	TOKEN_TYPE     = "type"
 	TOKEN_NULL     = "null"
 	TOKEN_TRUE     = "true"
 	TOKEN_FALSE    = "false"
 	TOKEN_MAP      = "Map"
 	TOKEN_SET      = "Set"
+	TOKEN_NEW      = "new"
 	TOKEN_NOT      = "not"
 	TOKEN_AND      = "and"
 	TOKEN_OR       = "or"
@@ -1489,11 +1491,13 @@ type Lexer struct {
 
 func NewLexer(ctx *Context, source string, location *SourceLocation) Lexer {
 	keywords := map[string]string{
+		TOKEN_TYPE:     TOKEN_TYPE,
 		TOKEN_NULL:     TOKEN_NULL,
 		TOKEN_TRUE:     TOKEN_TRUE,
 		TOKEN_FALSE:    TOKEN_FALSE,
 		TOKEN_MAP:      TOKEN_MAP,
 		TOKEN_SET:      TOKEN_SET,
+		TOKEN_NEW:      TOKEN_NEW,
 		TOKEN_NOT:      TOKEN_NOT,
 		TOKEN_AND:      TOKEN_AND,
 		TOKEN_OR:       TOKEN_OR,
@@ -2635,6 +2639,104 @@ func (self *AstExpressionFunction) Eval(ctx *Context, env *Environment) (Value, 
 	return ctx.NewFunction(self, env), nil
 }
 
+type AstExpressionType struct {
+	Location   *SourceLocation // Optional
+	Name       string
+	Expression AstExpression
+}
+
+func (self AstExpressionType) ExpressionLocation() *SourceLocation {
+	return self.Location
+}
+
+func (self AstExpressionType) IntoValue(ctx *Context) Value {
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+		{ctx.NewString("name"), ctx.NewString(self.Name)},
+		{ctx.NewString("expression"), self.Expression.IntoValue(ctx)},
+	})
+}
+
+func (self AstExpressionType) Eval(ctx *Context, env *Environment) (Value, error) {
+	value, err := self.Expression.Eval(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+
+	m, ok := value.(*Map)
+	if !ok {
+		return nil, NewError(
+			self.Location,
+			ctx.NewString(fmt.Sprintf("expected map-like value, received %s", quote(Typename(value)))),
+		)
+	}
+
+	meta := m.Copy().(*Map)
+	meta.CopyOnWrite()
+	meta.name = &self.Name
+	return meta, nil
+}
+
+type AstExpressionNew struct {
+	Location   *SourceLocation // Optional
+	Meta       AstExpression
+	Expression AstExpression
+}
+
+func (self AstExpressionNew) ExpressionLocation() *SourceLocation {
+	return self.Location
+}
+
+func (self AstExpressionNew) IntoValue(ctx *Context) Value {
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+		{ctx.NewString("meta"), self.Meta.IntoValue(ctx)},
+		{ctx.NewString("expression"), self.Expression.IntoValue(ctx)},
+	})
+}
+
+func (self AstExpressionNew) Eval(ctx *Context, env *Environment) (Value, error) {
+	meta, err := self.Meta.Eval(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+
+	value, err := self.Expression.Eval(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+
+	metaMap, ok := meta.(*Map)
+	if !ok {
+		return nil, NewError(
+			self.Location,
+			ctx.NewString(fmt.Sprintf("expected map-like value, received %s", quote(Typename(meta)))),
+		)
+	}
+
+	valueMap, ok := value.(*Map)
+	if !ok {
+		return nil, NewError(
+			self.Location,
+			ctx.NewString(fmt.Sprintf("expected map-like value, received %s", quote(Typename(value)))),
+		)
+	}
+
+	if metaMap.name == nil {
+		return nil, NewError(
+			self.Location,
+			ctx.NewString(fmt.Sprintf("expected map-like value created with the %s expression, received regular map value %v", quote(TOKEN_TYPE), meta)),
+		)
+	}
+
+	valueMap = valueMap.Copy().(*Map)
+	valueMap.CopyOnWrite()
+	valueMap.meta = metaMap.Copy().(*Map)
+	return valueMap, nil
+}
+
 type AstExpressionGrouped struct {
 	Location   *SourceLocation // Optional
 	Expression AstExpression
@@ -3734,7 +3836,7 @@ func (self AstExpressionFunctionCall) Eval(ctx *Context, env *Environment) (Valu
 		if err != nil {
 			return nil, err
 		}
-		arguments = append(arguments, result)
+		arguments = append(arguments, result.Copy())
 	}
 
 	return Call(ctx, self.Location, function, arguments)
@@ -3858,6 +3960,8 @@ func NewParser(lexer *Lexer) Parser {
 			TOKEN_SET:        (*Parser).ParseExpressionMapOrSet,
 			TOKEN_LBRACE:     (*Parser).ParseExpressionMapOrSet,
 			TOKEN_FUNCTION:   (*Parser).ParseExpressionFunction,
+			TOKEN_TYPE:       (*Parser).ParseExpressionType,
+			TOKEN_NEW:        (*Parser).ParseExpressionNew,
 			TOKEN_LPAREN:     (*Parser).ParseExpressionGrouped,
 			TOKEN_ADD:        (*Parser).ParseExpressionPositive,
 			TOKEN_SUB:        (*Parser).ParseExpressionNegative,
@@ -4281,6 +4385,41 @@ func (self *Parser) ParseExpressionFunction() (AstExpression, error) {
 	}
 
 	return &AstExpressionFunction{location, parameters, body, nil}, nil
+}
+
+func (self *Parser) ParseExpressionType() (AstExpression, error) {
+	token, err := self.expectCurrent(TOKEN_TYPE)
+	if err != nil {
+		return nil, err
+	}
+	location := token.Location
+
+	expression, err := self.ParseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	return AstExpressionType{location, "type", expression}, nil
+}
+
+func (self *Parser) ParseExpressionNew() (AstExpression, error) {
+	token, err := self.expectCurrent(TOKEN_NEW)
+	if err != nil {
+		return nil, err
+	}
+	location := token.Location
+
+	meta, err := self.ParseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	expression, err := self.ParseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	return AstExpressionNew{location, meta, expression}, nil
 }
 
 func (self *Parser) ParseExpressionGrouped() (AstExpression, error) {
