@@ -3483,6 +3483,18 @@ class AstStatementWhile(AstStatement):
     expression: AstExpression
     block: AstBlock
 
+    def into_value(self) -> Value:
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+                String.new("expression"): self.expression.into_value(),
+                String.new("block"): self.block.into_value(),
+            }
+        )
+
     def eval(self, env: Environment) -> Optional[ControlFlow]:
         while True:
             expression = self.expression.eval(env)
@@ -3512,6 +3524,16 @@ class AstStatementWhile(AstStatement):
 class AstStatementBreak(AstStatement):
     location: Optional[SourceLocation]
 
+    def into_value(self) -> Value:
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+            }
+        )
+
     def eval(self, env: Environment) -> Optional[ControlFlow]:
         return Break(self.location)
 
@@ -3520,6 +3542,16 @@ class AstStatementBreak(AstStatement):
 @dataclass
 class AstStatementContinue(AstStatement):
     location: Optional[SourceLocation]
+
+    def into_value(self) -> Value:
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+            }
+        )
 
     def eval(self, env: Environment) -> Optional[ControlFlow]:
         return Continue(self.location)

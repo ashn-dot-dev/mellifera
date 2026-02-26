@@ -160,3 +160,6 @@ for k in Map{"a": 123, "b": 456, "c": 789} { dumpln(k); }
 for k, v in Map{"a": 123, "b": 456, "c": 789} { dumpln(k); dumpln(v); }
 for k, v.& in Map{"a": {"value": 123}, "b": {"value": 456}, "c": {"value": 789}} { v.*.value; }
 for x in Set{"a", "b", "c"} { dumpln(x); }
+
+while true { break; }
+for x in 3 { continue; dumpln("bad"); }

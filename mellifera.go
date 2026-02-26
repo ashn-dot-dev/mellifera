@@ -1463,6 +1463,9 @@ const (
 	TOKEN_ELSE     = "else"
 	TOKEN_FOR      = "for"
 	TOKEN_IN       = "in"
+	TOKEN_WHILE    = "while"
+	TOKEN_BREAK    = "break"
+	TOKEN_CONTINUE = "continue"
 	TOKEN_FUNCTION = "function"
 )
 
@@ -1513,6 +1516,9 @@ func NewLexer(ctx *Context, source string, location *SourceLocation) Lexer {
 		TOKEN_ELSE:     TOKEN_ELSE,
 		TOKEN_FOR:      TOKEN_FOR,
 		TOKEN_IN:       TOKEN_IN,
+		TOKEN_WHILE:    TOKEN_WHILE,
+		TOKEN_BREAK:    TOKEN_BREAK,
+		TOKEN_CONTINUE: TOKEN_CONTINUE,
 		TOKEN_FUNCTION: TOKEN_FUNCTION,
 	}
 
@@ -4058,7 +4064,7 @@ func (self AstStatementFor) IntoValue(ctx *Context) Value {
 		{ctx.NewString("identifier_v"), identifierV},
 		{ctx.NewString("k_is_reference"), ctx.NewBoolean(self.KIsReference)},
 		{ctx.NewString("v_is_reference"), vIsReference},
-		{ctx.NewString("block"), self.Collection.IntoValue(ctx)},
+		{ctx.NewString("collection"), self.Collection.IntoValue(ctx)},
 		{ctx.NewString("block"), self.Block.IntoValue(ctx)},
 	})
 }
@@ -4096,13 +4102,13 @@ func (self AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, e
 			if err != nil {
 				return nil, err
 			}
-			if _, ok := result.(*Return); ok {
+			if _, ok := result.(Return); ok {
 				return result, nil
 			}
-			if _, ok := result.(*Break); ok {
+			if _, ok := result.(Break); ok {
 				return nil, nil
 			}
-			if _, ok := result.(*Continue); ok {
+			if _, ok := result.(Continue); ok {
 				continue
 			}
 		}
@@ -4128,13 +4134,13 @@ func (self AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, e
 			if err != nil {
 				return nil, err
 			}
-			if _, ok := result.(*Return); ok {
+			if _, ok := result.(Return); ok {
 				return result, nil
 			}
-			if _, ok := result.(*Break); ok {
+			if _, ok := result.(Break); ok {
 				return nil, nil
 			}
-			if _, ok := result.(*Continue); ok {
+			if _, ok := result.(Continue); ok {
 				continue
 			}
 		}
@@ -4164,13 +4170,13 @@ func (self AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, e
 			if err != nil {
 				return nil, err
 			}
-			if _, ok := result.(*Return); ok {
+			if _, ok := result.(Return); ok {
 				return result, nil
 			}
-			if _, ok := result.(*Break); ok {
+			if _, ok := result.(Break); ok {
 				return nil, nil
 			}
-			if _, ok := result.(*Continue); ok {
+			if _, ok := result.(Continue); ok {
 				cur = cur.next
 				continue
 			}
@@ -4196,13 +4202,13 @@ func (self AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, e
 			if err != nil {
 				return nil, err
 			}
-			if _, ok := result.(*Return); ok {
+			if _, ok := result.(Return); ok {
 				return result, nil
 			}
-			if _, ok := result.(*Break); ok {
+			if _, ok := result.(Break); ok {
 				return nil, nil
 			}
-			if _, ok := result.(*Continue); ok {
+			if _, ok := result.(Continue); ok {
 				cur = cur.next
 				continue
 			}
@@ -4216,6 +4222,101 @@ func (self AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, e
 	}
 
 	return nil, nil
+}
+
+type AstStatementWhile struct {
+	Location   *SourceLocation // Optional
+	Expression AstExpression
+	Block      AstBlock
+}
+
+func (self AstStatementWhile) StatementLocation() *SourceLocation {
+	return self.Location
+}
+
+func (self AstStatementWhile) IntoValue(ctx *Context) Value {
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+		{ctx.NewString("expression"), self.Expression.IntoValue(ctx)},
+		{ctx.NewString("block"), self.Block.IntoValue(ctx)},
+	})
+}
+
+func (self AstStatementWhile) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
+	for {
+		expression, error := self.Expression.Eval(ctx, env)
+		if error != nil {
+			return nil, error
+		}
+
+		expressionBoolean, ok := expression.(*Boolean)
+		if !ok {
+			return nil, NewError(
+				self.Location,
+				ctx.NewString(fmt.Sprintf("conditional with non-boolean type %s", quote(Typename(expression)))),
+			)
+		}
+
+		if !expressionBoolean.data {
+			break
+		}
+
+		loopEnv := NewEnvironment(env)
+		result, err := self.Block.Eval(ctx, &loopEnv)
+		if err != nil {
+			return nil, err
+		}
+		if _, ok := result.(Return); ok {
+			return result, nil
+		}
+		if _, ok := result.(Break); ok {
+			return nil, nil
+		}
+		if _, ok := result.(Continue); ok {
+			continue
+		}
+	}
+
+	return nil, nil
+}
+
+type AstStatementBreak struct {
+	Location *SourceLocation // Optional
+}
+
+func (self AstStatementBreak) StatementLocation() *SourceLocation {
+	return self.Location
+}
+
+func (self AstStatementBreak) IntoValue(ctx *Context) Value {
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+	})
+}
+
+func (self AstStatementBreak) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
+	return Break{self.Location}, nil
+}
+
+type AstStatementContinue struct {
+	Location *SourceLocation // Optional
+}
+
+func (self AstStatementContinue) StatementLocation() *SourceLocation {
+	return self.Location
+}
+
+func (self AstStatementContinue) IntoValue(ctx *Context) Value {
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+	})
+}
+
+func (self AstStatementContinue) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
+	return Continue{self.Location}, nil
 }
 
 type AstStatementExpression struct {
@@ -5182,6 +5283,18 @@ func (self *Parser) ParseStatement() (AstStatement, error) {
 		return self.ParseStatementFor()
 	}
 
+	if self.checkCurrent(TOKEN_WHILE) {
+		return self.ParseStatementWhile()
+	}
+
+	if self.checkCurrent(TOKEN_BREAK) {
+		return self.ParseStatementBreak()
+	}
+
+	if self.checkCurrent(TOKEN_CONTINUE) {
+		return self.ParseStatementContinue()
+	}
+
 	return self.ParseStatementExpressionOrAssignment()
 }
 
@@ -5364,6 +5477,56 @@ func (self *Parser) ParseStatementFor() (AstStatement, error) {
 	return AstStatementFor{location, identifierK, identifierV, kIsReference, vIsReference, collection, block}, nil
 }
 
+func (self *Parser) ParseStatementWhile() (AstStatement, error) {
+	token, err := self.expectCurrent(TOKEN_WHILE)
+	if err != nil {
+		return nil, err
+	}
+	location := token.Location
+
+	expression, err := self.ParseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	block, err := self.ParseBlock()
+	if err != nil {
+		return nil, err
+	}
+
+	return AstStatementWhile{location, expression, block}, nil
+}
+
+func (self *Parser) ParseStatementBreak() (AstStatement, error) {
+	token, err := self.expectCurrent(TOKEN_BREAK)
+	if err != nil {
+		return nil, err
+	}
+	location := token.Location
+
+	_, err = self.expectCurrent(TOKEN_SEMICOLON)
+	if err != nil {
+		return nil, err
+	}
+
+	return AstStatementBreak{location}, nil
+}
+
+func (self *Parser) ParseStatementContinue() (AstStatement, error) {
+	token, err := self.expectCurrent(TOKEN_CONTINUE)
+	if err != nil {
+		return nil, err
+	}
+	location := token.Location
+
+	_, err = self.expectCurrent(TOKEN_SEMICOLON)
+	if err != nil {
+		return nil, err
+	}
+
+	return AstStatementContinue{location}, nil
+}
+
 func (self *Parser) ParseStatementExpressionOrAssignment() (AstStatement, error) {
 	expression, err := self.ParseExpression()
 	if err != nil {
@@ -5401,16 +5564,16 @@ func Call(ctx *Context, location *SourceLocation, callable Value, arguments []Va
 			return nil, err
 		}
 
-		if flow, ok := result.(*Return); ok {
+		if flow, ok := result.(Return); ok {
 			return flow.Value, nil
 		}
-		if _, ok := result.(*Break); ok {
+		if _, ok := result.(Break); ok {
 			return nil, NewError(
 				result.ControlFlowLocation(),
 				ctx.NewString("attempted to break outside of a loop"),
 			)
 		}
-		if _, ok := result.(*Continue); ok {
+		if _, ok := result.(Continue); ok {
 			return nil, NewError(
 				result.ControlFlowLocation(),
 				ctx.NewString("attempted to continue outside of a loop"),
