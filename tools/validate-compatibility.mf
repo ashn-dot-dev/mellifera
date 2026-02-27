@@ -170,3 +170,5 @@ try { } catch { }
 try { } catch err { }
 try { error "ERROR"; } catch { }
 try { error "ERROR"; } catch err { dumpln(err); }
+
+dumpln( function() { return "RETURN"; }() );

@@ -1453,6 +1453,7 @@ const (
 	TOKEN_FALSE    = "false"
 	TOKEN_MAP      = "Map"
 	TOKEN_SET      = "Set"
+	TOKEN_FUNCTION = "function"
 	TOKEN_NEW      = "new"
 	TOKEN_NOT      = "not"
 	TOKEN_AND      = "and"
@@ -1469,7 +1470,7 @@ const (
 	TOKEN_TRY      = "try"
 	TOKEN_CATCH    = "catch"
 	TOKEN_ERROR    = "error"
-	TOKEN_FUNCTION = "function"
+	TOKEN_RETURN   = "return"
 )
 
 type Token struct {
@@ -1503,12 +1504,13 @@ type Lexer struct {
 
 func NewLexer(ctx *Context, source string, location *SourceLocation) Lexer {
 	keywords := map[string]string{
-		TOKEN_TYPE:     TOKEN_TYPE,
 		TOKEN_NULL:     TOKEN_NULL,
 		TOKEN_TRUE:     TOKEN_TRUE,
 		TOKEN_FALSE:    TOKEN_FALSE,
 		TOKEN_MAP:      TOKEN_MAP,
 		TOKEN_SET:      TOKEN_SET,
+		TOKEN_FUNCTION: TOKEN_FUNCTION,
+		TOKEN_TYPE:     TOKEN_TYPE,
 		TOKEN_NEW:      TOKEN_NEW,
 		TOKEN_NOT:      TOKEN_NOT,
 		TOKEN_AND:      TOKEN_AND,
@@ -1525,7 +1527,7 @@ func NewLexer(ctx *Context, source string, location *SourceLocation) Lexer {
 		TOKEN_TRY:      TOKEN_TRY,
 		TOKEN_CATCH:    TOKEN_CATCH,
 		TOKEN_ERROR:    TOKEN_ERROR,
-		TOKEN_FUNCTION: TOKEN_FUNCTION,
+		TOKEN_RETURN:   TOKEN_RETURN,
 	}
 
 	return Lexer{
@@ -4395,11 +4397,45 @@ func (self AstStatementError) IntoValue(ctx *Context) Value {
 }
 
 func (self AstStatementError) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
-	value, error := self.Expression.Eval(ctx, env)
-	if error != nil {
-		return nil, error
+	value, err := self.Expression.Eval(ctx, env)
+	if err != nil {
+		return nil, err
 	}
 	return nil, NewError(self.Location, value)
+}
+
+type AstStatementReturn struct {
+	Location   *SourceLocation // Optional
+	Expression *AstExpression  // Optional
+}
+
+func (self AstStatementReturn) StatementLocation() *SourceLocation {
+	return self.Location
+}
+
+func (self AstStatementReturn) IntoValue(ctx *Context) Value {
+	var expression Value = ctx.NewNull()
+	if self.Expression != nil {
+		expression = (*self.Expression).IntoValue(ctx)
+	}
+
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+		{ctx.NewString("expression"), expression},
+	})
+}
+
+func (self AstStatementReturn) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
+	if self.Expression == nil {
+		return Return{self.Location, ctx.NewNull()}, nil
+	}
+
+	value, err := (*self.Expression).Eval(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+	return Return{self.Location, value}, nil
 }
 
 type AstStatementExpression struct {
@@ -5391,6 +5427,10 @@ func (self *Parser) ParseStatement() (AstStatement, error) {
 		return self.ParseStatementError()
 	}
 
+	if self.checkCurrent(TOKEN_RETURN) {
+		return self.ParseStatementReturn()
+	}
+
 	return self.ParseStatementExpressionOrAssignment()
 }
 
@@ -5679,6 +5719,30 @@ func (self *Parser) ParseStatementError() (AstStatement, error) {
 	}
 
 	return AstStatementError{location, expression}, nil
+}
+
+func (self *Parser) ParseStatementReturn() (AstStatement, error) {
+	token, err := self.expectCurrent(TOKEN_RETURN)
+	if err != nil {
+		return nil, err
+	}
+	location := token.Location
+
+	var expression *AstExpression = nil
+	if !self.checkCurrent(TOKEN_SEMICOLON) {
+		expr, err := self.ParseExpression()
+		if err != nil {
+			return nil, err
+		}
+		expression = &expr
+	}
+
+	_, err = self.expectCurrent(TOKEN_SEMICOLON)
+	if err != nil {
+		return nil, err
+	}
+
+	return AstStatementReturn{location, expression}, nil
 }
 
 func (self *Parser) ParseStatementExpressionOrAssignment() (AstStatement, error) {

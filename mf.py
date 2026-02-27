@@ -1084,12 +1084,13 @@ class TokenKind(enum.Enum):
     LBRACKET = "["
     RBRACKET = "]"
     # Keywords
-    TYPE = "type"
     NULL = "null"
     TRUE = "true"
     FALSE = "false"
     MAP = "Map"
     SET = "Set"
+    FUNCTION = "function"
+    TYPE = "type"
     NEW = "new"
     NOT = "not"
     AND = "and"
@@ -1107,7 +1108,6 @@ class TokenKind(enum.Enum):
     CATCH = "catch"
     ERROR = "error"
     RETURN = "return"
-    FUNCTION = "function"
 
     def __str__(self):
         return self.value
@@ -1117,12 +1117,13 @@ class TokenKind(enum.Enum):
 class Token:
     KEYWORDS = {
         # fmt: off
-        str(TokenKind.TYPE):     TokenKind.TYPE,
         str(TokenKind.NULL):     TokenKind.NULL,
         str(TokenKind.TRUE):     TokenKind.TRUE,
         str(TokenKind.FALSE):    TokenKind.FALSE,
         str(TokenKind.MAP):      TokenKind.MAP,
         str(TokenKind.SET):      TokenKind.SET,
+        str(TokenKind.FUNCTION): TokenKind.FUNCTION,
+        str(TokenKind.TYPE):     TokenKind.TYPE,
         str(TokenKind.NEW):      TokenKind.NEW,
         str(TokenKind.NOT):      TokenKind.NOT,
         str(TokenKind.AND):      TokenKind.AND,
@@ -1140,7 +1141,6 @@ class Token:
         str(TokenKind.CATCH):    TokenKind.CATCH,
         str(TokenKind.ERROR):    TokenKind.ERROR,
         str(TokenKind.RETURN):   TokenKind.RETURN,
-        str(TokenKind.FUNCTION): TokenKind.FUNCTION,
         # fmt: on
     }
 
@@ -3633,7 +3633,11 @@ class AstStatementReturn(AstStatement):
                 String.new("location"): SourceLocation.optional_into_value(
                     self.location
                 ),
-                String.new("expression"): self.expression.into_value() if self.expression is not None else null,
+                String.new("expression"): (
+                    self.expression.into_value()
+                    if self.expression is not None
+                    else null
+                ),
             }
         )
 
