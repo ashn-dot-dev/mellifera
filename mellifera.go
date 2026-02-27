@@ -224,6 +224,8 @@ func NewContext() Context {
 	ctx.BaseEnvironment.Let("set", ctx.setMeta)
 	ctx.BaseEnvironment.Let("reference", ctx.referenceMeta)
 	ctx.BaseEnvironment.Let("iterator", ctx.NewValueFromSourceOrPanic(ITERATOR_SOURCE))
+	ctx.BaseEnvironment.Let("NaN", ctx.NewNumber(math.NaN()))
+	ctx.BaseEnvironment.Let("Inf", ctx.NewNumber(math.Inf(+1)))
 
 	ctx.BaseEnvironment.Let("dump", BuiltinDump(&ctx))
 	ctx.BaseEnvironment.Let("dumpln", BuiltinDumpln(&ctx))
