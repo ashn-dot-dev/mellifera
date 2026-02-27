@@ -196,3 +196,21 @@ let T = type {
     }
 };
 dumpln( $"{ new T Map{} }" );
+
+let counter = type {
+    "init": function(n, max) {
+        return new counter {"n": n, "max": max};
+    },
+    "next": function(self) {
+        let n = self.n;
+        if n > self.max {
+            error null; # end-of-iteration
+        }
+        self.n = self.n + 1;
+        return n;
+    },
+};
+let c = counter::init(1, 5);
+for x in c {
+    dumpln(x);
+}

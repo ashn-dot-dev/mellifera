@@ -187,6 +187,7 @@ type Context struct {
 	reNumberHex     *regexp.Regexp
 	identifierCache map[string]*String
 	constStringIntoString *String
+	constStringNext *String
 }
 
 func NewContext() Context {
@@ -211,6 +212,7 @@ func NewContext() Context {
 	ctx.reNumberHex = regexp.MustCompile(`^0x[0-9a-fA-F]+`)
 	ctx.identifierCache = map[string]*String{}
 	ctx.constStringIntoString = ctx.NewString("into_string")
+	ctx.constStringNext = ctx.NewString("next")
 
 	ctx.BaseEnvironment.Let("dump", BuiltinDump(&ctx))
 	ctx.BaseEnvironment.Let("dumpln", BuiltinDumpln(&ctx))
@@ -4186,8 +4188,46 @@ func (self AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, e
 
 	loopEnv := NewEnvironment(env)
 
-	// TODO: Handle user-defined iterators.
-	if collectionNumber, ok := collection.(*Number); ok {
+	if metaFunction, ok := MetaFunction(collection, ctx.constStringNext); ok {
+		if self.IdentifierV != nil {
+			return nil, NewError(
+				self.Location,
+				ctx.NewString(fmt.Sprintf("attempted key-value iteration over iterator %s", quote(Typename(collection)))),
+			)
+		}
+		if self.KIsReference {
+			return nil, NewError(
+				self.Location,
+				ctx.NewString(fmt.Sprintf("cannot use key-reference over iterator %s", quote(Typename(collection)))),
+			)
+		}
+		reference := ctx.NewReference(collection)
+		for {
+			iterated, err := Call(ctx, self.Location, metaFunction, []Value{reference})
+			if err != nil {
+				if error, ok := err.(Error); ok {
+					if _, ok := error.Value.(*Null); ok {
+						break // end-of-iteration
+					}
+				}
+				return nil, err
+			}
+			loopEnv.Let(self.IdentifierK.Name.data, iterated.Copy())
+			result, err := self.Block.Eval(ctx, &loopEnv)
+			if err != nil {
+				return nil, err
+			}
+			if _, ok := result.(Return); ok {
+				return result, nil
+			}
+			if _, ok := result.(Break); ok {
+				return nil, nil
+			}
+			if _, ok := result.(Continue); ok {
+				continue
+			}
+		}
+	} else if collectionNumber, ok := collection.(*Number); ok {
 		if self.IdentifierV != nil {
 			return nil, NewError(
 				self.Location,

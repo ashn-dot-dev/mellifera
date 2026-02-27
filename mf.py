@@ -3364,7 +3364,7 @@ class AstStatementFor(AstStatement):
                     if isinstance(iterated.value, Null):
                         break  # end-of-iteration
                     return iterated
-                loop_env.let(self.identifier_k.name, iterated)
+                loop_env.let(self.identifier_k.name, copy(iterated))
                 result = self.block.eval(loop_env)
                 if isinstance(result, Return):
                     return result
