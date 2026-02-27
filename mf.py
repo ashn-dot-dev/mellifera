@@ -1786,9 +1786,7 @@ def update_named_functions(ast: "AstExpressionMap", prefix: bytes = b""):
 class AstNode(ABC):
     location: Optional[SourceLocation]
 
-    # TODO: Make `into_value` an @abstractmethod once it has been implemented
-    # for all concrete ast node types. Currently, `into_value` is being added
-    # to individual nodes as those nodes are implemented within mellifera.go.
+    @abstractmethod
     def into_value(self) -> Value:
         raise Exception(f"into_value not implemented for type {type(self).__name__}")
 
@@ -3628,6 +3626,17 @@ class AstStatementReturn(AstStatement):
     location: Optional[SourceLocation]
     expression: Optional[AstExpression]
 
+    def into_value(self) -> Value:
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+                String.new("expression"): self.expression.into_value() if self.expression is not None else null,
+            }
+        )
+
     def eval(self, env: Environment) -> Optional[ControlFlow]:
         if self.expression is None:
             return Return(null)
@@ -3667,6 +3676,18 @@ class AstStatementAssignment(AstStatement):
     location: Optional[SourceLocation]
     lhs: AstExpression
     rhs: AstExpression
+
+    def into_value(self) -> Value:
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+                String.new("lhs"): self.lhs.into_value(),
+                String.new("rhs"): self.rhs.into_value(),
+            }
+        )
 
     def eval(self, env: Environment) -> Optional[ControlFlow]:
         # Special case for identifier assignment, where we can directly update
