@@ -561,12 +561,16 @@ func (self *Vector) Meta() *Map {
 
 func (self *Vector) Copy() Value {
 	if self.data == nil {
-		return &Vector{}
+		return &Vector{
+			data: nil,
+			meta: self.meta,
+		}
 	}
 
 	self.data.uses += 1
 	return &Vector{
 		data: self.data,
+		meta: self.meta,
 	}
 }
 
@@ -811,13 +815,21 @@ func (self *Map) Meta() *Map {
 }
 
 func (self *Map) Copy() Value {
+	if self.IsFrozen() {
+		return self // immutable value
+	}
+
 	if self.data == nil {
-		return &Map{}
+		return &Map{
+			data: nil,
+			meta: self.meta,
+		}
 	}
 
 	self.data.uses += 1
 	return &Map{
 		data: self.data,
+		meta: self.meta,
 	}
 }
 
@@ -1103,12 +1115,16 @@ func (self *Set) Meta() *Map {
 
 func (self *Set) Copy() Value {
 	if self.data == nil {
-		return &Set{}
+		return &Set{
+			data: nil,
+			meta: self.meta,
+		}
 	}
 
 	self.data.uses += 1
 	return &Set{
 		data: self.data,
+		meta: self.meta,
 	}
 }
 
@@ -3873,15 +3889,63 @@ func (self AstExpressionFunctionCall) IntoValue(ctx *Context) Value {
 }
 
 func (self AstExpressionFunctionCall) Eval(ctx *Context, env *Environment) (Value, error) {
-	// TODO: Handle case with dot access passing an implicit self parameter.
+	var function Value = nil
+	var selfArgument Value = nil
+	var err error = nil
+	if accessDot, ok := self.Function.(AstExpressionAccessDot); ok {
+		// Special case when dot access is used for a function call. An
+		// implicit `self` argument is passed by reference to the function.
+		store, err := accessDot.Store.Eval(ctx, env)
+		if err != nil {
+			return nil, err
+		}
+		selfArgument = ctx.NewReference(store)
 
-	function, err := self.Function.Eval(ctx, env)
-	if err != nil {
-		return nil, err
+		// When making a function call using dot access syntax, perform
+		// function lookup using the value's metamap *before* looking at the
+		// fields of the value itself. This is done so that expressions such
+		// as:
+		//
+		//   somemap.foo()
+		//
+		// will find the metafunction `foo` rather than some key "foo" in
+		// the map, which is almost certainly *not* the desired behavior.
+		if meta := store.Meta(); meta != nil {
+			// Value meta lookup.
+			function = meta.Lookup(accessDot.Field.Name)
+		}
+		if function == nil {
+			// Map field lookup.
+			if storeMap, ok := store.(*Map); ok {
+				function = storeMap.Lookup(accessDot.Field.Name)
+			}
+		}
+		if function == nil {
+			// Implicit value dereference meta lookup.
+			if storeReference, ok := store.(*Reference); ok {
+				if meta := storeReference.Meta(); meta != nil {
+					selfArgument = storeReference
+					function = meta.Lookup(accessDot.Field.Name)
+				}
+			}
+		}
+		if function == nil {
+			return nil, NewError(
+				self.Location,
+				ctx.NewString(fmt.Sprintf("invalid method access with name %s", accessDot.Field.Name.data)),
+			)
+		}
+	} else {
+		function, err = self.Function.Eval(ctx, env)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	arguments := []Value{}
-	// TODO: Insert self argument once implicit self argument is handled.
+	if selfArgument != nil {
+		arguments = append(arguments, selfArgument)
+	}
 	for _, argument := range self.Arguments {
 		result, err := argument.Eval(ctx, env)
 		if err != nil {

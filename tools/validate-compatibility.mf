@@ -181,3 +181,11 @@ let y = {.foo = 123, .bar = 456};
 y.bar = "abc";
 let z = {.foo = 123, .bar = 456};
 z::bar = "abc";
+
+let T = type {
+    .foo = function(self) {
+        dumpln(self.*);
+    }
+};
+let x = new T {.abc = 123};
+x.foo();

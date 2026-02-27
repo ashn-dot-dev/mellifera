@@ -2927,16 +2927,19 @@ class AstExpressionFunctionCall(AstExpression):
             # the map, which is almost certainly *not* the desired behavior.
             function = None
             try:
+                # Value meta lookup.
                 if store.meta is not None:
                     function = store.meta[self.function.field.name]
             except KeyError:
                 pass
             try:
+                # Map field lookup.
                 if function is None:
                     function = store[self.function.field.name]
             except (NotImplementedError, IndexError, KeyError):
                 pass
             try:
+                # Implicit value dereference meta lookup.
                 if (
                     function is None
                     and isinstance(store, Reference)
