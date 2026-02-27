@@ -3565,6 +3565,23 @@ class AstStatementTry(AstStatement):
     catch_identifier: Optional[AstIdentifier]
     catch_block: AstBlock
 
+    def into_value(self) -> Value:
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+                String.new("try_block"): self.try_block.into_value(),
+                String.new("catch_identifier"): (
+                    self.catch_identifier.into_value()
+                    if self.catch_identifier is not None
+                    else null
+                ),
+                String.new("catch_block"): self.catch_block.into_value(),
+            }
+        )
+
     def eval(self, env: Environment) -> Optional[ControlFlow]:
         result = self.try_block.eval(env)
         if isinstance(result, Return):
@@ -3586,6 +3603,17 @@ class AstStatementTry(AstStatement):
 class AstStatementError(AstStatement):
     location: Optional[SourceLocation]
     expression: AstExpression
+
+    def into_value(self) -> Value:
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+                String.new("expression"): self.expression.into_value(),
+            }
+        )
 
     def eval(self, env: Environment) -> Optional[ControlFlow]:
         result = self.expression.eval(env)

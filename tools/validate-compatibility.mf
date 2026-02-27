@@ -165,3 +165,8 @@ for x in Set{"a", "b", "c"} { dumpln(x); }
 
 while true { break; }
 for x in 3 { continue; dumpln("bad"); }
+
+try { } catch { }
+try { } catch err { }
+try { error "ERROR"; } catch { }
+try { error "ERROR"; } catch err { dumpln(err); }

@@ -1466,6 +1466,9 @@ const (
 	TOKEN_WHILE    = "while"
 	TOKEN_BREAK    = "break"
 	TOKEN_CONTINUE = "continue"
+	TOKEN_TRY      = "try"
+	TOKEN_CATCH    = "catch"
+	TOKEN_ERROR    = "error"
 	TOKEN_FUNCTION = "function"
 )
 
@@ -1519,6 +1522,9 @@ func NewLexer(ctx *Context, source string, location *SourceLocation) Lexer {
 		TOKEN_WHILE:    TOKEN_WHILE,
 		TOKEN_BREAK:    TOKEN_BREAK,
 		TOKEN_CONTINUE: TOKEN_CONTINUE,
+		TOKEN_TRY:      TOKEN_TRY,
+		TOKEN_CATCH:    TOKEN_CATCH,
+		TOKEN_ERROR:    TOKEN_ERROR,
 		TOKEN_FUNCTION: TOKEN_FUNCTION,
 	}
 
@@ -4320,6 +4326,82 @@ func (self AstStatementContinue) Eval(ctx *Context, env *Environment) (ControlFl
 	return Continue{self.Location}, nil
 }
 
+type AstStatementTry struct {
+	Location        *SourceLocation // Optional
+	TryBlock        AstBlock
+	CatchIdentifier *AstIdentifier // Optional
+	CatchBlock      AstBlock
+}
+
+func (self AstStatementTry) StatementLocation() *SourceLocation {
+	return self.Location
+}
+
+func (self AstStatementTry) IntoValue(ctx *Context) Value {
+	var catchIdentifier Value = ctx.NewNull()
+	if self.CatchIdentifier != nil {
+		catchIdentifier = self.CatchIdentifier.IntoValue(ctx)
+	}
+
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+		{ctx.NewString("try_block"), self.TryBlock.IntoValue(ctx)},
+		{ctx.NewString("catch_identifier"), catchIdentifier},
+		{ctx.NewString("catch_block"), self.CatchBlock.IntoValue(ctx)},
+	})
+}
+
+func (self AstStatementTry) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
+	result, err := self.TryBlock.Eval(ctx, env)
+	if err != nil {
+		error, ok := err.(Error)
+		if !ok {
+			return nil, err
+		}
+		env := NewEnvironment(env)
+		if self.CatchIdentifier != nil {
+			env.Let(self.CatchIdentifier.Name.data, error.Value)
+		}
+		return self.CatchBlock.Eval(ctx, &env)
+	}
+	if _, ok := result.(Return); ok {
+		return result, nil
+	}
+	if _, ok := result.(Break); ok {
+		return result, nil
+	}
+	if _, ok := result.(Continue); ok {
+		return result, nil
+	}
+	return nil, nil
+}
+
+type AstStatementError struct {
+	Location   *SourceLocation // Optional
+	Expression AstExpression
+}
+
+func (self AstStatementError) StatementLocation() *SourceLocation {
+	return self.Location
+}
+
+func (self AstStatementError) IntoValue(ctx *Context) Value {
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+		{ctx.NewString("expression"), self.Expression.IntoValue(ctx)},
+	})
+}
+
+func (self AstStatementError) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
+	value, error := self.Expression.Eval(ctx, env)
+	if error != nil {
+		return nil, error
+	}
+	return nil, NewError(self.Location, value)
+}
+
 type AstStatementExpression struct {
 	Location   *SourceLocation // Optional
 	Expression AstExpression
@@ -5301,6 +5383,14 @@ func (self *Parser) ParseStatement() (AstStatement, error) {
 		return self.ParseStatementContinue()
 	}
 
+	if self.checkCurrent(TOKEN_TRY) {
+		return self.ParseStatementTry()
+	}
+
+	if self.checkCurrent(TOKEN_ERROR) {
+		return self.ParseStatementError()
+	}
+
 	return self.ParseStatementExpressionOrAssignment()
 }
 
@@ -5536,6 +5626,59 @@ func (self *Parser) ParseStatementContinue() (AstStatement, error) {
 	}
 
 	return AstStatementContinue{location}, nil
+}
+
+func (self *Parser) ParseStatementTry() (AstStatement, error) {
+	token, err := self.expectCurrent(TOKEN_TRY)
+	if err != nil {
+		return nil, err
+	}
+	location := token.Location
+
+	tryBlock, err := self.ParseBlock()
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := self.expectCurrent(TOKEN_CATCH); err != nil {
+		return nil, err
+	}
+
+	var catchIdentifier *AstIdentifier = nil
+	if self.checkCurrent(TOKEN_IDENTIFIER) {
+		identifier, err := self.ParseIdentifier()
+		if err != nil {
+			return nil, err
+		}
+		catchIdentifier = &identifier
+	}
+
+	catchBlock, err := self.ParseBlock()
+	if err != nil {
+		return nil, err
+	}
+
+	return AstStatementTry{location, tryBlock, catchIdentifier, catchBlock}, nil
+}
+
+func (self *Parser) ParseStatementError() (AstStatement, error) {
+	token, err := self.expectCurrent(TOKEN_ERROR)
+	if err != nil {
+		return nil, err
+	}
+	location := token.Location
+
+	expression, err := self.ParseExpression()
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = self.expectCurrent(TOKEN_SEMICOLON)
+	if err != nil {
+		return nil, err
+	}
+
+	return AstStatementError{location, expression}, nil
 }
 
 func (self *Parser) ParseStatementExpressionOrAssignment() (AstStatement, error) {
