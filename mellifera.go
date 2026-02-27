@@ -226,7 +226,7 @@ func NewContext() Context {
 	ctx.BaseEnvironment.Let("iterator", ctx.NewValueFromSourceOrPanic(ITERATOR_SOURCE))
 	ctx.BaseEnvironment.Let("NaN", ctx.NewNumber(math.NaN()))
 	ctx.BaseEnvironment.Let("Inf", ctx.NewNumber(math.Inf(+1)))
-
+	ctx.BaseEnvironment.Let("exit", BuiltinExit(&ctx))
 	ctx.BaseEnvironment.Let("dump", BuiltinDump(&ctx))
 	ctx.BaseEnvironment.Let("dumpln", BuiltinDumpln(&ctx))
 	ctx.BaseEnvironment.Let("print", BuiltinPrint(&ctx))
@@ -6319,6 +6319,17 @@ let iterator = type {
 };
 return iterator;
 `
+
+func BuiltinExit(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("exit", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		integer, err := ValueAsInt(arguments[0])
+		if err != nil {
+			return nil, NewError(nil, ctx.NewString(fmt.Sprintf("expected integer exit code, received %v", arguments[0])))
+		}
+		os.Exit(integer)
+		return ctx.NewNull(), nil
+	})
+}
 
 func BuiltinDump(ctx *Context) *Builtin {
 	return ctx.NewBuiltin("dump", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
