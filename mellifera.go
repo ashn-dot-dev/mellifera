@@ -215,6 +215,16 @@ func NewContext() Context {
 	ctx.constStringIntoString = ctx.NewString("into_string")
 	ctx.constStringNext = ctx.NewString("next")
 
+	ctx.BaseEnvironment.Let("boolean", ctx.booleanMeta)
+	ctx.BaseEnvironment.Let("number", ctx.numberMeta)
+	ctx.BaseEnvironment.Let("string", ctx.stringMeta)
+	ctx.BaseEnvironment.Let("regexp", ctx.regexpMeta)
+	ctx.BaseEnvironment.Let("vector", ctx.vectorMeta)
+	ctx.BaseEnvironment.Let("map", ctx.mapMeta)
+	ctx.BaseEnvironment.Let("set", ctx.setMeta)
+	ctx.BaseEnvironment.Let("reference", ctx.referenceMeta)
+	ctx.BaseEnvironment.Let("iterator", ctx.NewValueFromSourceOrPanic(ITERATOR_SOURCE))
+
 	ctx.BaseEnvironment.Let("dump", BuiltinDump(&ctx))
 	ctx.BaseEnvironment.Let("dumpln", BuiltinDumpln(&ctx))
 	ctx.BaseEnvironment.Let("print", BuiltinPrint(&ctx))
@@ -331,6 +341,25 @@ func (ctx *Context) NewFunction(ast *AstExpressionFunction, env *Environment) *F
 
 func (ctx *Context) NewBuiltin(name string, types []Type, impl func(*Context, []Value) (Value, error)) *Builtin {
 	return &Builtin{name, types, impl, ctx.functionMeta}
+}
+
+func (ctx *Context) NewValueFromSource(source string) (Value, error) {
+	lexer := NewLexer(ctx, source, nil)
+	parser := NewParser(&lexer)
+	program, err := parser.ParseProgram()
+	if err != nil {
+		return nil, err
+	}
+	env := NewEnvironment(&ctx.BaseEnvironment)
+	return program.Eval(ctx, &env)
+}
+
+func (ctx *Context) NewValueFromSourceOrPanic(source string) Value {
+	value, err := ctx.NewValueFromSource(source)
+	if err != nil {
+		panic(err.Error())
+	}
+	return value
 }
 
 type Null struct {
@@ -6208,6 +6237,86 @@ func TypeCheckArguments(types []Type, arguments []Value) error {
 
 	return nil
 }
+
+func BuiltinExplicitUninitialized(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("dumpln", []Type{}, func(ctx *Context, arguments []Value) (Value, error) {
+		return nil, NewError(nil, ctx.NewString("EXPLICIT-UNINITIALIZED"))
+	})
+}
+
+const ITERATOR_SOURCE = `
+let iterator = type {
+    .eoi = function() {
+        error null; # end-of-iteration
+    },
+    .next = function(self) {
+        error "unimplemented iterator::next";
+    },
+    .count = function(self) {
+        let count = 0;
+        for _ in self.* {
+            count = count + 1;
+        }
+        return count;
+    },
+    .contains = function(self, value) {
+        for x in self.* {
+            if x == value {
+                return true;
+            }
+        }
+        return false;
+    },
+    .any = function(self, func) {
+        for x in self.* {
+            if func(x) {
+                return true;
+            }
+        }
+        return false;
+    },
+    .all = function(self, func) {
+        for x in self.* {
+            if not func(x) {
+                return false;
+            }
+        }
+        return true;
+    },
+    .map = function(self, func) {
+        let map_iterator = type extends(iterator, {
+            .next = function(self) {
+                return func(self.base.next());
+            },
+        });
+        return new map_iterator {
+            .base = self,
+        };
+    },
+    .filter = function(self, func) {
+        let filter_iterator = type extends(iterator, {
+            .next = function(self) {
+                let current = self.base.next();
+                while not func(current) {
+                    current = self.base.next();
+                }
+                return current;
+            },
+        });
+        return new filter_iterator {
+            .base = self,
+        };
+    },
+    .into_vector = function(self) {
+        let result = [];
+        for x in self.* {
+            result.push(x);
+        }
+        return result;
+    },
+};
+return iterator;
+`
 
 func BuiltinDump(ctx *Context) *Builtin {
 	return ctx.NewBuiltin("dump", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
