@@ -217,3 +217,15 @@ for x in c {
 
 let x = 15;
 x % 3 + x % 5;
+
+let meta = type {
+    .into_string = function(self) {
+        return "INTO STRING";
+    },
+};
+print(null);
+print(Map{"foo": "bar"});
+print(new meta Map{});
+println(null);
+println(Map{"foo": "bar"});
+println(new meta Map{});

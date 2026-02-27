@@ -183,11 +183,11 @@ type Context struct {
 	// successful match.
 	reMatchResult []string
 	// Miscellaneous State and Definitions
-	reNumberDec     *regexp.Regexp
-	reNumberHex     *regexp.Regexp
-	identifierCache map[string]*String
+	reNumberDec           *regexp.Regexp
+	reNumberHex           *regexp.Regexp
+	identifierCache       map[string]*String
 	constStringIntoString *String
-	constStringNext *String
+	constStringNext       *String
 }
 
 func NewContext() Context {
@@ -216,6 +216,8 @@ func NewContext() Context {
 
 	ctx.BaseEnvironment.Let("dump", BuiltinDump(&ctx))
 	ctx.BaseEnvironment.Let("dumpln", BuiltinDumpln(&ctx))
+	ctx.BaseEnvironment.Let("print", BuiltinPrint(&ctx))
+	ctx.BaseEnvironment.Let("println", BuiltinPrintln(&ctx))
 
 	return ctx
 }
@@ -2473,11 +2475,11 @@ func (self AstExpressionTemplate) Eval(ctx *Context, env *Environment) (Value, e
 		}
 
 		if metaFunction, ok := MetaFunction(value, ctx.constStringIntoString); ok {
-			result, err :=  Call(ctx, element.ExpressionLocation(), metaFunction, []Value{ctx.NewReference(value)})
+			result, err := Call(ctx, element.ExpressionLocation(), metaFunction, []Value{ctx.NewReference(value)})
 			if err != nil {
 				return nil, err
 			}
-			resultString, ok := result.(*String);
+			resultString, ok := result.(*String)
 			if !ok {
 				return nil, NewError(
 					element.ExpressionLocation(),
@@ -6213,6 +6215,52 @@ func BuiltinDump(ctx *Context) *Builtin {
 
 func BuiltinDumpln(ctx *Context) *Builtin {
 	return ctx.NewBuiltin("dumpln", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		fmt.Printf("%v\n", arguments[0])
+		return ctx.NewNull(), nil
+	})
+}
+
+func BuiltinPrint(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("print", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		if metaFunction, ok := MetaFunction(arguments[0], ctx.constStringIntoString); ok {
+			result, err := Call(ctx, nil, metaFunction, []Value{ctx.NewReference(arguments[0])})
+			if err != nil {
+				return nil, err
+			}
+			resultString, ok := result.(*String)
+			if !ok {
+				return nil, NewError(
+					nil,
+					ctx.NewString(fmt.Sprintf("metafunction %s returned %v", quote(ctx.constStringIntoString.data), result)),
+				)
+			}
+			fmt.Printf("%s", resultString.data)
+			return ctx.NewNull(), nil
+		}
+
+		fmt.Printf("%v", arguments[0])
+		return ctx.NewNull(), nil
+	})
+}
+
+func BuiltinPrintln(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("println", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		if metaFunction, ok := MetaFunction(arguments[0], ctx.constStringIntoString); ok {
+			result, err := Call(ctx, nil, metaFunction, []Value{ctx.NewReference(arguments[0])})
+			if err != nil {
+				return nil, err
+			}
+			resultString, ok := result.(*String)
+			if !ok {
+				return nil, NewError(
+					nil,
+					ctx.NewString(fmt.Sprintf("metafunction %s returned %v", quote(ctx.constStringIntoString.data), result)),
+				)
+			}
+			fmt.Printf("%s\n", resultString.data)
+			return ctx.NewNull(), nil
+		}
+
 		fmt.Printf("%v\n", arguments[0])
 		return ctx.NewNull(), nil
 	})
