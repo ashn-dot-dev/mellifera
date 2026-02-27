@@ -223,10 +223,11 @@ func NewContext() Context {
 	ctx.BaseEnvironment.Let("map", ctx.mapMeta)
 	ctx.BaseEnvironment.Let("set", ctx.setMeta)
 	ctx.BaseEnvironment.Let("reference", ctx.referenceMeta)
-	ctx.BaseEnvironment.Let("iterator", ctx.NewValueFromSourceOrPanic(ITERATOR_SOURCE))
+	ctx.BaseEnvironment.Let("iterator", ctx.NewValueFromSourceOrPanic("iterator", ITERATOR_SOURCE))
 	ctx.BaseEnvironment.Let("NaN", ctx.NewNumber(math.NaN()))
 	ctx.BaseEnvironment.Let("Inf", ctx.NewNumber(math.Inf(+1)))
 	ctx.BaseEnvironment.Let("exit", BuiltinExit(&ctx))
+	ctx.BaseEnvironment.Let("assert", BuiltinAssert(&ctx))
 	ctx.BaseEnvironment.Let("dump", BuiltinDump(&ctx))
 	ctx.BaseEnvironment.Let("dumpln", BuiltinDumpln(&ctx))
 	ctx.BaseEnvironment.Let("print", BuiltinPrint(&ctx))
@@ -345,8 +346,8 @@ func (ctx *Context) NewBuiltin(name string, types []Type, impl func(*Context, []
 	return &Builtin{name, types, impl, ctx.functionMeta}
 }
 
-func (ctx *Context) NewValueFromSource(source string) (Value, error) {
-	lexer := NewLexer(ctx, source, nil)
+func (ctx *Context) NewValueFromSource(name string, source string) (Value, error) {
+	lexer := NewLexer(ctx, source, &SourceLocation{fmt.Sprintf("%s@builtin", name), 1})
 	parser := NewParser(&lexer)
 	program, err := parser.ParseProgram()
 	if err != nil {
@@ -356,8 +357,8 @@ func (ctx *Context) NewValueFromSource(source string) (Value, error) {
 	return program.Eval(ctx, &env)
 }
 
-func (ctx *Context) NewValueFromSourceOrPanic(source string) Value {
-	value, err := ctx.NewValueFromSource(source)
+func (ctx *Context) NewValueFromSourceOrPanic(name string, source string) Value {
+	value, err := ctx.NewValueFromSource(name, source)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -2262,6 +2263,9 @@ type Error struct {
 }
 
 func (self Error) Error() string {
+	if s, ok := self.Value.(*String); ok {
+		return s.data
+	}
 	return self.Value.String()
 }
 
@@ -6118,8 +6122,9 @@ func Call(ctx *Context, location *SourceLocation, callable Value, arguments []Va
 		}
 		result, err := builtin.impl(ctx, arguments)
 		if err != nil {
-			if error, ok := err.(*Error); ok {
-				error.Trace = append(error.Trace, TraceElement{location, builtin.String()})
+			if e, ok := err.(Error); ok {
+				e.Trace = append(e.Trace, TraceElement{location, builtin.String()})
+				return nil, e
 			}
 			return nil, err
 		}
@@ -6328,6 +6333,21 @@ func BuiltinExit(ctx *Context) *Builtin {
 		}
 		os.Exit(integer)
 		return ctx.NewNull(), nil
+	})
+}
+
+func BuiltinAssert(ctx *Context) *Builtin {
+	function := ctx.NewValueFromSourceOrPanic("assert", `
+let assert = function(condition) {
+	if not condition {
+		error "assertion failure";
+	}
+};
+return assert;
+	`)
+
+	return ctx.NewBuiltin("assert", []Type{TVal(BOOLEAN)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return Call(ctx, nil, function, arguments)
 	})
 }
 

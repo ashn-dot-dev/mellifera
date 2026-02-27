@@ -223,8 +223,17 @@ func main() {
 	}
 
 	if err != nil {
-		if parseError, ok := err.(mellifera.ParseError); ok && parseError.Location != nil {
-			fmt.Fprintf(os.Stderr, "[%v:%v] %v\n", parseError.Location.File, parseError.Location.Line, err)
+		if e, ok := err.(mellifera.ParseError); ok && e.Location != nil {
+			fmt.Fprintf(os.Stderr, "[%v, line %v] error: %v\n", e.Location.File, e.Location.Line, err)
+		} else if e, ok := err.(mellifera.Error); ok && e.Location != nil {
+			fmt.Fprintf(os.Stderr, "[%v, line %v] error: %v\n", e.Location.File, e.Location.Line, err)
+			for _, element := range e.Trace {
+				s := fmt.Sprintf("...within %v", element.FuncName)
+				if element.Location != nil {
+					s += fmt.Sprintf(" called from %s, line %v", element.Location.File, element.Location.Line)
+				}
+				fmt.Fprintf(os.Stderr, "%s\n", s)
+			}
 		} else {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 		}
