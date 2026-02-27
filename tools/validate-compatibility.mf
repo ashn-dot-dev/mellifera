@@ -214,3 +214,6 @@ let c = counter::init(1, 5);
 for x in c {
     dumpln(x);
 }
+
+let x = 15;
+x % 3 + x % 5;

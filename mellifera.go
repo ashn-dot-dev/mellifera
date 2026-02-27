@@ -4723,7 +4723,7 @@ const (
 	PRECEDENCE_AND     = iota // and
 	PRECEDENCE_COMPARE = iota // == != <= >= < > =~ !~
 	PRECEDENCE_ADD_SUB = iota // + -
-	PRECEDENCE_MUL_DIV = iota // * /
+	PRECEDENCE_MUL_DIV = iota // * / %
 	PRECEDENCE_PREFIX  = iota // +x -x
 	PRECEDENCE_POSTFIX = iota // foo(bar, 123) foo[42] .& .*
 )
@@ -5318,7 +5318,7 @@ func (self *Parser) ParseExpressionAnd(lhs AstExpression) (AstExpression, error)
 	}
 	location := token.Location
 
-	rhs, err := self.ParseExpression()
+	rhs, err := self.parseExpression(self.precedences[TOKEN_AND])
 	if err != nil {
 		return nil, err
 	}
@@ -5333,7 +5333,7 @@ func (self *Parser) ParseExpressionOr(lhs AstExpression) (AstExpression, error) 
 	}
 	location := token.Location
 
-	rhs, err := self.ParseExpression()
+	rhs, err := self.parseExpression(self.precedences[TOKEN_OR])
 	if err != nil {
 		return nil, err
 	}
@@ -5348,7 +5348,7 @@ func (self *Parser) ParseExpressionEq(lhs AstExpression) (AstExpression, error) 
 	}
 	location := token.Location
 
-	rhs, err := self.ParseExpression()
+	rhs, err := self.parseExpression(self.precedences[TOKEN_EQ])
 	if err != nil {
 		return nil, err
 	}
@@ -5363,7 +5363,7 @@ func (self *Parser) ParseExpressionNe(lhs AstExpression) (AstExpression, error) 
 	}
 	location := token.Location
 
-	rhs, err := self.ParseExpression()
+	rhs, err := self.parseExpression(self.precedences[TOKEN_NE])
 	if err != nil {
 		return nil, err
 	}
@@ -5378,7 +5378,7 @@ func (self *Parser) ParseExpressionLe(lhs AstExpression) (AstExpression, error) 
 	}
 	location := token.Location
 
-	rhs, err := self.ParseExpression()
+	rhs, err := self.parseExpression(self.precedences[TOKEN_LE])
 	if err != nil {
 		return nil, err
 	}
@@ -5393,7 +5393,7 @@ func (self *Parser) ParseExpressionGe(lhs AstExpression) (AstExpression, error) 
 	}
 	location := token.Location
 
-	rhs, err := self.ParseExpression()
+	rhs, err := self.parseExpression(self.precedences[TOKEN_GE])
 	if err != nil {
 		return nil, err
 	}
@@ -5408,7 +5408,7 @@ func (self *Parser) ParseExpressionLt(lhs AstExpression) (AstExpression, error) 
 	}
 	location := token.Location
 
-	rhs, err := self.ParseExpression()
+	rhs, err := self.parseExpression(self.precedences[TOKEN_LT])
 	if err != nil {
 		return nil, err
 	}
@@ -5423,7 +5423,7 @@ func (self *Parser) ParseExpressionGt(lhs AstExpression) (AstExpression, error) 
 	}
 	location := token.Location
 
-	rhs, err := self.ParseExpression()
+	rhs, err := self.parseExpression(self.precedences[TOKEN_GT])
 	if err != nil {
 		return nil, err
 	}
@@ -5438,7 +5438,7 @@ func (self *Parser) ParseExpressionEqRe(lhs AstExpression) (AstExpression, error
 	}
 	location := token.Location
 
-	rhs, err := self.ParseExpression()
+	rhs, err := self.parseExpression(self.precedences[TOKEN_EQ_RE])
 	if err != nil {
 		return nil, err
 	}
@@ -5453,7 +5453,7 @@ func (self *Parser) ParseExpressionNeRe(lhs AstExpression) (AstExpression, error
 	}
 	location := token.Location
 
-	rhs, err := self.ParseExpression()
+	rhs, err := self.parseExpression(self.precedences[TOKEN_NE_RE])
 	if err != nil {
 		return nil, err
 	}
@@ -5468,7 +5468,7 @@ func (self *Parser) ParseExpressionAdd(lhs AstExpression) (AstExpression, error)
 	}
 	location := token.Location
 
-	rhs, err := self.ParseExpression()
+	rhs, err := self.parseExpression(self.precedences[TOKEN_ADD])
 	if err != nil {
 		return nil, err
 	}
@@ -5483,7 +5483,7 @@ func (self *Parser) ParseExpressionSub(lhs AstExpression) (AstExpression, error)
 	}
 	location := token.Location
 
-	rhs, err := self.ParseExpression()
+	rhs, err := self.parseExpression(self.precedences[TOKEN_SUB])
 	if err != nil {
 		return nil, err
 	}
@@ -5498,7 +5498,7 @@ func (self *Parser) ParseExpressionMul(lhs AstExpression) (AstExpression, error)
 	}
 	location := token.Location
 
-	rhs, err := self.ParseExpression()
+	rhs, err := self.parseExpression(self.precedences[TOKEN_MUL])
 	if err != nil {
 		return nil, err
 	}
@@ -5513,7 +5513,7 @@ func (self *Parser) ParseExpressionDiv(lhs AstExpression) (AstExpression, error)
 	}
 	location := token.Location
 
-	rhs, err := self.ParseExpression()
+	rhs, err := self.parseExpression(self.precedences[TOKEN_DIV])
 	if err != nil {
 		return nil, err
 	}
@@ -5528,7 +5528,7 @@ func (self *Parser) ParseExpressionRem(lhs AstExpression) (AstExpression, error)
 	}
 	location := token.Location
 
-	rhs, err := self.ParseExpression()
+	rhs, err := self.parseExpression(self.precedences[TOKEN_REM])
 	if err != nil {
 		return nil, err
 	}

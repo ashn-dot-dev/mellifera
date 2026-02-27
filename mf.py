@@ -3780,7 +3780,7 @@ class Precedence(enum.IntEnum):
     AND     = enum.auto()  # and
     COMPARE = enum.auto()  # == != <= >= < > =~ !~
     ADD_SUB = enum.auto()  # + -
-    MUL_DIV = enum.auto()  # * /
+    MUL_DIV = enum.auto()  # * / %
     PREFIX  = enum.auto()  # +x -x
     POSTFIX = enum.auto()  # foo(bar, 123) foo[42] .& .*
     # fmt: on
