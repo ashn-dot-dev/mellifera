@@ -3766,11 +3766,11 @@ func (self AstExpressionAccessDot) Eval(ctx *Context, env *Environment) (Value, 
 	// Special case where a reference value is implicitly dereferenced when
 	// accessing the target field.
 	if reference, ok := store.(*Reference); ok {
-		derefStore := reference.data
+		storeDeref := reference.data
 
 		// Prioritize fields of the value itself *before* looking at the
 		// fields of the value's metamap.
-		if m, ok := derefStore.(*Map); ok {
+		if m, ok := storeDeref.(*Map); ok {
 			lookup := m.Lookup(field)
 			if lookup != nil {
 				return lookup, nil
@@ -3783,7 +3783,7 @@ func (self AstExpressionAccessDot) Eval(ctx *Context, env *Environment) (Value, 
 				}
 			}
 
-			return nil, fmt.Errorf("invalid %s to %s access with field %v", store.Typename(), derefStore.Typename(), field)
+			return nil, fmt.Errorf("invalid %s to %s access with field %v", store.Typename(), storeDeref.Typename(), field)
 		}
 	}
 
@@ -4436,6 +4436,120 @@ func (self AstStatementReturn) Eval(ctx *Context, env *Environment) (ControlFlow
 		return nil, err
 	}
 	return Return{self.Location, value}, nil
+}
+
+type AstStatementAssignment struct {
+	Location *SourceLocation // Optional
+	Lhs      AstExpression
+	Rhs      AstExpression
+}
+
+func (self AstStatementAssignment) StatementLocation() *SourceLocation {
+	return self.Location
+}
+
+func (self AstStatementAssignment) IntoValue(ctx *Context) Value {
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+		{ctx.NewString("lhs"), self.Lhs.IntoValue(ctx)},
+		{ctx.NewString("rhs"), self.Rhs.IntoValue(ctx)},
+	})
+}
+
+func (self AstStatementAssignment) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
+	// Special case for identifier assignment, where we can directly update
+	// the environment using `Environment.Set`.
+	if lhsIdentifier, ok := self.Lhs.(AstExpressionIdentifier); ok {
+		rhs, err := self.Rhs.Eval(ctx, env)
+		if err != nil {
+			return nil, err
+		}
+
+		err = env.Set(lhsIdentifier.Name.data, rhs.Copy())
+		if err != nil {
+			return nil, err
+		}
+
+		return nil, nil
+	}
+
+	var store Value
+	var field Value
+	var err error
+
+	if lhsAccessIndex, ok := self.Lhs.(AstExpressionAccessIndex); ok {
+		store, err = lhsAccessIndex.Store.Eval(ctx, env)
+		if err != nil {
+			return nil, err
+		}
+		field, err = lhsAccessIndex.Field.Eval(ctx, env)
+		if err != nil {
+			return nil, err
+		}
+	} else if lhsAccessDot, ok := self.Lhs.(AstExpressionAccessDot); ok {
+		store, err = lhsAccessDot.Store.Eval(ctx, env)
+		if err != nil {
+			return nil, err
+		}
+		field = lhsAccessDot.Field.Name
+	} else if lhsAccessScope, ok := self.Lhs.(AstExpressionAccessScope); ok {
+		store, err = lhsAccessScope.Store.Eval(ctx, env)
+		if err != nil {
+			return nil, err
+		}
+		field = lhsAccessScope.Field.Name
+	} else {
+		return nil, NewError(
+			self.Location,
+			ctx.NewString("attempted assignment to non-lvalue"),
+		)
+	}
+
+	rhs, err := self.Rhs.Eval(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+
+	assignVector := func(storeVector *Vector, rhs Value) error {
+		integer, err := ValueAsInt(field)
+		if err != nil {
+			return fmt.Errorf("invalid vector access with field %v", field)
+		}
+		storeVector.Set(integer, rhs.Copy())
+		return nil
+	}
+
+	assignMap := func(storeMap *Map, rhs Value) error {
+		err := storeMap.Insert(field, rhs.Copy())
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	if storeVector, ok := store.(*Vector); ok {
+		return nil, assignVector(storeVector, rhs)
+	}
+	if storeMap, ok := store.(*Map); ok {
+		return nil, assignMap(storeMap, rhs)
+	}
+	if storeReference, ok := store.(*Reference); ok {
+		storeDeref := storeReference.data
+		if storeDerefVector, ok := storeDeref.(*Vector); ok {
+			return nil, assignVector(storeDerefVector, rhs)
+		}
+		if storeDerefMap, ok := storeDeref.(*Map); ok {
+			return nil, assignMap(storeDerefMap, rhs)
+		}
+		return nil, fmt.Errorf("invalid %s to %s access with field %v", store.Typename(), storeDeref.Typename(), field)
+	}
+
+	println(store.String(), field.String())
+	return nil, NewError(
+		self.Location,
+		ctx.NewString(fmt.Sprintf("attempted access into type %s with type %s", quote(Typename(store)), quote(Typename(field)))),
+	)
 }
 
 type AstStatementExpression struct {
@@ -5751,13 +5865,32 @@ func (self *Parser) ParseStatementExpressionOrAssignment() (AstStatement, error)
 		return nil, err
 	}
 
+	if !self.checkCurrent(TOKEN_ASSIGN) {
+		_, err = self.expectCurrent(TOKEN_SEMICOLON)
+		if err != nil {
+			return nil, err
+		}
+
+		return AstStatementExpression{expression.ExpressionLocation(), expression}, nil
+	}
+
+	token, err := self.expectCurrent(TOKEN_ASSIGN)
+	if err != nil {
+		return nil, err
+	}
+	location := token.Location
+
+	rhs, err := self.ParseExpression()
+	if err != nil {
+		return nil, err
+	}
+
 	_, err = self.expectCurrent(TOKEN_SEMICOLON)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: Parse statement assignment.
-	return AstStatementExpression{expression.ExpressionLocation(), expression}, nil
+	return AstStatementAssignment{location, expression, rhs}, nil
 }
 
 func Call(ctx *Context, location *SourceLocation, callable Value, arguments []Value) (Value, error) {

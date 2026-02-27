@@ -3092,23 +3092,23 @@ class AstExpressionAccessDot(AstExpression):
         # Special case where a reference value is implicitly dereferenced when
         # accessing the target field.
         if isinstance(store, Reference):
-            deref_store = store.data
+            store_deref = store.data
 
             # Prioritize fields of the value itself *before* looking at the
             # fields of the value's metamap.
             try:
-                return deref_store[field]
+                return store_deref[field]
             except (NotImplementedError, IndexError, KeyError):
                 pass
             try:
-                if deref_store.meta is not None:
-                    return deref_store.meta[field]
+                if store_deref.meta is not None:
+                    return store_deref.meta[field]
             except KeyError:
                 pass
 
             return Error(
                 self.location,
-                f"invalid {store.typename()} to {deref_store.typename()} access with field {field}",
+                f"invalid {store.typename()} to {store_deref.typename()} access with field {field}",
             )
 
         return Error(
@@ -3652,30 +3652,6 @@ class AstStatementReturn(AstStatement):
 
 @final
 @dataclass
-class AstStatementExpression(AstStatement):
-    location: Optional[SourceLocation]
-    expression: AstExpression
-
-    def into_value(self) -> Value:
-        return Map.new(
-            {
-                String.new("kind"): String.new(self.__class__.__name__),
-                String.new("location"): SourceLocation.optional_into_value(
-                    self.location
-                ),
-                String.new("expression"): self.expression.into_value(),
-            }
-        )
-
-    def eval(self, env: Environment) -> Optional[ControlFlow]:
-        result = self.expression.eval(env)
-        if isinstance(result, Error):
-            return result
-        return None
-
-
-@final
-@dataclass
 class AstStatementAssignment(AstStatement):
     location: Optional[SourceLocation]
     lhs: AstExpression
@@ -3737,6 +3713,7 @@ class AstStatementAssignment(AstStatement):
         rhs = self.rhs.eval(env)
         if isinstance(rhs, Error):
             return rhs
+
         if isinstance(store, (Vector, Map)):
             try:
                 store[field] = copy(rhs)
@@ -3748,17 +3725,18 @@ class AstStatementAssignment(AstStatement):
                 )
             except Exception as e:
                 return Error(self.location, str(e))
-        if isinstance(self.lhs, AstExpressionAccessDot) and isinstance(
-            store, Reference
+
+        if isinstance(store, Reference) and isinstance(
+            self.lhs, AstExpressionAccessDot
         ):
-            deref_store = store.data
+            store_deref = store.data
             try:
-                deref_store[field] = copy(rhs)
+                store_deref[field] = copy(rhs)
                 return None
             except (NotImplementedError, IndexError, KeyError):
                 return Error(
                     self.location,
-                    f"invalid {store.typename()} to {deref_store.typename()} access with field {field}",
+                    f"invalid {store.typename()} to {store_deref.typename()} access with field {field}",
                 )
             except Exception as e:
                 return Error(self.location, str(e))
@@ -3766,6 +3744,30 @@ class AstStatementAssignment(AstStatement):
             self.location,
             f"attempted access into type {quote(typename(store))} with type {quote(typename(field))}",
         )
+
+
+@final
+@dataclass
+class AstStatementExpression(AstStatement):
+    location: Optional[SourceLocation]
+    expression: AstExpression
+
+    def into_value(self) -> Value:
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+                String.new("expression"): self.expression.into_value(),
+            }
+        )
+
+    def eval(self, env: Environment) -> Optional[ControlFlow]:
+        result = self.expression.eval(env)
+        if isinstance(result, Error):
+            return result
+        return None
 
 
 class Precedence(enum.IntEnum):

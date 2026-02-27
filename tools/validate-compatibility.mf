@@ -172,3 +172,12 @@ try { error "ERROR"; } catch { }
 try { error "ERROR"; } catch err { dumpln(err); }
 
 dumpln( function() { return "RETURN"; }() );
+
+let w = null;
+w = "abc";
+let x = [123, 456];
+x[1] = "abc";
+let y = {.foo = 123, .bar = 456};
+y.bar = "abc";
+let z = {.foo = 123, .bar = 456};
+z::bar = "abc";
