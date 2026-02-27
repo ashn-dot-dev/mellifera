@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"os"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -218,6 +219,8 @@ func NewContext() Context {
 	ctx.BaseEnvironment.Let("dumpln", BuiltinDumpln(&ctx))
 	ctx.BaseEnvironment.Let("print", BuiltinPrint(&ctx))
 	ctx.BaseEnvironment.Let("println", BuiltinPrintln(&ctx))
+	ctx.BaseEnvironment.Let("eprint", BuiltinEprint(&ctx))
+	ctx.BaseEnvironment.Let("eprintln", BuiltinEprintln(&ctx))
 
 	return ctx
 }
@@ -6262,6 +6265,52 @@ func BuiltinPrintln(ctx *Context) *Builtin {
 		}
 
 		fmt.Printf("%v\n", arguments[0])
+		return ctx.NewNull(), nil
+	})
+}
+
+func BuiltinEprint(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("print", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		if metaFunction, ok := MetaFunction(arguments[0], ctx.constStringIntoString); ok {
+			result, err := Call(ctx, nil, metaFunction, []Value{ctx.NewReference(arguments[0])})
+			if err != nil {
+				return nil, err
+			}
+			resultString, ok := result.(*String)
+			if !ok {
+				return nil, NewError(
+					nil,
+					ctx.NewString(fmt.Sprintf("metafunction %s returned %v", quote(ctx.constStringIntoString.data), result)),
+				)
+			}
+			fmt.Fprintf(os.Stderr, "%s", resultString.data)
+			return ctx.NewNull(), nil
+		}
+
+		fmt.Fprintf(os.Stderr, "%v", arguments[0])
+		return ctx.NewNull(), nil
+	})
+}
+
+func BuiltinEprintln(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("println", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		if metaFunction, ok := MetaFunction(arguments[0], ctx.constStringIntoString); ok {
+			result, err := Call(ctx, nil, metaFunction, []Value{ctx.NewReference(arguments[0])})
+			if err != nil {
+				return nil, err
+			}
+			resultString, ok := result.(*String)
+			if !ok {
+				return nil, NewError(
+					nil,
+					ctx.NewString(fmt.Sprintf("metafunction %s returned %v", quote(ctx.constStringIntoString.data), result)),
+				)
+			}
+			fmt.Fprintf(os.Stderr, "%s\n", resultString.data)
+			return ctx.NewNull(), nil
+		}
+
+		fmt.Fprintf(os.Stderr, "%v\n", arguments[0])
 		return ctx.NewNull(), nil
 	})
 }

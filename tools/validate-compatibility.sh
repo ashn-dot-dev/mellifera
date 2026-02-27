@@ -30,8 +30,8 @@ diff "${TMPDIR}/dump-ast.py.comb" "${TMPDIR}/dump-ast.go.comb"
 
 echo 'VALIDATE EVAL OUTPUT COMPATIBILITY...'
 set -x
-"${MELLIFERA_PROG_PY}" tools/validate-compatibility.mf >"${TMPDIR}/output.py.txt"
-"${MELLIFERA_PROG_GO}" tools/validate-compatibility.mf >"${TMPDIR}/output.go.txt"
+2>&1 "${MELLIFERA_PROG_PY}" tools/validate-compatibility.mf >"${TMPDIR}/output.py.txt"
+2>&1 "${MELLIFERA_PROG_GO}" tools/validate-compatibility.mf >"${TMPDIR}/output.go.txt"
 diff "${TMPDIR}/output.py.txt" "${TMPDIR}/output.go.txt"
 { set +x; } 2>/dev/null
 
