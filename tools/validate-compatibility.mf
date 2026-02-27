@@ -189,3 +189,10 @@ let T = type {
 };
 let x = new T {.abc = 123};
 x.foo();
+
+let T = type {
+    .into_string = function(self) {
+        return "into string";
+    }
+};
+dumpln( $"{ new T Map{} }" );

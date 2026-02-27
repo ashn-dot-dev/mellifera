@@ -70,6 +70,24 @@ type Value interface {
 	CombEncode(e *CombEncoder) error
 }
 
+func MetaFunction(value Value, name Value) (Value, bool) {
+	meta := value.Meta()
+	if meta == nil {
+		return nil, false
+	}
+	function := meta.Lookup(name)
+	if function == nil {
+		return nil, false
+	}
+	if _, ok := function.(*Function); ok {
+		return function, true
+	}
+	if _, ok := function.(*Builtin); ok {
+		return function, true
+	}
+	return nil, false
+}
+
 func ValueAsInt(value Value) (int, error) {
 	integer, err := ValueAsInt64(value)
 	if err != nil {
@@ -168,6 +186,7 @@ type Context struct {
 	reNumberDec     *regexp.Regexp
 	reNumberHex     *regexp.Regexp
 	identifierCache map[string]*String
+	constStringIntoString *String
 }
 
 func NewContext() Context {
@@ -191,6 +210,7 @@ func NewContext() Context {
 	ctx.reNumberDec = regexp.MustCompile(`^\d+(\.\d+)?`)
 	ctx.reNumberHex = regexp.MustCompile(`^0x[0-9a-fA-F]+`)
 	ctx.identifierCache = map[string]*String{}
+	ctx.constStringIntoString = ctx.NewString("into_string")
 
 	ctx.BaseEnvironment.Let("dump", BuiltinDump(&ctx))
 	ctx.BaseEnvironment.Let("dumpln", BuiltinDumpln(&ctx))
@@ -2450,12 +2470,27 @@ func (self AstExpressionTemplate) Eval(ctx *Context, env *Environment) (Value, e
 			return nil, err
 		}
 
-		// TODO: Handle into_string metafunction.
+		if metaFunction, ok := MetaFunction(value, ctx.constStringIntoString); ok {
+			result, err :=  Call(ctx, element.ExpressionLocation(), metaFunction, []Value{ctx.NewReference(value)})
+			if err != nil {
+				return nil, err
+			}
+			resultString, ok := result.(*String);
+			if !ok {
+				return nil, NewError(
+					element.ExpressionLocation(),
+					ctx.NewString(fmt.Sprintf("metafunction %s returned %v", quote(ctx.constStringIntoString.data), result)),
+				)
+			}
+			output = append(output, resultString.data...)
+			continue
+		}
 
 		if s, ok := value.(*String); ok {
 			output = append(output, s.data...)
 			continue
 		}
+
 		output = append(output, []byte(value.String())...)
 	}
 	return ctx.NewString(string(output)), nil

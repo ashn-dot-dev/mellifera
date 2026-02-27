@@ -1925,12 +1925,12 @@ class AstExpressionTemplate(AstExpression):
                 return result
             metafunction = result.metafunction(CONST_STRING_INTO_STRING)
             if metafunction is not None:
-                result = call(None, metafunction, [Reference.new(result)])
+                result = call(element.location, metafunction, [Reference.new(result)])
                 if isinstance(result, Error):
                     return result
                 if not isinstance(result, String):
                     return Error(
-                        None,
+                        element.location,
                         f"metafunction {quote(CONST_STRING_INTO_STRING.runes)} returned {result}",
                     )
                 output += result.bytes
