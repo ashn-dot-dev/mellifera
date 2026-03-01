@@ -4611,21 +4611,23 @@ def builtin_number_init(value: Value) -> Union[Value, Error]:
         try:
             data = value.runes
             if data.startswith("+"):
-                sign = +1
+                sign = +1  # explicitly positive
                 data = data[1:]
             elif data.startswith("-"):
-                sign = -1
+                sign = -1  # explicitly negative
                 data = data[1:]
             else:
-                sign = +1
+                sign = +1  # implicitly positive
 
             if data == "Inf":
                 return Number.new(sign * math.inf)
             if data == "NaN":
                 return Number.new(sign * math.nan)
-            match_hex = Lexer.RE_NUMBER_HEX.fullmatch(data)
-            match_dec = Lexer.RE_NUMBER_DEC.fullmatch(data)
-            if match_hex is not None or match_dec is not None:
+
+            if (
+                Lexer.RE_NUMBER_HEX.fullmatch(data) is not None
+                or Lexer.RE_NUMBER_DEC.fullmatch(data) is not None
+            ):
                 return Number.new(sign * float(data))
         except ValueError:
             # Fallthrough to end-of-function error case.

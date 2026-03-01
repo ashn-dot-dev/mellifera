@@ -185,7 +185,9 @@ type Context struct {
 	reMatchResult []string
 	// Miscellaneous State and Definitions
 	reNumberDec           *regexp.Regexp
+	reNumberDecFullmatch  *regexp.Regexp
 	reNumberHex           *regexp.Regexp
+	reNumberHexFullmatch  *regexp.Regexp
 	identifierCache       map[string]*String
 	constStringIntoString *String
 	constStringNext       *String
@@ -198,7 +200,9 @@ func NewContext() Context {
 	ctx.booleanMeta = ctx.NewMetaMap("boolean", []MapPair{
 		{ctx.NewString("init"), BuiltinBooleanInit(&ctx)},
 	})
-	ctx.numberMeta = ctx.NewMetaMap("number", nil)
+	ctx.numberMeta = ctx.NewMetaMap("number", []MapPair{
+		{ctx.NewString("init"), BuiltinNumberInit(&ctx)},
+	})
 	ctx.stringMeta = ctx.NewMetaMap("string", nil)
 	ctx.regexpMeta = ctx.NewMetaMap("regexp", nil)
 	ctx.vectorMeta = ctx.NewMetaMap("vector", nil)
@@ -212,7 +216,9 @@ func NewContext() Context {
 	ctx.BaseEnvironment = NewEnvironment(nil)
 	ctx.reMatchResult = nil // no initial match
 	ctx.reNumberDec = regexp.MustCompile(`^\d+(\.\d+)?`)
+	ctx.reNumberDecFullmatch = regexp.MustCompile(`^\d+(\.\d+)?$`)
 	ctx.reNumberHex = regexp.MustCompile(`^0x[0-9a-fA-F]+`)
+	ctx.reNumberHexFullmatch = regexp.MustCompile(`^0x[0-9a-fA-F]+$`)
 	ctx.identifierCache = map[string]*String{}
 	ctx.constStringIntoString = ctx.NewString("into_string")
 	ctx.constStringNext = ctx.NewString("next")
@@ -6342,6 +6348,47 @@ func BuiltinBooleanInit(ctx *Context) *Builtin {
 			return ctx.NewBoolean(false), nil
 		}
 		return nil, NewError(nil, ctx.NewString(fmt.Sprintf("cannot convert value %v to boolean", arguments[0])))
+	})
+}
+
+func BuiltinNumberInit(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("number::init", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		if x, ok := arguments[0].(*Number); ok {
+			return ctx.NewNumber(x.data), nil
+		}
+		if x, ok := arguments[0].(*Boolean); ok && x.data {
+			return ctx.NewNumber(1.0), nil
+		}
+		if x, ok := arguments[0].(*Boolean); ok && !x.data {
+			return ctx.NewNumber(0.0), nil
+		}
+		if x, ok := arguments[0].(*String); ok {
+			data := x.data
+			sign := +1 // implicitly positive
+			if strings.HasPrefix(x.data, "+") {
+				sign = +1 // explicitly positive
+				data = data[1:]
+			} else if strings.HasPrefix(x.data, "-") {
+				sign = -1 // explicitily negative
+				data = data[1:]
+			}
+
+			if data == "Inf" {
+				return ctx.NewNumber(math.Inf(sign)), nil
+			}
+			if data == "NaN" {
+				return ctx.NewNumber(math.NaN()), nil
+			}
+
+			if ctx.reNumberHexFullmatch.MatchString(data) || ctx.reNumberDecFullmatch.MatchString(data) {
+				parsed, err := strconv.ParseFloat(data, 64)
+				if err != nil {
+					return nil, NewError(nil, ctx.NewString(err.Error()))
+				}
+				return ctx.NewNumber(float64(sign) * parsed), nil
+			}
+		}
+		return nil, NewError(nil, ctx.NewString(fmt.Sprintf("cannot convert value %v to number", arguments[0])))
 	})
 }
 
