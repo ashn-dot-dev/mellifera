@@ -195,7 +195,9 @@ func NewContext() Context {
 	ctx := Context{}
 
 	ctx.functionMeta = ctx.NewMetaMap("function", nil)
-	ctx.booleanMeta = ctx.NewMetaMap("boolean", nil)
+	ctx.booleanMeta = ctx.NewMetaMap("boolean", []MapPair{
+		{ctx.NewString("init"), BuiltinBooleanInit(&ctx)},
+	})
 	ctx.numberMeta = ctx.NewMetaMap("number", nil)
 	ctx.stringMeta = ctx.NewMetaMap("string", nil)
 	ctx.regexpMeta = ctx.NewMetaMap("regexp", nil)
@@ -228,6 +230,7 @@ func NewContext() Context {
 	ctx.BaseEnvironment.Let("Inf", ctx.NewNumber(math.Inf(+1)))
 	ctx.BaseEnvironment.Let("exit", BuiltinExit(&ctx))
 	ctx.BaseEnvironment.Let("assert", BuiltinAssert(&ctx))
+	ctx.BaseEnvironment.Let("repr", BuiltinRepr(&ctx))
 	ctx.BaseEnvironment.Let("dump", BuiltinDump(&ctx))
 	ctx.BaseEnvironment.Let("dumpln", BuiltinDumpln(&ctx))
 	ctx.BaseEnvironment.Let("print", BuiltinPrint(&ctx))
@@ -4724,7 +4727,6 @@ func (self AstStatementAssignment) Eval(ctx *Context, env *Environment) (Control
 		return nil, fmt.Errorf("invalid %s to %s access with field %v", store.Typename(), storeDeref.Typename(), field)
 	}
 
-	println(store.String(), field.String())
 	return nil, NewError(
 		self.Location,
 		ctx.NewString(fmt.Sprintf("attempted access into type %s with type %s", quote(Typename(store)), quote(Typename(field)))),
@@ -6325,6 +6327,24 @@ let iterator = type {
 return iterator;
 `
 
+func BuiltinBooleanInit(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("boolean::init", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		if x, ok := arguments[0].(*Boolean); ok {
+			return ctx.NewBoolean(x.data), nil
+		}
+		if x, ok := arguments[0].(*Number); ok {
+			return ctx.NewBoolean(!(math.IsNaN(x.data) || x.data == 0.0)), nil
+		}
+		if x, ok := arguments[0].(*String); ok && x.data == "true" {
+			return ctx.NewBoolean(true), nil
+		}
+		if x, ok := arguments[0].(*String); ok && x.data == "false" {
+			return ctx.NewBoolean(false), nil
+		}
+		return nil, NewError(nil, ctx.NewString(fmt.Sprintf("cannot convert value %v to boolean", arguments[0])))
+	})
+}
+
 func BuiltinExit(ctx *Context) *Builtin {
 	return ctx.NewBuiltin("exit", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		integer, err := ValueAsInt(arguments[0])
@@ -6348,6 +6368,12 @@ return assert;
 
 	return ctx.NewBuiltin("assert", []Type{TVal(BOOLEAN)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return Call(ctx, nil, function, arguments)
+	})
+}
+
+func BuiltinRepr(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("repr", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return ctx.NewString(fmt.Sprintf("%v", arguments[0])), nil
 	})
 }
 
@@ -6383,6 +6409,11 @@ func BuiltinPrint(ctx *Context) *Builtin {
 			return ctx.NewNull(), nil
 		}
 
+		if string, ok := arguments[0].(*String); ok {
+			fmt.Printf("%s", string.data)
+			return ctx.NewNull(), nil
+		}
+
 		fmt.Printf("%v", arguments[0])
 		return ctx.NewNull(), nil
 	})
@@ -6403,6 +6434,11 @@ func BuiltinPrintln(ctx *Context) *Builtin {
 				)
 			}
 			fmt.Printf("%s\n", resultString.data)
+			return ctx.NewNull(), nil
+		}
+
+		if string, ok := arguments[0].(*String); ok {
+			fmt.Printf("%s\n", string.data)
 			return ctx.NewNull(), nil
 		}
 
@@ -6429,6 +6465,11 @@ func BuiltinEprint(ctx *Context) *Builtin {
 			return ctx.NewNull(), nil
 		}
 
+		if string, ok := arguments[0].(*String); ok {
+			fmt.Fprintf(os.Stderr, "%s", string.data)
+			return ctx.NewNull(), nil
+		}
+
 		fmt.Fprintf(os.Stderr, "%v", arguments[0])
 		return ctx.NewNull(), nil
 	})
@@ -6449,6 +6490,11 @@ func BuiltinEprintln(ctx *Context) *Builtin {
 				)
 			}
 			fmt.Fprintf(os.Stderr, "%s\n", resultString.data)
+			return ctx.NewNull(), nil
+		}
+
+		if string, ok := arguments[0].(*String); ok {
+			fmt.Fprintf(os.Stderr, "%s\n", string.data)
 			return ctx.NewNull(), nil
 		}
 
