@@ -105,6 +105,12 @@ func ValueAsInt64(value Value) (int64, error) {
 	if !ok {
 		return 0, fmt.Errorf("cannot convert %s-like value into an integer", value.Typename())
 	}
+	if math.IsNaN(number.data) {
+		return 0, fmt.Errorf("cannot convert NaN into an integer")
+	}
+	if math.IsInf(number.data, 0) {
+		return 0, fmt.Errorf("cannot convert ±Inf into an integer")
+	}
 	truncated := math.Trunc(number.data)
 	if truncated != number.data {
 		return 0, fmt.Errorf("cannot convert %v into an int64 without truncation", value)
@@ -204,6 +210,7 @@ func NewContext() Context {
 		{ctx.NewString("init"), BuiltinNumberInit(&ctx)},
 		{ctx.NewString("is_nan"), BuiltinNumberIsNan(&ctx)},
 		{ctx.NewString("is_inf"), BuiltinNumberIsInf(&ctx)},
+		{ctx.NewString("is_integer"), BuiltinNumberIsInteger(&ctx)},
 	})
 	ctx.stringMeta = ctx.NewMetaMap("string", nil)
 	ctx.regexpMeta = ctx.NewMetaMap("regexp", nil)
@@ -6407,6 +6414,13 @@ func BuiltinNumberIsInf(ctx *Context) *Builtin {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Number)
 		return ctx.NewBoolean(math.IsInf(delf.data, 0)), nil
+	})
+}
+
+func BuiltinNumberIsInteger(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("number::is_integer", []Type{TRef(TVal(NUMBER))}, func(ctx *Context, arguments []Value) (Value, error) {
+		_, err := ValueAsInt64(arguments[0].(*Reference).data)
+		return ctx.NewBoolean(err == nil), nil
 	})
 }
 
