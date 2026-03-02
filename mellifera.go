@@ -202,6 +202,8 @@ func NewContext() Context {
 	})
 	ctx.numberMeta = ctx.NewMetaMap("number", []MapPair{
 		{ctx.NewString("init"), BuiltinNumberInit(&ctx)},
+		{ctx.NewString("is_nan"), BuiltinNumberIsNan(&ctx)},
+		{ctx.NewString("is_inf"), BuiltinNumberIsInf(&ctx)},
 	})
 	ctx.stringMeta = ctx.NewMetaMap("string", nil)
 	ctx.regexpMeta = ctx.NewMetaMap("regexp", nil)
@@ -6389,6 +6391,22 @@ func BuiltinNumberInit(ctx *Context) *Builtin {
 			}
 		}
 		return nil, NewError(nil, ctx.NewString(fmt.Sprintf("cannot convert value %v to number", arguments[0])))
+	})
+}
+
+func BuiltinNumberIsNan(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("number::is_nan", []Type{TRef(TVal(NUMBER))}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*Number)
+		return ctx.NewBoolean(math.IsNaN(delf.data)), nil
+	})
+}
+
+func BuiltinNumberIsInf(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("number::is_inf", []Type{TRef(TVal(NUMBER))}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*Number)
+		return ctx.NewBoolean(math.IsInf(delf.data, 0)), nil
 	})
 }
 
