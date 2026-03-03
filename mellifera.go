@@ -211,6 +211,7 @@ func NewContext() Context {
 		{ctx.NewString("is_nan"), BuiltinNumberIsNan(&ctx)},
 		{ctx.NewString("is_inf"), BuiltinNumberIsInf(&ctx)},
 		{ctx.NewString("is_integer"), BuiltinNumberIsInteger(&ctx)},
+		{ctx.NewString("fixed"), BuiltinNumberFixed(&ctx)},
 	})
 	ctx.stringMeta = ctx.NewMetaMap("string", nil)
 	ctx.regexpMeta = ctx.NewMetaMap("regexp", nil)
@@ -6421,6 +6422,29 @@ func BuiltinNumberIsInteger(ctx *Context) *Builtin {
 	return ctx.NewBuiltin("number::is_integer", []Type{TRef(TVal(NUMBER))}, func(ctx *Context, arguments []Value) (Value, error) {
 		_, err := ValueAsInt64(arguments[0].(*Reference).data)
 		return ctx.NewBoolean(err == nil), nil
+	})
+}
+
+func BuiltinNumberFixed(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("number::fixed", []Type{TRef(TVal(NUMBER)), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*Number)
+
+		precision, err := ValueAsInt(arguments[1])
+		if err != nil || precision < 0 {
+			return nil, NewError(
+				nil,
+				ctx.NewString(fmt.Sprintf("expected non-negative integer, received %v", arguments[1])),
+			)
+		}
+
+		if math.IsNaN(delf.data) || math.IsInf(delf.data, 0) {
+			return delf, nil
+		}
+
+		factor := math.Pow10(precision)
+		fixed := math.Round(delf.data*float64(factor)) / float64(factor)
+		return ctx.NewNumber(fixed), nil
 	})
 }
 
