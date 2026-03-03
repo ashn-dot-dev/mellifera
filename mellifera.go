@@ -215,6 +215,7 @@ func NewContext() Context {
 		{ctx.NewString("trunc"), BuiltinNumberTrunc(&ctx)},
 		{ctx.NewString("round"), BuiltinNumberRound(&ctx)},
 		{ctx.NewString("floor"), BuiltinNumberFloor(&ctx)},
+		{ctx.NewString("ceil"), BuiltinNumberCeil(&ctx)},
 	})
 	ctx.stringMeta = ctx.NewMetaMap("string", nil)
 	ctx.regexpMeta = ctx.NewMetaMap("regexp", nil)
@@ -6472,6 +6473,14 @@ func BuiltinNumberFloor(ctx *Context) *Builtin {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Number)
 		return ctx.NewNumber(math.Floor(delf.data)), nil
+	})
+}
+
+func BuiltinNumberCeil(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("number::ceil", []Type{TRef(TVal(NUMBER))}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*Number)
+		return ctx.NewNumber(math.Ceil(delf.data)), nil
 	})
 }
 
