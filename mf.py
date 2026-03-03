@@ -4675,6 +4675,8 @@ def builtin_number_round(self: Reference, number: Number) -> Union[Value, Error]
 
 @builtin("number::floor", [ReferenceTo(Number)])
 def builtin_number_floor(self: Reference, number: Number) -> Union[Value, Error]:
+    if math.isnan(number.data) or math.isinf(number.data):
+        return copy(number)
     return Number.new(math.floor(float(number.data)))
 
 
