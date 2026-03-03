@@ -4661,6 +4661,8 @@ def builtin_number_fixed(
 
 @builtin("number::trunc", [ReferenceTo(Number)])
 def builtin_number_trunc(self: Reference, number: Number) -> Union[Value, Error]:
+    if math.isnan(number.data) or math.isinf(number.data):
+        return copy(number)
     return Number.new(math.trunc(float(number.data)))
 
 

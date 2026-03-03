@@ -212,6 +212,7 @@ func NewContext() Context {
 		{ctx.NewString("is_inf"), BuiltinNumberIsInf(&ctx)},
 		{ctx.NewString("is_integer"), BuiltinNumberIsInteger(&ctx)},
 		{ctx.NewString("fixed"), BuiltinNumberFixed(&ctx)},
+		{ctx.NewString("trunc"), BuiltinNumberTrunc(&ctx)},
 	})
 	ctx.stringMeta = ctx.NewMetaMap("string", nil)
 	ctx.regexpMeta = ctx.NewMetaMap("regexp", nil)
@@ -6445,6 +6446,14 @@ func BuiltinNumberFixed(ctx *Context) *Builtin {
 		factor := math.Pow10(precision)
 		fixed := math.Round(delf.data*float64(factor)) / float64(factor)
 		return ctx.NewNumber(fixed), nil
+	})
+}
+
+func BuiltinNumberTrunc(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("number::trunc", []Type{TRef(TVal(NUMBER))}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*Number)
+		return ctx.NewNumber(math.Trunc(delf.data)), nil
 	})
 }
 
