@@ -217,7 +217,9 @@ func NewContext() Context {
 		{ctx.NewString("floor"), BuiltinNumberFloor(&ctx)},
 		{ctx.NewString("ceil"), BuiltinNumberCeil(&ctx)},
 	})
-	ctx.stringMeta = ctx.NewMetaMap("string", nil)
+	ctx.stringMeta = ctx.NewMetaMap("string", []MapPair{
+		{ctx.NewString("init"), BuiltinStringInit(&ctx)},
+	})
 	ctx.regexpMeta = ctx.NewMetaMap("regexp", nil)
 	ctx.vectorMeta = ctx.NewMetaMap("vector", nil)
 	ctx.mapMeta = ctx.NewMetaMap("map", nil)
@@ -6481,6 +6483,33 @@ func BuiltinNumberCeil(ctx *Context) *Builtin {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Number)
 		return ctx.NewNumber(math.Ceil(delf.data)), nil
+	})
+}
+
+func BuiltinStringInit(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("string::init", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		value := arguments[0]
+
+		if metaFunction, ok := MetaFunction(value, ctx.constStringIntoString); ok {
+			result, err := Call(ctx, nil, metaFunction, []Value{ctx.NewReference(value)})
+			if err != nil {
+				return nil, err
+			}
+			resultString, ok := result.(*String)
+			if !ok {
+				return nil, NewError(
+					nil,
+					ctx.NewString(fmt.Sprintf("metafunction %s returned %v", quote(ctx.constStringIntoString.data), result)),
+				)
+			}
+			return resultString.Copy(), nil
+		}
+
+		if valueString, ok := value.(*String); ok {
+			return valueString.Copy(), nil
+		}
+
+		return ctx.NewString(value.String()), nil
 	})
 }
 

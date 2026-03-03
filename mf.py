@@ -4699,7 +4699,7 @@ def builtin_string_init(value: Value) -> Union[Value, Error]:
             )
         return result
     if isinstance(value, String):
-        return String.new(value.bytes)
+        return copy(value)
     return String.new(str(value))
 
 
