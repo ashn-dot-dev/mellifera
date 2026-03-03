@@ -4668,6 +4668,8 @@ def builtin_number_trunc(self: Reference, number: Number) -> Union[Value, Error]
 
 @builtin("number::round", [ReferenceTo(Number)])
 def builtin_number_round(self: Reference, number: Number) -> Union[Value, Error]:
+    if math.isnan(number.data) or math.isinf(number.data):
+        return copy(number)
     return Number.new(round(float(number.data)))
 
 

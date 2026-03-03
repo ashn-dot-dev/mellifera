@@ -213,6 +213,7 @@ func NewContext() Context {
 		{ctx.NewString("is_integer"), BuiltinNumberIsInteger(&ctx)},
 		{ctx.NewString("fixed"), BuiltinNumberFixed(&ctx)},
 		{ctx.NewString("trunc"), BuiltinNumberTrunc(&ctx)},
+		{ctx.NewString("round"), BuiltinNumberRound(&ctx)},
 	})
 	ctx.stringMeta = ctx.NewMetaMap("string", nil)
 	ctx.regexpMeta = ctx.NewMetaMap("regexp", nil)
@@ -6454,6 +6455,14 @@ func BuiltinNumberTrunc(ctx *Context) *Builtin {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Number)
 		return ctx.NewNumber(math.Trunc(delf.data)), nil
+	})
+}
+
+func BuiltinNumberRound(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("number::round", []Type{TRef(TVal(NUMBER))}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*Number)
+		return ctx.NewNumber(math.Round(delf.data)), nil
 	})
 }
 
