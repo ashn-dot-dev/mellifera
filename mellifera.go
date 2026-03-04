@@ -21,7 +21,21 @@ func Ptr[T any](v T) *T {
 
 func escape(s string) string {
 	result := ""
-	for _, r := range s {
+	index := 0
+
+	for {
+		r, size := utf8.DecodeRuneInString(s[index:])
+
+		if r == utf8.RuneError && size == 0 {
+			break
+		}
+		if r == utf8.RuneError && size == 1 {
+			result += fmt.Sprintf("\\x%02x", s[index])
+			index += 1
+			continue
+		}
+
+		index += size
 		if r == '\t' {
 			result += "\\t"
 			continue
@@ -40,6 +54,7 @@ func escape(s string) string {
 		}
 		result += string(r)
 	}
+
 	return result
 }
 
@@ -219,6 +234,7 @@ func NewContext() Context {
 	})
 	ctx.stringMeta = ctx.NewMetaMap("string", []MapPair{
 		{ctx.NewString("init"), BuiltinStringInit(&ctx)},
+		{ctx.NewString("bytes"), BuiltinStringBytes(&ctx)},
 	})
 	ctx.regexpMeta = ctx.NewMetaMap("regexp", nil)
 	ctx.vectorMeta = ctx.NewMetaMap("vector", nil)
@@ -6513,6 +6529,20 @@ func BuiltinStringInit(ctx *Context) *Builtin {
 	})
 }
 
+func BuiltinStringBytes(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("string::bytes", []Type{TRef(TVal(STRING))}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*String)
+
+		vector := ctx.NewVector(nil)
+		bytes := []byte(delf.data)
+		for i := range bytes {
+			vector.Push(ctx.NewString(string([]byte{bytes[i]})))
+		}
+		return vector, nil
+	})
+}
+
 func BuiltinExit(ctx *Context) *Builtin {
 	return ctx.NewBuiltin("exit", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		integer, err := ValueAsInt(arguments[0])
@@ -6560,7 +6590,7 @@ func BuiltinDumpln(ctx *Context) *Builtin {
 }
 
 func BuiltinPrint(ctx *Context) *Builtin {
-	return ctx.NewBuiltin("print", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+	return ctx.NewBuiltin("eprint", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		if metaFunction, ok := MetaFunction(arguments[0], ctx.constStringIntoString); ok {
 			result, err := Call(ctx, nil, metaFunction, []Value{ctx.NewReference(arguments[0])})
 			if err != nil {
@@ -6588,7 +6618,7 @@ func BuiltinPrint(ctx *Context) *Builtin {
 }
 
 func BuiltinPrintln(ctx *Context) *Builtin {
-	return ctx.NewBuiltin("println", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+	return ctx.NewBuiltin("eprintln", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		if metaFunction, ok := MetaFunction(arguments[0], ctx.constStringIntoString); ok {
 			result, err := Call(ctx, nil, metaFunction, []Value{ctx.NewReference(arguments[0])})
 			if err != nil {
