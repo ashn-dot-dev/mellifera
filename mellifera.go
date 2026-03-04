@@ -6616,7 +6616,7 @@ func BuiltinPrintln(ctx *Context) *Builtin {
 }
 
 func BuiltinEprint(ctx *Context) *Builtin {
-	return ctx.NewBuiltin("print", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+	return ctx.NewBuiltin("eprint", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		if metaFunction, ok := MetaFunction(arguments[0], ctx.constStringIntoString); ok {
 			result, err := Call(ctx, nil, metaFunction, []Value{ctx.NewReference(arguments[0])})
 			if err != nil {
@@ -6644,7 +6644,7 @@ func BuiltinEprint(ctx *Context) *Builtin {
 }
 
 func BuiltinEprintln(ctx *Context) *Builtin {
-	return ctx.NewBuiltin("println", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+	return ctx.NewBuiltin("eprintln", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		if metaFunction, ok := MetaFunction(arguments[0], ctx.constStringIntoString); ok {
 			result, err := Call(ctx, nil, metaFunction, []Value{ctx.NewReference(arguments[0])})
 			if err != nil {
