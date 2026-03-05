@@ -239,6 +239,7 @@ func NewContext() Context {
 		{ctx.NewString("count"), BuiltinStringCount(&ctx)},
 		{ctx.NewString("contains"), BuiltinStringContains(&ctx)},
 		{ctx.NewString("starts_with"), BuiltinStringStartsWith(&ctx)},
+		{ctx.NewString("ends_with"), BuiltinStringEndsWith(&ctx)},
 	})
 	ctx.regexpMeta = ctx.NewMetaMap("regexp", nil)
 	ctx.vectorMeta = ctx.NewMetaMap("vector", nil)
@@ -6588,6 +6589,17 @@ func BuiltinStringStartsWith(ctx *Context) *Builtin {
 		target := arguments[1].(*String)
 
 		return ctx.NewBoolean(strings.HasPrefix(delf.data, target.data)), nil
+	})
+}
+
+func BuiltinStringEndsWith(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("string::ends_with", []Type{TRef(TVal(STRING)), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*String)
+
+		target := arguments[1].(*String)
+
+		return ctx.NewBoolean(strings.HasSuffix(delf.data, target.data)), nil
 	})
 }
 
