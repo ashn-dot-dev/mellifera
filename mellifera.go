@@ -243,6 +243,7 @@ func NewContext() Context {
 		{ctx.NewString("trim"), BuiltinStringTrim(&ctx)},
 		{ctx.NewString("find"), BuiltinStringFind(&ctx)},
 		{ctx.NewString("rfind"), BuiltinStringRfind(&ctx)},
+		{ctx.NewString("slice"), BuiltinStringSlice(&ctx)},
 	})
 	ctx.regexpMeta = ctx.NewMetaMap("regexp", nil)
 	ctx.vectorMeta = ctx.NewMetaMap("vector", nil)
@@ -6644,6 +6645,44 @@ func BuiltinStringRfind(ctx *Context) *Builtin {
 		}
 
 		return ctx.NewNumber(float64(found)), nil
+	})
+}
+
+func BuiltinStringSlice(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("string::rfind", []Type{TRef(TVal(STRING)), TVal(NUMBER), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*String)
+
+		bgn := arguments[1].(*Number)
+		bgn_index, err := ValueAsInt(bgn)
+		if err != nil {
+			return nil, NewError(nil, ctx.NewString(fmt.Sprintf("expected integer index, received %v", arguments[1])))
+		}
+
+		end := arguments[2].(*Number)
+		end_index, err := ValueAsInt(end)
+		if err != nil {
+			return nil, NewError(nil, ctx.NewString(fmt.Sprintf("expected integer index, received %v", arguments[2])))
+		}
+
+		if bgn_index < 0 {
+			return nil, NewError(nil, ctx.NewString("slice begin is less than zero"))
+		}
+		if bgn_index > len(delf.data) {
+			return nil, NewError(nil, ctx.NewString("slice begin is greater than the string length"))
+		}
+
+		if end_index < 0 {
+			return nil, NewError(nil, ctx.NewString("slice end is less than zero"))
+		}
+		if end_index > len(delf.data) {
+			return nil, NewError(nil, ctx.NewString("slice end is greater than the string length"))
+		}
+		if end_index < bgn_index {
+			return nil, NewError(nil, ctx.NewString("slice end is less than slice begin"))
+		}
+
+		return ctx.NewString(delf.data[bgn_index:end_index]), nil
 	})
 }
 

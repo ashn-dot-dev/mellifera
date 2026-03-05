@@ -16,7 +16,7 @@ try { "foo=bar".slice(4, 3); } catch err { println($`"foo=bar".slice(4, 3) produ
 # "foo=bar".slice(0, 3) is "foo"
 # "foo=bar".slice(4, 7) is "bar"
 # "abc😀def".slice(3, 7) is "😀"
-# "abc😀def".slice(4, 7) is "���"
+# "abc😀def".slice(4, 7) is "\x9f\x98\x80"
 # "foo=bar".slice(0.5, 1) produces the error "expected integer index, received 0.5"
 # "foo=bar".slice(0, 1.5) produces the error "expected integer index, received 1.5"
 # "foo=bar".slice(-1, 7) produces the error "slice begin is less than zero"
