@@ -4820,7 +4820,7 @@ def builtin_string_split(
     self: Reference, string: String, target: String
 ) -> Union[Value, Error]:
     if len(target.bytes) == 0:
-        return Vector.new([String.new(x.to_bytes()) for x in string.bytes])
+        return Vector.new([String.new(r) for r in string.runes])
     split = string.bytes.split(target.bytes)
     return Vector.new([String.new(x) for x in split])
 

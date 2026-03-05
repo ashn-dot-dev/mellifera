@@ -244,6 +244,7 @@ func NewContext() Context {
 		{ctx.NewString("find"), BuiltinStringFind(&ctx)},
 		{ctx.NewString("rfind"), BuiltinStringRfind(&ctx)},
 		{ctx.NewString("slice"), BuiltinStringSlice(&ctx)},
+		{ctx.NewString("split"), BuiltinStringSplit(&ctx)},
 	})
 	ctx.regexpMeta = ctx.NewMetaMap("regexp", nil)
 	ctx.vectorMeta = ctx.NewMetaMap("vector", nil)
@@ -6683,6 +6684,29 @@ func BuiltinStringSlice(ctx *Context) *Builtin {
 		}
 
 		return ctx.NewString(delf.data[bgn_index:end_index]), nil
+	})
+}
+
+func BuiltinStringSplit(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("string::split", []Type{TRef(TVal(STRING)), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*String)
+
+		target := arguments[1].(*String)
+
+		vector := ctx.NewVector(nil)
+		if len(target.data) == 0 {
+			for _, r := range delf.data {
+				vector.Push(ctx.NewString(string(r)))
+			}
+			return vector, nil
+		}
+
+		split := strings.Split(delf.data, target.data)
+		for i := range split {
+			vector.Push(ctx.NewString(split[i]))
+		}
+		return vector, nil
 	})
 }
 
