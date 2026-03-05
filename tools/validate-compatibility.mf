@@ -119,7 +119,13 @@ dumpln( "abc def" =~ r`(\w+) (\w+)` );
 dumpln( "abc def" !~ r`(\w+) (\w+)` );
 
 dumpln( 123 + 456 );
+dumpln( "" + "" );
+dumpln( "foo" + "" );
+dumpln( "" + "bar" );
 dumpln( "foo" + "bar" );
+dumpln( [] + [] );
+dumpln( [123] + [] );
+dumpln( [] + [456] );
 dumpln( [123] + [456] );
 dumpln( 123 - 456 );
 dumpln( 123 * 456 );

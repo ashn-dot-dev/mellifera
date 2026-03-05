@@ -245,6 +245,7 @@ func NewContext() Context {
 		{ctx.NewString("rfind"), BuiltinStringRfind(&ctx)},
 		{ctx.NewString("slice"), BuiltinStringSlice(&ctx)},
 		{ctx.NewString("split"), BuiltinStringSplit(&ctx)},
+		{ctx.NewString("join"), BuiltinStringJoin(&ctx)},
 	})
 	ctx.regexpMeta = ctx.NewMetaMap("regexp", nil)
 	ctx.vectorMeta = ctx.NewMetaMap("vector", nil)
@@ -756,6 +757,13 @@ func (self *Vector) Count() int {
 	}
 
 	return len(self.data.elements)
+}
+
+func (self *Vector) Elements() []Value {
+	if self.data == nil {
+		return []Value{}
+	}
+	return self.data.elements
 }
 
 func (self *Vector) Get(index int) Value {
@@ -3566,7 +3574,7 @@ func (self AstExpressionAdd) Eval(ctx *Context, env *Environment) (Value, error)
 	if lhsIsVector {
 		rhsVector, rhsIsVector := rhs.(*Vector)
 		if rhsIsVector {
-			return ctx.NewVector(append(append([]Value{}, lhsVector.data.elements...), rhsVector.data.elements...)), nil
+			return ctx.NewVector(append(append([]Value{}, lhsVector.Elements()...), rhsVector.Elements()...)), nil
 		}
 	}
 
@@ -4361,7 +4369,7 @@ func (self AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, e
 		// Iterate over a shallow copy of the vector data in order to allow
 		// vector modification during iteration.
 		collectionVector = collectionVector.Copy().(*Vector)
-		for _, x := range collectionVector.data.elements {
+		for _, x := range collectionVector.Elements() {
 			var k Value = nil
 			if self.KIsReference {
 				k = ctx.NewReference(x)
@@ -6707,6 +6715,32 @@ func BuiltinStringSplit(ctx *Context) *Builtin {
 			vector.Push(ctx.NewString(split[i]))
 		}
 		return vector, nil
+	})
+}
+
+func BuiltinStringJoin(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("string::join", []Type{TRef(TVal(STRING)), TVal(VECTOR)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*String)
+
+		vector := arguments[1].(*Vector)
+
+		data := ""
+		for index, value := range vector.Elements() {
+			string, ok := value.(*String)
+			if !ok {
+				return nil, NewError(
+					nil,
+					ctx.NewString(fmt.Sprintf("expected string-like value for vector element at index %v, received %s", index, Typename(value))),
+				)
+			}
+			if index != 0 {
+				data += delf.data
+			}
+			data += string.data
+		}
+
+		return ctx.NewString(data), nil
 	})
 }
 
