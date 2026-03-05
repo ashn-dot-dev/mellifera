@@ -240,6 +240,7 @@ func NewContext() Context {
 		{ctx.NewString("contains"), BuiltinStringContains(&ctx)},
 		{ctx.NewString("starts_with"), BuiltinStringStartsWith(&ctx)},
 		{ctx.NewString("ends_with"), BuiltinStringEndsWith(&ctx)},
+		{ctx.NewString("trim"), BuiltinStringTrim(&ctx)},
 	})
 	ctx.regexpMeta = ctx.NewMetaMap("regexp", nil)
 	ctx.vectorMeta = ctx.NewMetaMap("vector", nil)
@@ -6600,6 +6601,15 @@ func BuiltinStringEndsWith(ctx *Context) *Builtin {
 		target := arguments[1].(*String)
 
 		return ctx.NewBoolean(strings.HasSuffix(delf.data, target.data)), nil
+	})
+}
+
+func BuiltinStringTrim(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("string::trim", []Type{TRef(TVal(STRING))}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*String)
+
+		return ctx.NewString(strings.TrimSpace(delf.data)), nil
 	})
 }
 
