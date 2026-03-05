@@ -16,7 +16,7 @@ print("\n");
 
 println(json::encode("foo"));
 println(json::encode("foo\nbar"));
-try { dumpln(json::encode("\xFF")); } catch err { println($"error: {err}"); }
+try { dumpln(json::encode("\xff")); } catch err { println($"error: {err}"); }
 
 print("\n");
 
@@ -54,7 +54,7 @@ try { dumpln(json::encode(function(){})); } catch err { println($"error: {err}")
 #
 # "foo"
 # "foo\nbar"
-# error: cannot JSON-encode string with invalid UTF-8 encoding "�"
+# error: cannot JSON-encode string with invalid UTF-8 encoding "\xff"
 #
 # []
 # ["foo", "bar", "baz"]

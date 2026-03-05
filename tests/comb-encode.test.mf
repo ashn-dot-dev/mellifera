@@ -16,7 +16,7 @@ print("\n");
 
 println(comb::encode("foo"));
 println(comb::encode("foo\nbar"));
-try { dumpln(comb::encode("\xFF")); } catch err { println($"error: {err}"); }
+println(comb::encode("foo\xffbar"));
 
 print("\n");
 
@@ -54,7 +54,7 @@ try { dumpln(comb::encode(function(){})); } catch err { println($"error: {err}")
 #
 # "foo"
 # "foo\nbar"
-# error: cannot comb-encode string with invalid UTF-8 encoding "�"
+# "foo\xffbar"
 #
 # []
 # ["foo", "bar", "baz"]

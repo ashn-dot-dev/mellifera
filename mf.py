@@ -85,7 +85,7 @@ def escape(text: Union[bytes, str]) -> str:
     while index < len(text):
         try:
             r, size = decode_rune(text[index:])
-            result += r
+            result += MAPPING.get(r, r)
             index += size
         except UnicodeDecodeError:
             b = text[index]
@@ -393,7 +393,7 @@ class String(Value):
     def comb_encode(
         self, indent_text: Optional[str] = None, indent_level: int = 0
     ) -> str:
-        return f'"{escape(self.bytes.decode("utf-8"))}"'
+        return f'"{escape(self.bytes)}"'
 
     def __contains__(self, item) -> bool:
         if isinstance(item, String):
@@ -4708,6 +4708,8 @@ def builtin_number_floor(self: Reference, number: Number) -> Union[Value, Error]
 
 @builtin("number::ceil", [ReferenceTo(Number)])
 def builtin_number_ceil(self: Reference, number: Number) -> Union[Value, Error]:
+    if math.isnan(number.data) or math.isinf(number.data):
+        return copy(number)
     return Number.new(math.ceil(float(number.data)))
 
 
@@ -5608,13 +5610,7 @@ def comb_validate(value: Value):
     ):
         return
     if isinstance(value, String):
-        try:
-            value.bytes.decode("utf-8")
-            return
-        except UnicodeDecodeError:
-            raise ValueError(
-                f"cannot comb-encode string with invalid UTF-8 encoding {value}"
-            )
+        return
     if isinstance(value, Vector):
         for element in value.data:
             comb_validate(element)
