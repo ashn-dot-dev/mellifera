@@ -241,6 +241,7 @@ func NewContext() Context {
 		{ctx.NewString("starts_with"), BuiltinStringStartsWith(&ctx)},
 		{ctx.NewString("ends_with"), BuiltinStringEndsWith(&ctx)},
 		{ctx.NewString("trim"), BuiltinStringTrim(&ctx)},
+		{ctx.NewString("find"), BuiltinStringFind(&ctx)},
 	})
 	ctx.regexpMeta = ctx.NewMetaMap("regexp", nil)
 	ctx.vectorMeta = ctx.NewMetaMap("vector", nil)
@@ -6610,6 +6611,22 @@ func BuiltinStringTrim(ctx *Context) *Builtin {
 		delf := self.data.(*String)
 
 		return ctx.NewString(strings.TrimSpace(delf.data)), nil
+	})
+}
+
+func BuiltinStringFind(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("string::find", []Type{TRef(TVal(STRING)), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*String)
+
+		target := arguments[1].(*String)
+
+		found := strings.Index(delf.data, target.data)
+		if found == -1 {
+			return ctx.NewNull(), nil
+		}
+
+		return ctx.NewNumber(float64(found)), nil
 	})
 }
 
