@@ -236,6 +236,7 @@ func NewContext() Context {
 		{ctx.NewString("init"), BuiltinStringInit(&ctx)},
 		{ctx.NewString("bytes"), BuiltinStringBytes(&ctx)},
 		{ctx.NewString("runes"), BuiltinStringRunes(&ctx)},
+		{ctx.NewString("count"), BuiltinStringCount(&ctx)},
 	})
 	ctx.regexpMeta = ctx.NewMetaMap("regexp", nil)
 	ctx.vectorMeta = ctx.NewMetaMap("vector", nil)
@@ -6554,6 +6555,15 @@ func BuiltinStringRunes(ctx *Context) *Builtin {
 			vector.Push(ctx.NewString(string(r)))
 		}
 		return vector, nil
+	})
+}
+
+func BuiltinStringCount(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("string::count", []Type{TRef(TVal(STRING))}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*String)
+
+		return ctx.NewNumber(float64(len(delf.data))), nil
 	})
 }
 

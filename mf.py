@@ -66,7 +66,7 @@ def decode_rune(text: bytes) -> Tuple[str, int]:
         except UnicodeDecodeError:
             pass  # read more bytes
     # Intentionally raise UnicodeDecodeError to signal failure.
-    return text[:UTF8_MAX_BYTES + 1].decode("utf-8"), -1
+    return text[: UTF8_MAX_BYTES + 1].decode("utf-8"), -1
 
 
 def escape(text: Union[bytes, str]) -> str:
