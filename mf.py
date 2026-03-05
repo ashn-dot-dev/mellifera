@@ -58,14 +58,40 @@ def copy(value):
         return value
 
 
-def escape(text: str) -> str:
+def decode_rune(text: bytes) -> Tuple[str, int]:
+    UTF8_MAX_BYTES = 4
+    for i in range(1, UTF8_MAX_BYTES + 1):
+        try:
+            return text[:i].decode("utf-8"), i
+        except UnicodeDecodeError:
+            pass  # read more bytes
+    # Intentionally raise UnicodeDecodeError to signal failure.
+    return text[:UTF8_MAX_BYTES + 1].decode("utf-8"), -1
+
+
+def escape(text: Union[bytes, str]) -> str:
     MAPPING = {
         "\t": "\\t",
         "\n": "\\n",
         '"': '\\"',
         "\\": "\\\\",
     }
-    return "".join([MAPPING.get(c, c) for c in text])
+
+    if isinstance(text, str):
+        return "".join([MAPPING.get(c, c) for c in text])
+
+    result = ""
+    index = 0
+    while index < len(text):
+        try:
+            r, size = decode_rune(text[index:])
+            result += r
+            index += size
+        except UnicodeDecodeError:
+            b = text[index]
+            result += f"\\x{b:02x}"
+            index += 1
+    return result
 
 
 def hexscape(text: Union[bytes, str]) -> str:
@@ -362,7 +388,7 @@ class String(Value):
         return self is other or isinstance(other, String) and self.data == other.data
 
     def __str__(self):
-        return f'"{escape(self.runes)}"'
+        return f'"{escape(self.bytes)}"'
 
     def comb_encode(
         self, indent_text: Optional[str] = None, indent_level: int = 0
