@@ -237,6 +237,7 @@ func NewContext() Context {
 		{ctx.NewString("bytes"), BuiltinStringBytes(&ctx)},
 		{ctx.NewString("runes"), BuiltinStringRunes(&ctx)},
 		{ctx.NewString("count"), BuiltinStringCount(&ctx)},
+		{ctx.NewString("contains"), BuiltinStringContains(&ctx)},
 	})
 	ctx.regexpMeta = ctx.NewMetaMap("regexp", nil)
 	ctx.vectorMeta = ctx.NewMetaMap("vector", nil)
@@ -6564,6 +6565,17 @@ func BuiltinStringCount(ctx *Context) *Builtin {
 		delf := self.data.(*String)
 
 		return ctx.NewNumber(float64(len(delf.data))), nil
+	})
+}
+
+func BuiltinStringContains(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("string::contains", []Type{TRef(TVal(STRING)), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*String)
+
+		target := arguments[1].(*String)
+
+		return ctx.NewBoolean(strings.Contains(delf.data, target.data)), nil
 	})
 }
 
