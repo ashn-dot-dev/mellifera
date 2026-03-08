@@ -246,6 +246,7 @@ func NewContext() Context {
 		{ctx.NewString("slice"), BuiltinStringSlice(&ctx)},
 		{ctx.NewString("split"), BuiltinStringSplit(&ctx)},
 		{ctx.NewString("join"), BuiltinStringJoin(&ctx)},
+		{ctx.NewString("cut"), BuiltinStringCut(&ctx)},
 	})
 	ctx.regexpMeta = ctx.NewMetaMap("regexp", nil)
 	ctx.vectorMeta = ctx.NewMetaMap("vector", nil)
@@ -6741,6 +6742,27 @@ func BuiltinStringJoin(ctx *Context) *Builtin {
 		}
 
 		return ctx.NewString(data), nil
+	})
+}
+
+func BuiltinStringCut(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("string::cut", []Type{TRef(TVal(STRING)), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*String)
+
+		target := arguments[1].(*String)
+
+		found := strings.Index(delf.data, target.data)
+		if found == -1 {
+			return ctx.NewNull(), nil
+		}
+
+		prefix := ctx.NewString(delf.data[0:found])
+		suffix := ctx.NewString(delf.data[found+len(target.data):])
+		return ctx.NewMap([]MapPair{
+			{ctx.NewString("prefix"), prefix},
+			{ctx.NewString("suffix"), suffix},
+		}), nil
 	})
 }
 
