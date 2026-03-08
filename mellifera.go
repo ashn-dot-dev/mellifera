@@ -263,6 +263,7 @@ func NewContext() Context {
 		{ctx.NewString("contains"), BuiltinVectorContains(&ctx)},
 		{ctx.NewString("find"), BuiltinVectorFind(&ctx)},
 		{ctx.NewString("rfind"), BuiltinVectorRfind(&ctx)},
+		{ctx.NewString("push"), BuiltinVectorPush(&ctx)},
 	})
 	ctx.mapMeta = ctx.NewMetaMap("map", nil)
 	ctx.setMeta = ctx.NewMetaMap("set", nil)
@@ -6998,6 +6999,17 @@ func BuiltinVectorRfind(ctx *Context) *Builtin {
 				return ctx.NewNumber(float64(index)), nil
 			}
 		}
+
+		return ctx.NewNull(), nil
+	})
+}
+
+func BuiltinVectorPush(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("vector::push", []Type{TRef(TVal(VECTOR)), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*Vector)
+
+		delf.Push(arguments[1].Copy())
 
 		return ctx.NewNull(), nil
 	})
