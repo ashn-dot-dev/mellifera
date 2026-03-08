@@ -270,6 +270,8 @@ func NewContext() Context {
 		{ctx.NewString("remove"), BuiltinVectorRemove(&ctx)},
 		{ctx.NewString("slice"), BuiltinVectorSlice(&ctx)},
 		{ctx.NewString("reversed"), BuiltinVectorReversed(&ctx)},
+		{ctx.NewString("sorted"), nil},    // deferred instantiation
+		{ctx.NewString("sorted_by"), nil}, // deferred instantiation
 	})
 	ctx.mapMeta = ctx.NewMetaMap("map", nil)
 	ctx.setMeta = ctx.NewMetaMap("set", nil)
@@ -301,6 +303,8 @@ func NewContext() Context {
 	ctx.BaseEnvironment.Let("Inf", ctx.NewNumber(math.Inf(+1)))
 	ctx.BaseEnvironment.Let("exit", BuiltinExit(&ctx))
 	ctx.BaseEnvironment.Let("assert", BuiltinAssert(&ctx))
+	ctx.BaseEnvironment.Let("typeof", BuiltinTypeof(&ctx))
+	ctx.BaseEnvironment.Let("typename", BuiltinTypename(&ctx))
 	ctx.BaseEnvironment.Let("repr", BuiltinRepr(&ctx))
 	ctx.BaseEnvironment.Let("dump", BuiltinDump(&ctx))
 	ctx.BaseEnvironment.Let("dumpln", BuiltinDumpln(&ctx))
@@ -308,6 +312,23 @@ func NewContext() Context {
 	ctx.BaseEnvironment.Let("println", BuiltinPrintln(&ctx))
 	ctx.BaseEnvironment.Let("eprint", BuiltinEprint(&ctx))
 	ctx.BaseEnvironment.Let("eprintln", BuiltinEprintln(&ctx))
+	ctx.BaseEnvironment.Let("ty", ctx.NewMap([]MapPair{
+		{ctx.NewString("is"), BuiltinTyIs(&ctx)},
+		{ctx.NewString("is_null"), BuiltinTyIsNull(&ctx)},
+		{ctx.NewString("is_boolean"), BuiltinTyIsBoolean(&ctx)},
+		{ctx.NewString("is_number"), BuiltinTyIsNumber(&ctx)},
+		{ctx.NewString("is_string"), BuiltinTyIsString(&ctx)},
+		{ctx.NewString("is_regexp"), BuiltinTyIsRegexp(&ctx)},
+		{ctx.NewString("is_vector"), BuiltinTyIsVector(&ctx)},
+		{ctx.NewString("is_map"), BuiltinTyIsMap(&ctx)},
+		{ctx.NewString("is_set"), BuiltinTyIsSet(&ctx)},
+		{ctx.NewString("is_reference"), BuiltinTyIsReference(&ctx)},
+		{ctx.NewString("is_function"), BuiltinTyIsFunction(&ctx)},
+	}))
+
+	// Initialize builtins from source with deferred instantiation.
+	ctx.vectorMeta.data.Insert(ctx.NewString("sorted"), BuiltinVectorSorted(&ctx))
+	ctx.vectorMeta.data.Insert(ctx.NewString("sorted_by"), BuiltinVectorSortedBy(&ctx))
 
 	return ctx
 }
@@ -2442,9 +2463,9 @@ func (self *Environment) Let(name string, value Value) {
 func (self *Environment) Set(name string, value Value) error {
 	env := self
 	for env != nil {
-		_, ok := self.store[name]
+		_, ok := env.store[name]
 		if ok {
-			self.store[name] = value
+			env.store[name] = value
 			return nil
 		}
 		env = env.outer
@@ -4793,7 +4814,7 @@ func (self AstStatementAssignment) Eval(ctx *Context, env *Environment) (Control
 
 		err = env.Set(lhsIdentifier.Name.data, rhs.Copy())
 		if err != nil {
-			return nil, err
+			return nil, NewError(self.Location, ctx.NewString(err.Error()))
 		}
 
 		return nil, nil
@@ -7167,6 +7188,110 @@ func BuiltinVectorReversed(ctx *Context) *Builtin {
 	})
 }
 
+func BuiltinVectorSorted(ctx *Context) Value {
+	return ctx.NewValueFromSourceOrPanic("vector::sorted", `
+let sort = function(x) {
+	if x.count() <= 1 {
+		return x;
+	}
+	let mid = (x.count() / 2).trunc();
+	let lo = sort(x.slice(0, mid));
+	let hi = sort(x.slice(mid, x.count()));
+	let lo_index = 0;
+	let hi_index = 0;
+	let result = [];
+	for _ in x.count() {
+		if lo_index == lo.count() {
+			result.push(hi[hi_index]);
+			hi_index = hi_index + 1;
+			continue;
+		}
+		if hi_index == hi.count() {
+			result.push(lo[lo_index]);
+			lo_index = lo_index + 1;
+			continue;
+		}
+		if lo[lo_index] < hi[hi_index] {
+			result.push(lo[lo_index]);
+			lo_index = lo_index + 1;
+			continue;
+		}
+		if lo[lo_index] > hi[hi_index] {
+			result.push(hi[hi_index]);
+			hi_index = hi_index + 1;
+			continue;
+		}
+		# When equal, take from the lower vector by convention.
+		result.push(lo[lo_index]);
+		lo_index = lo_index + 1;
+	}
+	return result;
+};
+return function(self) {
+	if not ty::is_reference(self) {
+		error $"expected reference to vector-like value for argument 0, received {typename(self)}";
+	}
+	if not ty::is_vector(self.*) {
+		error $"expected reference to vector-like value for argument 0, received reference to {typename(self.*)}";
+	}
+	try { return sort(self.*); } catch err { error err; }
+};
+	`)
+}
+
+func BuiltinVectorSortedBy(ctx *Context) Value {
+	return ctx.NewValueFromSourceOrPanic("vector::sorted_by", `
+let sort = function(x, compare) {
+	if x.count() <= 1 {
+		return x;
+	}
+	let mid = (x.count() / 2).trunc();
+	let lo = sort(x.slice(0, mid), compare);
+	let hi = sort(x.slice(mid, x.count()), compare);
+	let lo_index = 0;
+	let hi_index = 0;
+	let result = [];
+	for _ in x.count() {
+		if lo_index == lo.count() {
+			result.push(hi[hi_index]);
+			hi_index = hi_index + 1;
+			continue;
+		}
+		if hi_index == hi.count() {
+			result.push(lo[lo_index]);
+			lo_index = lo_index + 1;
+			continue;
+		}
+
+		let cmp = compare(lo[lo_index], hi[hi_index]);
+		if cmp < 0 {
+			result.push(lo[lo_index]);
+			lo_index = lo_index + 1;
+			continue;
+		}
+		if cmp > 0 {
+			result.push(hi[hi_index]);
+			hi_index = hi_index + 1;
+			continue;
+		}
+		# When equal, take from the lower vector by convention.
+		result.push(lo[lo_index]);
+		lo_index = lo_index + 1;
+	}
+	return result;
+};
+return function(self, compare) {
+	if not ty::is_reference(self) {
+		error $"expected reference to vector-like value for argument 0, received {typename(self)}";
+	}
+	if not ty::is_vector(self.*) {
+		error $"expected reference to vector-like value for argument 0, received reference to {typename(self.*)}";
+	}
+	try { return sort(self.*, compare); } catch err { error err; }
+};
+	`)
+}
+
 func BuiltinExit(ctx *Context) *Builtin {
 	return ctx.NewBuiltin("exit", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		integer, err := ValueAsInt(arguments[0])
@@ -7190,6 +7315,24 @@ return assert;
 
 	return ctx.NewBuiltin("assert", []Type{TVal(BOOLEAN)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return Call(ctx, nil, function, arguments)
+	})
+}
+
+func BuiltinTypeof(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("typeof", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		value := arguments[0]
+
+		if value.Meta() == nil {
+			return ctx.NewNull(), nil
+		}
+
+		return value.Meta(), nil
+	})
+}
+
+func BuiltinTypename(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("typename", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return ctx.NewString(Typename(arguments[0])), nil
 	})
 }
 
@@ -7322,5 +7465,97 @@ func BuiltinEprintln(ctx *Context) *Builtin {
 
 		fmt.Fprintf(os.Stderr, "%v\n", arguments[0])
 		return ctx.NewNull(), nil
+	})
+}
+
+func BuiltinTyIs(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("ty::is", []Type{TVal(ANY), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		value := arguments[0]
+		ty := arguments[1]
+
+		if _, ok := ty.(*Null); ok {
+			return ctx.NewBoolean(value.Meta() == nil), nil
+		}
+
+		if tyMap, ok := ty.(*Map); ok && tyMap.IsFrozen() {
+			return ctx.NewBoolean(value.Meta() == tyMap), nil
+		}
+
+		return nil, NewError(nil, ctx.NewString(fmt.Sprintf("expected null or map value created with the `type` keyword, received %v", ty)))
+	})
+}
+
+func BuiltinTyIsNull(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("ty::is_null", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		_, ok := arguments[0].(*Null)
+		return ctx.NewBoolean(ok), nil
+	})
+}
+
+func BuiltinTyIsBoolean(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("ty::is_boolean", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		_, ok := arguments[0].(*Boolean)
+		return ctx.NewBoolean(ok), nil
+	})
+}
+
+func BuiltinTyIsNumber(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("ty::is_number", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		_, ok := arguments[0].(*Number)
+		return ctx.NewBoolean(ok), nil
+	})
+}
+
+func BuiltinTyIsString(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("ty::is_string", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		_, ok := arguments[0].(*String)
+		return ctx.NewBoolean(ok), nil
+	})
+}
+
+func BuiltinTyIsRegexp(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("ty::is_regexp", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		_, ok := arguments[0].(*Regexp)
+		return ctx.NewBoolean(ok), nil
+	})
+}
+
+func BuiltinTyIsVector(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("ty::is_vector", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		_, ok := arguments[0].(*Vector)
+		return ctx.NewBoolean(ok), nil
+	})
+}
+
+func BuiltinTyIsMap(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("ty::is_map", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		_, ok := arguments[0].(*Map)
+		return ctx.NewBoolean(ok), nil
+	})
+}
+
+func BuiltinTyIsSet(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("ty::is_set", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		_, ok := arguments[0].(*Set)
+		return ctx.NewBoolean(ok), nil
+	})
+}
+
+func BuiltinTyIsReference(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("ty::is_reference", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		_, ok := arguments[0].(*Reference)
+		return ctx.NewBoolean(ok), nil
+	})
+}
+
+func BuiltinTyIsFunction(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("ty::is_function", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		if _, ok := arguments[0].(*Function); ok {
+			return ctx.NewBoolean(true), nil
+		}
+		if _, ok := arguments[0].(*Builtin); ok {
+			return ctx.NewBoolean(true), nil
+		}
+		return ctx.NewBoolean(false), nil
 	})
 }
