@@ -262,6 +262,7 @@ func NewContext() Context {
 		{ctx.NewString("count"), BuiltinVectorCount(&ctx)},
 		{ctx.NewString("contains"), BuiltinVectorContains(&ctx)},
 		{ctx.NewString("find"), BuiltinVectorFind(&ctx)},
+		{ctx.NewString("rfind"), BuiltinVectorRfind(&ctx)},
 	})
 	ctx.mapMeta = ctx.NewMetaMap("map", nil)
 	ctx.setMeta = ctx.NewMetaMap("set", nil)
@@ -6972,8 +6973,28 @@ func BuiltinVectorFind(ctx *Context) *Builtin {
 
 		target := arguments[1]
 
-		for index, element := range delf.Elements() {
-			if element.Equal(target) {
+		elements := delf.Elements()
+		for index := range elements {
+			if elements[index].Equal(target) {
+				return ctx.NewNumber(float64(index)), nil
+			}
+		}
+
+		return ctx.NewNull(), nil
+	})
+}
+
+func BuiltinVectorRfind(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("vector::rfind", []Type{TRef(TVal(VECTOR)), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*Vector)
+
+		target := arguments[1]
+
+		elements := delf.Elements()
+		for i := range elements {
+			index := len(elements) - i - 1
+			if elements[index].Equal(target) {
 				return ctx.NewNumber(float64(index)), nil
 			}
 		}
