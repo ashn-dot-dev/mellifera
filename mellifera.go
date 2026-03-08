@@ -257,7 +257,9 @@ func NewContext() Context {
 		{ctx.NewString("split"), BuiltinRegexpSplit(&ctx)},
 		{ctx.NewString("replace"), BuiltinRegexpReplace(&ctx)},
 	})
-	ctx.vectorMeta = ctx.NewMetaMap("vector", nil)
+	ctx.vectorMeta = ctx.NewMetaMap("vector", []MapPair{
+		{ctx.NewString("init"), BuiltinVectorInit(&ctx)},
+	})
 	ctx.mapMeta = ctx.NewMetaMap("map", nil)
 	ctx.setMeta = ctx.NewMetaMap("set", nil)
 	ctx.referenceMeta = ctx.NewMetaMap("reference", nil)
@@ -356,7 +358,7 @@ func (ctx *Context) NewMap(elements []MapPair) *Map {
 		meta: ctx.mapMeta,
 	}
 	for _, element := range elements {
-		result.Insert(element.key, element.value)
+		result.Insert(element.Key, element.Value)
 	}
 	return result
 }
@@ -371,7 +373,7 @@ func (ctx *Context) NewMetaMap(name string, elements []MapPair) *Map {
 
 	result := &Map{}
 	for _, element := range elements {
-		result.Insert(element.key, element.value)
+		result.Insert(element.Key, element.Value)
 	}
 	result.name = &name // freeze
 	return result
@@ -796,8 +798,8 @@ func (self *Vector) Push(value Value) {
 }
 
 type MapPair struct {
-	key   Value
-	value Value
+	Key   Value
+	Value Value
 }
 
 type MapElement struct {
@@ -1052,6 +1054,20 @@ func (self *Map) Count() int {
 	}
 
 	return self.data.count
+}
+
+func (self *Map) Pairs() []MapPair {
+	if self.data == nil {
+		return []MapPair{}
+	}
+
+	pairs := []MapPair{}
+	cur := self.data.head
+	for cur != nil {
+		pairs = append(pairs, MapPair{cur.key, cur.value})
+		cur = cur.next
+	}
+	return pairs
 }
 
 func (self *Map) IsFrozen() bool {
@@ -1342,6 +1358,20 @@ func (self *Set) Count() int {
 	}
 
 	return self.data.count
+}
+
+func (self *Set) Elements() []Value {
+	if self.data == nil {
+		return []Value{}
+	}
+
+	elements := []Value{}
+	cur := self.data.head
+	for cur != nil {
+		elements = append(elements, cur.key)
+		cur = cur.next
+	}
+	return elements
 }
 
 // Returns nil on lookup failure.
@@ -6853,6 +6883,56 @@ func BuiltinRegexpReplace(ctx *Context) *Builtin {
 		replacement := arguments[2].(*String)
 
 		return ctx.NewString(delf.data.ReplaceAllLiteralString(text.data, replacement.data)), nil
+	})
+}
+
+func BuiltinVectorInit(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("vector::init", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		value := arguments[0]
+
+		if metaFunction, ok := MetaFunction(value, ctx.constStringNext); ok {
+			reference := ctx.NewReference(value)
+			result := ctx.NewVector(nil)
+			for {
+				iterated, err := Call(ctx, nil, metaFunction, []Value{reference})
+				if err != nil {
+					if error, ok := err.(Error); ok {
+						if _, ok := error.Value.(*Null); ok {
+							break // end-of-iteration
+						}
+					}
+					return nil, err
+				}
+				result.Push(iterated.Copy())
+			}
+			return result, nil
+		}
+
+		if valueVector, ok := value.(*Vector); ok {
+			result := ctx.NewVector(nil)
+			for _, element := range valueVector.Elements() {
+				result.Push(element.Copy())
+			}
+			return result, nil
+		}
+
+		if valueMap, ok := value.(*Map); ok {
+			result := ctx.NewVector(nil)
+			for _, pair := range valueMap.Pairs() {
+				result.Push(ctx.NewVector([]Value{pair.Key.Copy(), pair.Value.Copy()}))
+			}
+			return result, nil
+		}
+
+		if valueSet, ok := value.(*Set); ok {
+			result := ctx.NewVector(nil)
+			for _, element := range valueSet.Elements() {
+				result.Push(element.Copy())
+			}
+			return result, nil
+		}
+
+		return nil, NewError(nil, ctx.NewString(fmt.Sprintf("cannot convert value %v to vector", value)))
 	})
 }
 
