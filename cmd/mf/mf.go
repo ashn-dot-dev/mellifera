@@ -225,8 +225,12 @@ func main() {
 	if err != nil {
 		if e, ok := err.(mellifera.ParseError); ok && e.Location != nil {
 			fmt.Fprintf(os.Stderr, "[%v, line %v] error: %v\n", e.Location.File, e.Location.Line, err)
-		} else if e, ok := err.(mellifera.Error); ok && e.Location != nil {
-			fmt.Fprintf(os.Stderr, "[%v, line %v] error: %v\n", e.Location.File, e.Location.Line, err)
+		} else if e, ok := err.(mellifera.Error); ok {
+			if e.Location != nil {
+				fmt.Fprintf(os.Stderr, "[%v, line %v] error: %v\n", e.Location.File, e.Location.Line, err)
+			} else {
+				fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			}
 			for _, element := range e.Trace {
 				s := fmt.Sprintf("...within %v", element.FuncName)
 				if element.Location != nil {

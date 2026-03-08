@@ -1,5 +1,16 @@
+let x = [];
+x.insert(0, "foo");
+dumpln(x);
+
 let x = [123, 456, 789];
 x.insert(1, "foo");
 dumpln(x);
+
+let x = [];
+x.insert(42, "foo");
+dumpln(x);
 ################################################################################
+# ["foo"]
 # [123, "foo", 456, 789]
+# error: attempted insert into vector of length 0 with index 42
+# ...within vector::insert@builtin called from vector-insert.test.mf, line 10

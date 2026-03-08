@@ -8,6 +8,7 @@ import (
 	"os"
 	"reflect"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"unicode"
@@ -265,6 +266,7 @@ func NewContext() Context {
 		{ctx.NewString("rfind"), BuiltinVectorRfind(&ctx)},
 		{ctx.NewString("push"), BuiltinVectorPush(&ctx)},
 		{ctx.NewString("pop"), BuiltinVectorPop(&ctx)},
+		{ctx.NewString("insert"), BuiltinVectorInsert(&ctx)},
 	})
 	ctx.mapMeta = ctx.NewMetaMap("map", nil)
 	ctx.setMeta = ctx.NewMetaMap("set", nil)
@@ -790,6 +792,19 @@ func (self *Vector) Get(index int) Value {
 func (self *Vector) Set(index int, value Value) {
 	self.CopyOnWrite()
 	self.data.elements[index] = value
+}
+
+func (self *Vector) Insert(index int, value Value) {
+	self.CopyOnWrite()
+
+	if self.data == nil {
+		self.data = &VectorData{
+			elements: nil,
+			uses:     1,
+		}
+	}
+
+	self.data.elements = slices.Insert(self.data.elements, index, value)
 }
 
 func (self *Vector) Push(value Value) {
@@ -7038,6 +7053,26 @@ func BuiltinVectorPop(ctx *Context) *Builtin {
 		}
 
 		return delf.Pop(arguments[0]).Copy(), nil
+	})
+}
+
+func BuiltinVectorInsert(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("vector::insert", []Type{TRef(TVal(VECTOR)), TVal(NUMBER), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*Vector)
+
+		index, err := ValueAsInt(arguments[1])
+		if err != nil {
+			return nil, NewError(nil, ctx.NewString(fmt.Sprintf("expected integer index, received %v", arguments[1])))
+		}
+
+		if index > delf.Count() {
+			return nil, NewError(nil, ctx.NewString(fmt.Sprintf("attempted insert into vector of length %v with index %v", delf.Count(), index)))
+		}
+
+		delf.Insert(index, arguments[2].Copy())
+
+		return ctx.NewNull(), nil
 	})
 }
 

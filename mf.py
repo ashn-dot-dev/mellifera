@@ -4982,9 +4982,15 @@ def builtin_vector_insert(
 ) -> Union[Value, Error]:
     if not float(index.data).is_integer():
         return Error(None, f"expected integer index, received {index}")
+    idx = int(float(index.data))
+    if idx > len(vector.data):
+        return Error(
+            None,
+            f"attempted insert into vector of length {len(vector.data)} with index {index}",
+        )
     if vector.data.uses > 1:
         vector.cow()  # copy-on-write
-    vector.data.insert(int(float(index.data)), value)
+    vector.data.insert(idx, value)
     return null
 
 
