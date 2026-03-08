@@ -248,6 +248,7 @@ func NewContext() Context {
 		{ctx.NewString("join"), BuiltinStringJoin(&ctx)},
 		{ctx.NewString("cut"), BuiltinStringCut(&ctx)},
 		{ctx.NewString("replace"), BuiltinStringReplace(&ctx)},
+		{ctx.NewString("to_title"), BuiltinStringToTitle(&ctx)},
 	})
 	ctx.regexpMeta = ctx.NewMetaMap("regexp", nil)
 	ctx.vectorMeta = ctx.NewMetaMap("vector", nil)
@@ -6777,6 +6778,15 @@ func BuiltinStringReplace(ctx *Context) *Builtin {
 		replacement := arguments[2].(*String)
 
 		return ctx.NewString(strings.ReplaceAll(delf.data, target.data, replacement.data)), nil
+	})
+}
+
+func BuiltinStringToTitle(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("string::to_title", []Type{TRef(TVal(STRING))}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*String)
+
+		return ctx.NewString(strings.Title(strings.ToLower(delf.data))), nil
 	})
 }
 
