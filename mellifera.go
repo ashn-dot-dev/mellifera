@@ -269,6 +269,7 @@ func NewContext() Context {
 		{ctx.NewString("insert"), BuiltinVectorInsert(&ctx)},
 		{ctx.NewString("remove"), BuiltinVectorRemove(&ctx)},
 		{ctx.NewString("slice"), BuiltinVectorSlice(&ctx)},
+		{ctx.NewString("reversed"), BuiltinVectorReversed(&ctx)},
 	})
 	ctx.mapMeta = ctx.NewMetaMap("map", nil)
 	ctx.setMeta = ctx.NewMetaMap("set", nil)
@@ -7145,6 +7146,21 @@ func BuiltinVectorSlice(ctx *Context) *Builtin {
 		result := ctx.NewVector(nil)
 		for i := bgn_index; i < end_index; i++ {
 			result.Push(delf.Get(i))
+		}
+
+		return result, nil
+	})
+}
+
+func BuiltinVectorReversed(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("vector::reversed", []Type{TRef(TVal(VECTOR))}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*Vector)
+
+		result := delf.Copy().(*Vector)
+		result.CopyOnWrite()
+		if result.data != nil && len(result.data.elements) > 1 {
+			slices.Reverse(result.data.elements)
 		}
 
 		return result, nil

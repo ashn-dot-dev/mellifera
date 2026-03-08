@@ -1,3 +1,9 @@
+println($`[].reversed() is {repr([].reversed())}`);
+println($`["foo"].reversed() is {repr(["foo"].reversed())}`);
+println($`["foo", "bar"].reversed() is {repr(["foo", "bar"].reversed())}`);
 println($`["foo", "bar", "baz"].reversed() is {repr(["foo", "bar", "baz"].reversed())}`);
 ################################################################################
+# [].reversed() is []
+# ["foo"].reversed() is ["foo"]
+# ["foo", "bar"].reversed() is ["bar", "foo"]
 # ["foo", "bar", "baz"].reversed() is ["baz", "bar", "foo"]
