@@ -259,6 +259,7 @@ func NewContext() Context {
 	})
 	ctx.vectorMeta = ctx.NewMetaMap("vector", []MapPair{
 		{ctx.NewString("init"), BuiltinVectorInit(&ctx)},
+		{ctx.NewString("count"), BuiltinVectorCount(&ctx)},
 	})
 	ctx.mapMeta = ctx.NewMetaMap("map", nil)
 	ctx.setMeta = ctx.NewMetaMap("set", nil)
@@ -6933,6 +6934,15 @@ func BuiltinVectorInit(ctx *Context) *Builtin {
 		}
 
 		return nil, NewError(nil, ctx.NewString(fmt.Sprintf("cannot convert value %v to vector", value)))
+	})
+}
+
+func BuiltinVectorCount(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("vector::count", []Type{TRef(TVal(VECTOR))}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*Vector)
+
+		return ctx.NewNumber(float64(delf.Count())), nil
 	})
 }
 
