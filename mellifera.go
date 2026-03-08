@@ -252,7 +252,9 @@ func NewContext() Context {
 		{ctx.NewString("to_upper"), BuiltinStringToUpper(&ctx)},
 		{ctx.NewString("to_lower"), BuiltinStringToLower(&ctx)},
 	})
-	ctx.regexpMeta = ctx.NewMetaMap("regexp", nil)
+	ctx.regexpMeta = ctx.NewMetaMap("regexp", []MapPair{
+		{ctx.NewString("init"), BuiltinRegexpInit(&ctx)},
+	})
 	ctx.vectorMeta = ctx.NewMetaMap("vector", nil)
 	ctx.mapMeta = ctx.NewMetaMap("map", nil)
 	ctx.setMeta = ctx.NewMetaMap("set", nil)
@@ -6807,6 +6809,19 @@ func BuiltinStringToLower(ctx *Context) *Builtin {
 		delf := self.data.(*String)
 
 		return ctx.NewString(strings.ToLower(delf.data)), nil
+	})
+}
+
+func BuiltinRegexpInit(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("regexp::init", []Type{TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
+		text := arguments[0].(*String)
+
+		value, err := ctx.NewRegexp(text.data)
+		if err != nil {
+			return nil, err
+		}
+
+		return value, nil
 	})
 }
 
