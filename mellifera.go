@@ -261,6 +261,7 @@ func NewContext() Context {
 		{ctx.NewString("init"), BuiltinVectorInit(&ctx)},
 		{ctx.NewString("count"), BuiltinVectorCount(&ctx)},
 		{ctx.NewString("contains"), BuiltinVectorContains(&ctx)},
+		{ctx.NewString("find"), BuiltinVectorFind(&ctx)},
 	})
 	ctx.mapMeta = ctx.NewMetaMap("map", nil)
 	ctx.setMeta = ctx.NewMetaMap("set", nil)
@@ -6961,6 +6962,23 @@ func BuiltinVectorContains(ctx *Context) *Builtin {
 		}
 
 		return ctx.NewBoolean(false), nil
+	})
+}
+
+func BuiltinVectorFind(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("vector::find", []Type{TRef(TVal(VECTOR)), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*Vector)
+
+		target := arguments[1]
+
+		for index, element := range delf.Elements() {
+			if element.Equal(target) {
+				return ctx.NewNumber(float64(index)), nil
+			}
+		}
+
+		return ctx.NewNull(), nil
 	})
 }
 
