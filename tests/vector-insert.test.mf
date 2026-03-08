@@ -7,10 +7,8 @@ x.insert(1, "foo");
 dumpln(x);
 
 let x = [];
-x.insert(42, "foo");
-dumpln(x);
+try { x.insert(42, "foo"); } catch err { dumpln(err); }
 ################################################################################
 # ["foo"]
 # [123, "foo", 456, 789]
-# error: attempted insert into vector of length 0 with index 42
-# ...within vector::insert@builtin called from vector-insert.test.mf, line 10
+# "attempted insert into vector of length 0 with index 42"
