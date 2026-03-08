@@ -264,6 +264,7 @@ func NewContext() Context {
 		{ctx.NewString("find"), BuiltinVectorFind(&ctx)},
 		{ctx.NewString("rfind"), BuiltinVectorRfind(&ctx)},
 		{ctx.NewString("push"), BuiltinVectorPush(&ctx)},
+		{ctx.NewString("pop"), BuiltinVectorPop(&ctx)},
 	})
 	ctx.mapMeta = ctx.NewMetaMap("map", nil)
 	ctx.setMeta = ctx.NewMetaMap("set", nil)
@@ -800,6 +801,18 @@ func (self *Vector) Push(value Value) {
 		}
 	}
 	self.data.elements = append(self.data.elements, value)
+}
+
+// Returns nil when popping an empty vector.
+func (self *Vector) Pop(value Value) Value {
+	self.CopyOnWrite()
+	if self.data == nil || len(self.data.elements) == 0 {
+		return nil
+	}
+
+	element := self.data.elements[len(self.data.elements)-1]
+	self.data.elements = self.data.elements[:len(self.data.elements)-1]
+	return element
 }
 
 type MapPair struct {
@@ -7012,6 +7025,19 @@ func BuiltinVectorPush(ctx *Context) *Builtin {
 		delf.Push(arguments[1].Copy())
 
 		return ctx.NewNull(), nil
+	})
+}
+
+func BuiltinVectorPop(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("vector::pop", []Type{TRef(TVal(VECTOR))}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*Vector)
+
+		if delf.Count() == 0 {
+			return nil, NewError(nil, ctx.NewString("attempted vector::pop on an empty vector"))
+		}
+
+		return delf.Pop(arguments[0]).Copy(), nil
 	})
 }
 
