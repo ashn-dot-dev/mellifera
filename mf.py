@@ -5004,9 +5004,9 @@ def builtin_vector_remove(
         vector.cow()  # copy-on-write
     idx = int(float(index.data))
     try:
-        element = copy(vector.data[idx])
-        del vector.data[idx]
-        return element
+        if idx < 0 or idx > len(vector.data):
+            raise IndexError()
+        return copy(vector.data.pop(idx))
     except IndexError:
         return Error(
             None,

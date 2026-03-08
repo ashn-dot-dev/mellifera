@@ -267,6 +267,7 @@ func NewContext() Context {
 		{ctx.NewString("push"), BuiltinVectorPush(&ctx)},
 		{ctx.NewString("pop"), BuiltinVectorPop(&ctx)},
 		{ctx.NewString("insert"), BuiltinVectorInsert(&ctx)},
+		{ctx.NewString("remove"), BuiltinVectorRemove(&ctx)},
 	})
 	ctx.mapMeta = ctx.NewMetaMap("map", nil)
 	ctx.setMeta = ctx.NewMetaMap("set", nil)
@@ -807,6 +808,18 @@ func (self *Vector) Insert(index int, value Value) {
 	self.data.elements = slices.Insert(self.data.elements, index, value)
 }
 
+// Returns nil when removing from an empty vector.
+func (self *Vector) Remove(index int) Value {
+	self.CopyOnWrite()
+	if self.data == nil || len(self.data.elements) == 0 {
+		return nil
+	}
+
+	element := self.data.elements[index]
+	self.data.elements = slices.Delete(self.data.elements, index, index+1)
+	return element
+}
+
 func (self *Vector) Push(value Value) {
 	self.CopyOnWrite()
 	if self.data == nil {
@@ -818,7 +831,7 @@ func (self *Vector) Push(value Value) {
 	self.data.elements = append(self.data.elements, value)
 }
 
-// Returns nil when popping an empty vector.
+// Returns nil when popping from an empty vector.
 func (self *Vector) Pop(value Value) Value {
 	self.CopyOnWrite()
 	if self.data == nil || len(self.data.elements) == 0 {
@@ -7073,6 +7086,24 @@ func BuiltinVectorInsert(ctx *Context) *Builtin {
 		delf.Insert(index, arguments[2].Copy())
 
 		return ctx.NewNull(), nil
+	})
+}
+
+func BuiltinVectorRemove(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("vector::remove", []Type{TRef(TVal(VECTOR)), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*Vector)
+
+		index, err := ValueAsInt(arguments[1])
+		if err != nil {
+			return nil, NewError(nil, ctx.NewString(fmt.Sprintf("expected integer index, received %v", arguments[1])))
+		}
+
+		if index < 0 || index >= delf.Count() {
+			return nil, NewError(nil, ctx.NewString(fmt.Sprintf("attempted vector::remove with invalid index %v", index)))
+		}
+
+		return delf.Remove(index).Copy(), nil
 	})
 }
 

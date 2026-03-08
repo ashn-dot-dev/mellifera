@@ -8,8 +8,12 @@ try { x.remove(10); } catch err { dumpln(err); } # index out of bounds
 x.remove(0);
 x.remove(0);
 try { x.remove(0); } catch err { dumpln(err); } # index out of bounds
+
+let x = [123];
+try { x.remove(-1); } catch err { dumpln(err); } # index out of bounds
 ################################################################################
 # [123, 789]
 # 456
 # "attempted vector::remove with invalid index 10"
 # "attempted vector::remove with invalid index 0"
+# "attempted vector::remove with invalid index -1"
