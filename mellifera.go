@@ -268,6 +268,7 @@ func NewContext() Context {
 		{ctx.NewString("pop"), BuiltinVectorPop(&ctx)},
 		{ctx.NewString("insert"), BuiltinVectorInsert(&ctx)},
 		{ctx.NewString("remove"), BuiltinVectorRemove(&ctx)},
+		{ctx.NewString("slice"), BuiltinVectorSlice(&ctx)},
 	})
 	ctx.mapMeta = ctx.NewMetaMap("map", nil)
 	ctx.setMeta = ctx.NewMetaMap("set", nil)
@@ -7104,6 +7105,49 @@ func BuiltinVectorRemove(ctx *Context) *Builtin {
 		}
 
 		return delf.Remove(index).Copy(), nil
+	})
+}
+
+func BuiltinVectorSlice(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("vector::slice", []Type{TRef(TVal(VECTOR)), TVal(NUMBER), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*Vector)
+
+		bgn := arguments[1].(*Number)
+		bgn_index, err := ValueAsInt(bgn)
+		if err != nil {
+			return nil, NewError(nil, ctx.NewString(fmt.Sprintf("expected integer index, received %v", arguments[1])))
+		}
+
+		end := arguments[2].(*Number)
+		end_index, err := ValueAsInt(end)
+		if err != nil {
+			return nil, NewError(nil, ctx.NewString(fmt.Sprintf("expected integer index, received %v", arguments[2])))
+		}
+
+		if bgn_index < 0 {
+			return nil, NewError(nil, ctx.NewString("slice begin is less than zero"))
+		}
+		if bgn_index > delf.Count() {
+			return nil, NewError(nil, ctx.NewString("slice begin is greater than the vector length"))
+		}
+
+		if end_index < 0 {
+			return nil, NewError(nil, ctx.NewString("slice end is less than zero"))
+		}
+		if end_index > delf.Count() {
+			return nil, NewError(nil, ctx.NewString("slice end is greater than the vector length"))
+		}
+		if end_index < bgn_index {
+			return nil, NewError(nil, ctx.NewString("slice end is less than slice begin"))
+		}
+
+		result := ctx.NewVector(nil)
+		for i := bgn_index; i < end_index; i++ {
+			result.Push(delf.Get(i))
+		}
+
+		return result, nil
 	})
 }
 
