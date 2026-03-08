@@ -250,6 +250,7 @@ func NewContext() Context {
 		{ctx.NewString("replace"), BuiltinStringReplace(&ctx)},
 		{ctx.NewString("to_title"), BuiltinStringToTitle(&ctx)},
 		{ctx.NewString("to_upper"), BuiltinStringToUpper(&ctx)},
+		{ctx.NewString("to_lower"), BuiltinStringToLower(&ctx)},
 	})
 	ctx.regexpMeta = ctx.NewMetaMap("regexp", nil)
 	ctx.vectorMeta = ctx.NewMetaMap("vector", nil)
@@ -6797,6 +6798,15 @@ func BuiltinStringToUpper(ctx *Context) *Builtin {
 		delf := self.data.(*String)
 
 		return ctx.NewString(strings.ToUpper(delf.data)), nil
+	})
+}
+
+func BuiltinStringToLower(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("string::to_lower", []Type{TRef(TVal(STRING))}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*String)
+
+		return ctx.NewString(strings.ToLower(delf.data)), nil
 	})
 }
 
