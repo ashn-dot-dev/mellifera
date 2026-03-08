@@ -247,6 +247,7 @@ func NewContext() Context {
 		{ctx.NewString("split"), BuiltinStringSplit(&ctx)},
 		{ctx.NewString("join"), BuiltinStringJoin(&ctx)},
 		{ctx.NewString("cut"), BuiltinStringCut(&ctx)},
+		{ctx.NewString("replace"), BuiltinStringReplace(&ctx)},
 	})
 	ctx.regexpMeta = ctx.NewMetaMap("regexp", nil)
 	ctx.vectorMeta = ctx.NewMetaMap("vector", nil)
@@ -6763,6 +6764,19 @@ func BuiltinStringCut(ctx *Context) *Builtin {
 			{ctx.NewString("prefix"), prefix},
 			{ctx.NewString("suffix"), suffix},
 		}), nil
+	})
+}
+
+func BuiltinStringReplace(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("string::replace", []Type{TRef(TVal(STRING)), TVal(STRING), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*String)
+
+		target := arguments[1].(*String)
+
+		replacement := arguments[2].(*String)
+
+		return ctx.NewString(strings.ReplaceAll(delf.data, target.data, replacement.data)), nil
 	})
 }
 
