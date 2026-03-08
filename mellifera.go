@@ -255,6 +255,7 @@ func NewContext() Context {
 	ctx.regexpMeta = ctx.NewMetaMap("regexp", []MapPair{
 		{ctx.NewString("init"), BuiltinRegexpInit(&ctx)},
 		{ctx.NewString("split"), BuiltinRegexpSplit(&ctx)},
+		{ctx.NewString("replace"), BuiltinRegexpReplace(&ctx)},
 	})
 	ctx.vectorMeta = ctx.NewMetaMap("vector", nil)
 	ctx.mapMeta = ctx.NewMetaMap("map", nil)
@@ -6839,6 +6840,19 @@ func BuiltinRegexpSplit(ctx *Context) *Builtin {
 		}
 
 		return result, nil
+	})
+}
+
+func BuiltinRegexpReplace(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("regexp::replace", []Type{TRef(TVal(REGEXP)), TVal(STRING), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*Regexp)
+
+		text := arguments[1].(*String)
+
+		replacement := arguments[2].(*String)
+
+		return ctx.NewString(delf.data.ReplaceAllLiteralString(text.data, replacement.data)), nil
 	})
 }
 
