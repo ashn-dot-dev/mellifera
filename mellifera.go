@@ -6743,7 +6743,7 @@ func BuiltinStringRfind(ctx *Context) *Builtin {
 }
 
 func BuiltinStringSlice(ctx *Context) *Builtin {
-	return ctx.NewBuiltin("string::rfind", []Type{TRef(TVal(STRING)), TVal(NUMBER), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+	return ctx.NewBuiltin("string::slice", []Type{TRef(TVal(STRING)), TVal(NUMBER), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*String)
 
