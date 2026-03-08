@@ -254,6 +254,7 @@ func NewContext() Context {
 	})
 	ctx.regexpMeta = ctx.NewMetaMap("regexp", []MapPair{
 		{ctx.NewString("init"), BuiltinRegexpInit(&ctx)},
+		{ctx.NewString("split"), BuiltinRegexpSplit(&ctx)},
 	})
 	ctx.vectorMeta = ctx.NewMetaMap("vector", nil)
 	ctx.mapMeta = ctx.NewMetaMap("map", nil)
@@ -6822,6 +6823,22 @@ func BuiltinRegexpInit(ctx *Context) *Builtin {
 		}
 
 		return value, nil
+	})
+}
+
+func BuiltinRegexpSplit(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("regexp::split", []Type{TRef(TVal(REGEXP)), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*Regexp)
+
+		text := arguments[1].(*String)
+
+		result := ctx.NewVector(nil)
+		for _, s := range delf.data.Split(text.data, -1) {
+			result.Push(ctx.NewString(s))
+		}
+
+		return result, nil
 	})
 }
 
