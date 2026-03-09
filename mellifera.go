@@ -1891,13 +1891,13 @@ func (self *Lexer) skipWhiteSpaceAndComments() {
 }
 
 func (self *Lexer) lexKeywordOrIdentifier() (Token, error) {
+	if !(unicode.IsLetter(self.currentRune()) || self.currentRune() == '_') {
+		return Token{}, errors.New("empty keyword or identifier")
+	}
 	literal := ""
-	for unicode.IsLetter(self.currentRune()) || self.currentRune() == '_' {
+	for unicode.IsLetter(self.currentRune()) || unicode.IsNumber(self.currentRune()) || self.currentRune() == '_' {
 		literal += string(self.currentRune())
 		self.advanceRune()
-	}
-	if len(literal) == 0 {
-		return Token{}, errors.New("empty keyword or identifier")
 	}
 
 	keyword, ok := self.keywords[literal]
