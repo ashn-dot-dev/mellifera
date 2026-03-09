@@ -275,6 +275,7 @@ func NewContext() Context {
 		{ctx.NewString("into_iterator"), nil}, // deferred instantiation
 	})
 	ctx.mapMeta = ctx.NewMetaMap("map", []MapPair{
+		{ctx.NewString("count"), BuiltinMapCount(&ctx)},
 		{ctx.NewString("insert"), BuiltinMapInsert(&ctx)},
 		{ctx.NewString("union"), nil}, // deferred instantiation
 	})
@@ -7318,6 +7319,15 @@ return function(self) {
 	};
 };
 	`)
+}
+
+func BuiltinMapCount(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("map::count", []Type{TRef(TVal(MAP))}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*Map)
+
+		return ctx.NewNumber(float64(delf.Count())), nil
+	})
 }
 
 func BuiltinMapInsert(ctx *Context) *Builtin {
