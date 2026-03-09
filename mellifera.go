@@ -4445,7 +4445,7 @@ func (self AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, e
 		if self.KIsReference {
 			return nil, NewError(
 				self.Location,
-				ctx.NewString(fmt.Sprintf("cannot use key-reference over iterator %s", quote(Typename(collection)))),
+				ctx.NewString(fmt.Sprintf("cannot use a key-reference over iterator %s", quote(Typename(collection)))),
 			)
 		}
 		reference := ctx.NewReference(collection)
@@ -4484,7 +4484,7 @@ func (self AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, e
 		if self.KIsReference {
 			return nil, NewError(
 				self.Location,
-				ctx.NewString(fmt.Sprintf("cannot use key-reference over type %s", quote(Typename(collection)))),
+				ctx.NewString(fmt.Sprintf("cannot use a key-reference over type %s", quote(Typename(collection)))),
 			)
 		}
 		collectionInt, err := ValueAsInt(collectionNumber)
@@ -4543,7 +4543,7 @@ func (self AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, e
 		if self.KIsReference {
 			return nil, NewError(
 				self.Location,
-				ctx.NewString(fmt.Sprintf("cannot use key-reference over type %s", quote(Typename(collection)))),
+				ctx.NewString(fmt.Sprintf("cannot use a key-reference over type %s", quote(Typename(collection)))),
 			)
 		}
 		// Iterate over a shallow copy of the map data in order to allow map
@@ -4587,7 +4587,7 @@ func (self AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, e
 		if self.KIsReference {
 			return nil, NewError(
 				self.Location,
-				ctx.NewString(fmt.Sprintf("cannot use key-reference over type %s", quote(Typename(collection)))),
+				ctx.NewString(fmt.Sprintf("cannot use a key-reference over type %s", quote(Typename(collection)))),
 			)
 		}
 		cur := collectionSet.data.head
