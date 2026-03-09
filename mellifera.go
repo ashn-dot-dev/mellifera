@@ -332,6 +332,9 @@ func NewContext() Context {
 	ctx.BaseEnvironment.Let("eprint", BuiltinEprint(&ctx))
 	ctx.BaseEnvironment.Let("eprintln", BuiltinEprintln(&ctx))
 	ctx.BaseEnvironment.Let("range", nil) // deferred instantiation
+	ctx.BaseEnvironment.Let("re", ctx.NewMap([]MapPair{
+		{ctx.NewString("group"), BuiltinReGroup(&ctx)},
+	}))
 	ctx.BaseEnvironment.Let("ty", ctx.NewMap([]MapPair{
 		{ctx.NewString("is"), BuiltinTyIs(&ctx)},
 		{ctx.NewString("is_null"), BuiltinTyIsNull(&ctx)},
@@ -7807,6 +7810,25 @@ let range = function(bgn, end) {
 };
 return range;
 	`)
+}
+
+func BuiltinReGroup(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("re::group", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		n, err := ValueAsInt(arguments[0])
+		if err != nil {
+			return nil, NewError(nil, ctx.NewString(fmt.Sprintf("expected integer capture group, received %v", arguments[0])))
+		}
+
+		if ctx.reMatchResult == nil {
+			return nil, NewError(nil, ctx.NewString("regular expression did not match"))
+		}
+
+		if n < 0 || n >= len(ctx.reMatchResult) {
+			return nil, NewError(nil, ctx.NewString(fmt.Sprintf("out-of-bounds regular expression capture group %v", n)))
+		}
+
+		return ctx.NewString(ctx.reMatchResult[n]), nil
+	})
 }
 
 func BuiltinTyIs(ctx *Context) *Builtin {
