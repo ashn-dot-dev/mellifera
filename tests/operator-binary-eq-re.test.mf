@@ -45,7 +45,7 @@ try { r"foo" =~ r"bar"; } catch err { dumpln(err); }
 # re::group(0) is "foobar"
 # re::group(1) is "bar"
 # re::group(2) is "bar"
-# re::group(3) is null
+# re::group(3) is ""
 # "attempted =~ operation with types `string` and `string`"
 # "attempted =~ operation with types `number` and `regexp`"
 # "attempted =~ operation with types `regexp` and `regexp`"
