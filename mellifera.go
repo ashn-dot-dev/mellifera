@@ -280,6 +280,7 @@ func NewContext() Context {
 		{ctx.NewString("insert"), BuiltinMapInsert(&ctx)},
 		{ctx.NewString("remove"), BuiltinMapRemove(&ctx)},
 		{ctx.NewString("keys"), BuiltinMapKeys(&ctx)},
+		{ctx.NewString("values"), BuiltinMapValues(&ctx)},
 		{ctx.NewString("union"), nil}, // deferred instantiation
 	})
 	ctx.setMeta = ctx.NewMetaMap("set", nil)
@@ -7393,6 +7394,21 @@ func BuiltinMapKeys(ctx *Context) *Builtin {
 		result := ctx.NewVector(nil)
 		for _, pair := range pairs {
 			result.Push(pair.Key.Copy())
+		}
+
+		return result, nil
+	})
+}
+
+func BuiltinMapValues(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("map::values", []Type{TRef(TVal(MAP))}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*Map)
+
+		pairs := delf.Pairs()
+		result := ctx.NewVector(nil)
+		for _, pair := range pairs {
+			result.Push(pair.Value.Copy())
 		}
 
 		return result, nil
