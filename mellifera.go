@@ -276,6 +276,7 @@ func NewContext() Context {
 	})
 	ctx.mapMeta = ctx.NewMetaMap("map", []MapPair{
 		{ctx.NewString("count"), BuiltinMapCount(&ctx)},
+		{ctx.NewString("contains"), BuiltinMapContains(&ctx)},
 		{ctx.NewString("insert"), BuiltinMapInsert(&ctx)},
 		{ctx.NewString("union"), nil}, // deferred instantiation
 	})
@@ -7327,6 +7328,19 @@ func BuiltinMapCount(ctx *Context) *Builtin {
 		delf := self.data.(*Map)
 
 		return ctx.NewNumber(float64(delf.Count())), nil
+	})
+}
+
+func BuiltinMapContains(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("map::contains", []Type{TRef(TVal(MAP)), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*Map)
+
+		target := arguments[1]
+
+		lookup := delf.Lookup(target)
+
+		return ctx.NewBoolean(lookup != nil), nil
 	})
 }
 
