@@ -2501,7 +2501,7 @@ func (self *Environment) Set(name string, value Value) error {
 		}
 		env = env.outer
 	}
-	return fmt.Errorf("identifier %s is not defined", name)
+	return fmt.Errorf("identifier %s is not defined", quote(name))
 }
 
 func (self *Environment) Get(name string) (Value, error) {
@@ -2513,7 +2513,7 @@ func (self *Environment) Get(name string) (Value, error) {
 		}
 		env = env.outer
 	}
-	return nil, fmt.Errorf("identifier %s is not defined", name)
+	return nil, fmt.Errorf("identifier %s is not defined", quote(name))
 }
 
 type ControlFlow interface {
