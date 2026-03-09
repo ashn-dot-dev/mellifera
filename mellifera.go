@@ -331,6 +331,7 @@ func NewContext() Context {
 	ctx.BaseEnvironment.Let("println", BuiltinPrintln(&ctx))
 	ctx.BaseEnvironment.Let("eprint", BuiltinEprint(&ctx))
 	ctx.BaseEnvironment.Let("eprintln", BuiltinEprintln(&ctx))
+	ctx.BaseEnvironment.Let("range", nil) // deferred instantiation
 	ctx.BaseEnvironment.Let("ty", ctx.NewMap([]MapPair{
 		{ctx.NewString("is"), BuiltinTyIs(&ctx)},
 		{ctx.NewString("is_null"), BuiltinTyIsNull(&ctx)},
@@ -353,6 +354,7 @@ func NewContext() Context {
 	ctx.setMeta.data.Insert(ctx.NewString("union"), BuiltinSetUnion(&ctx))
 	ctx.setMeta.data.Insert(ctx.NewString("intersection"), BuiltinSetIntersection(&ctx))
 	ctx.setMeta.data.Insert(ctx.NewString("difference"), BuiltinSetDifference(&ctx))
+	ctx.BaseEnvironment.Set("range", BuiltinRange(&ctx))
 
 	return ctx
 }
@@ -7763,6 +7765,34 @@ func BuiltinEprintln(ctx *Context) *Builtin {
 		fmt.Fprintf(os.Stderr, "%v\n", arguments[0])
 		return ctx.NewNull(), nil
 	})
+}
+
+func BuiltinRange(ctx *Context) Value {
+	return ctx.NewValueFromSourceOrPanic("range", `
+let range_iterator = type extends(iterator, {
+	"init": function(bgn, end) {
+		if end < bgn {
+			error $"end-of-range {repr(end)} is less than beginning-of-range {repr(bgn)}";
+		}
+		return new range_iterator {
+			.cur = bgn,
+			.end = end,
+		};
+	},
+	"next": function(self) {
+		if self.cur >= self.end {
+			error null; # end-of-iteration
+		}
+		let result = self.cur;
+		self.cur = self.cur + 1;
+		return result;
+	},
+});
+let range = function(bgn, end) {
+	return range_iterator::init(bgn, end);
+};
+return range;
+	`)
 }
 
 func BuiltinTyIs(ctx *Context) *Builtin {
