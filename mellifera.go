@@ -3931,17 +3931,31 @@ func (self AstExpressionAccessIndex) Eval(ctx *Context, env *Environment) (Value
 	}
 
 	if v, ok := store.(*Vector); ok {
-		integer, err := ValueAsInt(field)
+		index, err := ValueAsInt(field)
 		if err != nil {
-			return nil, fmt.Errorf("invalid vector access with field %v", field)
+			return nil, NewError(
+				self.Location,
+				ctx.NewString(fmt.Sprintf("invalid vector access with index %v", index)),
+			)
 		}
-		return v.Get(integer), nil
+
+		if index < 0 || index >= v.Count() {
+			return nil, NewError(
+				self.Location,
+				ctx.NewString(fmt.Sprintf("invalid vector access with index %v", index)),
+			)
+		}
+		return v.Get(index), nil
 	}
 	if m, ok := store.(*Map); ok {
 		lookup := m.Lookup(field)
 		if lookup == nil {
-			return nil, fmt.Errorf("invalid map access with field %v", field)
+			return nil, NewError(
+				self.Location,
+				ctx.NewString(fmt.Sprintf("invalid map access with field %v", field)),
+			)
 		}
+
 		return lookup, nil
 	}
 
