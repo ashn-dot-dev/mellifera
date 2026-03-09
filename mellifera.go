@@ -474,7 +474,10 @@ func (ctx *Context) NewBuiltin(name string, types []Type, impl func(*Context, []
 
 func (ctx *Context) NewValueFromSource(name string, source string) (Value, error) {
 	lexer := NewLexer(ctx, source, &SourceLocation{fmt.Sprintf("%s@builtin", name), 1})
-	parser := NewParser(&lexer)
+	parser, err := NewParser(&lexer)
+	if err != nil {
+		return nil, err
+	}
 	program, err := parser.ParseProgram()
 	if err != nil {
 		return nil, err
@@ -2192,7 +2195,10 @@ func (self *Lexer) lexTemplate() (Token, error) {
 			self.position += len("{")
 
 			lexer := NewLexer(self.ctx, self.remaining(), nil)
-			parser := NewParser(&lexer)
+			parser, err := NewParser(&lexer)
+			if err != nil {
+				return err
+			}
 			expression, err := parser.ParseExpression()
 			if err != nil {
 				return ParseError{
@@ -5012,7 +5018,7 @@ type Parser struct {
 	parseLedFunctions map[string]func(*Parser, AstExpression) (AstExpression, error)
 }
 
-func NewParser(lexer *Lexer) Parser {
+func NewParser(lexer *Lexer) (Parser, error) {
 	self := Parser{
 		lexer:        lexer,
 		currentToken: Token{"invalid program", "", lexer.location, nil, nil},
@@ -5085,8 +5091,13 @@ func NewParser(lexer *Lexer) Parser {
 			TOKEN_DEREF:    (*Parser).ParseExpressionDeref,
 		},
 	}
-	self.advanceToken()
-	return self
+
+	_, err := self.advanceToken()
+	if err != nil {
+		return Parser{}, err
+	}
+
+	return self, err
 }
 
 func (self *Parser) context() *Context {

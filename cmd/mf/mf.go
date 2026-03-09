@@ -46,7 +46,10 @@ func dumpTokensFile(ctx *mellifera.Context, path string) error {
 
 func dumpAstSource(ctx *mellifera.Context, source string, location *mellifera.SourceLocation) error {
 	lexer := mellifera.NewLexer(ctx, source, location)
-	parser := mellifera.NewParser(&lexer)
+	parser, err := mellifera.NewParser(&lexer)
+	if err != nil {
+		return err
+	}
 	program, err := parser.ParseProgram()
 	if err != nil {
 		return err
@@ -72,7 +75,10 @@ func dumpAstFile(ctx *mellifera.Context, path string) error {
 
 func evalSource(ctx *mellifera.Context, source string, location *mellifera.SourceLocation) (mellifera.Value, error) {
 	lexer := mellifera.NewLexer(ctx, source, location)
-	parser := mellifera.NewParser(&lexer)
+	parser, err := mellifera.NewParser(&lexer)
+	if err != nil {
+		return nil, err
+	}
 	program, err := parser.ParseProgram()
 	if err != nil {
 		return nil, err
