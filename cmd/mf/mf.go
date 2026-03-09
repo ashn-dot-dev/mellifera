@@ -195,6 +195,15 @@ func main() {
 
 	var err error
 	ctx := mellifera.NewContext()
+	argvIntoValue := func() mellifera.Value {
+		result := ctx.NewVector(nil)
+		for _, arg := range argv {
+			result.Push(ctx.NewString(arg))
+		}
+		return result
+	}
+	ctx.BaseEnvironment.Let("argv", argvIntoValue())
+
 	if dumpTokens && dumpAst {
 		fmt.Fprintf(os.Stderr, "error: requested token dump and AST dump which are mutually exclusive\n")
 		os.Exit(1)
