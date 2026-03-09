@@ -1705,7 +1705,7 @@ class ParseError(Exception):
     def __str__(self):
         if self.location is None:
             return f"{self.why}"
-        return f"[{self.location}] {self.why}"
+        return f"[{self.location}] error: {self.why}"
 
 
 class Environment:

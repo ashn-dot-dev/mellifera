@@ -1,3 +1,3 @@
 Map{"foo" not 123};
 ################################################################################
-# [error-invalid-map-separator.test.mf, line 1] expected : or =, found not
+# [error-invalid-map-separator.test.mf, line 1] error: expected : or =, found not
