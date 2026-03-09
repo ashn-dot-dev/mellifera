@@ -3654,7 +3654,7 @@ func (self AstExpressionNeRe) Eval(ctx *Context, env *Environment) (Value, error
 
 	return nil, NewError(
 		self.Location,
-		ctx.NewString(fmt.Sprintf("attempted =~ operation with types %s and %s", quote(Typename(lhs)), quote(Typename(rhs)))),
+		ctx.NewString(fmt.Sprintf("attempted !~ operation with types %s and %s", quote(Typename(lhs)), quote(Typename(rhs)))),
 	)
 }
 
