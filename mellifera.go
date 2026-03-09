@@ -278,6 +278,7 @@ func NewContext() Context {
 		{ctx.NewString("count"), BuiltinMapCount(&ctx)},
 		{ctx.NewString("contains"), BuiltinMapContains(&ctx)},
 		{ctx.NewString("insert"), BuiltinMapInsert(&ctx)},
+		{ctx.NewString("remove"), BuiltinMapRemove(&ctx)},
 		{ctx.NewString("union"), nil}, // deferred instantiation
 	})
 	ctx.setMeta = ctx.NewMetaMap("set", nil)
@@ -7358,6 +7359,27 @@ func BuiltinMapInsert(ctx *Context) *Builtin {
 		}
 
 		return ctx.NewNull(), nil
+	})
+}
+
+func BuiltinMapRemove(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("map::remove", []Type{TRef(TVal(MAP)), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*Map)
+
+		k := arguments[1]
+
+		lookup := delf.Lookup(k)
+		if lookup == nil {
+			return nil, NewError(nil, ctx.NewString(fmt.Sprintf("attempted map::remove on a map without key %v", k)))
+		}
+
+		err := delf.Remove(k)
+		if err != nil {
+			return nil, NewError(nil, ctx.NewString(err.Error()))
+		}
+
+		return lookup.Copy(), nil
 	})
 }
 
