@@ -335,6 +335,7 @@ func NewContext() Context {
 	ctx.BaseEnvironment.Let("re", ctx.NewMap([]MapPair{
 		{ctx.NewString("group"), BuiltinReGroup(&ctx)},
 		{ctx.NewString("split"), BuiltinReSplit(&ctx)},
+		{ctx.NewString("replace"), BuiltinReReplace(&ctx)},
 	}))
 	ctx.BaseEnvironment.Let("ty", ctx.NewMap([]MapPair{
 		{ctx.NewString("is"), BuiltinTyIs(&ctx)},
@@ -7836,6 +7837,14 @@ func BuiltinReSplit(ctx *Context) Value {
 	return ctx.NewValueFromSourceOrPanic("re::split", `
 return function(string, regexp) {
 	return regexp.split(string);
+};
+	`)
+}
+
+func BuiltinReReplace(ctx *Context) Value {
+	return ctx.NewValueFromSourceOrPanic("re::replace", `
+return function(string, regexp, replacement) {
+	return regexp.replace(string, replacement);
 };
 	`)
 }
