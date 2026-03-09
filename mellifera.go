@@ -334,6 +334,7 @@ func NewContext() Context {
 	ctx.BaseEnvironment.Let("range", nil) // deferred instantiation
 	ctx.BaseEnvironment.Let("re", ctx.NewMap([]MapPair{
 		{ctx.NewString("group"), BuiltinReGroup(&ctx)},
+		{ctx.NewString("split"), BuiltinReSplit(&ctx)},
 	}))
 	ctx.BaseEnvironment.Let("ty", ctx.NewMap([]MapPair{
 		{ctx.NewString("is"), BuiltinTyIs(&ctx)},
@@ -7829,6 +7830,14 @@ func BuiltinReGroup(ctx *Context) *Builtin {
 
 		return ctx.NewString(ctx.reMatchResult[n]), nil
 	})
+}
+
+func BuiltinReSplit(ctx *Context) Value {
+	return ctx.NewValueFromSourceOrPanic("re::split", `
+return function(string, regexp) {
+	return regexp.split(string);
+};
+	`)
 }
 
 func BuiltinTyIs(ctx *Context) *Builtin {
