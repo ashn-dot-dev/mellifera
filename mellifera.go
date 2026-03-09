@@ -287,6 +287,7 @@ func NewContext() Context {
 	ctx.setMeta = ctx.NewMetaMap("set", []MapPair{
 		{ctx.NewString("count"), BuiltinSetCount(&ctx)},
 		{ctx.NewString("contains"), BuiltinSetContains(&ctx)},
+		{ctx.NewString("insert"), BuiltinSetInsert(&ctx)},
 	})
 	ctx.referenceMeta = ctx.NewMetaMap("reference", nil)
 
@@ -7476,6 +7477,19 @@ func BuiltinSetContains(ctx *Context) *Builtin {
 		lookup := delf.Lookup(target)
 
 		return ctx.NewBoolean(lookup != nil), nil
+	})
+}
+
+func BuiltinSetInsert(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("set::insert", []Type{TRef(TVal(SET)), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*Set)
+
+		k := arguments[1]
+
+		delf.Insert(k)
+
+		return ctx.NewNull(), nil
 	})
 }
 
