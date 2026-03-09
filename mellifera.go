@@ -4009,7 +4009,10 @@ func (self AstExpressionAccessScope) Eval(ctx *Context, env *Environment) (Value
 	}
 	lookup := m.Lookup(field)
 	if lookup == nil {
-		return nil, fmt.Errorf("invalid map access with field %v", field)
+		return nil, NewError(
+			self.Location,
+			ctx.NewString(fmt.Sprintf("invalid map access with field %v", field)),
+		)
 	}
 
 	return lookup, nil
