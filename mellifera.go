@@ -288,6 +288,7 @@ func NewContext() Context {
 		{ctx.NewString("count"), BuiltinSetCount(&ctx)},
 		{ctx.NewString("contains"), BuiltinSetContains(&ctx)},
 		{ctx.NewString("insert"), BuiltinSetInsert(&ctx)},
+		{ctx.NewString("remove"), BuiltinSetRemove(&ctx)},
 	})
 	ctx.referenceMeta = ctx.NewMetaMap("reference", nil)
 
@@ -7490,6 +7491,24 @@ func BuiltinSetInsert(ctx *Context) *Builtin {
 		delf.Insert(k)
 
 		return ctx.NewNull(), nil
+	})
+}
+
+func BuiltinSetRemove(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("set::remove", []Type{TRef(TVal(SET)), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*Set)
+
+		k := arguments[1]
+
+		lookup := delf.Lookup(k)
+		if lookup == nil {
+			return nil, NewError(nil, ctx.NewString(fmt.Sprintf("attempted set::remove on a set without element %v", k)))
+		}
+
+		delf.Remove(k)
+
+		return lookup.Copy(), nil
 	})
 }
 
