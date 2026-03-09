@@ -2051,7 +2051,7 @@ func (self *Lexer) lexEscStringPart() ([]byte, error) {
 		sequence := string([]rune{self.currentRune(), self.peekRune()})
 		return nil, ParseError{
 			Location: self.currentLocation(),
-			why:      fmt.Sprintf("expected escape sequence, found %s", sequence),
+			why:      fmt.Sprintf("expected escape sequence, found %s", quote(escape(sequence))),
 		}
 	}
 
