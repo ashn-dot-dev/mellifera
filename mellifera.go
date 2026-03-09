@@ -6361,10 +6361,12 @@ func Call(ctx *Context, location *SourceLocation, callable Value, arguments []Va
 
 	if builtin, ok := callable.(*Builtin); ok {
 		if err := TypeCheckArguments(builtin.types, arguments); err != nil {
-			return nil, NewError(
-				location,
+			e := NewError(
+				nil,
 				ctx.NewString(err.Error()),
 			)
+			e.Trace = append(e.Trace, TraceElement{location, builtin.String()})
+			return nil, e
 		}
 		result, err := builtin.impl(ctx, arguments)
 		if err != nil {
@@ -6405,7 +6407,7 @@ type Type struct {
 
 func (self Type) String() string {
 	if self.Kind == REFERENCE && self.Base != nil {
-		return fmt.Sprintf("refrence to %s", self.Base.String())
+		return fmt.Sprintf("reference to %s", self.Base.String())
 	}
 	return self.Kind
 }
