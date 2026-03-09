@@ -5384,10 +5384,10 @@ def builtin_typename(value: Value) -> Union[Value, Error]:
 @builtin_from_source("extends")
 def builtin_extends():
     return """
-    let extend = function(super, t) {
+    let extends = function(super, t) {
         return map::union(super, t);
     };
-    return extend;
+    return extends;
     """
 
 

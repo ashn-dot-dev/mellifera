@@ -270,10 +270,14 @@ func NewContext() Context {
 		{ctx.NewString("remove"), BuiltinVectorRemove(&ctx)},
 		{ctx.NewString("slice"), BuiltinVectorSlice(&ctx)},
 		{ctx.NewString("reversed"), BuiltinVectorReversed(&ctx)},
-		{ctx.NewString("sorted"), nil},    // deferred instantiation
-		{ctx.NewString("sorted_by"), nil}, // deferred instantiation
+		{ctx.NewString("sorted"), nil},        // deferred instantiation
+		{ctx.NewString("sorted_by"), nil},     // deferred instantiation
+		{ctx.NewString("into_iterator"), nil}, // deferred instantiation
 	})
-	ctx.mapMeta = ctx.NewMetaMap("map", nil)
+	ctx.mapMeta = ctx.NewMetaMap("map", []MapPair{
+		{ctx.NewString("insert"), BuiltinMapInsert(&ctx)},
+		{ctx.NewString("union"), nil}, // deferred instantiation
+	})
 	ctx.setMeta = ctx.NewMetaMap("set", nil)
 	ctx.referenceMeta = ctx.NewMetaMap("reference", nil)
 
@@ -305,6 +309,7 @@ func NewContext() Context {
 	ctx.BaseEnvironment.Let("assert", BuiltinAssert(&ctx))
 	ctx.BaseEnvironment.Let("typeof", BuiltinTypeof(&ctx))
 	ctx.BaseEnvironment.Let("typename", BuiltinTypename(&ctx))
+	ctx.BaseEnvironment.Let("extends", BuiltinExtends(&ctx))
 	ctx.BaseEnvironment.Let("repr", BuiltinRepr(&ctx))
 	ctx.BaseEnvironment.Let("dump", BuiltinDump(&ctx))
 	ctx.BaseEnvironment.Let("dumpln", BuiltinDumpln(&ctx))
@@ -329,6 +334,8 @@ func NewContext() Context {
 	// Initialize builtins from source with deferred instantiation.
 	ctx.vectorMeta.data.Insert(ctx.NewString("sorted"), BuiltinVectorSorted(&ctx))
 	ctx.vectorMeta.data.Insert(ctx.NewString("sorted_by"), BuiltinVectorSortedBy(&ctx))
+	ctx.vectorMeta.data.Insert(ctx.NewString("into_iterator"), BuiltinVectorIntoIterator(&ctx))
+	ctx.mapMeta.data.Insert(ctx.NewString("union"), BuiltinMapUnion(&ctx))
 
 	return ctx
 }
@@ -7292,6 +7299,64 @@ return function(self, compare) {
 	`)
 }
 
+func BuiltinVectorIntoIterator(ctx *Context) Value {
+	return ctx.NewValueFromSourceOrPanic("vector::into_iterator", `
+return function(self) {
+	let vector_iterator = type extends(iterator, {
+		.next = function(self) {
+			if self.index >= self.vector.*.count() {
+				return iterator::eoi();
+			}
+			let current = self.vector.*[self.index];
+			self.index = self.index + 1;
+			return current;
+		},
+	});
+	return new vector_iterator {
+		.vector = self,
+		.index = 0,
+	};
+};
+	`)
+}
+
+func BuiltinMapInsert(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("map::insert", []Type{TRef(TVal(MAP)), TVal(ANY), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*Map)
+
+		k := arguments[1]
+		v := arguments[2]
+
+		err := delf.Insert(k, v)
+		if err != nil {
+			return nil, NewError(nil, ctx.NewString(err.Error()))
+		}
+
+		return ctx.NewNull(), nil
+	})
+}
+
+func BuiltinMapUnion(ctx *Context) Value {
+	return ctx.NewValueFromSourceOrPanic("map::union", `
+return function(a, b) {
+	try { a = a.*; } catch { } # &map -> map
+	if not ty::is_map(a) or not ty::is_map(b) {
+		error $"attempted map::union of values {repr(a)} and {repr(b)}";
+	}
+
+	let result = Map{};
+	for k, v in a {
+		map::insert(result.&, k, v);
+	}
+	for k, v in b {
+		map::insert(result.&, k, v);
+	}
+	return result;
+};
+	`)
+}
+
 func BuiltinExit(ctx *Context) *Builtin {
 	return ctx.NewBuiltin("exit", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		integer, err := ValueAsInt(arguments[0])
@@ -7333,6 +7398,19 @@ func BuiltinTypeof(ctx *Context) *Builtin {
 func BuiltinTypename(ctx *Context) *Builtin {
 	return ctx.NewBuiltin("typename", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewString(Typename(arguments[0])), nil
+	})
+}
+
+func BuiltinExtends(ctx *Context) *Builtin {
+	function := ctx.NewValueFromSourceOrPanic("extends", `
+let extends = function(super, t) {
+	return map::union(super, t);
+};
+return extends;
+	`)
+
+	return ctx.NewBuiltin("extends", []Type{TVal(MAP), TVal(MAP)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return Call(ctx, nil, function, arguments)
 	})
 }
 
