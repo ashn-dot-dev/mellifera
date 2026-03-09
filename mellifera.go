@@ -289,6 +289,7 @@ func NewContext() Context {
 		{ctx.NewString("contains"), BuiltinSetContains(&ctx)},
 		{ctx.NewString("insert"), BuiltinSetInsert(&ctx)},
 		{ctx.NewString("remove"), BuiltinSetRemove(&ctx)},
+		{ctx.NewString("union"), nil}, // deferred instantiation
 	})
 	ctx.referenceMeta = ctx.NewMetaMap("reference", nil)
 
@@ -347,6 +348,7 @@ func NewContext() Context {
 	ctx.vectorMeta.data.Insert(ctx.NewString("sorted_by"), BuiltinVectorSortedBy(&ctx))
 	ctx.vectorMeta.data.Insert(ctx.NewString("into_iterator"), BuiltinVectorIntoIterator(&ctx))
 	ctx.mapMeta.data.Insert(ctx.NewString("union"), BuiltinMapUnion(&ctx))
+	ctx.setMeta.data.Insert(ctx.NewString("union"), BuiltinSetUnion(&ctx))
 
 	return ctx
 }
@@ -7510,6 +7512,26 @@ func BuiltinSetRemove(ctx *Context) *Builtin {
 
 		return lookup.Copy(), nil
 	})
+}
+
+func BuiltinSetUnion(ctx *Context) Value {
+	return ctx.NewValueFromSourceOrPanic("set::union", `
+return function(a, b) {
+	try { a = a.*; } catch { } # &set -> set
+	if not ty::is_set(a) or not ty::is_set(b) {
+		error $"attempted set::union of values {repr(a)} and {repr(b)}";
+	}
+
+	let result = Set{};
+	for x in a {
+		set::insert(result.&, x);
+	}
+	for x in b {
+		set::insert(result.&, x);
+	}
+	return result;
+};
+	`)
 }
 
 func BuiltinExit(ctx *Context) *Builtin {
