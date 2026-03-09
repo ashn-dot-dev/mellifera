@@ -291,6 +291,7 @@ func NewContext() Context {
 		{ctx.NewString("remove"), BuiltinSetRemove(&ctx)},
 		{ctx.NewString("union"), nil},        // deferred instantiation
 		{ctx.NewString("intersection"), nil}, // deferred instantiation
+		{ctx.NewString("difference"), nil},   // deferred instantiation
 	})
 	ctx.referenceMeta = ctx.NewMetaMap("reference", nil)
 
@@ -351,6 +352,7 @@ func NewContext() Context {
 	ctx.mapMeta.data.Insert(ctx.NewString("union"), BuiltinMapUnion(&ctx))
 	ctx.setMeta.data.Insert(ctx.NewString("union"), BuiltinSetUnion(&ctx))
 	ctx.setMeta.data.Insert(ctx.NewString("intersection"), BuiltinSetIntersection(&ctx))
+	ctx.setMeta.data.Insert(ctx.NewString("difference"), BuiltinSetDifference(&ctx))
 
 	return ctx
 }
@@ -7547,6 +7549,25 @@ return function(a, b) {
 	let result = Set{};
 	for x in a {
 		if b.contains(x) {
+			set::insert(result.&, x);
+		}
+	}
+	return result;
+};
+	`)
+}
+
+func BuiltinSetDifference(ctx *Context) Value {
+	return ctx.NewValueFromSourceOrPanic("set::difference", `
+return function(a, b) {
+	try { a = a.*; } catch { } # &set -> set
+	if not ty::is_set(a) or not ty::is_set(b) {
+		error $"attempted set::difference of values {repr(a)} and {repr(b)}";
+	}
+
+	let result = Set{};
+	for x in a {
+		if not b.contains(x) {
 			set::insert(result.&, x);
 		}
 	}
