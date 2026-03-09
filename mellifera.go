@@ -284,7 +284,9 @@ func NewContext() Context {
 		{ctx.NewString("pairs"), BuiltinMapPairs(&ctx)},
 		{ctx.NewString("union"), nil}, // deferred instantiation
 	})
-	ctx.setMeta = ctx.NewMetaMap("set", nil)
+	ctx.setMeta = ctx.NewMetaMap("set", []MapPair{
+		{ctx.NewString("count"), BuiltinSetCount(&ctx)},
+	})
 	ctx.referenceMeta = ctx.NewMetaMap("reference", nil)
 
 	ctx.Null = &Null{nil}
@@ -7452,6 +7454,15 @@ return function(a, b) {
 	return result;
 };
 	`)
+}
+
+func BuiltinSetCount(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("set::count", []Type{TRef(TVal(SET))}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*Set)
+
+		return ctx.NewNumber(float64(delf.Count())), nil
+	})
 }
 
 func BuiltinExit(ctx *Context) *Builtin {
