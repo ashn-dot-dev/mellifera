@@ -4090,12 +4090,18 @@ func (self AstExpressionAccessDot) Eval(ctx *Context, env *Environment) (Value, 
 					return lookup, nil
 				}
 			}
-
-			return nil, fmt.Errorf("invalid %s to %s access with field %v", store.Typename(), storeDeref.Typename(), field)
 		}
+
+		return nil, NewError(
+			self.Location,
+			ctx.NewString(fmt.Sprintf("invalid %s to %s access with field %v", store.Typename(), storeDeref.Typename(), field)),
+		)
 	}
 
-	return nil, fmt.Errorf("invalid %s access with field %v", store.Typename(), field)
+	return nil, NewError(
+		self.Location,
+		ctx.NewString(fmt.Sprintf("invalid %s access with field %v", store.Typename(), field)),
+	)
 }
 
 type AstExpressionMkref struct {
@@ -4215,7 +4221,7 @@ func (self AstExpressionFunctionCall) Eval(ctx *Context, env *Environment) (Valu
 		if function == nil {
 			// Implicit value dereference meta lookup.
 			if storeReference, ok := store.(*Reference); ok {
-				if meta := storeReference.Meta(); meta != nil {
+				if meta := storeReference.data.Meta(); meta != nil {
 					selfArgument = storeReference
 					function = meta.Lookup(accessDot.Field.Name)
 				}
@@ -4905,10 +4911,19 @@ func (self AstStatementAssignment) Eval(ctx *Context, env *Environment) (Control
 		return nil, err
 	}
 
-	assignVector := func(storeVector *Vector, rhs Value) error {
+	assignVector := func(storeVector *Vector, rhs Value, autoDeref bool) error {
 		integer, err := ValueAsInt(field)
 		if err != nil {
-			return fmt.Errorf("invalid vector access with field %v", field)
+			if autoDeref {
+				return NewError(
+					self.Location,
+					ctx.NewString(fmt.Sprintf("invalid reference to vector access with field %v", field)),
+				)
+			}
+			return NewError(
+				self.Location,
+				ctx.NewString(fmt.Sprintf("invalid vector access with field %v", field)),
+			)
 		}
 		storeVector.Set(integer, rhs.Copy())
 		return nil
@@ -4917,13 +4932,16 @@ func (self AstStatementAssignment) Eval(ctx *Context, env *Environment) (Control
 	assignMap := func(storeMap *Map, rhs Value) error {
 		err := storeMap.Insert(field, rhs.Copy())
 		if err != nil {
-			return err
+			return NewError(
+				self.Location,
+				ctx.NewString(err.Error()),
+			)
 		}
 		return nil
 	}
 
 	if storeVector, ok := store.(*Vector); ok {
-		return nil, assignVector(storeVector, rhs)
+		return nil, assignVector(storeVector, rhs, false)
 	}
 	if storeMap, ok := store.(*Map); ok {
 		return nil, assignMap(storeMap, rhs)
@@ -4931,12 +4949,15 @@ func (self AstStatementAssignment) Eval(ctx *Context, env *Environment) (Control
 	if storeReference, ok := store.(*Reference); ok {
 		storeDeref := storeReference.data
 		if storeDerefVector, ok := storeDeref.(*Vector); ok {
-			return nil, assignVector(storeDerefVector, rhs)
+			return nil, assignVector(storeDerefVector, rhs, true)
 		}
 		if storeDerefMap, ok := storeDeref.(*Map); ok {
 			return nil, assignMap(storeDerefMap, rhs)
 		}
-		return nil, fmt.Errorf("invalid %s to %s access with field %v", store.Typename(), storeDeref.Typename(), field)
+		return nil, NewError(
+			self.Location,
+			ctx.NewString(fmt.Sprintf("invalid %s to %s access with field %v", store.Typename(), storeDeref.Typename(), field)),
+		)
 	}
 
 	return nil, NewError(
