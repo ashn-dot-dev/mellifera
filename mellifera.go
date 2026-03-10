@@ -6469,7 +6469,7 @@ func TypeCheckArgument(index int, expected Type, received Value) error {
 		}
 		return nil
 	case FUNCTION:
-		if _, ok := received.(*Reference); ok {
+		if _, ok := received.(*Function); ok {
 			return nil
 		}
 		if _, ok := received.(*Builtin); ok {
@@ -7271,7 +7271,7 @@ func BuiltinVectorReversed(ctx *Context) *Builtin {
 }
 
 func BuiltinVectorSorted(ctx *Context) Value {
-	return ctx.NewValueFromSourceOrPanic("vector::sorted", `
+	source := `
 let sort = function(x) {
 	if x.count() <= 1 {
 		return x;
@@ -7318,11 +7318,15 @@ return function(self) {
 	}
 	try { return sort(self.*); } catch err { error err; }
 };
-	`)
+`
+
+	return ctx.NewBuiltin("vector::sorted", []Type{TRef(TVal(VECTOR))}, func(ctx *Context, arguments []Value) (Value, error) {
+		return Call(ctx, nil, ctx.NewValueFromSourceOrPanic("vector::sorted", source), arguments)
+	})
 }
 
 func BuiltinVectorSortedBy(ctx *Context) Value {
-	return ctx.NewValueFromSourceOrPanic("vector::sorted_by", `
+	source := `
 let sort = function(x, compare) {
 	if x.count() <= 1 {
 		return x;
@@ -7371,11 +7375,15 @@ return function(self, compare) {
 	}
 	try { return sort(self.*, compare); } catch err { error err; }
 };
-	`)
+`
+
+	return ctx.NewBuiltin("vector::sorted_by", []Type{TRef(TVal(VECTOR)), TVal(FUNCTION)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return Call(ctx, nil, ctx.NewValueFromSourceOrPanic("vector::sorted_by", source), arguments)
+	})
 }
 
 func BuiltinVectorIntoIterator(ctx *Context) Value {
-	return ctx.NewValueFromSourceOrPanic("vector::into_iterator", `
+	function := ctx.NewValueFromSourceOrPanic("vector::into_iterator", `
 return function(self) {
 	let vector_iterator = type extends(iterator, {
 		.next = function(self) {
@@ -7393,6 +7401,10 @@ return function(self) {
 	};
 };
 	`)
+
+	return ctx.NewBuiltin("vector::into_iterator", []Type{TRef(TVal(VECTOR))}, func(ctx *Context, arguments []Value) (Value, error) {
+		return Call(ctx, nil, function, arguments)
+	})
 }
 
 func BuiltinMapCount(ctx *Context) *Builtin {
@@ -7504,7 +7516,7 @@ func BuiltinMapPairs(ctx *Context) *Builtin {
 }
 
 func BuiltinMapUnion(ctx *Context) Value {
-	return ctx.NewValueFromSourceOrPanic("map::union", `
+	function := ctx.NewValueFromSourceOrPanic("map::union", `
 return function(a, b) {
 	try { a = a.*; } catch { } # &map -> map
 	if not ty::is_map(a) or not ty::is_map(b) {
@@ -7521,6 +7533,10 @@ return function(a, b) {
 	return result;
 };
 	`)
+
+	return ctx.NewBuiltin("map::union", []Type{TVal(ANY), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return Call(ctx, nil, function, arguments)
+	})
 }
 
 func BuiltinSetCount(ctx *Context) *Builtin {
@@ -7577,7 +7593,7 @@ func BuiltinSetRemove(ctx *Context) *Builtin {
 }
 
 func BuiltinSetUnion(ctx *Context) Value {
-	return ctx.NewValueFromSourceOrPanic("set::union", `
+	function := ctx.NewValueFromSourceOrPanic("set::union", `
 return function(a, b) {
 	try { a = a.*; } catch { } # &set -> set
 	if not ty::is_set(a) or not ty::is_set(b) {
@@ -7594,10 +7610,14 @@ return function(a, b) {
 	return result;
 };
 	`)
+
+	return ctx.NewBuiltin("set::union", []Type{TVal(ANY), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return Call(ctx, nil, function, arguments)
+	})
 }
 
 func BuiltinSetIntersection(ctx *Context) Value {
-	return ctx.NewValueFromSourceOrPanic("set::intersection", `
+	function := ctx.NewValueFromSourceOrPanic("set::intersection", `
 return function(a, b) {
 	try { a = a.*; } catch { } # &set -> set
 	if not ty::is_set(a) or not ty::is_set(b) {
@@ -7613,10 +7633,14 @@ return function(a, b) {
 	return result;
 };
 	`)
+
+	return ctx.NewBuiltin("set::intersection", []Type{TVal(ANY), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return Call(ctx, nil, function, arguments)
+	})
 }
 
 func BuiltinSetDifference(ctx *Context) Value {
-	return ctx.NewValueFromSourceOrPanic("set::difference", `
+	function := ctx.NewValueFromSourceOrPanic("set::difference", `
 return function(a, b) {
 	try { a = a.*; } catch { } # &set -> set
 	if not ty::is_set(a) or not ty::is_set(b) {
@@ -7632,6 +7656,10 @@ return function(a, b) {
 	return result;
 };
 	`)
+
+	return ctx.NewBuiltin("set::difference", []Type{TVal(ANY), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return Call(ctx, nil, function, arguments)
+	})
 }
 
 func BuiltinExit(ctx *Context) *Builtin {
@@ -7824,7 +7852,7 @@ func BuiltinEprintln(ctx *Context) *Builtin {
 }
 
 func BuiltinRange(ctx *Context) Value {
-	return ctx.NewValueFromSourceOrPanic("range", `
+	function := ctx.NewValueFromSourceOrPanic("range", `
 let range_iterator = type extends(iterator, {
 	"init": function(bgn, end) {
 		if end < bgn {
@@ -7849,6 +7877,10 @@ let range = function(bgn, end) {
 };
 return range;
 	`)
+
+	return ctx.NewBuiltin("range", []Type{TVal(NUMBER), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return Call(ctx, nil, function, arguments)
+	})
 }
 
 func BuiltinReGroup(ctx *Context) *Builtin {
@@ -7871,19 +7903,27 @@ func BuiltinReGroup(ctx *Context) *Builtin {
 }
 
 func BuiltinReSplit(ctx *Context) Value {
-	return ctx.NewValueFromSourceOrPanic("re::split", `
+	function := ctx.NewValueFromSourceOrPanic("re::split", `
 return function(string, regexp) {
 	return regexp.split(string);
 };
 	`)
+
+	return ctx.NewBuiltin("re::split", []Type{TVal(STRING), TVal(REGEXP)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return Call(ctx, nil, function, arguments)
+	})
 }
 
 func BuiltinReReplace(ctx *Context) Value {
-	return ctx.NewValueFromSourceOrPanic("re::replace", `
+	function := ctx.NewValueFromSourceOrPanic("re::replace", `
 return function(string, regexp, replacement) {
 	return regexp.replace(string, replacement);
 };
 	`)
+
+	return ctx.NewBuiltin("re::replace", []Type{TVal(STRING), TVal(REGEXP), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return Call(ctx, nil, function, arguments)
+	})
 }
 
 func BuiltinTyIs(ctx *Context) *Builtin {
