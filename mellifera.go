@@ -316,7 +316,7 @@ func NewContext() Context {
 	ctx.BaseEnvironment.Let("map", ctx.mapMeta)
 	ctx.BaseEnvironment.Let("set", ctx.setMeta)
 	ctx.BaseEnvironment.Let("reference", ctx.referenceMeta)
-	ctx.BaseEnvironment.Let("iterator", ctx.NewValueFromSourceOrPanic("iterator", ITERATOR_SOURCE))
+	ctx.BaseEnvironment.Let("iterator", ctx.NewValueFromSourceOrPanic("", ITERATOR_SOURCE))
 	ctx.BaseEnvironment.Let("NaN", ctx.NewNumber(math.NaN()))
 	ctx.BaseEnvironment.Let("Inf", ctx.NewNumber(math.Inf(+1)))
 	ctx.BaseEnvironment.Let("exit", BuiltinExit(&ctx))
@@ -473,7 +473,12 @@ func (ctx *Context) NewBuiltin(name string, types []Type, impl func(*Context, []
 }
 
 func (ctx *Context) NewValueFromSource(name string, source string) (Value, error) {
-	lexer := NewLexer(ctx, source, &SourceLocation{fmt.Sprintf("%s@builtin", name), 1})
+	var location *SourceLocation = nil
+	if name != "" {
+		location = &SourceLocation{fmt.Sprintf("%s@builtin", name), 1}
+	}
+
+	lexer := NewLexer(ctx, source, location)
 	parser, err := NewParser(&lexer)
 	if err != nil {
 		return nil, err
@@ -2574,7 +2579,6 @@ func UpdateNamedFunctions(ctx *Context, ast *AstExpressionMap, prefix string) {
 			vAstExpressionFunction.Name = ctx.NewString(prefix + kAstExpressionString.Data.data)
 			continue
 		}
-
 		if vAstExpressionMap, ok := v.(AstExpressionMap); ok {
 			UpdateNamedFunctions(ctx, &vAstExpressionMap, prefix+kAstExpressionString.Data.data+TOKEN_SCOPE)
 			ast.Elements[i].Value = vAstExpressionMap
@@ -5431,7 +5435,9 @@ func (self *Parser) ParseExpressionMapOrSet() (AstExpression, error) {
 	}
 
 	if mapOrSet == TOKEN_MAP {
-		return AstExpressionMap{location, mapElements}, nil
+		result := AstExpressionMap{location, mapElements}
+		UpdateNamedFunctions(self.lexer.ctx, &result, "")
+		return result, nil
 	}
 	if mapOrSet == TOKEN_SET {
 		return AstExpressionSet{location, setElements}, nil
