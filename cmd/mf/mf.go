@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -201,6 +202,7 @@ func main() {
 
 	var err error
 	ctx := mellifera.NewContext()
+
 	argvIntoValue := func() mellifera.Value {
 		result := ctx.NewVector(nil)
 		for _, arg := range argv {
@@ -209,6 +211,29 @@ func main() {
 		return result
 	}
 	ctx.BaseEnvironment.Let("argv", argvIntoValue())
+
+	var path string
+	if file != nil {
+		path, err = filepath.Abs(*file)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %s\n", err.Error())
+			os.Exit(1)
+		}
+	} else {
+		path, err = filepath.Abs(os.Args[0])
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %s\n", err.Error())
+			os.Exit(1)
+		}
+	}
+	module, err := ctx.BaseEnvironment.Get("module")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %s\n", err.Error())
+		os.Exit(1)
+	}
+	module.(*mellifera.Map).Insert(ctx.NewString("path"), ctx.NewString(path))
+	module.(*mellifera.Map).Insert(ctx.NewString("file"), ctx.NewString(filepath.Base(path)))
+	module.(*mellifera.Map).Insert(ctx.NewString("directory"), ctx.NewString(filepath.Dir(path)))
 
 	if dumpTokens && dumpAst {
 		fmt.Fprintf(os.Stderr, "error: requested token dump and AST dump which are mutually exclusive\n")
