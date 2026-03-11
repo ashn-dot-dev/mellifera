@@ -9,6 +9,14 @@ for i in 10000 {
     if x < min { min = x; }
     if x > max { max = x; }
 }
+for i in 10000 {
+    let x = random::integer(+10, -10);
+    assert(x.is_integer());
+    assert(x >= -10);
+    assert(x <= +10);
+    if x < min { min = x; }
+    if x > max { max = x; }
+}
 
 try {
     random::integer(-1.5, +1);

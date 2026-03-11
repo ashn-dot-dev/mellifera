@@ -8,3 +8,10 @@ for i in 10000 {
     if x < min { min = x; }
     if x > max { max = x; }
 }
+for i in 10000 {
+    let x = random::number(+10, -10);
+    assert(x >= -10);
+    assert(x <= +10);
+    if x < min { min = x; }
+    if x > max { max = x; }
+}

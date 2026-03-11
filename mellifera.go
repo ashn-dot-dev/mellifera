@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"math/rand/v2"
 	"os"
 	"reflect"
 	"regexp"
@@ -205,6 +206,8 @@ type Context struct {
 	// of match groups or nil. Non-nil implies that the last pattern was a
 	// successful match.
 	reMatchResult []string
+	// Context-specific Random Number Generation State
+	rng *rand.Rand
 	// Miscellaneous State and Definitions
 	reNumberDec           *regexp.Regexp
 	reNumberDecFullmatch  *regexp.Regexp
@@ -300,6 +303,8 @@ func NewContext() Context {
 	ctx.False = &Boolean{false, ctx.booleanMeta}
 	ctx.BaseEnvironment = NewEnvironment(nil)
 	ctx.reMatchResult = nil // no initial match
+	seed := rand.Uint64()   // random initial rng seed
+	ctx.rng = rand.New(rand.NewPCG(seed, seed))
 	ctx.reNumberDec = regexp.MustCompile(`^\d+(\.\d+)?`)
 	ctx.reNumberDecFullmatch = regexp.MustCompile(`^\d+(\.\d+)?$`)
 	ctx.reNumberHex = regexp.MustCompile(`^0x[0-9a-fA-F]+`)
@@ -334,6 +339,11 @@ func NewContext() Context {
 	ctx.BaseEnvironment.Let("range", nil) // deferred instantiation
 	ctx.BaseEnvironment.Let("min", BuiltinMin(&ctx))
 	ctx.BaseEnvironment.Let("max", BuiltinMax(&ctx))
+	ctx.BaseEnvironment.Let("random", ctx.NewMap([]MapPair{
+		{ctx.NewString("seed"), BuiltinRandomSeed(&ctx)},
+		{ctx.NewString("number"), BuiltinRandomNumber(&ctx)},
+		{ctx.NewString("integer"), BuiltinRandomInteger(&ctx)},
+	}))
 	ctx.BaseEnvironment.Let("re", ctx.NewMap([]MapPair{
 		{ctx.NewString("group"), BuiltinReGroup(&ctx)},
 		{ctx.NewString("split"), BuiltinReSplit(&ctx)},
@@ -7920,6 +7930,49 @@ return max;
 
 	return ctx.NewBuiltin("max", []Type{TVal(ANY), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return Call(ctx, nil, function, arguments)
+	})
+}
+
+func BuiltinRandomSeed(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("random::seed", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		seed := arguments[0].Hash()
+		ctx.rng = rand.New(rand.NewPCG(seed, seed))
+		return ctx.NewNull(), nil
+	})
+}
+
+func BuiltinRandomNumber(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("random::number", []Type{TVal(NUMBER), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		min := arguments[0].(*Number)
+		max := arguments[1].(*Number)
+
+		if min.data > max.data {
+			min, max = max, min
+		}
+
+		return ctx.NewNumber(min.data + ctx.rng.Float64()*(max.data-min.data)), nil
+	})
+}
+
+func BuiltinRandomInteger(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("random::integer", []Type{TVal(NUMBER), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		min := arguments[0].(*Number)
+		minInteger, err := ValueAsInt64(min)
+		if err != nil {
+			return nil, NewError(nil, ctx.NewString(fmt.Sprintf("expected integer lower bound, received %v", min)))
+		}
+
+		max := arguments[1].(*Number)
+		maxInteger, err := ValueAsInt64(max)
+		if err != nil {
+			return nil, NewError(nil, ctx.NewString(fmt.Sprintf("expected integer upper bound, received %v", max)))
+		}
+
+		if minInteger > maxInteger {
+			minInteger, maxInteger = maxInteger, minInteger
+		}
+
+		return ctx.NewNumber(float64(ctx.rng.Int64N(maxInteger-minInteger) + minInteger)), nil
 	})
 }
 

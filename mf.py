@@ -6012,17 +6012,27 @@ def builtin_random_seed(seed: Value) -> Union[Value, Error]:
 
 
 @builtin("random::number", [Number, Number])
-def builtin_random_number(a: Number, b: Number) -> Union[Value, Error]:
-    return Number.new(rng.uniform(float(a.data), float(b.data)))
+def builtin_random_number(min: Number, max: Number) -> Union[Value, Error]:
+    if float(min.data) > float(max.data):
+        min, max = max, min
+
+    return Number.new(rng.uniform(float(min.data), float(max.data)))
 
 
 @builtin("random::integer", [Number, Number])
-def builtin_random_integer(a: Number, b: Number) -> Union[Value, Error]:
-    if not float(a).is_integer():
-        return Error(None, f"expected integer lower bound, received {a}")
-    if not float(b).is_integer():
-        return Error(None, f"expected integer upper bound, received {b}")
-    return Number.new(rng.randint(int(a), int(b)))
+def builtin_random_integer(min: Number, max: Number) -> Union[Value, Error]:
+    if not float(min).is_integer():
+        return Error(None, f"expected integer lower bound, received {min}")
+    min_integer = int(min)
+
+    if not float(max).is_integer():
+        return Error(None, f"expected integer upper bound, received {max}")
+    max_integer = int(max)
+
+    if min_integer > max_integer:
+        min_integer, max_integer = max_integer, min_integer
+
+    return Number.new(rng.randint(min_integer, max_integer))
 
 
 @builtin("re::group", [Number])
