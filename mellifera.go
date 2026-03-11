@@ -348,6 +348,7 @@ func NewContext() Context {
 	ctx.BaseEnvironment.Let("math", ctx.NewMap([]MapPair{
 		{ctx.NewString("e"), ctx.NewNumber(math.E)},
 		{ctx.NewString("pi"), ctx.NewNumber(math.Pi)},
+		{ctx.NewString("is_nan"), BuiltinMathIsNaN(&ctx)},
 	}))
 	ctx.BaseEnvironment.Let("module", ctx.NewMap([]MapPair{
 		{ctx.NewString("path"), ctx.NewNull()},
@@ -7945,6 +7946,12 @@ return max;
 
 	return ctx.NewBuiltin("max", []Type{TVal(ANY), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return Call(ctx, nil, function, arguments)
+	})
+}
+
+func BuiltinMathIsNaN(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("math::is_nan", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return ctx.NewBoolean(math.IsNaN(arguments[0].(*Number).data)), nil
 	})
 }
 
