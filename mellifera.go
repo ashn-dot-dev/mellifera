@@ -347,6 +347,7 @@ func NewContext() Context {
 	ctx.BaseEnvironment.Let("max", BuiltinMax(&ctx))
 	ctx.BaseEnvironment.Let("math", ctx.NewMap([]MapPair{
 		{ctx.NewString("e"), ctx.NewNumber(math.E)},
+		{ctx.NewString("pi"), ctx.NewNumber(math.Pi)},
 	}))
 	ctx.BaseEnvironment.Let("module", ctx.NewMap([]MapPair{
 		{ctx.NewString("path"), ctx.NewNull()},
