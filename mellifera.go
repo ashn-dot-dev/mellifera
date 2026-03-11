@@ -350,6 +350,7 @@ func NewContext() Context {
 		{ctx.NewString("pi"), ctx.NewNumber(math.Pi)},
 		{ctx.NewString("is_nan"), BuiltinMathIsNaN(&ctx)},
 		{ctx.NewString("is_inf"), BuiltinMathIsInf(&ctx)},
+		{ctx.NewString("is_integer"), BuiltinMathIsInteger(&ctx)},
 	}))
 	ctx.BaseEnvironment.Let("module", ctx.NewMap([]MapPair{
 		{ctx.NewString("path"), ctx.NewNull()},
@@ -7959,6 +7960,13 @@ func BuiltinMathIsNaN(ctx *Context) *Builtin {
 func BuiltinMathIsInf(ctx *Context) *Builtin {
 	return ctx.NewBuiltin("math::is_inf", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewBoolean(math.IsInf(arguments[0].(*Number).data, 0)), nil
+	})
+}
+
+func BuiltinMathIsInteger(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("math::is_integer", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		_, err := ValueAsInt64(arguments[0])
+		return ctx.NewBoolean(err == nil), nil
 	})
 }
 
