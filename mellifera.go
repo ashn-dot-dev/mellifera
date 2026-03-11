@@ -345,6 +345,9 @@ func NewContext() Context {
 	ctx.BaseEnvironment.Let("range", nil) // deferred instantiation
 	ctx.BaseEnvironment.Let("min", BuiltinMin(&ctx))
 	ctx.BaseEnvironment.Let("max", BuiltinMax(&ctx))
+	ctx.BaseEnvironment.Let("math", ctx.NewMap([]MapPair{
+		{ctx.NewString("e"), ctx.NewNumber(math.E)},
+	}))
 	ctx.BaseEnvironment.Let("module", ctx.NewMap([]MapPair{
 		{ctx.NewString("path"), ctx.NewNull()},
 		{ctx.NewString("file"), ctx.NewNull()},
