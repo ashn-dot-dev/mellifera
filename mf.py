@@ -5801,21 +5801,29 @@ def builtin_math_is_integer(value: Number) -> Union[Value, Error]:
 
 @builtin("math::trunc", [Number])
 def builtin_math_trunc(value: Number) -> Union[Value, Error]:
+    if math.isnan(value.data) or math.isinf(value.data):
+        return copy(number)
     return Number.new(math.trunc(float(value.data)))
 
 
 @builtin("math::round", [Number])
 def builtin_math_round(value: Number) -> Union[Value, Error]:
+    if math.isnan(value.data) or math.isinf(value.data):
+        return copy(number)
     return Number.new(round(float(value.data)))
 
 
 @builtin("math::floor", [Number])
 def builtin_math_floor(value: Number) -> Union[Value, Error]:
+    if math.isnan(value.data) or math.isinf(value.data):
+        return copy(number)
     return Number.new(math.floor(float(value.data)))
 
 
 @builtin("math::ceil", [Number])
 def builtin_math_ceil(value: Number) -> Union[Value, Error]:
+    if math.isnan(value.data) or math.isinf(value.data):
+        return copy(number)
     return Number.new(math.ceil(float(value.data)))
 
 

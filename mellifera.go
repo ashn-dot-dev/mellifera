@@ -351,6 +351,10 @@ func NewContext() Context {
 		{ctx.NewString("is_nan"), BuiltinMathIsNaN(&ctx)},
 		{ctx.NewString("is_inf"), BuiltinMathIsInf(&ctx)},
 		{ctx.NewString("is_integer"), BuiltinMathIsInteger(&ctx)},
+		{ctx.NewString("trunc"), BuiltinMathTrunc(&ctx)},
+		{ctx.NewString("round"), BuiltinMathRound(&ctx)},
+		{ctx.NewString("floor"), BuiltinMathFloor(&ctx)},
+		{ctx.NewString("ceil"), BuiltinMathCeil(&ctx)},
 	}))
 	ctx.BaseEnvironment.Let("module", ctx.NewMap([]MapPair{
 		{ctx.NewString("path"), ctx.NewNull()},
@@ -7967,6 +7971,30 @@ func BuiltinMathIsInteger(ctx *Context) *Builtin {
 	return ctx.NewBuiltin("math::is_integer", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		_, err := ValueAsInt64(arguments[0])
 		return ctx.NewBoolean(err == nil), nil
+	})
+}
+
+func BuiltinMathTrunc(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("math::trunc", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return ctx.NewNumber(math.Trunc(arguments[0].(*Number).data)), nil
+	})
+}
+
+func BuiltinMathRound(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("math::round", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return ctx.NewNumber(math.Round(arguments[0].(*Number).data)), nil
+	})
+}
+
+func BuiltinMathFloor(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("math::floor", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return ctx.NewNumber(math.Floor(arguments[0].(*Number).data)), nil
+	})
+}
+
+func BuiltinMathCeil(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("math::ceil", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return ctx.NewNumber(math.Ceil(arguments[0].(*Number).data)), nil
 	})
 }
 

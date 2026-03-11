@@ -1,6 +1,6 @@
-try { dumpln(math::ceil(NaN)); } catch err { dumpln(err); }
-try { dumpln(math::ceil(+Inf)); } catch err { dumpln(err); }
-try { dumpln(math::ceil(-Inf)); } catch err { dumpln(err); }
+dumpln(math::ceil(NaN));
+dumpln(math::ceil(+Inf));
+dumpln(math::ceil(-Inf));
 dumpln(math::ceil(+123));
 dumpln(math::ceil(-123));
 dumpln(math::ceil(+123.456));
@@ -8,9 +8,9 @@ dumpln(math::ceil(-123.456));
 dumpln(math::ceil(+123.654));
 dumpln(math::ceil(-123.654));
 ################################################################################
-# "cannot convert float NaN to integer"
-# "cannot convert float infinity to integer"
-# "cannot convert float infinity to integer"
+# NaN
+# Inf
+# -Inf
 # 123
 # -123
 # 124
