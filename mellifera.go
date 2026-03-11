@@ -332,6 +332,8 @@ func NewContext() Context {
 	ctx.BaseEnvironment.Let("eprint", BuiltinEprint(&ctx))
 	ctx.BaseEnvironment.Let("eprintln", BuiltinEprintln(&ctx))
 	ctx.BaseEnvironment.Let("range", nil) // deferred instantiation
+	ctx.BaseEnvironment.Let("min", BuiltinMin(&ctx))
+	ctx.BaseEnvironment.Let("max", BuiltinMax(&ctx))
 	ctx.BaseEnvironment.Let("re", ctx.NewMap([]MapPair{
 		{ctx.NewString("group"), BuiltinReGroup(&ctx)},
 		{ctx.NewString("split"), BuiltinReSplit(&ctx)},
@@ -7885,6 +7887,38 @@ return range;
 	`)
 
 	return ctx.NewBuiltin("range", []Type{TVal(NUMBER), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return Call(ctx, nil, function, arguments)
+	})
+}
+
+func BuiltinMin(ctx *Context) Value {
+	function := ctx.NewValueFromSourceOrPanic("min", `
+let min = function(a, b) {
+	if a <= b {
+		return a;
+	}
+	return b;
+};
+return min;
+	`)
+
+	return ctx.NewBuiltin("min", []Type{TVal(ANY), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return Call(ctx, nil, function, arguments)
+	})
+}
+
+func BuiltinMax(ctx *Context) Value {
+	function := ctx.NewValueFromSourceOrPanic("max", `
+let max = function(a, b) {
+	if a >= b {
+		return a;
+	}
+	return b;
+};
+return max;
+	`)
+
+	return ctx.NewBuiltin("max", []Type{TVal(ANY), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return Call(ctx, nil, function, arguments)
 	})
 }
