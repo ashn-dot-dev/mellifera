@@ -355,6 +355,7 @@ func NewContext() Context {
 		{ctx.NewString("round"), BuiltinMathRound(&ctx)},
 		{ctx.NewString("floor"), BuiltinMathFloor(&ctx)},
 		{ctx.NewString("ceil"), BuiltinMathCeil(&ctx)},
+		{ctx.NewString("abs"), BuiltinMathAbs(&ctx)},
 	}))
 	ctx.BaseEnvironment.Let("module", ctx.NewMap([]MapPair{
 		{ctx.NewString("path"), ctx.NewNull()},
@@ -7995,6 +7996,12 @@ func BuiltinMathFloor(ctx *Context) *Builtin {
 func BuiltinMathCeil(ctx *Context) *Builtin {
 	return ctx.NewBuiltin("math::ceil", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewNumber(math.Ceil(arguments[0].(*Number).data)), nil
+	})
+}
+
+func BuiltinMathAbs(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("math::abs", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return ctx.NewNumber(math.Abs(arguments[0].(*Number).data)), nil
 	})
 }
 
