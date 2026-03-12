@@ -359,6 +359,9 @@ func NewContext() Context {
 		{ctx.NewString("exp"), BuiltinMathExp(&ctx)},
 		{ctx.NewString("exp2"), BuiltinMathExp2(&ctx)},
 		{ctx.NewString("exp10"), BuiltinMathExp10(&ctx)},
+		{ctx.NewString("log"), BuiltinMathLog(&ctx)},
+		{ctx.NewString("log2"), BuiltinMathLog2(&ctx)},
+		{ctx.NewString("log10"), BuiltinMathLog10(&ctx)},
 	}))
 	ctx.BaseEnvironment.Let("module", ctx.NewMap([]MapPair{
 		{ctx.NewString("path"), ctx.NewNull()},
@@ -8023,6 +8026,24 @@ func BuiltinMathExp2(ctx *Context) *Builtin {
 func BuiltinMathExp10(ctx *Context) *Builtin {
 	return ctx.NewBuiltin("math::exp10", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewNumber(math.Pow(10, arguments[0].(*Number).data)), nil
+	})
+}
+
+func BuiltinMathLog(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("math::log", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return ctx.NewNumber(math.Log(arguments[0].(*Number).data)), nil
+	})
+}
+
+func BuiltinMathLog2(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("math::log2", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return ctx.NewNumber(math.Log2(arguments[0].(*Number).data)), nil
+	})
+}
+
+func BuiltinMathLog10(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("math::log10", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return ctx.NewNumber(math.Log10(arguments[0].(*Number).data)), nil
 	})
 }
 
