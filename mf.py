@@ -5690,8 +5690,8 @@ def builtin_fs_append(path: String, data: String) -> Union[Value, Error]:
 
 
 @builtin("html::escape", [String])
-def builtin_html_escape(value: String) -> Union[Value, Error]:
-    return String.new(html.escape(value.runes))
+def builtin_html_escape(text: String) -> Union[Value, Error]:
+    return String.new(html.escape(text.runes))
 
 
 def json_decode(value: Any):

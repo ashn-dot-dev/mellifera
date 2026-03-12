@@ -1,3 +1,10 @@
-dumpln(html::escape(`foo&<>'"bar`));
-################################################################################
-# "foo&amp;&lt;&gt;&#x27;&quot;bar"
+# The Python implementation will escape the string as "foo&amp;&lt;&gt;&#x27;&quot;bar" with html.escape.
+# The Go implementation will escape this string as "foo&amp;&lt;&gt;&#39;&#34;bar" with html.EscapeString.
+# This is an unfortunate behavior difference between the two implementations,
+# but is currently not being addressed as both escapes produce valid HTML.
+let escaped = html::escape(`foo&<>'"bar`);
+assert(
+    escaped == "foo&amp;&lt;&gt;&#x27;&quot;bar" # Python implementation
+    or
+    escaped == "foo&amp;&lt;&gt;&#39;&#34;bar" # Go implementation
+);

@@ -3,6 +3,7 @@ package mellifera
 import (
 	"errors"
 	"fmt"
+	"html"
 	"io"
 	"math"
 	"math/rand/v2"
@@ -351,6 +352,9 @@ func NewContext() Context {
 		{ctx.NewString("read"), BuiltinFsRead(&ctx)},
 		{ctx.NewString("write"), BuiltinFsWrite(&ctx)},
 		{ctx.NewString("append"), BuiltinFsAppend(&ctx)},
+	}))
+	ctx.BaseEnvironment.Let("html", ctx.NewMap([]MapPair{
+		{ctx.NewString("escape"), BuiltinHtmlEscape(&ctx)},
 	}))
 	ctx.BaseEnvironment.Let("math", ctx.NewMap([]MapPair{
 		{ctx.NewString("e"), ctx.NewNumber(math.E)},
@@ -8110,6 +8114,13 @@ func BuiltinFsAppend(ctx *Context) *Builtin {
 			return nil, NewError(nil, ctx.NewString(fmt.Sprintf("failed to append to file %v", path)))
 		}
 		return ctx.NewNull(), nil
+	})
+}
+
+func BuiltinHtmlEscape(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("html::escape", []Type{TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
+		text := arguments[0].(*String)
+		return ctx.NewString(html.EscapeString(text.data)), nil
 	})
 }
 
