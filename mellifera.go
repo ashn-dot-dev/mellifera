@@ -7,6 +7,7 @@ import (
 	"math"
 	"math/rand/v2"
 	"os"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"slices"
@@ -345,6 +346,7 @@ func NewContext() Context {
 	ctx.BaseEnvironment.Let("range", nil) // deferred instantiation
 	ctx.BaseEnvironment.Let("min", BuiltinMin(&ctx))
 	ctx.BaseEnvironment.Let("max", BuiltinMax(&ctx))
+	ctx.BaseEnvironment.Let("import", BuiltinImport(&ctx))
 	ctx.BaseEnvironment.Let("math", ctx.NewMap([]MapPair{
 		{ctx.NewString("e"), ctx.NewNumber(math.E)},
 		{ctx.NewString("pi"), ctx.NewNumber(math.Pi)},
@@ -7976,6 +7978,93 @@ return max;
 
 	return ctx.NewBuiltin("max", []Type{TVal(ANY), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return Call(ctx, nil, function, arguments)
+	})
+}
+
+func BuiltinImport(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("import", []Type{TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
+		target := arguments[0].(*String)
+
+		env := NewEnvironment(&ctx.BaseEnvironment)
+		module, err := ctx.BaseEnvironment.Get("module")
+		if err != nil {
+			return nil, NewError(nil, ctx.NewString(err.Error()))
+		}
+		moduleMap, ok := module.(*Map)
+		if !ok {
+			return nil, NewError(nil, ctx.NewString(fmt.Sprintf("expected map-like module value, received %v", quote(Typename(module)))))
+		}
+		modulePath := moduleMap.Lookup(ctx.NewString("path"))
+		moduleFile := moduleMap.Lookup(ctx.NewString("path"))
+		moduleDirectory := moduleMap.Lookup(ctx.NewString("path"))
+		if modulePath == nil || moduleFile == nil || moduleDirectory == nil {
+			return nil, NewError(nil, ctx.NewString(fmt.Sprintf("expected module map to contain `path`, `file` and `directory` values, received %v", module)))
+		}
+		moduleDirectoryString, ok := moduleDirectory.(*String)
+		if !ok {
+			return nil, NewError(nil, ctx.NewString(fmt.Sprintf("expected string-like module directory value, received %v", moduleDirectory)))
+		}
+
+		var result Value = nil
+		paths := []string{moduleDirectoryString.data}
+		if search, ok := os.LookupEnv("MELLIFERA_SEARCH_PATH"); ok {
+			for _, p := range strings.Split(search, ":") {
+				paths = append(paths, p)
+			}
+		}
+		for _, p := range paths {
+			path := p + string(os.PathSeparator) + target.data
+			stat, err := os.Stat(path)
+			if err != nil {
+				continue
+			}
+			if stat.IsDir() {
+				// If the path is a directory, such as in the case of a library,
+				// load the entry point to the library and/or group of files,
+				// using the name `<directory>/lib.mf` by convention.
+				path = path + string(os.PathSeparator) + "lib.mf"
+			}
+			absolute, err := filepath.Abs(path)
+			if err != nil {
+				return nil, NewError(nil, ctx.NewString(err.Error()))
+			}
+			moduleMap.Insert(ctx.NewString("path"), ctx.NewString(absolute))
+			moduleMap.Insert(ctx.NewString("file"), ctx.NewString(filepath.Base(absolute)))
+			moduleMap.Insert(ctx.NewString("directory"), ctx.NewString(filepath.Dir(absolute)))
+
+			bytes, err := os.ReadFile(absolute)
+			if err != nil {
+				continue
+			}
+			source := string(bytes)
+
+			lexer := NewLexer(ctx, source, &SourceLocation{path, 1})
+			parser, err := NewParser(&lexer)
+			if err != nil {
+				return nil, NewError(nil, ctx.NewString(err.Error()))
+			}
+			program, err := parser.ParseProgram()
+			if err != nil {
+				return nil, NewError(nil, ctx.NewString(err.Error()))
+			}
+			result, err = program.Eval(ctx, &env)
+			if err != nil {
+				if e, ok := err.(Error); ok {
+					return nil, e
+				}
+				return nil, NewError(nil, ctx.NewString(err.Error()))
+			}
+			break
+		}
+		if result == nil {
+			return nil, NewError(nil, ctx.NewString(fmt.Sprintf("module %v not found", target)))
+		}
+
+		// Always restore module fields.
+		moduleMap.Insert(ctx.NewString("path"), modulePath)
+		moduleMap.Insert(ctx.NewString("file"), moduleFile)
+		moduleMap.Insert(ctx.NewString("directory"), moduleDirectory)
+		return result, nil
 	})
 }
 

@@ -5587,7 +5587,7 @@ def builtin_import(target: String) -> Union[Value, Error]:
             pass
     else:
         result = Error(None, f"module {target} not found")
-    # Always restore module fields
+    # Always restore module fields.
     module[CONST_STRING_PATH] = module_path
     module[CONST_STRING_FILE] = module_file
     module[CONST_STRING_DIRECTORY] = module_directory
