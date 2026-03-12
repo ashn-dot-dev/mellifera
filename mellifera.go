@@ -369,6 +369,10 @@ func NewContext() Context {
 		{ctx.NewString("sin"), BuiltinMathSin(&ctx)},
 		{ctx.NewString("cos"), BuiltinMathCos(&ctx)},
 		{ctx.NewString("tan"), BuiltinMathTan(&ctx)},
+		{ctx.NewString("asin"), BuiltinMathAsin(&ctx)},
+		{ctx.NewString("acos"), BuiltinMathAcos(&ctx)},
+		{ctx.NewString("atan"), BuiltinMathAtan(&ctx)},
+		{ctx.NewString("atan2"), BuiltinMathAtan2(&ctx)},
 	}))
 	ctx.BaseEnvironment.Let("module", ctx.NewMap([]MapPair{
 		{ctx.NewString("path"), ctx.NewNull()},
@@ -8106,6 +8110,30 @@ func BuiltinMathCos(ctx *Context) *Builtin {
 func BuiltinMathTan(ctx *Context) *Builtin {
 	return ctx.NewBuiltin("math::tan", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewNumber(math.Tan(arguments[0].(*Number).data)), nil
+	})
+}
+
+func BuiltinMathAsin(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("math::asin", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return ctx.NewNumber(math.Asin(arguments[0].(*Number).data)), nil
+	})
+}
+
+func BuiltinMathAcos(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("math::acos", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return ctx.NewNumber(math.Acos(arguments[0].(*Number).data)), nil
+	})
+}
+
+func BuiltinMathAtan(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("math::atan", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return ctx.NewNumber(math.Atan(arguments[0].(*Number).data)), nil
+	})
+}
+
+func BuiltinMathAtan2(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("math::atan2", []Type{TVal(NUMBER), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return ctx.NewNumber(math.Atan2(arguments[0].(*Number).data, arguments[1].(*Number).data)), nil
 	})
 }
 
