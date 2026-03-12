@@ -373,6 +373,12 @@ func NewContext() Context {
 		{ctx.NewString("acos"), BuiltinMathAcos(&ctx)},
 		{ctx.NewString("atan"), BuiltinMathAtan(&ctx)},
 		{ctx.NewString("atan2"), BuiltinMathAtan2(&ctx)},
+		{ctx.NewString("sinh"), BuiltinMathSinh(&ctx)},
+		{ctx.NewString("cosh"), BuiltinMathCosh(&ctx)},
+		{ctx.NewString("tanh"), BuiltinMathTanh(&ctx)},
+		{ctx.NewString("asinh"), BuiltinMathAsinh(&ctx)},
+		{ctx.NewString("acosh"), BuiltinMathAcosh(&ctx)},
+		{ctx.NewString("atanh"), BuiltinMathAtanh(&ctx)},
 	}))
 	ctx.BaseEnvironment.Let("module", ctx.NewMap([]MapPair{
 		{ctx.NewString("path"), ctx.NewNull()},
@@ -8134,6 +8140,42 @@ func BuiltinMathAtan(ctx *Context) *Builtin {
 func BuiltinMathAtan2(ctx *Context) *Builtin {
 	return ctx.NewBuiltin("math::atan2", []Type{TVal(NUMBER), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewNumber(math.Atan2(arguments[0].(*Number).data, arguments[1].(*Number).data)), nil
+	})
+}
+
+func BuiltinMathSinh(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("math::sinh", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return ctx.NewNumber(math.Sinh(arguments[0].(*Number).data)), nil
+	})
+}
+
+func BuiltinMathCosh(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("math::cosh", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return ctx.NewNumber(math.Cosh(arguments[0].(*Number).data)), nil
+	})
+}
+
+func BuiltinMathTanh(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("math::tanh", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return ctx.NewNumber(math.Tanh(arguments[0].(*Number).data)), nil
+	})
+}
+
+func BuiltinMathAsinh(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("math::asinh", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return ctx.NewNumber(math.Asinh(arguments[0].(*Number).data)), nil
+	})
+}
+
+func BuiltinMathAcosh(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("math::acosh", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return ctx.NewNumber(math.Acosh(arguments[0].(*Number).data)), nil
+	})
+}
+
+func BuiltinMathAtanh(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("math::atanh", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return ctx.NewNumber(math.Atanh(arguments[0].(*Number).data)), nil
 	})
 }
 
