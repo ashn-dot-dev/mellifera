@@ -365,6 +365,7 @@ func NewContext() Context {
 		{ctx.NewString("pow"), BuiltinMathPow(&ctx)},
 		{ctx.NewString("sqrt"), BuiltinMathSqrt(&ctx)},
 		{ctx.NewString("cbrt"), BuiltinMathCbrt(&ctx)},
+		{ctx.NewString("clamp"), BuiltinMathClamp(&ctx)},
 	}))
 	ctx.BaseEnvironment.Let("module", ctx.NewMap([]MapPair{
 		{ctx.NewString("path"), ctx.NewNull()},
@@ -8065,6 +8066,25 @@ func BuiltinMathSqrt(ctx *Context) *Builtin {
 func BuiltinMathCbrt(ctx *Context) *Builtin {
 	return ctx.NewBuiltin("math::cbrt", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewNumber(math.Cbrt(arguments[0].(*Number).data)), nil
+	})
+}
+
+func BuiltinMathClamp(ctx *Context) Value {
+	function := ctx.NewValueFromSourceOrPanic("math::clamp", `
+let clamp = function(value, min, max) {
+	if value < min {
+		return min;
+	}
+	if value > max {
+		return max;
+	}
+	return value;
+};
+return clamp;
+	`)
+
+	return ctx.NewBuiltin("math::clamp", []Type{TVal(NUMBER), TVal(NUMBER), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return Call(ctx, nil, function, arguments)
 	})
 }
 
