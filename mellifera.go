@@ -3080,7 +3080,7 @@ func (self AstExpressionType) Eval(ctx *Context, env *Environment) (Value, error
 	if !ok {
 		return nil, NewError(
 			self.Location,
-			ctx.NewString(fmt.Sprintf("expected map-like value, received %s", quote(Typename(value)))),
+			ctx.NewString(fmt.Sprintf("expected map-like value, received %s", Typename(value))),
 		)
 	}
 
@@ -3124,7 +3124,7 @@ func (self AstExpressionNew) Eval(ctx *Context, env *Environment) (Value, error)
 	if !ok {
 		return nil, NewError(
 			self.Location,
-			ctx.NewString(fmt.Sprintf("expected map-like value, received %s", quote(Typename(meta)))),
+			ctx.NewString(fmt.Sprintf("expected map-like value, received %s", Typename(meta))),
 		)
 	}
 
@@ -3132,7 +3132,7 @@ func (self AstExpressionNew) Eval(ctx *Context, env *Environment) (Value, error)
 	if !ok {
 		return nil, NewError(
 			self.Location,
-			ctx.NewString(fmt.Sprintf("expected map-like value, received %s", quote(Typename(value)))),
+			ctx.NewString(fmt.Sprintf("expected map-like value, received %s", Typename(value))),
 		)
 	}
 
