@@ -362,6 +362,7 @@ func NewContext() Context {
 		{ctx.NewString("log"), BuiltinMathLog(&ctx)},
 		{ctx.NewString("log2"), BuiltinMathLog2(&ctx)},
 		{ctx.NewString("log10"), BuiltinMathLog10(&ctx)},
+		{ctx.NewString("pow"), BuiltinMathPow(&ctx)},
 	}))
 	ctx.BaseEnvironment.Let("module", ctx.NewMap([]MapPair{
 		{ctx.NewString("path"), ctx.NewNull()},
@@ -8044,6 +8045,12 @@ func BuiltinMathLog2(ctx *Context) *Builtin {
 func BuiltinMathLog10(ctx *Context) *Builtin {
 	return ctx.NewBuiltin("math::log10", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewNumber(math.Log10(arguments[0].(*Number).data)), nil
+	})
+}
+
+func BuiltinMathPow(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("math::pow", []Type{TVal(NUMBER), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return ctx.NewNumber(math.Pow(arguments[0].(*Number).data, arguments[1].(*Number).data)), nil
 	})
 }
 
