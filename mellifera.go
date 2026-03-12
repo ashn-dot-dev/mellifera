@@ -347,6 +347,11 @@ func NewContext() Context {
 	ctx.BaseEnvironment.Let("min", BuiltinMin(&ctx))
 	ctx.BaseEnvironment.Let("max", BuiltinMax(&ctx))
 	ctx.BaseEnvironment.Let("import", BuiltinImport(&ctx))
+	ctx.BaseEnvironment.Let("fs", ctx.NewMap([]MapPair{
+		{ctx.NewString("read"), BuiltinFsRead(&ctx)},
+		{ctx.NewString("write"), BuiltinFsWrite(&ctx)},
+		{ctx.NewString("append"), BuiltinFsAppend(&ctx)},
+	}))
 	ctx.BaseEnvironment.Let("math", ctx.NewMap([]MapPair{
 		{ctx.NewString("e"), ctx.NewNumber(math.E)},
 		{ctx.NewString("pi"), ctx.NewNumber(math.Pi)},
@@ -8059,6 +8064,52 @@ func BuiltinImport(ctx *Context) *Builtin {
 		moduleMap.Insert(ctx.NewString("file"), moduleFile)
 		moduleMap.Insert(ctx.NewString("directory"), moduleDirectory)
 		return result, nil
+	})
+}
+
+func BuiltinFsRead(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("fs::read", []Type{TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
+		path := arguments[0].(*String)
+
+		data, err := os.ReadFile(path.data)
+		if err != nil {
+			return nil, NewError(nil, ctx.NewString(fmt.Sprintf("failed to read file %v", path)))
+		}
+		return ctx.NewString(string(data)), nil
+	})
+}
+
+func BuiltinFsWrite(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("fs::write", []Type{TVal(STRING), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
+		path := arguments[0].(*String)
+		data := arguments[1].(*String)
+
+		f, err := os.OpenFile(path.data, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0644)
+		if err != nil {
+			return nil, NewError(nil, ctx.NewString(fmt.Sprintf("failed to write to file %v", path)))
+		}
+		defer f.Close()
+		if _, err := f.Write([]byte(data.data)); err != nil {
+			return nil, NewError(nil, ctx.NewString(fmt.Sprintf("failed to write to file %v", path)))
+		}
+		return ctx.NewNull(), nil
+	})
+}
+
+func BuiltinFsAppend(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("fs::append", []Type{TVal(STRING), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
+		path := arguments[0].(*String)
+		data := arguments[1].(*String)
+
+		f, err := os.OpenFile(path.data, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
+		if err != nil {
+			return nil, NewError(nil, ctx.NewString(fmt.Sprintf("failed to append to file %v", path)))
+		}
+		defer f.Close()
+		if _, err := f.Write([]byte(data.data)); err != nil {
+			return nil, NewError(nil, ctx.NewString(fmt.Sprintf("failed to append to file %v", path)))
+		}
+		return ctx.NewNull(), nil
 	})
 }
 

@@ -1,3 +1,5 @@
 fs::write("data.tmp", "ABC");
 fs::write("data.tmp", "DEF");
-assert(fs::read("data.tmp") == "DEF");
+dumpln(fs::read("data.tmp"));
+################################################################################
+# "DEF"

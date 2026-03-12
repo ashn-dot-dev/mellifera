@@ -1,4 +1,6 @@
 fs::write("data.tmp", "ABC\n");
 fs::append("data.tmp", "DEF\n");
 fs::append("data.tmp", "HIJ\n");
-assert(fs::read("data.tmp") == "ABC\nDEF\nHIJ\n");
+dumpln(fs::read("data.tmp"));
+################################################################################
+# "ABC\nDEF\nHIJ\n"
