@@ -4633,15 +4633,14 @@ func (self AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, e
 		// Iterate over a shallow copy of the map data in order to allow map
 		// modification during iteration.
 		collectionMap = collectionMap.Copy().(*Map)
-		cur := collectionMap.data.head
-		for cur != nil {
-			loopEnv.Let(self.IdentifierK.Name.data, cur.key.Copy())
+		for _, pair := range collectionMap.Pairs() {
+			loopEnv.Let(self.IdentifierK.Name.data, pair.Key.Copy())
 			if self.IdentifierV != nil {
 				var v Value = nil
 				if self.VIsReference {
-					v = ctx.NewReference(cur.value)
+					v = ctx.NewReference(pair.Value)
 				} else {
-					v = cur.value.Copy()
+					v = pair.Value.Copy()
 				}
 				loopEnv.Let(self.IdentifierV.Name.data, v)
 			}
@@ -4656,10 +4655,8 @@ func (self AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, e
 				return nil, nil
 			}
 			if _, ok := result.(Continue); ok {
-				cur = cur.next
 				continue
 			}
-			cur = cur.next
 		}
 	} else if collectionSet, ok := collection.(*Set); ok {
 		if self.IdentifierV != nil {
@@ -4674,9 +4671,8 @@ func (self AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, e
 				ctx.NewString(fmt.Sprintf("cannot use a key-reference over type %s", quote(Typename(collection)))),
 			)
 		}
-		cur := collectionSet.data.head
-		for cur != nil {
-			loopEnv.Let(self.IdentifierK.Name.data, cur.key.Copy())
+		for _, element := range collectionSet.Elements() {
+			loopEnv.Let(self.IdentifierK.Name.data, element.Copy())
 			result, err := self.Block.Eval(ctx, &loopEnv)
 			if err != nil {
 				return nil, err
@@ -4688,10 +4684,8 @@ func (self AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, e
 				return nil, nil
 			}
 			if _, ok := result.(Continue); ok {
-				cur = cur.next
 				continue
 			}
-			cur = cur.next
 		}
 	} else {
 		return nil, NewError(
