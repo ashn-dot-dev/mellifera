@@ -366,6 +366,9 @@ func NewContext() Context {
 		{ctx.NewString("sqrt"), BuiltinMathSqrt(&ctx)},
 		{ctx.NewString("cbrt"), BuiltinMathCbrt(&ctx)},
 		{ctx.NewString("clamp"), BuiltinMathClamp(&ctx)},
+		{ctx.NewString("sin"), BuiltinMathSin(&ctx)},
+		{ctx.NewString("cos"), BuiltinMathCos(&ctx)},
+		{ctx.NewString("tan"), BuiltinMathTan(&ctx)},
 	}))
 	ctx.BaseEnvironment.Let("module", ctx.NewMap([]MapPair{
 		{ctx.NewString("path"), ctx.NewNull()},
@@ -8085,6 +8088,24 @@ return clamp;
 
 	return ctx.NewBuiltin("math::clamp", []Type{TVal(NUMBER), TVal(NUMBER), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return Call(ctx, nil, function, arguments)
+	})
+}
+
+func BuiltinMathSin(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("math::sin", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return ctx.NewNumber(math.Sin(arguments[0].(*Number).data)), nil
+	})
+}
+
+func BuiltinMathCos(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("math::cos", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return ctx.NewNumber(math.Cos(arguments[0].(*Number).data)), nil
+	})
+}
+
+func BuiltinMathTan(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("math::tan", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return ctx.NewNumber(math.Tan(arguments[0].(*Number).data)), nil
 	})
 }
 
