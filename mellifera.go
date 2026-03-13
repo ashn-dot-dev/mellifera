@@ -296,6 +296,7 @@ func NewContext() Context {
 	})
 	ctx.setMeta = ctx.NewMetaMap("set", []MapPair{
 		{ctx.NewString("count"), BuiltinSetCount(&ctx)},
+		{ctx.NewString("is_empty"), BuiltinSetIsEmpty(&ctx)},
 		{ctx.NewString("contains"), BuiltinSetContains(&ctx)},
 		{ctx.NewString("insert"), BuiltinSetInsert(&ctx)},
 		{ctx.NewString("remove"), BuiltinSetRemove(&ctx)},
@@ -7658,6 +7659,15 @@ func BuiltinSetCount(ctx *Context) *Builtin {
 		delf := self.data.(*Set)
 
 		return ctx.NewNumber(float64(delf.Count())), nil
+	})
+}
+
+func BuiltinSetIsEmpty(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("set::is_empty", []Type{TRef(TVal(SET))}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*Set)
+
+		return ctx.NewBoolean(delf.Count() == 0), nil
 	})
 }
 

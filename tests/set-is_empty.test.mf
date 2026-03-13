@@ -1,0 +1,2 @@
+assert(Set{}.is_empty() == true);
+assert(Set{"abc"}.is_empty() == false);

@@ -5291,6 +5291,11 @@ def builtin_set_count(self: Reference, set: Set) -> Union[Value, Error]:
     return Number.new(len(set.data))
 
 
+@builtin("set::is_empty", [ReferenceTo(Set)])
+def builtin_set_is_empty(self: Reference, set: Set) -> Union[Value, Error]:
+    return Boolean.new(len(set.data) == 0)
+
+
 @builtin("set::contains", [ReferenceTo(Set), Value])
 def builtin_set_contains(
     self: Reference, set: Set, target: Value
@@ -6302,6 +6307,7 @@ _SET_META = Map.new_meta(
     name=String(Set.typename()),
     data={
         String("count"): builtin_set_count(),
+        String("is_empty"): builtin_set_is_empty(),
         String("contains"): builtin_set_contains(),
         String("insert"): builtin_set_insert(),
         String("remove"): builtin_set_remove(),
