@@ -8566,7 +8566,7 @@ func BuiltinRandomInteger(ctx *Context) *Builtin {
 		min := arguments[0].(*Number)
 		minInteger, err := ValueAsInt64(min)
 		if err != nil {
-			return nil, NewError(nil, ctx.NewString(fmt.Sprintf("expected integer) lower bound, received %v", min)))
+			return nil, NewError(nil, ctx.NewString(fmt.Sprintf("expected integer lower bound, received %v", min)))
 		}
 
 		max := arguments[1].(*Number)
