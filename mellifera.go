@@ -359,6 +359,7 @@ func NewContext() Context {
 	}))
 	ctx.BaseEnvironment.Let("json", ctx.NewMap([]MapPair{
 		{ctx.NewString("encode"), BuiltinJsonEncode(&ctx)},
+		{ctx.NewString("encode_ex"), BuiltinJsonEncodeEx(&ctx)},
 	}))
 	ctx.BaseEnvironment.Let("math", ctx.NewMap([]MapPair{
 		{ctx.NewString("e"), ctx.NewNumber(math.E)},
@@ -8205,6 +8206,54 @@ func BuiltinJsonEncode(ctx *Context) *Builtin {
 		encoded, err := json.Marshal(j)
 		if err != nil {
 			return nil, NewError(nil, ctx.NewString(err.Error()))
+		}
+		return ctx.NewString(string(encoded)), nil
+	})
+}
+
+func BuiltinJsonEncodeEx(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("json::encode_ex", []Type{TVal(ANY), TVal(MAP)}, func(ctx *Context, arguments []Value) (Value, error) {
+		options := arguments[1].(*Map)
+		var indent *string = nil // optional
+		for _, pair := range options.Pairs() {
+			if k, ok := pair.Key.(*String); ok && k.data == "indent" {
+				if v, ok := pair.Value.(*Number); ok {
+					vInt, err := ValueAsInt(v)
+					if err == nil && vInt >= 0 {
+						indent = Ptr("")
+						for _ = range vInt {
+							*indent = *indent + " "
+						}
+						continue
+					}
+				}
+
+				if v, ok := pair.Value.(*String); ok {
+					indent = &v.data
+					continue
+				}
+
+				return nil, NewError(nil, ctx.NewString(fmt.Sprintf("expected non-negative integer or string indent, received %v", pair.Value)))
+			}
+
+			return nil, NewError(nil, ctx.NewString(fmt.Sprintf("unknown option %v", pair.Key)))
+		}
+
+		j, err := jsonEncode(arguments[0])
+		if err != nil {
+			return nil, NewError(nil, ctx.NewString(err.Error()))
+		}
+		var encoded []byte
+		if indent != nil {
+			encoded, err = json.MarshalIndent(j, "", *indent)
+			if err != nil {
+				return nil, NewError(nil, ctx.NewString(err.Error()))
+			}
+		} else {
+			encoded, err = json.Marshal(j)
+			if err != nil {
+				return nil, NewError(nil, ctx.NewString(err.Error()))
+			}
 		}
 		return ctx.NewString(string(encoded)), nil
 	})

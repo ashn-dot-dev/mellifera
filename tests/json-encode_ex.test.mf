@@ -10,82 +10,55 @@ let value = {
 };
 
 # Encode with integer indent.
-println(json::encode_ex(value, {"indent": 2}));
-println(json::encode_ex(value, {"indent": 4}));
-
-print("\n");
+assert(json::encode_ex(value, {"indent": 2}) =~ r`  "foo":\snull`);
+assert(json::encode_ex(value, {"indent": 2}) =~ r`  "bar":\s123`);
+assert(json::encode_ex(value, {"indent": 2}) =~ r`  "baz":\s"hello"`);
+assert(json::encode_ex(value, {"indent": 2}) =~ r`  "qux":\s\[`);
+assert(json::encode_ex(value, {"indent": 2}) =~ r`    "abc",`);
+assert(json::encode_ex(value, {"indent": 2}) =~ r`    "def",`);
+assert(json::encode_ex(value, {"indent": 2}) =~ r`    "hij"`);
+assert(json::encode_ex(value, {"indent": 2}) =~ r`  \]`);
+assert(json::encode_ex(value, {"indent": 4}) =~ r`    "foo":\snull`);
+assert(json::encode_ex(value, {"indent": 4}) =~ r`    "bar":\s123`);
+assert(json::encode_ex(value, {"indent": 4}) =~ r`    "baz":\s"hello"`);
+assert(json::encode_ex(value, {"indent": 4}) =~ r`    "qux":\s\[`);
+assert(json::encode_ex(value, {"indent": 4}) =~ r`        "abc",`);
+assert(json::encode_ex(value, {"indent": 4}) =~ r`        "def",`);
+assert(json::encode_ex(value, {"indent": 4}) =~ r`        "hij"`);
+assert(json::encode_ex(value, {"indent": 4}) =~ r`    \]`);
 
 # Encode with string indent.
-println(json::encode_ex(value, {"indent": "  "}));
-println(json::encode_ex(value, {"indent": "<indent>"}));
-
-print("\n");
+assert(json::encode_ex(value, {"indent": "  "}) =~ r`  "foo":\snull`);
+assert(json::encode_ex(value, {"indent": "  "}) =~ r`  "bar":\s123`);
+assert(json::encode_ex(value, {"indent": "  "}) =~ r`  "baz":\s"hello"`);
+assert(json::encode_ex(value, {"indent": "  "}) =~ r`  "qux":\s\[`);
+assert(json::encode_ex(value, {"indent": "  "}) =~ r`    "abc",`);
+assert(json::encode_ex(value, {"indent": "  "}) =~ r`    "def",`);
+assert(json::encode_ex(value, {"indent": "  "}) =~ r`    "hij"`);
+assert(json::encode_ex(value, {"indent": "  "}) =~ r`  \]`);
+assert(json::encode_ex(value, {"indent": "<indent>"}) =~ r`<indent>"foo":\snull`);
+assert(json::encode_ex(value, {"indent": "<indent>"}) =~ r`<indent>"bar":\s123`);
+assert(json::encode_ex(value, {"indent": "<indent>"}) =~ r`<indent>"baz":\s"hello"`);
+assert(json::encode_ex(value, {"indent": "<indent>"}) =~ r`<indent>"qux":\s\[`);
+assert(json::encode_ex(value, {"indent": "<indent>"}) =~ r`<indent><indent>"abc",`);
+assert(json::encode_ex(value, {"indent": "<indent>"}) =~ r`<indent><indent>"def",`);
+assert(json::encode_ex(value, {"indent": "<indent>"}) =~ r`<indent><indent>"hij"`);
+assert(json::encode_ex(value, {"indent": "<indent>"}) =~ r`<indent>\]`);
 
 # Encode with empty collections.
-println(json::encode_ex({"foo": [], "bar": Map{}}, {"indent": 4}));
-
-print("\n");
+assert(json::encode_ex({"foo": [], "bar": Map{}}, {"indent": 4}) =~ r`    "foo":\s?\[\]`);
+assert(json::encode_ex({"foo": [], "bar": Map{}}, {"indent": 4}) =~ r`    "bar":\s?{}`);
 
 # Encode with no indent option.
-println(json::encode_ex([123, 456], Map{}));
-println(json::encode_ex({"abc": 123, "def": 456}, Map{}));
-
-print("\n");
+assert(not json::encode_ex([123, 456], Map{}).contains("\n"));
+assert(not json::encode_ex({"abc": 123, "def": 456}, Map{}).contains("\n"));
 
 # Encode with non-integer indent.
+try { println(json::encode_ex(value, {"indent": -1})); } catch err { dumpln(err); }
 try { println(json::encode_ex(value, {"indent": 0.5})); } catch err { dumpln(err); }
 # Encode with non-number non-string indent.
 try { println(json::encode_ex(value, {"indent": null})); } catch err { dumpln(err); }
 ################################################################################
-# {
-#   "foo": null,
-#   "bar": 123,
-#   "baz": "hello",
-#   "qux": [
-#     "abc",
-#     "def",
-#     "hij"
-#   ]
-# }
-# {
-#     "foo": null,
-#     "bar": 123,
-#     "baz": "hello",
-#     "qux": [
-#         "abc",
-#         "def",
-#         "hij"
-#     ]
-# }
-#
-# {
-#   "foo": null,
-#   "bar": 123,
-#   "baz": "hello",
-#   "qux": [
-#     "abc",
-#     "def",
-#     "hij"
-#   ]
-# }
-# {
-# <indent>"foo": null,
-# <indent>"bar": 123,
-# <indent>"baz": "hello",
-# <indent>"qux": [
-# <indent><indent>"abc",
-# <indent><indent>"def",
-# <indent><indent>"hij"
-# <indent>]
-# }
-#
-# {
-#     "foo": [],
-#     "bar": {}
-# }
-#
-# [123, 456]
-# {"abc": 123, "def": 456}
-#
-# "expected integer or string indent, received 0.5"
-# "expected integer or string indent, received null"
+# "expected non-negative integer or string indent, received -1"
+# "expected non-negative integer or string indent, received 0.5"
+# "expected non-negative integer or string indent, received null"
