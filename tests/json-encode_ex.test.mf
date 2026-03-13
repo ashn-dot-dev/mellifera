@@ -53,8 +53,9 @@ assert(json::encode_ex({"foo": [], "bar": Map{}}, {"indent": 4}) =~ r`    "bar":
 assert(not json::encode_ex([123, 456], Map{}).contains("\n"));
 assert(not json::encode_ex({"abc": 123, "def": 456}, Map{}).contains("\n"));
 
-# Encode with non-integer indent.
+# Encode with non-positive-integer indent.
 try { println(json::encode_ex(value, {"indent": -1})); } catch err { dumpln(err); }
+# Encode with non-integer indent.
 try { println(json::encode_ex(value, {"indent": 0.5})); } catch err { dumpln(err); }
 # Encode with non-number non-string indent.
 try { println(json::encode_ex(value, {"indent": null})); } catch err { dumpln(err); }

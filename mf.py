@@ -5616,13 +5616,13 @@ def builtin_comb_encode_ex(value: Value, options: Map) -> Union[Value, Error]:
     indent: Optional[Union[int, str]] = None
     for k, v in options.data.items():
         if isinstance(k, String) and k.bytes == b"indent":
-            if isinstance(v, Number) and float(v).is_integer():
+            if isinstance(v, Number) and float(v).is_integer() and int(v) >= 0:
                 indent = int(v)
                 continue
             if isinstance(v, String):
                 indent = v.runes
                 continue
-            return Error(None, f"expected integer or string indent, received {v}")
+            return Error(None, f"expected non-negative integer or string indent, received {v}")
         return Error(None, String.new(f"unknown option {k}"))
     if isinstance(indent, int):
         indent = " " * indent
