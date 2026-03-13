@@ -1,6 +1,7 @@
 package mellifera
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"html"
@@ -355,6 +356,9 @@ func NewContext() Context {
 	}))
 	ctx.BaseEnvironment.Let("html", ctx.NewMap([]MapPair{
 		{ctx.NewString("escape"), BuiltinHtmlEscape(&ctx)},
+	}))
+	ctx.BaseEnvironment.Let("json", ctx.NewMap([]MapPair{
+		{ctx.NewString("encode"), BuiltinJsonEncode(&ctx)},
 	}))
 	ctx.BaseEnvironment.Let("math", ctx.NewMap([]MapPair{
 		{ctx.NewString("e"), ctx.NewNumber(math.E)},
@@ -8121,6 +8125,88 @@ func BuiltinHtmlEscape(ctx *Context) *Builtin {
 	return ctx.NewBuiltin("html::escape", []Type{TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
 		text := arguments[0].(*String)
 		return ctx.NewString(html.EscapeString(text.data)), nil
+	})
+}
+
+func jsonEncode(value Value) (any, error) {
+	if _, ok := value.(*Null); ok {
+		return nil, nil
+	}
+
+	if x, ok := value.(*Boolean); ok {
+		if x.data {
+			return true, nil
+		}
+		return false, nil
+	}
+
+	if x, ok := value.(*Number); ok {
+		if math.IsNaN(x.data) || math.IsInf(x.data, 0) {
+			return nil, fmt.Errorf("cannot JSON-encode value %v", value)
+		}
+		return x.data, nil
+	}
+
+	if x, ok := value.(*String); ok {
+		if !utf8.Valid([]byte(x.data)) {
+			return nil, fmt.Errorf("cannot JSON-encode string with invalid UTF-8 encoding %v", value)
+		}
+		return x.data, nil
+	}
+
+	if x, ok := value.(*Vector); ok {
+		result := []any{}
+		for _, element := range x.Elements() {
+			j, err := jsonEncode(element)
+			if err != nil {
+				return nil, err
+			}
+			result = append(result, j)
+		}
+		return result, nil
+	}
+
+	if x, ok := value.(*Map); ok {
+		result := make(map[string]any)
+		for _, pair := range x.Pairs() {
+			_, ok := pair.Key.(*String)
+			if !ok {
+				return nil, fmt.Errorf("cannot JSON-encode map with key %v", pair.Key)
+			}
+
+			k, err := jsonEncode(pair.Key)
+			if err != nil {
+				return nil, err
+			}
+			v, err := jsonEncode(pair.Value)
+			if err != nil {
+				return nil, err
+			}
+
+			ks, ok := k.(string)
+			if !ok {
+				return nil, fmt.Errorf("unexpected string JSON-encoding %v", ks)
+			}
+
+			result[ks] = v
+		}
+		return result, nil
+	}
+
+	return nil, fmt.Errorf("cannot JSON-encode value %v of type %s", value, Typename(value))
+}
+
+func BuiltinJsonEncode(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("json::encode", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		j, err := jsonEncode(arguments[0])
+		if err != nil {
+			return nil, NewError(nil, ctx.NewString(err.Error()))
+		}
+		encoded, err := json.Marshal(j)
+		if err != nil {
+			return nil, NewError(nil, ctx.NewString(err.Error()))
+		}
+		return ctx.NewString(string(encoded)), nil
 	})
 }
 

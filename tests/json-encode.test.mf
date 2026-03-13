@@ -21,14 +21,22 @@ try { dumpln(json::encode("\xff")); } catch err { println($"error: {err}"); }
 print("\n");
 
 println(json::encode([]));
-println(json::encode(["foo", "bar", "baz"]));
-println(json::encode(["foo", ["bar"], {"baz": 123}]));
+# XXX: Python and Go do not have compatible JSON implementations.
+#println(json::encode(["foo", "bar", "baz"]));
+assert(json::encode(["foo", "bar", "baz"]) =~ r`\["foo",\s?"bar",\s?"baz"\]`);
+#println(json::encode(["foo", ["bar"], {"baz": 123}]));
+assert(json::encode(["foo", ["bar"], {"baz": 123}]) =~ r`\["foo",\s?\["bar"\],\s?{"baz":\s?123}\]`);
 
 print("\n");
 
 println(json::encode(Map{}));
-println(json::encode({"foo": 123}));
-println(json::encode({"foo": 123, "bar": ["abc", "def"], "baz": {"blub": null}}));
+# XXX: Python and Go do not have compatible JSON implementations.
+#println(json::encode({"foo": 123}));
+assert(json::encode({"foo": 123}) =~ r`{"foo":\s?123}`);
+#println(json::encode({"foo": 123, "bar": ["abc", "def"], "baz": {"blub": null}}));
+assert(json::encode({"foo": 123, "bar": ["abc", "def"], "baz": {"blub": null}}) =~ r`.*"foo":\s?123.*`);
+assert(json::encode({"foo": 123, "bar": ["abc", "def"], "baz": {"blub": null}}) =~ r`.*"bar":\s?\["abc",\s?"def"\].*`);
+assert(json::encode({"foo": 123, "bar": ["abc", "def"], "baz": {"blub": null}}) =~ r`."baz":\s?{"blub":\s?null}.*`);
 
 print("\n");
 
@@ -57,14 +65,10 @@ try { dumpln(json::encode(function(){})); } catch err { println($"error: {err}")
 # error: cannot JSON-encode string with invalid UTF-8 encoding "\xff"
 #
 # []
-# ["foo", "bar", "baz"]
-# ["foo", ["bar"], {"baz": 123}]
 #
 # {}
-# {"foo": 123}
-# {"foo": 123, "bar": ["abc", "def"], "baz": {"blub": null}}
 #
 # error: cannot JSON-encode value {"foo", "bar"} of type set
 #
 #
-# error: cannot JSON-encode value function@[json-encode.test.mf, line 43] of type function
+# error: cannot JSON-encode value function@[json-encode.test.mf, line 51] of type function
