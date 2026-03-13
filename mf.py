@@ -5627,7 +5627,6 @@ def builtin_comb_encode_ex(value: Value, options: Map) -> Union[Value, Error]:
     if isinstance(indent, int):
         indent = " " * indent
 
-    comb_validate(value)
     return String.new(value.comb_encode(indent_text=indent, indent_level=0))
 
 
