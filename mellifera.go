@@ -349,6 +349,9 @@ func NewContext() Context {
 	ctx.BaseEnvironment.Let("min", BuiltinMin(&ctx))
 	ctx.BaseEnvironment.Let("max", BuiltinMax(&ctx))
 	ctx.BaseEnvironment.Let("import", BuiltinImport(&ctx))
+	ctx.BaseEnvironment.Let("comb", ctx.NewMap([]MapPair{
+		{ctx.NewString("encode"), BuiltinCombEncode(&ctx)},
+	}))
 	ctx.BaseEnvironment.Let("fs", ctx.NewMap([]MapPair{
 		{ctx.NewString("read"), BuiltinFsRead(&ctx)},
 		{ctx.NewString("write"), BuiltinFsWrite(&ctx)},
@@ -8074,6 +8077,19 @@ func BuiltinImport(ctx *Context) *Builtin {
 		moduleMap.Insert(ctx.NewString("file"), moduleFile)
 		moduleMap.Insert(ctx.NewString("directory"), moduleDirectory)
 		return result, nil
+	})
+}
+
+func BuiltinCombEncode(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("comb::encode", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		var sb strings.Builder
+		encoder := NewCombEncoder(&sb, nil)
+		err := arguments[0].CombEncode(encoder)
+		if err != nil {
+			return nil, NewError(nil, ctx.NewString(err.Error()))
+		}
+
+		return ctx.NewString(sb.String()), nil
 	})
 }
 

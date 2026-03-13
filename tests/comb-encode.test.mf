@@ -49,8 +49,8 @@ try { dumpln(comb::encode(function(){})); } catch err { println($"error: {err}")
 #
 # 123
 # 123.456
-# error: cannot comb-encode value NaN of type number
-# error: cannot comb-encode value Inf of type number
+# error: invalid comb value NaN
+# error: invalid comb value Inf
 #
 # "foo"
 # "foo\nbar"
@@ -67,4 +67,4 @@ try { dumpln(comb::encode(function(){})); } catch err { println($"error: {err}")
 # "{\"foo\", \"bar\"}"
 #
 #
-# error: cannot comb-encode value function@[comb-encode.test.mf, line 43] of type function
+# error: invalid comb value function@[comb-encode.test.mf, line 43]

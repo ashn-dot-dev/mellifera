@@ -5606,36 +5606,8 @@ def builtin_comb_decode(string: String) -> Union[Value, Error]:
         return Error(None, str(e))
 
 
-def comb_validate(value: Value):
-    if isinstance(value, Null):
-        return
-    if isinstance(value, Boolean):
-        return
-    if isinstance(value, Number) and not (
-        math.isinf(float(value)) or math.isnan(float(value))
-    ):
-        return
-    if isinstance(value, String):
-        return
-    if isinstance(value, Vector):
-        for element in value.data:
-            comb_validate(element)
-        return
-    if isinstance(value, Map):
-        for k, v in value.data.items():
-            comb_validate(k)
-            comb_validate(v)
-        return
-    elif isinstance(value, Set):
-        for element in value.data:
-            comb_validate(element)
-        return
-    raise ValueError(f"cannot comb-encode value {value} of type {typename(value)}")
-
-
 @builtin("comb::encode", [Value])
 def builtin_comb_encode(value: Value) -> Union[Value, Error]:
-    comb_validate(value)
     return String.new(value.comb_encode())
 
 
