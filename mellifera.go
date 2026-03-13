@@ -269,6 +269,7 @@ func NewContext() Context {
 	ctx.vectorMeta = ctx.NewMetaMap("vector", []MapPair{
 		{ctx.NewString("init"), BuiltinVectorInit(&ctx)},
 		{ctx.NewString("count"), BuiltinVectorCount(&ctx)},
+		{ctx.NewString("is_empty"), BuiltinVectorIsEmpty(&ctx)},
 		{ctx.NewString("contains"), BuiltinVectorContains(&ctx)},
 		{ctx.NewString("find"), BuiltinVectorFind(&ctx)},
 		{ctx.NewString("rfind"), BuiltinVectorRfind(&ctx)},
@@ -7186,6 +7187,15 @@ func BuiltinVectorCount(ctx *Context) *Builtin {
 		delf := self.data.(*Vector)
 
 		return ctx.NewNumber(float64(delf.Count())), nil
+	})
+}
+
+func BuiltinVectorIsEmpty(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("vector::is_empty", []Type{TRef(TVal(VECTOR))}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*Vector)
+
+		return ctx.NewBoolean(delf.Count() == 0), nil
 	})
 }
 

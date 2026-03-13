@@ -4950,6 +4950,11 @@ def builtin_vector_count(self: Reference, vector: Vector) -> Union[Value, Error]
     return Number.new(len(vector.data))
 
 
+@builtin("vector::is_empty", [ReferenceTo(Vector)])
+def builtin_vector_is_empty(self: Reference, vector: Vector) -> Union[Value, Error]:
+    return Boolean.new(len(vector.data) == 0)
+
+
 @builtin("vector::contains", [ReferenceTo(Vector), Value])
 def builtin_vector_contains(
     self: Reference, vector: Vector, target: Value
@@ -6257,6 +6262,7 @@ _VECTOR_META = Map.new_meta(
     data={
         String.new("init"): builtin_vector_init(),
         String("count"): builtin_vector_count(),
+        String("is_empty"): builtin_vector_is_empty(),
         String("contains"): builtin_vector_contains(),
         String("find"): builtin_vector_find(),
         String("rfind"): builtin_vector_rfind(),
