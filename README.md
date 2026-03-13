@@ -366,40 +366,6 @@ error: failed to read file "/path/to/file/that/does/not/exist.txt"
 A brief language overview can be found in `overview.mf`, and additional example
 programs can be found under the `examples` directory.
 
-## Development
-
-Mellifera currently has two implementations: a reference interpreter written in
-Python (`mf.py`), and a work-in-progress library & interpreter in Go
-(`mellifera.go` and `cmd/mf/mf.go`). The reference interpreter written in
-Python is the source of truth for the language, and is the implementation that
-most users will want to interact with for the time being.
-
-### Development on the Python Reference Interpreter
-
-```sh
-python3 -m venv .venv-mellifera
-. .venv-mellifera/bin/activate
-python3 -m pip install -r requirements.txt
-MELLIFERA_HOME=$(pwd)
-. ./env
-
-make check   # run tests
-make lint    # lint with mypy and flake8
-make format  # format using black
-make build   # build standalone interpreter executable
-make install # install standalone mellifera tooling
-```
-
-### Development on the Go Library & Interpreter
-
-```sh
-make check-go  # run tests with go test
-make format-go # format using go fmt
-make build-go  # build standalone interpreter executable
-
-sh tools/validate-compatibility.sh # check compatibility between the Python and Go implementations
-```
-
 ## Installing
 
 Install Mellifera and associated tooling into the directory specified by
@@ -427,6 +393,60 @@ interpreter `mf` was installed with:
 ```sh
 $ printf 'println("Hello world!");' | mf /dev/stdin
 Hello world!
+```
+
+## Development
+
+Mellifera currently has two implementations: a library & interpreter written in
+Go (`mellifera.go` and `cmd/mf/mf.go`) which serves as the primary language
+implementation, and an older reference interpreter written in Python (`mf.py`),
+which served as the original language implementation during prototyping. In
+order to ensure that Mellifera does not depend on a particular host language,
+both implementations are updated to support the same core set of language
+features and standard library builtins. Most users will interact with the Go
+implementation, and most `make` targets will default to the Go version of that
+target, however specific `*-go` and `*-py` versions of targets should be used
+when hacking on either the Go implementation or Python implementation,
+respectively.
+
+### General Development (Default Go Implementation)
+
+```sh
+MELLIFERA_HOME=$(pwd)
+. ./env
+
+make build   # build standalone interpreter executable
+make check   # run unit tests and interpreter golden tests
+make format  # format sources
+make install # install standalone mellifera tooling
+```
+
+### Development on the Go Library & Interpreter
+
+```sh
+MELLIFERA_HOME=$(pwd)
+. ./env
+
+make build-go  # build standalone interpreter executable
+make check-go  # run unit tests interpreter golden tests
+make format-go # format sources using go fmt
+make install   # install standalone mellifera tooling
+```
+
+### Development on the Python Reference Interpreter
+
+```sh
+python3 -m venv .venv-mellifera
+. .venv-mellifera/bin/activate
+python3 -m pip install -r requirements.txt
+MELLIFERA_HOME=$(pwd)
+. ./env
+
+make build-py  # build standalone interpreter executable with Nuitka
+make check-py  # run interpreter golden tests
+make lint-py   # lint with mypy and flake8
+make format-py # format using black
+make install   # install standalone mellifera tooling (run `make clean build-py install` to guarantee the Python executable is installed)
 ```
 
 ## License and Credits

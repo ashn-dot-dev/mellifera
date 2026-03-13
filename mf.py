@@ -4152,7 +4152,9 @@ class Parser:
         expression = self.parse_expression()
         return AstExpressionNew(location, meta, expression)
 
-    def parse_expression_positive(self, mode: ParseMode = ParseMode.MELLIFERA) -> AstExpressionPositive:
+    def parse_expression_positive(
+        self, mode: ParseMode = ParseMode.MELLIFERA
+    ) -> AstExpressionPositive:
         location = self._expect_current(TokenKind.ADD).location
         match mode:
             case ParseMode.MELLIFERA:
@@ -4161,7 +4163,9 @@ class Parser:
                 expression = self.parse_comb_expression()
         return AstExpressionPositive(location, expression)
 
-    def parse_expression_negative(self, mode: ParseMode = ParseMode.MELLIFERA) -> AstExpressionNegative:
+    def parse_expression_negative(
+        self, mode: ParseMode = ParseMode.MELLIFERA
+    ) -> AstExpressionNegative:
         location = self._expect_current(TokenKind.SUB).location
         match mode:
             case ParseMode.MELLIFERA:
@@ -5634,7 +5638,9 @@ def builtin_comb_encode_ex(value: Value, options: Map) -> Union[Value, Error]:
             if isinstance(v, String):
                 indent = v.runes
                 continue
-            return Error(None, f"expected non-negative integer or string indent, received {v}")
+            return Error(
+                None, f"expected non-negative integer or string indent, received {v}"
+            )
         return Error(None, String.new(f"unknown option {k}"))
     if isinstance(indent, int):
         indent = " " * indent
@@ -5754,7 +5760,9 @@ def builtin_json_encode_ex(value: Value, options: Map) -> Union[Value, Error]:
             if isinstance(v, String):
                 indent = v.runes
                 continue
-            return Error(None, f"expected non-negative integer or string indent, received {v}")
+            return Error(
+                None, f"expected non-negative integer or string indent, received {v}"
+            )
         return Error(None, String.new(f"unknown option {k}"))
     return String.new(
         json.dumps(
