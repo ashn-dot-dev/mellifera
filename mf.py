@@ -4762,6 +4762,11 @@ def builtin_string_count(self: Reference, string: String) -> Union[Value, Error]
     return Number.new(len(string.bytes))
 
 
+@builtin("string::is_empty", [ReferenceTo(String)])
+def builtin_string_is_empty(self: Reference, string: String) -> Union[Value, Error]:
+    return Boolean.new(len(string.bytes) == 0)
+
+
 @builtin("string::contains", [ReferenceTo(String), String])
 def builtin_string_contains(
     self: Reference, string: String, target: String
@@ -6222,6 +6227,7 @@ _STRING_META = Map.new_meta(
         String("bytes"): builtin_string_bytes(),
         String("runes"): builtin_string_runes(),
         String("count"): builtin_string_count(),
+        String("is_empty"): builtin_string_is_empty(),
         String("contains"): builtin_string_contains(),
         String("starts_with"): builtin_string_starts_with(),
         String("ends_with"): builtin_string_ends_with(),

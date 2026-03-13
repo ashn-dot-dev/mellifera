@@ -46,7 +46,7 @@ while argi < argv.count() {
         continue;
     }
     if argv[argi] =~ r`^-+top(=(.*))?$` {
-        if re::group(2) != null {
+        if not re::group(2).is_empty() {
             top = number::init(re::group(2));
         }
         else {

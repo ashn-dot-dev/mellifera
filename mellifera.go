@@ -245,6 +245,7 @@ func NewContext() Context {
 		{ctx.NewString("bytes"), BuiltinStringBytes(&ctx)},
 		{ctx.NewString("runes"), BuiltinStringRunes(&ctx)},
 		{ctx.NewString("count"), BuiltinStringCount(&ctx)},
+		{ctx.NewString("is_empty"), BuiltinStringIsEmpty(&ctx)},
 		{ctx.NewString("contains"), BuiltinStringContains(&ctx)},
 		{ctx.NewString("starts_with"), BuiltinStringStartsWith(&ctx)},
 		{ctx.NewString("ends_with"), BuiltinStringEndsWith(&ctx)},
@@ -6853,6 +6854,15 @@ func BuiltinStringCount(ctx *Context) *Builtin {
 		delf := self.data.(*String)
 
 		return ctx.NewNumber(float64(len(delf.data))), nil
+	})
+}
+
+func BuiltinStringIsEmpty(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("string::is_empty", []Type{TRef(TVal(STRING))}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*String)
+
+		return ctx.NewBoolean(len(delf.data) == 0), nil
 	})
 }
 
