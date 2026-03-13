@@ -5207,6 +5207,11 @@ def builtin_map_count(self: Reference, map: Map) -> Union[Value, Error]:
     return Number.new(len(map.data))
 
 
+@builtin("map::is_empty", [ReferenceTo(Map)])
+def builtin_map_is_empty(self: Reference, map: Map) -> Union[Value, Error]:
+    return Boolean.new(len(map.data) == 0)
+
+
 @builtin("map::contains", [ReferenceTo(Map), Value])
 def builtin_map_contains(
     self: Reference, map: Map, target: Value
@@ -6283,6 +6288,7 @@ _MAP_META = Map.new_meta(
     name=String(Map.typename()),
     data={
         String("count"): builtin_map_count(),
+        String("is_empty"): builtin_map_is_empty(),
         String("contains"): builtin_map_contains(),
         String("insert"): builtin_map_insert(),
         String("remove"): builtin_map_remove(),

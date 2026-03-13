@@ -1,0 +1,2 @@
+assert(Map{}.is_empty() == true);
+assert(Map{"abc": "def"}.is_empty() == false);
