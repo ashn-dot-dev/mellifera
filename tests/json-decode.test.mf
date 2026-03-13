@@ -27,7 +27,11 @@ print("\n");
 
 dumpln(json::decode(`{}`));
 dumpln(json::decode(`{"foo": 123}`));
-dumpln(json::decode(`{"foo": 123, "bar": ["abc", "def"], "baz": {"blub": null}}`));
+# XXX: Python and Go do not have compatible JSON implementations.
+let decoded = json::decode(`{"foo": 123, "bar": ["abc", "def"], "baz": {"blub": null}}`);
+assert(decoded.contains("foo") and decoded["foo"] == 123);
+assert(decoded.contains("bar") and decoded["bar"] == ["abc", "def"]);
+assert(decoded.contains("baz") and decoded["baz"] == {"blub": null});
 ################################################################################
 # null
 #
@@ -48,4 +52,3 @@ dumpln(json::decode(`{"foo": 123, "bar": ["abc", "def"], "baz": {"blub": null}}`
 #
 # Map{}
 # {"foo": 123}
-# {"foo": 123, "bar": ["abc", "def"], "baz": {"blub": null}}

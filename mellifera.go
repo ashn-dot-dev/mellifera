@@ -358,6 +358,7 @@ func NewContext() Context {
 		{ctx.NewString("escape"), BuiltinHtmlEscape(&ctx)},
 	}))
 	ctx.BaseEnvironment.Let("json", ctx.NewMap([]MapPair{
+		{ctx.NewString("decode"), BuiltinJsonDecode(&ctx)},
 		{ctx.NewString("encode"), BuiltinJsonEncode(&ctx)},
 		{ctx.NewString("encode_ex"), BuiltinJsonEncodeEx(&ctx)},
 	}))
@@ -8129,6 +8130,86 @@ func BuiltinHtmlEscape(ctx *Context) *Builtin {
 	})
 }
 
+func jsonDecode(ctx *Context, j any) (Value, error) {
+	if j == nil {
+		return ctx.NewNull(), nil
+	}
+
+	// Normalize input so that we are always handling a *any as if jsonDecode
+	// was passed pointer directly returned from json.Unmarshal.
+	jp, ok := j.(*any)
+	if !ok {
+		jp = &j
+	}
+
+	if x, ok := (*jp).(bool); ok {
+		return ctx.NewBoolean(x), nil
+	}
+
+	if x, ok := (*jp).(float64); ok {
+		return ctx.NewNumber(x), nil
+	}
+
+	if x, ok := (*jp).(string); ok {
+		return ctx.NewString(x), nil
+	}
+
+	if x, ok := (*jp).([]any); ok {
+		elements := []Value{}
+		for _, ej := range x {
+			element, err := jsonDecode(ctx, ej)
+			if err != nil {
+				return nil, err
+			}
+			elements = append(elements, element)
+		}
+		return ctx.NewVector(elements), nil
+	}
+
+	if x, ok := (*jp).(map[string]any); ok {
+		pairs := []MapPair{}
+		for kj, vj := range x {
+			k, err := jsonDecode(ctx, kj)
+			if err != nil {
+				return nil, err
+			}
+			v, err := jsonDecode(ctx, vj)
+			if err != nil {
+				return nil, err
+			}
+			pairs = append(pairs, MapPair{k, v})
+		}
+		return ctx.NewMap(pairs), nil
+	}
+
+	return nil, fmt.Errorf("cannot JSON-decode type %T", *jp)
+}
+
+func BuiltinJsonDecode(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("json::decode", []Type{TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
+		encoded := arguments[0].(*String)
+
+		var j any = new(any)
+		err := json.Unmarshal([]byte(encoded.data), &j)
+		if err != nil {
+			if e, ok := err.(*json.SyntaxError); ok {
+				if strings.HasPrefix(strings.ToLower(encoded.data[e.Offset-1:]), "nan") {
+					return nil, NewError(nil, ctx.NewString(fmt.Sprintf("cannot JSON-decode string \"%s\"", escape(encoded.data[e.Offset-1:e.Offset+2]))))
+				}
+				if strings.HasPrefix(strings.ToLower(encoded.data[e.Offset-1:]), "inf") {
+					return nil, NewError(nil, ctx.NewString(fmt.Sprintf("cannot JSON-decode string \"%s\"", escape(encoded.data[e.Offset-1:e.Offset+2]))))
+				}
+			}
+			return nil, NewError(nil, ctx.NewString(err.Error()))
+		}
+		decoded, err := jsonDecode(ctx, j)
+		if err != nil {
+			return nil, NewError(nil, ctx.NewString(err.Error()))
+		}
+		return decoded, nil
+	})
+}
+
 func jsonEncode(value Value) (any, error) {
 	if _, ok := value.(*Null); ok {
 		return nil, nil
@@ -8485,7 +8566,7 @@ func BuiltinRandomInteger(ctx *Context) *Builtin {
 		min := arguments[0].(*Number)
 		minInteger, err := ValueAsInt64(min)
 		if err != nil {
-			return nil, NewError(nil, ctx.NewString(fmt.Sprintf("expected integer lower bound, received %v", min)))
+			return nil, NewError(nil, ctx.NewString(fmt.Sprintf("expected integer) lower bound, received %v", min)))
 		}
 
 		max := arguments[1].(*Number)
