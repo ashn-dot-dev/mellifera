@@ -350,6 +350,7 @@ func NewContext() Context {
 	ctx.BaseEnvironment.Let("max", BuiltinMax(&ctx))
 	ctx.BaseEnvironment.Let("import", BuiltinImport(&ctx))
 	ctx.BaseEnvironment.Let("comb", ctx.NewMap([]MapPair{
+		{ctx.NewString("decode"), BuiltinCombDecode(&ctx)},
 		{ctx.NewString("encode"), BuiltinCombEncode(&ctx)},
 		{ctx.NewString("encode_ex"), BuiltinCombEncodeEx(&ctx)},
 	}))
@@ -8078,6 +8079,82 @@ func BuiltinImport(ctx *Context) *Builtin {
 		moduleMap.Insert(ctx.NewString("file"), moduleFile)
 		moduleMap.Insert(ctx.NewString("directory"), moduleDirectory)
 		return result, nil
+	})
+}
+
+// XXX: Parse, don’t validate! Currently, this implementation validates an
+// already parsed AST (1) to avoid duplicating parsing code, and (2) because it
+// is unclear what the best architecture for breaking out comb encoding would be
+// (separate parse mode? separate parser type?).
+func combValidate(ctx *Context, expr AstExpression) error {
+	if _, ok := expr.(AstExpressionNull); ok {
+		return nil
+	}
+
+	if _, ok := expr.(AstExpressionBoolean); ok {
+		return nil
+	}
+
+	if _, ok := expr.(AstExpressionNumber); ok {
+		return nil
+	}
+
+	if _, ok := expr.(AstExpressionString); ok {
+		return nil
+	}
+
+	if x, ok := expr.(AstExpressionVector); ok {
+		for _, element := range x.Elements {
+			if err := combValidate(ctx, element); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	if x, ok := expr.(AstExpressionMap); ok {
+		for _, pair := range x.Elements {
+			if err := combValidate(ctx, pair.Key); err != nil {
+				return err
+			}
+			if err := combValidate(ctx, pair.Value); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	if x, ok := expr.(AstExpressionSet); ok {
+		for _, element := range x.Elements {
+			if err := combValidate(ctx, element); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	return NewError(expr.ExpressionLocation(), ctx.NewString(fmt.Sprintf("invalid comb AST node %s", reflect.TypeOf(expr).Name())))
+}
+
+func BuiltinCombDecode(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("comb::decode", []Type{TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
+		encoded := arguments[0].(*String)
+
+		lexer := NewLexer(ctx, encoded.data, &SourceLocation{"comb::decode", 1})
+		parser, err := NewParser(&lexer)
+		if err != nil {
+			return nil, err
+		}
+		expr, err := parser.ParseExpression()
+		if err != nil {
+			return nil, err
+		}
+		err = combValidate(ctx, expr)
+		if err != nil {
+			return nil, err
+		}
+		env := NewEnvironment(nil)
+		return expr.Eval(ctx, &env)
 	})
 }
 
