@@ -4152,14 +4152,22 @@ class Parser:
         expression = self.parse_expression()
         return AstExpressionNew(location, meta, expression)
 
-    def parse_expression_positive(self) -> AstExpressionPositive:
+    def parse_expression_positive(self, mode: ParseMode = ParseMode.MELLIFERA) -> AstExpressionPositive:
         location = self._expect_current(TokenKind.ADD).location
-        expression = self.parse_expression(Precedence.PREFIX)
+        match mode:
+            case ParseMode.MELLIFERA:
+                expression = self.parse_expression(Precedence.PREFIX)
+            case ParseMode.COMB:
+                expression = self.parse_comb_expression()
         return AstExpressionPositive(location, expression)
 
-    def parse_expression_negative(self) -> AstExpressionNegative:
+    def parse_expression_negative(self, mode: ParseMode = ParseMode.MELLIFERA) -> AstExpressionNegative:
         location = self._expect_current(TokenKind.SUB).location
-        expression = self.parse_expression(Precedence.PREFIX)
+        match mode:
+            case ParseMode.MELLIFERA:
+                expression = self.parse_expression(Precedence.PREFIX)
+            case ParseMode.COMB:
+                expression = self.parse_comb_expression()
         return AstExpressionNegative(location, expression)
 
     def parse_expression_not(self) -> AstExpressionNot:
@@ -4473,6 +4481,10 @@ class Parser:
             or self._check_current(TokenKind.LBRACE)
         ):
             return self.parse_expression_map_or_set(mode=ParseMode.COMB)
+        if self._check_current(TokenKind.ADD):
+            return self.parse_expression_positive()
+        if self._check_current(TokenKind.SUB):
+            return self.parse_expression_negative()
         raise ParseError(
             self.current_token.location,
             f"expected comb value, found {self.current_token}",

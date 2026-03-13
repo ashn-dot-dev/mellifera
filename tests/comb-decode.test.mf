@@ -9,6 +9,8 @@ print("\n");
 
 dumpln(comb::decode(`123`));
 dumpln(comb::decode(`123.456`));
+dumpln(comb::decode(`+123.456`));
+dumpln(comb::decode(`-123.456`));
 try { dumpln(comb::decode(`NaN`)); } catch err { println($"error: {err}"); }
 try { dumpln(comb::decode(`Inf`)); } catch err { println($"error: {err}"); }
 
@@ -56,6 +58,8 @@ try { dumpln(comb::decode(`{}`)); } catch err { println($"error: {err}"); }
 #
 # 123
 # 123.456
+# 123.456
+# -123.456
 # error: expected comb value, found NaN
 # error: expected comb value, found Inf
 #

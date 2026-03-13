@@ -8133,7 +8133,19 @@ func combValidate(ctx *Context, expr AstExpression) error {
 		return nil
 	}
 
-	return NewError(expr.ExpressionLocation(), ctx.NewString(fmt.Sprintf("invalid comb AST node %s", reflect.TypeOf(expr).Name())))
+	if x, ok := expr.(AstExpressionPositive); ok {
+		return combValidate(ctx, x.Expression)
+	}
+
+	if x, ok := expr.(AstExpressionNegative); ok {
+		return combValidate(ctx, x.Expression)
+	}
+
+	found := reflect.TypeOf(expr).Name()
+	if x, ok := expr.(AstExpressionIdentifier); ok {
+		found = x.Name.data
+	}
+	return NewError(expr.ExpressionLocation(), ctx.NewString(fmt.Sprintf("expected comb value, found %s", found)))
 }
 
 func BuiltinCombDecode(ctx *Context) *Builtin {
@@ -8147,6 +8159,9 @@ func BuiltinCombDecode(ctx *Context) *Builtin {
 		}
 		expr, err := parser.ParseExpression()
 		if err != nil {
+			if e, ok := err.(ParseError); ok {
+				return nil, NewError(e.Location, ctx.NewString(e.Error()))
+			}
 			return nil, err
 		}
 		err = combValidate(ctx, expr)
