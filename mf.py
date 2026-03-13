@@ -21,7 +21,6 @@ from typing import (
 )
 import code
 import enum
-import html
 import json
 import math
 import os
@@ -5700,7 +5699,16 @@ def builtin_fs_append(path: String, data: String) -> Union[Value, Error]:
 
 @builtin("html::escape", [String])
 def builtin_html_escape(text: String) -> Union[Value, Error]:
-    return String.new(html.escape(text.runes))
+    data = text.data
+    # Although &apos; is not a part of the HTML4 standard, this function
+    # chooses to normalize on HTML5 rather thank keep compatibility with
+    # legacy browsers like IE.
+    data = data.replace(b"&", b"&amp;")
+    data = data.replace(b'"', b"&quot;")
+    data = data.replace(b"'", b"&apos;")
+    data = data.replace(b"<", b"&lt;")
+    data = data.replace(b">", b"&gt;")
+    return String.new(data)
 
 
 def json_decode(value: Any):

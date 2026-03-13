@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"html"
 	"io"
 	"math"
 	"math/rand/v2"
@@ -8338,7 +8337,19 @@ func BuiltinFsAppend(ctx *Context) *Builtin {
 func BuiltinHtmlEscape(ctx *Context) *Builtin {
 	return ctx.NewBuiltin("html::escape", []Type{TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
 		text := arguments[0].(*String)
-		return ctx.NewString(html.EscapeString(text.data)), nil
+
+		// Although &apos; is not a part of the HTML4 standard, this function
+		// chooses to normalize on HTML5 rather thank keep compatibility with
+		// legacy browsers like IE.
+		escaper := strings.NewReplacer(
+			`&`, "&amp;",
+			`'`, "&apos;",
+			`"`, "&quot;",
+			`<`, "&lt;",
+			`>`, "&gt;",
+		)
+
+		return ctx.NewString(escaper.Replace(text.data)), nil
 	})
 }
 
