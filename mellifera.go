@@ -1,6 +1,7 @@
 package mellifera
 
 import (
+	"bufio"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -339,6 +340,8 @@ func NewContext() Context {
 	ctx.BaseEnvironment.Let("typename", BuiltinTypename(&ctx))
 	ctx.BaseEnvironment.Let("extends", BuiltinExtends(&ctx))
 	ctx.BaseEnvironment.Let("repr", BuiltinRepr(&ctx))
+	ctx.BaseEnvironment.Let("input", BuiltinInput(&ctx))
+	ctx.BaseEnvironment.Let("inputln", BuiltinInputln(&ctx))
 	ctx.BaseEnvironment.Let("dump", BuiltinDump(&ctx))
 	ctx.BaseEnvironment.Let("dumpln", BuiltinDumpln(&ctx))
 	ctx.BaseEnvironment.Let("print", BuiltinPrint(&ctx))
@@ -7802,6 +7805,27 @@ return extends;
 func BuiltinRepr(ctx *Context) *Builtin {
 	return ctx.NewBuiltin("repr", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewString(fmt.Sprintf("%v", arguments[0])), nil
+	})
+}
+
+func BuiltinInput(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("input", []Type{}, func(ctx *Context, arguments []Value) (Value, error) {
+		data, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			return nil, NewError(nil, ctx.NewString(err.Error()))
+		}
+		return ctx.NewString(string(data)), nil
+	})
+}
+
+func BuiltinInputln(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("inputln", []Type{}, func(ctx *Context, arguments []Value) (Value, error) {
+		reader := bufio.NewReader(os.Stdin)
+		data, err := reader.ReadString('\n')
+		if err != nil {
+			return nil, NewError(nil, ctx.NewString(err.Error()))
+		}
+		return ctx.NewString(string(data)), nil
 	})
 }
 
