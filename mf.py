@@ -5773,7 +5773,13 @@ def json_encode(value: Value):
 @builtin("json::encode", [Value])
 def builtin_json_encode(value: Value) -> Union[Value, Error]:
     return String.new(
-        json.dumps(value, default=json_encode, allow_nan=False, ensure_ascii=False)
+        json.dumps(
+            value,
+            default=json_encode,
+            allow_nan=False,
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
     )
 
 

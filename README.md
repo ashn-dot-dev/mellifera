@@ -129,7 +129,7 @@ and 418
 of 391
 a 293
 $ curl -s https://www.gutenberg.org/files/71/71-0.txt | mf examples/word-count.mf --top=10 --json
-{"the": 692, "to": 440, "and": 418, "of": 391, "a": 293, "it": 212, "i": 188, "in": 181, "is": 173, "not": 171}
+{"the":692,"to":440,"and":418,"of":391,"a":293,"it":212,"i":188,"in":181,"is":173,"not":171}
 ```
 
 Mellifera uses value semantics, meaning assignment operations copy the contents
