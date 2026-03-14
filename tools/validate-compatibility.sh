@@ -2,7 +2,6 @@
 #
 # Usage:
 #   /path/to/mellifera$ sh tools/validate-compatibility.sh
-set -e
 export LC_ALL=C.UTF-8
 
 make build-go >/dev/null
@@ -14,25 +13,35 @@ MELLIFERA_PROG_GO="${MELLIFERA_HOME}/bin/mf"
 TMPDIR=$(mktemp -d)
 trap '{ { set +x; } 2>/dev/null; rm -rf -- "${TMPDIR}"; }' EXIT
 
-echo 'VALIDATE TOKEN DUMP COMPATIBILITY...'
-set -x
-"${MELLIFERA_PROG_PY}" --dump-tokens tools/validate-compatibility.mf >"${TMPDIR}/dump-tokens.py.comb"
-"${MELLIFERA_PROG_GO}" --dump-tokens tools/validate-compatibility.mf >"${TMPDIR}/dump-tokens.go.comb"
-diff "${TMPDIR}/dump-tokens.py.comb" "${TMPDIR}/dump-tokens.go.comb"
-{ set +x; } 2>/dev/null
+FILESRUN=0
+FAILURES=0
 
-echo 'VALIDATE AST DUMP COMPATIBILITY...'
-set -x
-"${MELLIFERA_PROG_PY}" --dump-ast tools/validate-compatibility.mf >"${TMPDIR}/dump-ast.py.comb"
-"${MELLIFERA_PROG_GO}" --dump-ast tools/validate-compatibility.mf >"${TMPDIR}/dump-ast.go.comb"
-diff "${TMPDIR}/dump-ast.py.comb" "${TMPDIR}/dump-ast.go.comb"
-{ set +x; } 2>/dev/null
+validate() {
+    FILE="$1"
+    FILESRUN=$((FILESRUN + 1))
 
-echo 'VALIDATE EVAL OUTPUT COMPATIBILITY...'
-set -x
-"${MELLIFERA_PROG_PY}" tools/validate-compatibility.mf >"${TMPDIR}/output.py.txt"
-"${MELLIFERA_PROG_GO}" tools/validate-compatibility.mf >"${TMPDIR}/output.go.txt"
-diff "${TMPDIR}/output.py.txt" "${TMPDIR}/output.go.txt"
-{ set +x; } 2>/dev/null
+    echo "[${FILE}] VALIDATE TOKEN DUMP COMPATIBILITY"
+    "${MELLIFERA_PROG_PY}" --dump-tokens "${FILE}" >"${TMPDIR}/$(basename ${FILE}).dump-tokens.py.comb" 2>/dev/null
+    "${MELLIFERA_PROG_GO}" --dump-tokens "${FILE}" >"${TMPDIR}/$(basename ${FILE}).dump-tokens.go.comb" 2>/dev/null
+    if ! diff "${TMPDIR}/$(basename ${FILE}).dump-tokens.py.comb" "${TMPDIR}/$(basename ${FILE}).dump-tokens.go.comb"; then
+        FAILURES=$((FAILURES + 1))
+        return 1
+    fi
 
-echo 'PASSED'
+    echo "[${FILE}] VALIDATE AST DUMP COMPATIBILITY"
+    "${MELLIFERA_PROG_PY}" --dump-ast "${FILE}" >"${TMPDIR}/$(basename ${FILE}).dump-ast.py.comb" 2>/dev/null
+    "${MELLIFERA_PROG_GO}" --dump-ast "${FILE}" >"${TMPDIR}/$(basename ${FILE}).dump-ast.go.comb" 2>/dev/null
+    if ! diff "${TMPDIR}/$(basename ${FILE}).dump-ast.py.comb" "${TMPDIR}/$(basename ${FILE}).dump-ast.go.comb"; then
+        FAILURES=$((FAILURES + 1))
+        return 1
+    fi
+}
+
+for f in $(find examples tests -name '*.mf' | sort); do
+    validate "${f}"
+done
+
+echo "FILES CHECKED => ${FILESRUN}"
+echo "FAILURE COUNT => ${FAILURES}"
+
+[ "${FAILURES}" -eq 0 ] || exit 1

@@ -37,13 +37,13 @@ else
     MELLIFERA_PROG="${MELLIFERA_HOME}/mf.py"
 fi
 
-
 TESTSRUN=0
 FAILURES=0
 
 test() {
     TEST="$1"
 
+    TESTSRUN=$((TESTSRUN + 1))
     echo "[= TEST ${TEST} =]"
 
     set +e
@@ -68,7 +68,6 @@ test() {
         echo '[= FAIL =]'
         FAILURES=$((FAILURES + 1))
     fi
-    TESTSRUN=$((TESTSRUN + 1))
 }
 
 TESTS= # empty
