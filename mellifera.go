@@ -5023,7 +5023,7 @@ func (self AstStatementAssignment) Eval(ctx *Context, env *Environment) (Control
 	}
 
 	assignVector := func(storeVector *Vector, rhs Value, autoDeref bool) error {
-		integer, err := ValueAsInt(field)
+		index, err := ValueAsInt(field)
 		if err != nil {
 			if autoDeref {
 				return NewError(
@@ -5031,12 +5031,16 @@ func (self AstStatementAssignment) Eval(ctx *Context, env *Environment) (Control
 					ctx.NewString(fmt.Sprintf("invalid reference to vector access with field %v", field)),
 				)
 			}
+		}
+
+		if index < 0 || index >= storeVector.Count() {
 			return NewError(
 				self.Location,
-				ctx.NewString(fmt.Sprintf("invalid vector access with field %v", field)),
+				ctx.NewString(fmt.Sprintf("invalid vector access with index %v", index)),
 			)
 		}
-		storeVector.Set(integer, rhs.Copy())
+
+		storeVector.Set(index, rhs.Copy())
 		return nil
 	}
 
