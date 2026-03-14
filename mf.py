@@ -6070,7 +6070,7 @@ def builtin_re_group(n: Number) -> Union[Value, Error]:
         return Error(None, "regular expression did not match")
     try:
         if re_match_result.group(int(n)) is None:
-            return String.new("")
+            return Null.new()
         return String.new(re_match_result.group(int(n)))
     except IndexError:
         return Error(

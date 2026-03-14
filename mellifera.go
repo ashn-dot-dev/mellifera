@@ -205,10 +205,17 @@ type Context struct {
 	False *Boolean
 	// Base Environment
 	BaseEnvironment Environment
-	// Result of the last regular expression operation (=~, !~). Either a slice
-	// of match groups or nil. Non-nil implies that the last pattern was a
-	// successful match.
-	reMatchResult []string
+	// String data tested by the last regular expression operation (=~, !~).
+	reMatchString string
+	// Result of the last regular expression operation (=~, !~) returned by:
+	//
+	// 		rhsRegexp.data.FindStringSubmatchIndex(ctx.reMatchString)
+	//
+	// where the Nth capture group corresponds to the [bgnIndex, endIndex]
+	// slice denoted by ctx.reMatchResult[2*N:2*N+2]. A slice index pair of
+	// [-1, -1] indicates the Nth capture group did not match. A nil slice
+	// indicates that the last regular expression operation did not match.
+	reMatchResult []int
 	// Context-specific Random Number Generation State
 	rng *rand.Rand
 	// Miscellaneous State and Definitions
@@ -309,6 +316,7 @@ func NewContext() Context {
 	ctx.True = &Boolean{true, ctx.booleanMeta}
 	ctx.False = &Boolean{false, ctx.booleanMeta}
 	ctx.BaseEnvironment = NewEnvironment(nil)
+	ctx.reMatchString = ""  // no initial match
 	ctx.reMatchResult = nil // no initial match
 	seed := rand.Uint64()   // random initial rng seed
 	ctx.rng = rand.New(rand.NewPCG(seed, seed))
@@ -3703,7 +3711,8 @@ func (self AstExpressionEqRe) Eval(ctx *Context, env *Environment) (Value, error
 	if lhsIsString {
 		rhsRegexp, rhsIsRegexp := rhs.(*Regexp)
 		if rhsIsRegexp {
-			ctx.reMatchResult = rhsRegexp.data.FindStringSubmatch(lhsString.data)
+			ctx.reMatchString = lhsString.data
+			ctx.reMatchResult = rhsRegexp.data.FindStringSubmatchIndex(ctx.reMatchString)
 			return ctx.NewBoolean(ctx.reMatchResult != nil), nil
 		}
 	}
@@ -3748,7 +3757,8 @@ func (self AstExpressionNeRe) Eval(ctx *Context, env *Environment) (Value, error
 	if lhsIsString {
 		rhsRegexp, rhsIsRegexp := rhs.(*Regexp)
 		if rhsIsRegexp {
-			ctx.reMatchResult = rhsRegexp.data.FindStringSubmatch(lhsString.data)
+			ctx.reMatchString = lhsString.data
+			ctx.reMatchResult = rhsRegexp.data.FindStringSubmatchIndex(ctx.reMatchString)
 			return ctx.NewBoolean(ctx.reMatchResult == nil), nil
 		}
 	}
@@ -8817,11 +8827,18 @@ func BuiltinReGroup(ctx *Context) *Builtin {
 			return nil, NewError(nil, ctx.NewString("regular expression did not match"))
 		}
 
-		if n < 0 || n >= len(ctx.reMatchResult) {
+		bgnIndex := 2 * n
+		endIndex := 2 * n + 2
+		if bgnIndex < 0 || endIndex > len(ctx.reMatchResult) {
 			return nil, NewError(nil, ctx.NewString(fmt.Sprintf("out-of-bounds regular expression capture group %v", n)))
 		}
 
-		return ctx.NewString(ctx.reMatchResult[n]), nil
+		groupBgnEnd := ctx.reMatchResult[bgnIndex:endIndex]
+		if groupBgnEnd[0] == -1 {
+			return ctx.NewNull(), nil
+		}
+
+		return ctx.NewString(ctx.reMatchString[groupBgnEnd[0]:groupBgnEnd[1]]), nil
 	})
 }
 

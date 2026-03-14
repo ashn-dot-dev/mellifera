@@ -24,7 +24,7 @@ while argi < argv.count() {
         continue;
     }
     if argv[argi] =~ r`^-+top(=(.*))?$` {
-        if not re::group(2).is_empty() {
+        if re::group(2) != null {
             top = number::init(re::group(2));
         }
         else {
