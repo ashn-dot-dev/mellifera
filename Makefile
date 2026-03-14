@@ -53,8 +53,8 @@ check-py:
 #   E501 - Conflicts with Black.
 #   W503 - Conflicts with Black.
 lint-py:
-	python3 -m mypy --check-untyped-defs mf.py bin/mf-test.py
-	python3 -m flake8 --ignore=E203,E221,E241,E501,W503 mf.py bin/mf-test.py
+	python3 -m mypy --check-untyped-defs mf.py
+	python3 -m flake8 --ignore=E203,E221,E241,E501,W503 mf.py
 
 format: format-go
 
@@ -63,7 +63,7 @@ format-go:
 	go fmt cmd/mf/*.go
 
 format-py:
-	python3 -m black mf.py bin/mf-test.py
+	python3 -m black mf.py
 
 clean:
 	rm -f .mellifera-history
