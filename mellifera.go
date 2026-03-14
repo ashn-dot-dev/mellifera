@@ -188,6 +188,7 @@ func (e *CombEncoder) writeEndOfLine() error {
 }
 
 type Context struct {
+	// Builtin Type Metamaps
 	functionMeta  *Map
 	booleanMeta   *Map
 	numberMeta    *Map
@@ -198,13 +199,16 @@ type Context struct {
 	setMeta       *Map
 	referenceMeta *Map
 
-	// Null Singleton.
+	// Null Singleton
 	Null *Null
+
 	// Boolean Singletons
 	True  *Boolean
 	False *Boolean
+
 	// Base Environment
 	BaseEnvironment Environment
+
 	// String data tested by the last regular expression operation (=~, !~).
 	reMatchString string
 	// Result of the last regular expression operation (=~, !~) returned by:
@@ -216,8 +220,10 @@ type Context struct {
 	// [-1, -1] indicates the Nth capture group did not match. A nil slice
 	// indicates that the last regular expression operation did not match.
 	reMatchResult []int
-	// Context-specific Random Number Generation State
+
+	// Context-Specific Random Number Generation State
 	rng *rand.Rand
+
 	// Miscellaneous State and Definitions
 	reNumberDec           *regexp.Regexp
 	reNumberDecFullmatch  *regexp.Regexp
@@ -313,13 +319,18 @@ func NewContext() Context {
 	ctx.referenceMeta = ctx.NewMetaMap("reference", nil)
 
 	ctx.Null = &Null{nil}
+
 	ctx.True = &Boolean{true, ctx.booleanMeta}
 	ctx.False = &Boolean{false, ctx.booleanMeta}
+
 	ctx.BaseEnvironment = NewEnvironment(nil)
+
 	ctx.reMatchString = ""  // no initial match
 	ctx.reMatchResult = nil // no initial match
-	seed := rand.Uint64()   // random initial rng seed
+
+	seed := rand.Uint64() // random initial rng seed
 	ctx.rng = rand.New(rand.NewPCG(seed, seed))
+
 	ctx.reNumberDec = regexp.MustCompile(`^\d+(\.\d+)?`)
 	ctx.reNumberDecFullmatch = regexp.MustCompile(`^\d+(\.\d+)?$`)
 	ctx.reNumberHex = regexp.MustCompile(`^0x[0-9a-fA-F]+`)
@@ -8828,7 +8839,7 @@ func BuiltinReGroup(ctx *Context) *Builtin {
 		}
 
 		bgnIndex := 2 * n
-		endIndex := 2 * n + 2
+		endIndex := 2*n + 2
 		if bgnIndex < 0 || endIndex > len(ctx.reMatchResult) {
 			return nil, NewError(nil, ctx.NewString(fmt.Sprintf("out-of-bounds regular expression capture group %v", n)))
 		}
