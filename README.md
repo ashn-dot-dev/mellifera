@@ -1,8 +1,8 @@
 ![The Mellifera Programming Language](https://ashn.dev/mellifera/mellifera-logo.svg)
 
-Mellifera is a simple, modern, batteries-included scripting language featuring
-value semantics, structural equality, copy-on-write data sharing, strong
-dynamic typing, explicit references, and a lightweight nominal type system with
+Mellifera is a simple, batteries-included scripting language featuring value
+semantics, structural equality, copy-on-write data sharing, strong dynamic
+typing, explicit references, and a lightweight nominal type system with
 structural protocols.
 
 ```mellifera
