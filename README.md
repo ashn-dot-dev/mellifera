@@ -403,9 +403,9 @@ implementation, and an older reference interpreter written in Python (`mf.py`),
 which served as the original language implementation during prototyping. In
 order to ensure that Mellifera does not depend on a particular host language,
 both implementations are updated to support the same core set of language
-features and standard library builtins. Most users will interact with the Go
+features and standard library builtins. Most users will want to use the Go
 implementation, and most `make` targets will default to the Go version of that
-target, however specific `*-go` and `*-py` versions of targets should be used
+target. However, specific `*-go` and `*-py` versions of targets should be used
 when hacking on either the Go implementation or Python implementation,
 respectively.
 
