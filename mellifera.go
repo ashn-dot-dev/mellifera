@@ -6445,8 +6445,9 @@ func Call(ctx *Context, location *SourceLocation, callable Value, arguments []Va
 
 		result, err := function.Ast.Body.Eval(ctx, &env)
 		if err != nil {
-			if error, ok := err.(*Error); ok {
-				error.Trace = append(error.Trace, TraceElement{location, function.String()})
+			if e, ok := err.(Error); ok {
+				e.Trace = append(e.Trace, TraceElement{location, function.String()})
+				return nil, e
 			}
 			return nil, err
 		}
