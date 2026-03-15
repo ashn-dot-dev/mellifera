@@ -368,8 +368,8 @@ programs can be found under the `examples` directory.
 
 ## Installing
 
-Install Mellifera and associated tooling into the directory specified by
-`MELLIFERA_HOME` (default `$HOME/.mellifera`):
+Build and install the Mellifera interpreter and associated tooling into the
+directory specified by `MELLIFERA_HOME` (default `$HOME/.mellifera`):
 
 ```sh
 make install                               # Install to the default $HOME/.mellifera
