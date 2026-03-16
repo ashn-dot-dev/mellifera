@@ -464,8 +464,8 @@ func TestMapConstructorNilElements(t *testing.T) {
 	m := ctx.NewMap(nil)
 	require.Equal(t, 0, m.Count())
 
-	require.Nil(t, m.Lookup(ctx.NewNull()))
-	require.Nil(t, m.Lookup(ctx.NewNumber(456.123)))
+	require.Nil(t, m.Get(ctx.NewNull()))
+	require.Nil(t, m.Get(ctx.NewNumber(456.123)))
 }
 
 func TestMapConstructorNonNilElements(t *testing.T) {
@@ -482,12 +482,12 @@ func TestMapConstructorNonNilElements(t *testing.T) {
 		})
 		require.Equal(t, 3, m.Count())
 
-		require.True(t, m.Lookup(ctx.NewNumber(123.456)).Equal(ctx.NewString("abc")))
-		require.True(t, m.Lookup(ctx.NewString("foo")).Equal(ctx.NewString("def")))
-		require.True(t, m.Lookup(ctx.NewVector(nil)).Equal(ctx.NewString("hij")))
+		require.True(t, m.Get(ctx.NewNumber(123.456)).Equal(ctx.NewString("abc")))
+		require.True(t, m.Get(ctx.NewString("foo")).Equal(ctx.NewString("def")))
+		require.True(t, m.Get(ctx.NewVector(nil)).Equal(ctx.NewString("hij")))
 
-		require.Nil(t, m.Lookup(ctx.NewNull()))
-		require.Nil(t, m.Lookup(ctx.NewNumber(456.123)))
+		require.Nil(t, m.Get(ctx.NewNull()))
+		require.Nil(t, m.Get(ctx.NewNumber(456.123)))
 	}
 }
 
@@ -535,12 +535,12 @@ func TestMapCopy(t *testing.T) {
 		})
 		require.Equal(t, m.Count(), m.Copy().(*Map).Count())
 
-		require.True(t, m.Copy().(*Map).Lookup(ctx.NewNumber(123.456)).Equal(ctx.NewString("abc")))
-		require.True(t, m.Copy().(*Map).Lookup(ctx.NewString("foo")).Equal(ctx.NewString("def")))
-		require.True(t, m.Copy().(*Map).Lookup(ctx.NewVector(nil)).Equal(ctx.NewString("hij")))
+		require.True(t, m.Copy().(*Map).Get(ctx.NewNumber(123.456)).Equal(ctx.NewString("abc")))
+		require.True(t, m.Copy().(*Map).Get(ctx.NewString("foo")).Equal(ctx.NewString("def")))
+		require.True(t, m.Copy().(*Map).Get(ctx.NewVector(nil)).Equal(ctx.NewString("hij")))
 
-		require.Nil(t, m.Copy().(*Map).Lookup(ctx.NewNull()))
-		require.Nil(t, m.Copy().(*Map).Lookup(ctx.NewNumber(456.123)))
+		require.Nil(t, m.Copy().(*Map).Get(ctx.NewNull()))
+		require.Nil(t, m.Copy().(*Map).Get(ctx.NewNumber(456.123)))
 	}
 }
 
@@ -563,13 +563,13 @@ func TestMapCopyOnWrite(t *testing.T) {
 	require.Equal(t, 1, b.data.uses)
 	require.NotSame(t, a.data, b.data)
 
-	require.True(t, a.Lookup(ctx.NewNumber(123.456)).Equal(ctx.NewString("abc")))
-	require.True(t, a.Lookup(ctx.NewString("foo")).Equal(ctx.NewString("def")))
-	require.True(t, a.Lookup(ctx.NewVector(nil)).Equal(ctx.NewString("hij")))
+	require.True(t, a.Get(ctx.NewNumber(123.456)).Equal(ctx.NewString("abc")))
+	require.True(t, a.Get(ctx.NewString("foo")).Equal(ctx.NewString("def")))
+	require.True(t, a.Get(ctx.NewVector(nil)).Equal(ctx.NewString("hij")))
 
-	require.True(t, b.Lookup(ctx.NewNumber(123.456)).Equal(ctx.NewNull()))
-	require.True(t, b.Lookup(ctx.NewString("foo")).Equal(ctx.NewString("def")))
-	require.True(t, b.Lookup(ctx.NewVector(nil)).Equal(ctx.NewString("hij")))
+	require.True(t, b.Get(ctx.NewNumber(123.456)).Equal(ctx.NewNull()))
+	require.True(t, b.Get(ctx.NewString("foo")).Equal(ctx.NewString("def")))
+	require.True(t, b.Get(ctx.NewVector(nil)).Equal(ctx.NewString("hij")))
 
 	c := a.Copy().(*Map)
 	c.Remove(ctx.NewString("foo"))
@@ -579,13 +579,13 @@ func TestMapCopyOnWrite(t *testing.T) {
 	require.Equal(t, 1, c.data.uses)
 	require.NotSame(t, a.data, c.data)
 
-	require.True(t, a.Lookup(ctx.NewNumber(123.456)).Equal(ctx.NewString("abc")))
-	require.True(t, a.Lookup(ctx.NewString("foo")).Equal(ctx.NewString("def")))
-	require.True(t, a.Lookup(ctx.NewVector(nil)).Equal(ctx.NewString("hij")))
+	require.True(t, a.Get(ctx.NewNumber(123.456)).Equal(ctx.NewString("abc")))
+	require.True(t, a.Get(ctx.NewString("foo")).Equal(ctx.NewString("def")))
+	require.True(t, a.Get(ctx.NewVector(nil)).Equal(ctx.NewString("hij")))
 
-	require.True(t, c.Lookup(ctx.NewNumber(123.456)).Equal(ctx.NewString("abc")))
-	require.Nil(t, c.Lookup(ctx.NewString("foo")))
-	require.True(t, c.Lookup(ctx.NewVector(nil)).Equal(ctx.NewString("hij")))
+	require.True(t, c.Get(ctx.NewNumber(123.456)).Equal(ctx.NewString("abc")))
+	require.Nil(t, c.Get(ctx.NewString("foo")))
+	require.True(t, c.Get(ctx.NewVector(nil)).Equal(ctx.NewString("hij")))
 }
 
 func TestMapCombEncode(t *testing.T) {
@@ -729,8 +729,8 @@ func TestSetConstructorNilElements(t *testing.T) {
 	set := ctx.NewSet(nil)
 	require.Equal(t, 0, set.Count())
 
-	require.Nil(t, set.Lookup(ctx.NewNull()))
-	require.Nil(t, set.Lookup(ctx.NewNumber(456.123)))
+	require.Nil(t, set.Get(ctx.NewNull()))
+	require.Nil(t, set.Get(ctx.NewNumber(456.123)))
 }
 
 func TestSetConstructorNonNilElements(t *testing.T) {
@@ -747,12 +747,12 @@ func TestSetConstructorNonNilElements(t *testing.T) {
 		})
 		require.Equal(t, 3, set.Count())
 
-		require.True(t, set.Lookup(ctx.NewNumber(123.456)).Equal(ctx.NewNumber(123.456)))
-		require.True(t, set.Lookup(ctx.NewString("foo")).Equal(ctx.NewString("foo")))
-		require.True(t, set.Lookup(ctx.NewVector(nil)).Equal(ctx.NewVector(nil)))
+		require.True(t, set.Get(ctx.NewNumber(123.456)).Equal(ctx.NewNumber(123.456)))
+		require.True(t, set.Get(ctx.NewString("foo")).Equal(ctx.NewString("foo")))
+		require.True(t, set.Get(ctx.NewVector(nil)).Equal(ctx.NewVector(nil)))
 
-		require.Nil(t, set.Lookup(ctx.NewNull()))
-		require.Nil(t, set.Lookup(ctx.NewNumber(456.123)))
+		require.Nil(t, set.Get(ctx.NewNull()))
+		require.Nil(t, set.Get(ctx.NewNumber(456.123)))
 	}
 }
 
@@ -800,12 +800,12 @@ func TestSetCopy(t *testing.T) {
 		})
 		require.Equal(t, set.Count(), set.Copy().(*Set).Count())
 
-		require.True(t, set.Copy().(*Set).Lookup(ctx.NewNumber(123.456)).Equal(ctx.NewNumber(123.456)))
-		require.True(t, set.Copy().(*Set).Lookup(ctx.NewString("foo")).Equal(ctx.NewString("foo")))
-		require.True(t, set.Copy().(*Set).Lookup(ctx.NewVector(nil)).Equal(ctx.NewVector(nil)))
+		require.True(t, set.Copy().(*Set).Get(ctx.NewNumber(123.456)).Equal(ctx.NewNumber(123.456)))
+		require.True(t, set.Copy().(*Set).Get(ctx.NewString("foo")).Equal(ctx.NewString("foo")))
+		require.True(t, set.Copy().(*Set).Get(ctx.NewVector(nil)).Equal(ctx.NewVector(nil)))
 
-		require.Nil(t, set.Copy().(*Set).Lookup(ctx.NewNull()))
-		require.Nil(t, set.Copy().(*Set).Lookup(ctx.NewNumber(456.123)))
+		require.Nil(t, set.Copy().(*Set).Get(ctx.NewNull()))
+		require.Nil(t, set.Copy().(*Set).Get(ctx.NewNumber(456.123)))
 	}
 }
 
@@ -828,14 +828,14 @@ func TestSetCopyOnWrite(t *testing.T) {
 	require.Equal(t, 1, b.data.uses)
 	require.NotSame(t, a.data, b.data)
 
-	require.True(t, a.Lookup(ctx.NewNumber(123.456)).Equal(ctx.NewNumber(123.456)))
-	require.True(t, a.Lookup(ctx.NewString("foo")).Equal(ctx.NewString("foo")))
-	require.True(t, a.Lookup(ctx.NewVector(nil)).Equal(ctx.NewVector(nil)))
+	require.True(t, a.Get(ctx.NewNumber(123.456)).Equal(ctx.NewNumber(123.456)))
+	require.True(t, a.Get(ctx.NewString("foo")).Equal(ctx.NewString("foo")))
+	require.True(t, a.Get(ctx.NewVector(nil)).Equal(ctx.NewVector(nil)))
 
-	require.True(t, b.Lookup(ctx.NewNumber(123.456)).Equal(ctx.NewNumber(123.456)))
-	require.True(t, b.Lookup(ctx.NewString("foo")).Equal(ctx.NewString("foo")))
-	require.True(t, b.Lookup(ctx.NewVector(nil)).Equal(ctx.NewVector(nil)))
-	require.True(t, b.Lookup(ctx.NewString("bar")).Equal(ctx.NewString("bar")))
+	require.True(t, b.Get(ctx.NewNumber(123.456)).Equal(ctx.NewNumber(123.456)))
+	require.True(t, b.Get(ctx.NewString("foo")).Equal(ctx.NewString("foo")))
+	require.True(t, b.Get(ctx.NewVector(nil)).Equal(ctx.NewVector(nil)))
+	require.True(t, b.Get(ctx.NewString("bar")).Equal(ctx.NewString("bar")))
 
 	c := a.Copy().(*Set)
 	c.Remove(ctx.NewString("foo"))
@@ -845,13 +845,13 @@ func TestSetCopyOnWrite(t *testing.T) {
 	require.Equal(t, 1, c.data.uses)
 	require.NotSame(t, a.data, c.data)
 
-	require.True(t, a.Lookup(ctx.NewNumber(123.456)).Equal(ctx.NewNumber(123.456)))
-	require.True(t, a.Lookup(ctx.NewString("foo")).Equal(ctx.NewString("foo")))
-	require.True(t, a.Lookup(ctx.NewVector(nil)).Equal(ctx.NewVector(nil)))
+	require.True(t, a.Get(ctx.NewNumber(123.456)).Equal(ctx.NewNumber(123.456)))
+	require.True(t, a.Get(ctx.NewString("foo")).Equal(ctx.NewString("foo")))
+	require.True(t, a.Get(ctx.NewVector(nil)).Equal(ctx.NewVector(nil)))
 
-	require.True(t, c.Lookup(ctx.NewNumber(123.456)).Equal(ctx.NewNumber(123.456)))
-	require.Nil(t, c.Lookup(ctx.NewString("foo")))
-	require.True(t, c.Lookup(ctx.NewVector(nil)).Equal(ctx.NewVector(nil)))
+	require.True(t, c.Get(ctx.NewNumber(123.456)).Equal(ctx.NewNumber(123.456)))
+	require.Nil(t, c.Get(ctx.NewString("foo")))
+	require.True(t, c.Get(ctx.NewVector(nil)).Equal(ctx.NewVector(nil)))
 }
 
 func TestSetCombEncode(t *testing.T) {

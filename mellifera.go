@@ -96,8 +96,8 @@ func MetaFunction(value Value, name Value) (Value, bool) {
 	if meta == nil {
 		return nil, false
 	}
-	function := meta.Lookup(name)
-	if function == nil {
+	function, ok := meta.Lookup(name)
+	if !ok {
 		return nil, false
 	}
 	if _, ok := function.(*Function); ok {
@@ -1030,24 +1030,23 @@ type MapData struct {
 	uses    int
 }
 
-// Returns nil on lookup failure.
-func (self *MapData) LookupWithHash(key Value, hash uint64) *MapElement {
+func (self *MapData) LookupWithHash(key Value, hash uint64) (*MapElement, bool) {
 	bucket, ok := self.buckets[hash]
 	if !ok || len(bucket) == 0 {
-		return nil
+		return nil, false
 	}
 
 	for _, element := range bucket {
 		if element.key.Equal(key) {
-			return element
+			return element, true
 		}
 	}
 
-	return nil
+	return nil, false
 }
 
 // Returns nil on lookup failure.
-func (self *MapData) Lookup(key Value) *MapElement {
+func (self *MapData) Lookup(key Value) (*MapElement, bool) {
 	return self.LookupWithHash(key, key.Hash())
 }
 
@@ -1070,8 +1069,8 @@ func (self *MapData) Insert(key, value Value) {
 		return
 	}
 
-	lookup := self.LookupWithHash(key, hash)
-	if lookup == nil {
+	lookup, ok := self.LookupWithHash(key, hash)
+	if !ok {
 		element := &MapElement{
 			prev:  self.tail,
 			key:   key,
@@ -1288,17 +1287,22 @@ func (self *Map) IsFrozen() bool {
 }
 
 // Returns nil on lookup failure.
-func (self *Map) Lookup(key Value) Value {
+func (self *Map) Get(key Value) Value {
+	lookup, _ := self.Lookup(key)
+	return lookup
+}
+
+func (self *Map) Lookup(key Value) (Value, bool) {
 	if self.data == nil {
-		return nil
+		return nil, false
 	}
 
-	element := self.data.Lookup(key)
-	if element == nil {
-		return nil
+	element, ok := self.data.Lookup(key)
+	if !ok {
+		return nil, false
 	}
 
-	return element.value
+	return element.value, true
 }
 
 // Returns an error when attempting to insert into a frozen map.
@@ -1588,17 +1592,22 @@ func (self *Set) Elements() []Value {
 }
 
 // Returns nil on lookup failure.
-func (self *Set) Lookup(value Value) Value {
+func (self *Set) Get(value Value) Value {
+	lookup, _ := self.Lookup(value)
+	return lookup
+}
+
+func (self *Set) Lookup(value Value) (Value, bool) {
 	if self.data == nil {
-		return nil
+		return nil, false
 	}
 
 	element := self.data.Lookup(value)
 	if element == nil {
-		return nil
+		return nil, false
 	}
 
-	return element.key
+	return element.key, true
 }
 
 func (self *Set) Insert(value Value) {
@@ -4070,8 +4079,8 @@ func (self AstExpressionAccessIndex) Eval(ctx *Context, env *Environment) (Value
 		return v.Get(index), nil
 	}
 	if m, ok := store.(*Map); ok {
-		lookup := m.Lookup(field)
-		if lookup == nil {
+		lookup, ok := m.Lookup(field)
+		if !ok {
 			return nil, NewError(
 				self.Location,
 				ctx.NewString(fmt.Sprintf("invalid map access with field %v", field)),
@@ -4124,8 +4133,8 @@ func (self AstExpressionAccessScope) Eval(ctx *Context, env *Environment) (Value
 			ctx.NewString(fmt.Sprintf("attempted to access field of type %s", quote(Typename(store)))),
 		)
 	}
-	lookup := m.Lookup(field)
-	if lookup == nil {
+	lookup, ok := m.Lookup(field)
+	if !ok {
 		return nil, NewError(
 			self.Location,
 			ctx.NewString(fmt.Sprintf("invalid map access with field %v", field)),
@@ -4175,14 +4184,14 @@ func (self AstExpressionAccessDot) Eval(ctx *Context, env *Environment) (Value, 
 	// map, which is almost certainly the desired behavior for nominal
 	// property lookup.
 	if m, ok := store.(*Map); ok {
-		lookup := m.Lookup(field)
-		if lookup != nil {
+		lookup, ok := m.Lookup(field)
+		if ok {
 			return lookup, nil
 		}
 
 		if m.meta != nil {
-			lookup = m.meta.Lookup(field)
-			if lookup != nil {
+			lookup, ok = m.meta.Lookup(field)
+			if ok {
 				return lookup, nil
 			}
 		}
@@ -4196,14 +4205,14 @@ func (self AstExpressionAccessDot) Eval(ctx *Context, env *Environment) (Value, 
 		// Prioritize fields of the value itself *before* looking at the
 		// fields of the value's metamap.
 		if m, ok := storeDeref.(*Map); ok {
-			lookup := m.Lookup(field)
-			if lookup != nil {
+			lookup, ok := m.Lookup(field)
+			if ok {
 				return lookup, nil
 			}
 
 			if m.meta != nil {
-				lookup = m.meta.Lookup(field)
-				if lookup != nil {
+				lookup, ok = m.meta.Lookup(field)
+				if ok {
 					return lookup, nil
 				}
 			}
@@ -4327,12 +4336,12 @@ func (self AstExpressionFunctionCall) Eval(ctx *Context, env *Environment) (Valu
 		// the map, which is almost certainly *not* the desired behavior.
 		if meta := store.Meta(); meta != nil {
 			// Value meta lookup.
-			function = meta.Lookup(accessDot.Field.Name)
+			function, _ = meta.Lookup(accessDot.Field.Name)
 		}
 		if function == nil {
 			// Map field lookup.
 			if storeMap, ok := store.(*Map); ok {
-				function = storeMap.Lookup(accessDot.Field.Name)
+				function, _ = storeMap.Lookup(accessDot.Field.Name)
 			}
 		}
 		if function == nil {
@@ -4340,7 +4349,7 @@ func (self AstExpressionFunctionCall) Eval(ctx *Context, env *Environment) (Valu
 			if storeReference, ok := store.(*Reference); ok {
 				if meta := storeReference.data.Meta(); meta != nil {
 					selfArgument = storeReference
-					function = meta.Lookup(accessDot.Field.Name)
+					function, _ = meta.Lookup(accessDot.Field.Name)
 				}
 			}
 		}
@@ -7562,9 +7571,9 @@ func BuiltinMapContains(ctx *Context) *Builtin {
 
 		target := arguments[1]
 
-		lookup := delf.Lookup(target)
+		_, ok := delf.Lookup(target)
 
-		return ctx.NewBoolean(lookup != nil), nil
+		return ctx.NewBoolean(ok), nil
 	})
 }
 
@@ -7592,8 +7601,8 @@ func BuiltinMapRemove(ctx *Context) *Builtin {
 
 		k := arguments[1]
 
-		lookup := delf.Lookup(k)
-		if lookup == nil {
+		lookup, ok := delf.Lookup(k)
+		if !ok {
 			return nil, NewError(nil, ctx.NewString(fmt.Sprintf("attempted map::remove on a map without key %v", k)))
 		}
 
@@ -7703,9 +7712,9 @@ func BuiltinSetContains(ctx *Context) *Builtin {
 
 		target := arguments[1]
 
-		lookup := delf.Lookup(target)
+		_, ok := delf.Lookup(target)
 
-		return ctx.NewBoolean(lookup != nil), nil
+		return ctx.NewBoolean(ok), nil
 	})
 }
 
@@ -7729,8 +7738,8 @@ func BuiltinSetRemove(ctx *Context) *Builtin {
 
 		k := arguments[1]
 
-		lookup := delf.Lookup(k)
-		if lookup == nil {
+		lookup, ok := delf.Lookup(k)
+		if !ok {
 			return nil, NewError(nil, ctx.NewString(fmt.Sprintf("attempted set::remove on a set without element %v", k)))
 		}
 
@@ -8097,10 +8106,10 @@ func BuiltinImport(ctx *Context) *Builtin {
 		if !ok {
 			return nil, NewError(nil, ctx.NewString(fmt.Sprintf("expected map-like module value, received %v", quote(Typename(module)))))
 		}
-		modulePath := moduleMap.Lookup(ctx.NewString("path"))
-		moduleFile := moduleMap.Lookup(ctx.NewString("file"))
-		moduleDirectory := moduleMap.Lookup(ctx.NewString("directory"))
-		if modulePath == nil || moduleFile == nil || moduleDirectory == nil {
+		modulePath, modulePathOk := moduleMap.Lookup(ctx.NewString("path"))
+		moduleFile, moduleFileOk := moduleMap.Lookup(ctx.NewString("file"))
+		moduleDirectory, moduleDirectoryOk := moduleMap.Lookup(ctx.NewString("directory"))
+		if !modulePathOk || !moduleFileOk || !moduleDirectoryOk {
 			return nil, NewError(nil, ctx.NewString(fmt.Sprintf("expected module map to contain `path`, `file` and `directory` values, received %v", module)))
 		}
 		moduleDirectoryString, ok := moduleDirectory.(*String)
