@@ -418,7 +418,7 @@ MELLIFERA_HOME=$(pwd)
 make build   # build standalone interpreter executable
 make check   # run unit tests and interpreter golden tests
 make format  # format sources
-make install # install standalone mellifera tooling
+make install # install standalone Mellifera tooling
 ```
 
 ### Development on the Go Library & Interpreter
@@ -430,7 +430,7 @@ MELLIFERA_HOME=$(pwd)
 make build-go  # build standalone interpreter executable
 make check-go  # run unit tests interpreter golden tests
 make format-go # format sources using go fmt
-make install   # install standalone mellifera tooling
+make install   # install standalone Mellifera tooling
 ```
 
 ### Development on the Python Reference Interpreter
@@ -446,7 +446,7 @@ make build-py  # build standalone interpreter executable with Nuitka
 make check-py  # run interpreter golden tests
 make lint-py   # lint with mypy and flake8
 make format-py # format using black
-make install   # install standalone mellifera tooling (run `make clean build-py install` to guarantee the Python executable is installed)
+make install   # install standalone Mellifera tooling (run `make clean build-py install` to guarantee the Python executable is installed)
 ```
 
 ## License and Credits
