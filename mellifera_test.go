@@ -971,3 +971,35 @@ func TestReferenceCombEncode(t *testing.T) {
 	require.NotNil(t, err)
 	require.True(t, strings.HasPrefix(err.Error(), "invalid comb value reference@"))
 }
+
+func TestExternalTypename(t *testing.T) {
+	ctx := NewContext()
+	var x int32 = 42
+	external := ctx.NewExternal(x)
+	require.Equal(t, "external", external.Typename())
+}
+
+func TestExternalString(t *testing.T) {
+	ctx := NewContext()
+	var x int32 = 42
+	external := ctx.NewExternal(x)
+	require.Equal(t, "external(42)", external.String())
+}
+
+func TestExternalCopy(t *testing.T) {
+	ctx := NewContext()
+	var x int32 = 42
+	external := ctx.NewExternal(x)
+	require.Same(t, external, external.Copy())
+}
+
+func TestExternalCombEncode(t *testing.T) {
+	ctx := NewContext()
+	var x int32 = 42
+	external := ctx.NewExternal(x)
+	var sb strings.Builder
+	e := NewCombEncoder(&sb, nil)
+	err := external.CombEncode(e)
+	require.NotNil(t, err)
+	require.Equal(t, "invalid comb value external(42)", err.Error())
+}

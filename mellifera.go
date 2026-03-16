@@ -581,6 +581,10 @@ func (ctx *Context) NewBuiltin(name string, types []Type, impl func(*Context, []
 	return &Builtin{name, types, impl, ctx.functionMeta}
 }
 
+func (ctx *Context) NewExternal(data any) *External {
+	return &External{data, nil}
+}
+
 func (ctx *Context) NewValueFromSource(name string, source string) (Value, error) {
 	var location *SourceLocation = nil
 	if name != "" {
@@ -1776,6 +1780,50 @@ func (self *Builtin) Equal(other Value) bool {
 }
 
 func (self *Builtin) CombEncode(e *CombEncoder) error {
+	if e.err == nil {
+		e.err = fmt.Errorf("invalid comb value %s", self.String())
+	}
+	return e.err
+}
+
+type External struct {
+	data any
+	meta *Map // Optional
+}
+
+func (self *External) Typename() string {
+	return "external"
+}
+
+func (self *External) String() string {
+	return fmt.Sprintf("external(%v)", self.data)
+}
+
+func (self *External) Meta() *Map {
+	return self.meta
+}
+
+func (self *External) Copy() Value {
+	return self // immutable value
+}
+
+func (self *External) CopyOnWrite() {
+	// immutable value
+}
+
+func (self *External) Hash() uint64 {
+	return fnv1a(self.String())
+}
+
+func (self *External) Equal(other Value) bool {
+	othr, ok := other.(*External)
+	if !ok {
+		return false
+	}
+	return self.data == othr.data
+}
+
+func (self *External) CombEncode(e *CombEncoder) error {
 	if e.err == nil {
 		e.err = fmt.Errorf("invalid comb value %s", self.String())
 	}
