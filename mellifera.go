@@ -8098,8 +8098,8 @@ func BuiltinImport(ctx *Context) *Builtin {
 			return nil, NewError(nil, ctx.NewString(fmt.Sprintf("expected map-like module value, received %v", quote(Typename(module)))))
 		}
 		modulePath := moduleMap.Lookup(ctx.NewString("path"))
-		moduleFile := moduleMap.Lookup(ctx.NewString("path"))
-		moduleDirectory := moduleMap.Lookup(ctx.NewString("path"))
+		moduleFile := moduleMap.Lookup(ctx.NewString("file"))
+		moduleDirectory := moduleMap.Lookup(ctx.NewString("directory"))
 		if modulePath == nil || moduleFile == nil || moduleDirectory == nil {
 			return nil, NewError(nil, ctx.NewString(fmt.Sprintf("expected module map to contain `path`, `file` and `directory` values, received %v", module)))
 		}

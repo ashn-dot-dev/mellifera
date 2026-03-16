@@ -1541,9 +1541,7 @@ class Lexer:
             )
 
         literal = self.source[start : self.position]
-        return Token(
-            TokenKind.TEMPLATE, literal, location=location, template=template
-        )
+        return Token(TokenKind.TEMPLATE, literal, location=location, template=template)
 
     def _lex_regexp(self) -> Token:
         location = copy(self.location)
