@@ -1079,6 +1079,7 @@ class TokenKind(enum.Enum):
     NUMBER = "number"
     STRING = "string"
     REGEXP = "regexp"
+    REGEXP_GROUP = "regexp group"
     # Operators
     ADD = "+"
     SUB = "-"
@@ -1174,6 +1175,7 @@ class Token:
     location: Optional[SourceLocation] = None
     template: Optional[list["AstExpression"]] = None
     value: Optional[Value] = None
+    group: Optional[int] = None
 
     def __str__(self):
         if self.kind == TokenKind.EOF:
@@ -1209,6 +1211,7 @@ class Lexer:
     RE_IDENTIFIER = re.compile(r"^[a-zA-Z_]\w*", re.ASCII)
     RE_NUMBER_DEC = re.compile(r"^\d+(\.\d+)?", re.ASCII)
     RE_NUMBER_HEX = re.compile(r"^0x[0-9a-fA-F]+", re.ASCII)
+    RE_INTEGER_DEC = re.compile(r"^\d+", re.ASCII)
 
     def __init__(self, source: str, location: Optional[SourceLocation] = None):
         self.source = source
@@ -1572,6 +1575,17 @@ class Lexer:
             TokenKind.REGEXP, literal, value=Regexp.new(string, pattern)
         )
 
+    def _lex_regexp_group(self) -> Token:
+        self._expect_rune("$")
+        start = self.position
+        match = Lexer.RE_INTEGER_DEC.match(self.source[self.position :])
+        if match is None:
+            raise ParseError(copy(self.location), "invalid regexp capture group")
+        text = match[0]
+        self.position += len(text)
+        literal = self.source[start : self.position]
+        return self._new_token(TokenKind.REGEXP_GROUP, literal, group=int(text))
+
     def next_token(self) -> Token:
         if self.location is not None:
             file = self.location.file
@@ -1589,10 +1603,12 @@ class Lexer:
             return self._lex_esc_string()
         if self._current_rune() == "`":
             return self._lex_raw_string()
-        if self._current_rune() == "$":
+        if self._remaining().startswith('$"') or self._remaining().startswith("$`"):
             return self._lex_template()
         if self._remaining().startswith('r"') or self._remaining().startswith("r`"):
             return self._lex_regexp()
+        if self._remaining().startswith("$") and self._peek_rune().isdigit():
+            return self._lex_regexp_group()
         if Lexer._is_letter(self._current_rune()):
             return self._lex_keyword_or_identifier()
 
@@ -1711,6 +1727,7 @@ class Environment:
     def __init__(self, outer: Optional["Environment"] = None):
         self.outer: Optional["Environment"] = outer
         self.store: dict[String, Value] = dict()
+        self.match = None
 
     def let(self, name: String, value: Value) -> None:
         self.store[name] = value
@@ -1732,6 +1749,17 @@ class Environment:
                 return value
             env = env.outer
         raise Exception(f"identifier {quote(name.runes)} is not defined")
+
+    def set_regexp_match(self, match):
+        self.match = match
+
+    def get_regexp_match(self):
+        env: Optional[Environment] = self
+        while env is not None:
+            if env.match is not None:
+                return env.match
+            env = env.outer
+        return None
 
 
 @dataclass
@@ -1945,7 +1973,7 @@ class AstExpressionTemplate(AstExpression):
     def eval(self, env: Environment) -> Union[Value, Error]:
         output = bytes()
         for element in self.template:
-            result = element.eval(Environment(env))
+            result = element.eval(env)
             if isinstance(result, Error):
                 return result
             metafunction = result.metafunction(CONST_STRING_INTO_STRING)
@@ -2068,6 +2096,38 @@ class AstExpressionRegexp(AstExpression):
 
     def eval(self, env: Environment) -> Union[Value, Error]:
         return copy(self.data)
+
+
+@final
+@dataclass
+class AstExpressionRegexpGroup(AstExpression):
+    location: Optional[SourceLocation]
+    group: int
+
+    def into_value(self) -> Value:
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+                String.new("group"): Number.new(float(self.group)),
+            }
+        )
+
+    def eval(self, env: Environment) -> Union[Value, Error]:
+        match = env.get_regexp_match()
+        if match is None:
+            return Error(None, "regular expression did not match")
+        try:
+            if match.group(self.group) is None:
+                return Null.new()
+            return String.new(match.group(self.group))
+        except IndexError:
+            return Error(
+                None,
+                f"out-of-bounds regular expression capture group {self.group}",
+            )
 
 
 @final
@@ -2689,9 +2749,9 @@ class AstExpressionEqRe(AstExpression):
                 self.location,
                 f"attempted =~ operation with types {quote(typename(lhs))} and {quote(typename(rhs))}",
             )
-        global re_match_result
-        re_match_result = rhs.pattern.search(lhs.bytes)
-        return Boolean.new(re_match_result is not None)
+        match = rhs.pattern.search(lhs.bytes)
+        env.set_regexp_match(match)
+        return Boolean.new(match is not None)
 
 
 @final
@@ -2725,9 +2785,9 @@ class AstExpressionNeRe(AstExpression):
                 self.location,
                 f"attempted !~ operation with types {quote(typename(lhs))} and {quote(typename(rhs))}",
             )
-        global re_match_result
-        re_match_result = rhs.pattern.search(lhs.bytes)
-        return Boolean.new(re_match_result is None)
+        match = rhs.pattern.search(lhs.bytes)
+        env.set_regexp_match(match)
+        return Boolean.new(match is None)
 
 
 @final
@@ -3869,6 +3929,7 @@ class Parser:
         self._register_nud(TokenKind.NUMBER, Parser.parse_expression_number)
         self._register_nud(TokenKind.STRING, Parser.parse_expression_string)
         self._register_nud(TokenKind.REGEXP, Parser.parse_expression_regexp)
+        self._register_nud(TokenKind.REGEXP_GROUP, Parser.parse_expression_regexp_group)
         self._register_nud(TokenKind.LBRACKET, Parser.parse_expression_vector)
         self._register_nud(TokenKind.MAP, Parser.parse_expression_map_or_set)
         self._register_nud(TokenKind.SET, Parser.parse_expression_map_or_set)
@@ -4003,6 +4064,11 @@ class Parser:
         token = self._expect_current(TokenKind.REGEXP)
         assert isinstance(token.value, Regexp)
         return AstExpressionRegexp(token.location, token.value)
+
+    def parse_expression_regexp_group(self) -> AstExpressionRegexpGroup:
+        token = self._expect_current(TokenKind.REGEXP_GROUP)
+        assert token.group is not None
+        return AstExpressionRegexpGroup(token.location, token.group)
 
     def parse_expression_vector(
         self, mode: ParseMode = ParseMode.MELLIFERA
@@ -6068,23 +6134,6 @@ def builtin_random_integer(min: Number, max: Number) -> Union[Value, Error]:
     return Number.new(rng.randint(min_integer, max_integer))
 
 
-@builtin("re::group", [Number])
-def builtin_re_group(n: Number) -> Union[Value, Error]:
-    if not float(n).is_integer():
-        return Error(None, f"expected integer capture group, received {n}")
-    if re_match_result is None:
-        return Error(None, "regular expression did not match")
-    try:
-        if re_match_result.group(int(n)) is None:
-            return Null.new()
-        return String.new(re_match_result.group(int(n)))
-    except IndexError:
-        return Error(
-            None,
-            f"out-of-bounds regular expression capture group {int(n)}",
-        )
-
-
 @builtin_from_source("re::split")
 def builtin_re_split():
     return """
@@ -6217,10 +6266,6 @@ def eval_file(
 # base environment is explicitly permitted in order to allow modifications to
 # the runtime from within `py::exec` function invocations.
 BASE_ENVIRONMENT = Environment()
-
-# Result of the last regular expression operation (=~, !~). Either an re2 Match
-# or None. Non-None implies that the last pattern was a successful match.
-re_match_result = None
 
 # Metamaps for fundamental types *must* not be modified after program startup.
 # These metamaps are used during AST construction, and values created via the
@@ -6564,7 +6609,6 @@ BASE_ENVIRONMENT.let(
     String.new("re"),
     Map.new(
         {
-            String.new("group"): builtin_re_group(),
             String.new("split"): builtin_re_split(),
             String.new("replace"): builtin_re_replace(),
         }

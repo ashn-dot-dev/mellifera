@@ -5,6 +5,6 @@ let strings = [
 ];
 for s in strings {
     if s =~ r`^(\w+) (\w+)$` {
-        println($"First Name = {repr(re::group(1))}, Last Name = {repr(re::group(2))}");
+        println($"First Name = {repr($1)}, Last Name = {repr($2)}");
     }
 }

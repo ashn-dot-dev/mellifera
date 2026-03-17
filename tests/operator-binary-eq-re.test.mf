@@ -1,51 +1,85 @@
-try { re::group(0); } catch err { println($`re::group(0) produces: {err}`); }
-try { re::group(1); } catch err { println($`re::group(1) produces: {err}`); }
+try { $0; } catch err { println($`$0 produces: {err}`); }
+try { $1; } catch err { println($`$1 produces: {err}`); }
 println($"\"foobar\" =~ r`foo` is {"foobar" =~ r`foo`}");
 println($"\"foobar\" =~ r`^foo` is {"foobar" =~ r`^foo`}");
 println($"\"foobar\" =~ r`^foo$` is {"foobar" =~ r`^foo$`}");
 println($"\"Isaac Newton, physicist\" =~ r`(\\w+) (\\w+)` is {"Isaac Newton, physicist" =~ r`(\w+) (\w+)`}");
-println($`re::group(0) is {repr(re::group(0))}`);
-println($`re::group(1) is {repr(re::group(1))}`);
-println($`re::group(2) is {repr(re::group(2))}`);
-try { re::group(3); } catch err { println($`re::group(3) produces: {err}`); }
-try { re::group(-1); } catch err { println($`re::group(-1) produces: {err}`); }
-try { re::group(1.23); } catch err { println($`re::group(.23) produces: {err}`); }
+println($`$0 is {repr($0)}`);
+println($`$1 is {repr($1)}`);
+println($`$2 is {repr($2)}`);
+try { $3; } catch err { println($`$3 produces: {err}`); }
+
+print("\n");
 
 # Test multiline matching, should match the first r`ba.` i.e. "bar" after the newline.
 println($"\"foo\\nbar\\nbaz\\nqux\" =~ r`ba.` is {"foo\nbar\nbaz\nqux" =~ r`ba.`}");
-println($`re::group(0) is {repr(re::group(0))}`);
+println($`$0 is {repr($0)}`);
+
+print("\n");
 
 # Test matching where one capture group did not capture a value.
 println($"\"foobar\" =~ r`foo((bar)|(baz))` is {"foobar" =~ r`foo((bar)|(baz))`}");
-println($`re::group(0) is {repr(re::group(0))}`);
-println($`re::group(1) is {repr(re::group(1))}`);
-println($`re::group(2) is {repr(re::group(2))}`);
-println($`re::group(3) is {repr(re::group(3))}`);
+println($`$0 is {repr($0)}`);
+println($`$1 is {repr($1)}`);
+println($`$2 is {repr($2)}`);
+println($`$3 is {repr($3)}`);
+
+print("\n");
+
+# Test matching in multiple lexical scopes.
+"foobar" =~ r`foo(bar|baz)`;
+println($`outer scope $0 is {repr($0)}`);
+println($`outer scope $1 is {repr($1)}`);
+if true {
+    "zoobaz" =~ r`zoo(bar|baz)`;
+    println($`inner scope $0 is {repr($0)}`);
+    println($`inner scope $1 is {repr($1)}`);
+}
+println($`outer scope $0 is {repr($0)}`);
+println($`outer scope $1 is {repr($1)}`);
+
+print("\n");
 
 # Test invalid lhs and rhs operands.
 try { "foo" =~ "bar"; } catch err { dumpln(err); }
 try { 123 =~ r"bar"; } catch err { dumpln(err); }
 try { r"foo" =~ r"bar"; } catch err { dumpln(err); }
+
+print("\n");
+
+# Test when previous regular expression did not match.
+"foo" =~ r`bar`;
+try { $0; } catch err { dumpln(err); }
 ################################################################################
-# re::group(0) produces: regular expression did not match
-# re::group(1) produces: regular expression did not match
+# $0 produces: regular expression did not match
+# $1 produces: regular expression did not match
 # "foobar" =~ r`foo` is true
 # "foobar" =~ r`^foo` is true
 # "foobar" =~ r`^foo$` is false
 # "Isaac Newton, physicist" =~ r`(\w+) (\w+)` is true
-# re::group(0) is "Isaac Newton"
-# re::group(1) is "Isaac"
-# re::group(2) is "Newton"
-# re::group(3) produces: out-of-bounds regular expression capture group 3
-# re::group(-1) produces: out-of-bounds regular expression capture group -1
-# re::group(.23) produces: expected integer capture group, received 1.23
+# $0 is "Isaac Newton"
+# $1 is "Isaac"
+# $2 is "Newton"
+# $3 produces: out-of-bounds regular expression capture group 3
+#
 # "foo\nbar\nbaz\nqux" =~ r`ba.` is true
-# re::group(0) is "bar"
+# $0 is "bar"
+#
 # "foobar" =~ r`foo((bar)|(baz))` is true
-# re::group(0) is "foobar"
-# re::group(1) is "bar"
-# re::group(2) is "bar"
-# re::group(3) is null
+# $0 is "foobar"
+# $1 is "bar"
+# $2 is "bar"
+# $3 is null
+#
+# outer scope $0 is "foobar"
+# outer scope $1 is "bar"
+# inner scope $0 is "zoobaz"
+# inner scope $1 is "baz"
+# outer scope $0 is "foobar"
+# outer scope $1 is "bar"
+#
 # "attempted =~ operation with types `string` and `string`"
 # "attempted =~ operation with types `number` and `regexp`"
 # "attempted =~ operation with types `regexp` and `regexp`"
+#
+# "regular expression did not match"

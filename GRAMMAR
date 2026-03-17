@@ -74,6 +74,7 @@
                | <expression> "::" <identifier>
                | <expression> ".&"
                | <expression> ".*"
+               | <regexp-group>
 
 <template-element> ::= "{{"
                      | "}}"
@@ -106,6 +107,8 @@
 
 <regexp> ::= 'r"' ? escaped re2 regular expression ? '"'
            | "r`" ? literal re2 regular expression ? "`"
+
+<regexp-group> ::= "$" /\d+/
 
 <string> ::= '"' <character>* '"'
            | "`" <printable>* "`"

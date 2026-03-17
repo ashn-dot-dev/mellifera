@@ -46,8 +46,8 @@ while argi < argv.count() {
         continue;
     }
     if argv[argi] =~ r`^-+top(=(.*))?$` {
-        if re::group(2) != null {
-            top = number::init(re::group(2));
+        if $2 != null {
+            top = number::init($2);
         }
         else {
             argi = argi + 1;

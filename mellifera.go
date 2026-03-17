@@ -209,22 +209,12 @@ type Context struct {
 	// Base Environment
 	BaseEnvironment Environment
 
-	// String data tested by the last regular expression operation (=~, !~).
-	reMatchString string
-	// Result of the last regular expression operation (=~, !~) returned by:
-	//
-	// 		rhsRegexp.data.FindStringSubmatchIndex(ctx.reMatchString)
-	//
-	// where the Nth capture group corresponds to the [bgnIndex, endIndex]
-	// slice denoted by ctx.reMatchResult[2*N:2*N+2]. A slice index pair of
-	// [-1, -1] indicates the Nth capture group did not match. A nil slice
-	// indicates that the last regular expression operation did not match.
-	reMatchResult []int
-
 	// Context-Specific Random Number Generation State
 	rng *rand.Rand
 
 	// Miscellaneous State and Definitions
+	reIntegerDec          *regexp.Regexp
+	reIntegerDecFullmatch *regexp.Regexp
 	reNumberDec           *regexp.Regexp
 	reNumberDecFullmatch  *regexp.Regexp
 	reNumberHex           *regexp.Regexp
@@ -325,12 +315,11 @@ func NewContext() Context {
 
 	ctx.BaseEnvironment = NewEnvironment(nil)
 
-	ctx.reMatchString = ""  // no initial match
-	ctx.reMatchResult = nil // no initial match
-
 	seed := rand.Uint64() // random initial rng seed
 	ctx.rng = rand.New(rand.NewPCG(seed, seed))
 
+	ctx.reIntegerDec = regexp.MustCompile(`^\d+`)
+	ctx.reIntegerDecFullmatch = regexp.MustCompile(`^\d+$`)
 	ctx.reNumberDec = regexp.MustCompile(`^\d+(\.\d+)?`)
 	ctx.reNumberDecFullmatch = regexp.MustCompile(`^\d+(\.\d+)?$`)
 	ctx.reNumberHex = regexp.MustCompile(`^0x[0-9a-fA-F]+`)
@@ -438,7 +427,6 @@ func NewContext() Context {
 		{ctx.NewString("integer"), BuiltinRandomInteger(&ctx)},
 	}))
 	ctx.BaseEnvironment.Let("re", ctx.NewMap([]MapPair{
-		{ctx.NewString("group"), BuiltinReGroup(&ctx)},
 		{ctx.NewString("split"), BuiltinReSplit(&ctx)},
 		{ctx.NewString("replace"), BuiltinReReplace(&ctx)},
 	}))
@@ -1859,11 +1847,12 @@ const (
 	// Meta
 	TOKEN_EOF = "end-of-file"
 	// Identifiers and Literals
-	TOKEN_IDENTIFIER = "identifier"
-	TOKEN_TEMPLATE   = "template"
-	TOKEN_NUMBER     = "number"
-	TOKEN_STRING     = "string"
-	TOKEN_REGEXP     = "regexp"
+	TOKEN_IDENTIFIER   = "identifier"
+	TOKEN_TEMPLATE     = "template"
+	TOKEN_NUMBER       = "number"
+	TOKEN_STRING       = "string"
+	TOKEN_REGEXP       = "regexp"
+	TOKEN_REGEXP_GROUP = "regexp group"
 	// Operators
 	TOKEN_ADD    = "+"
 	TOKEN_SUB    = "-"
@@ -1926,6 +1915,7 @@ type Token struct {
 	Location *SourceLocation // Optional
 	Value    Value           // Optional
 	Template []AstExpression // Optional
+	Group    int             // Optional
 }
 
 func (self Token) String() string {
@@ -2538,6 +2528,35 @@ func (self *Lexer) lexRegexp() (Token, error) {
 	}, nil
 }
 
+func (self *Lexer) lexRegexpGroup() (Token, error) {
+	location := self.currentLocation()
+	start := self.position
+	if err := self.expectRune('$'); err != nil {
+		return Token{}, err
+	}
+
+	integer := self.ctx.reIntegerDec.FindString(self.source[self.position:])
+	if integer != "" {
+		self.position += len(integer)
+		parsed, err := strconv.ParseInt(integer, 10, 0)
+		if err != nil {
+			return Token{}, err
+		}
+		literal := self.source[start:self.position]
+		return Token{
+			Kind:     TOKEN_REGEXP_GROUP,
+			Literal:  literal,
+			Location: location,
+			Group:    int(parsed),
+		}, nil
+	}
+
+	return Token{}, ParseError{
+		Location: location,
+		why:      fmt.Sprintf("invalid regexp catpure group"),
+	}
+}
+
 func (self *Lexer) NextToken() (Token, error) {
 	self.skipWhiteSpaceAndComments()
 	if self.isEof() {
@@ -2560,11 +2579,14 @@ func (self *Lexer) NextToken() (Token, error) {
 	if self.currentRune() == '`' {
 		return self.lexRawString()
 	}
-	if self.currentRune() == '$' {
+	if strings.HasPrefix(self.remaining(), "$\"") || strings.HasPrefix(self.remaining(), "$`") {
 		return self.lexTemplate()
 	}
 	if strings.HasPrefix(self.remaining(), "r\"") || strings.HasPrefix(self.remaining(), "r`") {
 		return self.lexRegexp()
+	}
+	if self.currentRune() == '$' && unicode.IsNumber(self.peekRune()) {
+		return self.lexRegexpGroup()
 	}
 	if unicode.IsLetter(self.currentRune()) || self.currentRune() == '_' {
 		return self.lexKeywordOrIdentifier()
@@ -2652,9 +2674,24 @@ func NewError(location *SourceLocation, value Value) Error {
 	}
 }
 
+type RegexpMatch struct {
+	// String data tested by the last regular expression operation (=~, !~).
+	string string
+	// Result of the last regular expression operation (=~, !~) returned by:
+	//
+	// 		rhsRegexp.data.FindStringSubmatchIndex(input)
+	//
+	// where the Nth capture group corresponds to the [bgnIndex, endIndex]
+	// slice denoted by result[2*N:2*N+2]. A slice index pair of [-1, -1]
+	// indicates the Nth capture group did not match. A nil slice indicates
+	// that the last regular expression operation did not match.
+	result []int
+}
+
 type Environment struct {
 	outer *Environment // Optional
 	store map[string]Value
+	match *RegexpMatch // Optional
 }
 
 func NewEnvironment(outer *Environment) Environment {
@@ -2691,6 +2728,22 @@ func (self *Environment) Get(name string) (Value, error) {
 		env = env.outer
 	}
 	return nil, fmt.Errorf("identifier %s is not defined", quote(name))
+}
+
+func (self *Environment) SetRegexpMatch(match RegexpMatch) {
+	self.match = &match
+}
+
+func (self *Environment) GetRegexpMatch() (RegexpMatch, bool) {
+	env := self
+	for env != nil {
+		if env.match != nil {
+			return *env.match, env.match.result != nil
+		}
+		env = env.outer
+	}
+	return RegexpMatch{}, false
+
 }
 
 type ControlFlow interface {
@@ -3013,6 +3066,43 @@ func (self AstExpressionRegexp) IntoValue(ctx *Context) Value {
 
 func (self AstExpressionRegexp) Eval(ctx *Context, env *Environment) (Value, error) {
 	return self.Data.Copy(), nil
+}
+
+type AstExpressionRegexpGroup struct {
+	Location *SourceLocation // Optional
+	Group    int
+}
+
+func (self AstExpressionRegexpGroup) ExpressionLocation() *SourceLocation {
+	return self.Location
+}
+
+func (self AstExpressionRegexpGroup) IntoValue(ctx *Context) Value {
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+		{ctx.NewString("group"), ctx.NewNumber(float64(self.Group))},
+	})
+}
+
+func (self AstExpressionRegexpGroup) Eval(ctx *Context, env *Environment) (Value, error) {
+	match, ok := env.GetRegexpMatch()
+	if !ok {
+		return nil, NewError(nil, ctx.NewString("regular expression did not match"))
+	}
+
+	bgnIndex := (2 * self.Group)
+	endIndex := (2 * self.Group) + 2
+	if bgnIndex < 0 || endIndex > len(match.result) {
+		return nil, NewError(nil, ctx.NewStringf("out-of-bounds regular expression capture group %v", self.Group))
+	}
+
+	groupBgnEnd := match.result[bgnIndex:endIndex]
+	if groupBgnEnd[0] == -1 {
+		return ctx.NewNull(), nil
+	}
+
+	return ctx.NewString(match.string[groupBgnEnd[0]:groupBgnEnd[1]]), nil
 }
 
 type AstExpressionVector struct {
@@ -3783,9 +3873,9 @@ func (self AstExpressionEqRe) Eval(ctx *Context, env *Environment) (Value, error
 	if lhsIsString {
 		rhsRegexp, rhsIsRegexp := rhs.(*Regexp)
 		if rhsIsRegexp {
-			ctx.reMatchString = lhsString.data
-			ctx.reMatchResult = rhsRegexp.data.FindStringSubmatchIndex(ctx.reMatchString)
-			return ctx.NewBoolean(ctx.reMatchResult != nil), nil
+			result := rhsRegexp.data.FindStringSubmatchIndex(lhsString.data)
+			env.SetRegexpMatch(RegexpMatch{lhsString.data, result})
+			return ctx.NewBoolean(result != nil), nil
 		}
 	}
 
@@ -3829,9 +3919,9 @@ func (self AstExpressionNeRe) Eval(ctx *Context, env *Environment) (Value, error
 	if lhsIsString {
 		rhsRegexp, rhsIsRegexp := rhs.(*Regexp)
 		if rhsIsRegexp {
-			ctx.reMatchString = lhsString.data
-			ctx.reMatchResult = rhsRegexp.data.FindStringSubmatchIndex(ctx.reMatchString)
-			return ctx.NewBoolean(ctx.reMatchResult == nil), nil
+			result := rhsRegexp.data.FindStringSubmatchIndex(lhsString.data)
+			env.SetRegexpMatch(RegexpMatch{lhsString.data, result})
+			return ctx.NewBoolean(result == nil), nil
 		}
 	}
 
@@ -5191,7 +5281,7 @@ type Parser struct {
 func NewParser(lexer *Lexer) (Parser, error) {
 	self := Parser{
 		lexer:        lexer,
-		currentToken: Token{"invalid program", "", lexer.location, nil, nil},
+		currentToken: Token{"invalid program", "", lexer.location, nil, nil, 0},
 
 		precedences: map[string]int{
 			TOKEN_OR:       PRECEDENCE_OR,
@@ -5217,25 +5307,26 @@ func NewParser(lexer *Lexer) (Parser, error) {
 			TOKEN_DEREF:    PRECEDENCE_POSTFIX,
 		},
 		parseNudFunctions: map[string]func(*Parser) (AstExpression, error){
-			TOKEN_IDENTIFIER: (*Parser).ParseExpressionIdentifier,
-			TOKEN_TEMPLATE:   (*Parser).ParseExpressionTemplate,
-			TOKEN_NULL:       (*Parser).ParseExpressionNull,
-			TOKEN_TRUE:       (*Parser).ParseExpressionBoolean,
-			TOKEN_FALSE:      (*Parser).ParseExpressionBoolean,
-			TOKEN_NUMBER:     (*Parser).ParseExpressionNumber,
-			TOKEN_STRING:     (*Parser).ParseExpressionString,
-			TOKEN_REGEXP:     (*Parser).ParseExpressionRegexp,
-			TOKEN_LBRACKET:   (*Parser).ParseExpressionVector,
-			TOKEN_MAP:        (*Parser).ParseExpressionMapOrSet,
-			TOKEN_SET:        (*Parser).ParseExpressionMapOrSet,
-			TOKEN_LBRACE:     (*Parser).ParseExpressionMapOrSet,
-			TOKEN_FUNCTION:   (*Parser).ParseExpressionFunction,
-			TOKEN_TYPE:       (*Parser).ParseExpressionType,
-			TOKEN_NEW:        (*Parser).ParseExpressionNew,
-			TOKEN_LPAREN:     (*Parser).ParseExpressionGrouped,
-			TOKEN_ADD:        (*Parser).ParseExpressionPositive,
-			TOKEN_SUB:        (*Parser).ParseExpressionNegative,
-			TOKEN_NOT:        (*Parser).ParseExpressionNot,
+			TOKEN_IDENTIFIER:   (*Parser).ParseExpressionIdentifier,
+			TOKEN_TEMPLATE:     (*Parser).ParseExpressionTemplate,
+			TOKEN_NULL:         (*Parser).ParseExpressionNull,
+			TOKEN_TRUE:         (*Parser).ParseExpressionBoolean,
+			TOKEN_FALSE:        (*Parser).ParseExpressionBoolean,
+			TOKEN_NUMBER:       (*Parser).ParseExpressionNumber,
+			TOKEN_STRING:       (*Parser).ParseExpressionString,
+			TOKEN_REGEXP:       (*Parser).ParseExpressionRegexp,
+			TOKEN_REGEXP_GROUP: (*Parser).ParseExpressionRegexpGroup,
+			TOKEN_LBRACKET:     (*Parser).ParseExpressionVector,
+			TOKEN_MAP:          (*Parser).ParseExpressionMapOrSet,
+			TOKEN_SET:          (*Parser).ParseExpressionMapOrSet,
+			TOKEN_LBRACE:       (*Parser).ParseExpressionMapOrSet,
+			TOKEN_FUNCTION:     (*Parser).ParseExpressionFunction,
+			TOKEN_TYPE:         (*Parser).ParseExpressionType,
+			TOKEN_NEW:          (*Parser).ParseExpressionNew,
+			TOKEN_LPAREN:       (*Parser).ParseExpressionGrouped,
+			TOKEN_ADD:          (*Parser).ParseExpressionPositive,
+			TOKEN_SUB:          (*Parser).ParseExpressionNegative,
+			TOKEN_NOT:          (*Parser).ParseExpressionNot,
 		},
 		parseLedFunctions: map[string]func(*Parser, AstExpression) (AstExpression, error){
 			TOKEN_AND:      (*Parser).ParseExpressionAnd,
@@ -5459,6 +5550,17 @@ func (self *Parser) ParseExpressionRegexp() (AstExpression, error) {
 		return nil, errors.New("missing regexp token value")
 	}
 	return AstExpressionRegexp{token.Location, value}, nil
+}
+
+func (self *Parser) ParseExpressionRegexpGroup() (AstExpression, error) {
+	token, err := self.expectCurrent(TOKEN_REGEXP_GROUP)
+	if err != nil {
+		return nil, ParseError{
+			self.currentToken.Location,
+			fmt.Sprintf("expected regexp group, found %v", self.currentToken),
+		}
+	}
+	return AstExpressionRegexpGroup{token.Location, token.Group}, nil
 }
 
 func (self *Parser) ParseExpressionVector() (AstExpression, error) {
@@ -8890,32 +8992,6 @@ func BuiltinRandomInteger(ctx *Context) *Builtin {
 		}
 
 		return ctx.NewNumber(float64(ctx.rng.Int64N(maxInteger-minInteger) + minInteger)), nil
-	})
-}
-
-func BuiltinReGroup(ctx *Context) *Builtin {
-	return ctx.NewBuiltin("re::group", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
-		n, err := ValueAsInt(arguments[0])
-		if err != nil {
-			return nil, NewError(nil, ctx.NewStringf("expected integer capture group, received %v", arguments[0]))
-		}
-
-		if ctx.reMatchResult == nil {
-			return nil, NewError(nil, ctx.NewString("regular expression did not match"))
-		}
-
-		bgnIndex := 2 * n
-		endIndex := 2*n + 2
-		if bgnIndex < 0 || endIndex > len(ctx.reMatchResult) {
-			return nil, NewError(nil, ctx.NewStringf("out-of-bounds regular expression capture group %v", n))
-		}
-
-		groupBgnEnd := ctx.reMatchResult[bgnIndex:endIndex]
-		if groupBgnEnd[0] == -1 {
-			return ctx.NewNull(), nil
-		}
-
-		return ctx.NewString(ctx.reMatchString[groupBgnEnd[0]:groupBgnEnd[1]]), nil
 	})
 }
 

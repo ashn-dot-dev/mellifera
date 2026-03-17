@@ -317,13 +317,13 @@ println($"\"foobar\" =~ r`foo` is {repr("foobar" =~ r`foo`)}");
 println($"\"foobar\" =~ r`^foo` is {repr("foobar" =~ r`^foo`)}");
 println($"\"foobar\" =~ r`^foo$` is {repr("foobar" =~ r`^foo$`)}");
 println($"\"Isaac Newton, physicist\" =~ r`(\\w+) (\\w+)` is {repr("Isaac Newton, physicist" =~ r`(\w+) (\w+)`)}");
-println($`re::group(0) is {repr(re::group(0))}`);
-println($`re::group(1) is {repr(re::group(1))}`);
-println($`re::group(2) is {repr(re::group(2))}`);
+println($`$0 is {repr($0)}`);
+println($`$1 is {repr($1)}`);
+println($`$2 is {repr($2)}`);
 try {
-    re::group(3);
+    $3;
 } catch err {
-    println($`re::group(3) produces the error {repr(err)}`);
+    println($`$3 produces the error {repr(err)}`);
 }
 
 print("\n");
