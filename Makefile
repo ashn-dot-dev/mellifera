@@ -1,7 +1,7 @@
 .POSIX:
 .PHONY: \
 	all all-go all-py
-	build build-go build-py \
+	build build-go \
 	install \
 	check check-go check-py \
 	lint \
@@ -22,13 +22,6 @@ build: build-go
 
 build-go:
 	go build -o=bin/ cmd/mf/mf.go
-
-build-py: mf.py
-	python3 -m nuitka mf.py \
-		--no-deployment-flag=self-execution \
-		--output-filename="$$(pwd)/bin/mf" \
-		--remove-output \
-		--disable-ccache
 
 install:
 	mkdir -p "$(MELLIFERA_HOME)/bin"
