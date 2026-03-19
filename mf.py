@@ -1576,8 +1576,8 @@ class Lexer:
         )
 
     def _lex_regexp_group(self) -> Token:
-        self._expect_rune("$")
         start = self.position
+        self._expect_rune("$")
         match = Lexer.RE_INTEGER_DEC.match(self.source[self.position :])
         if match is None:
             raise ParseError(copy(self.location), "invalid regexp capture group")
