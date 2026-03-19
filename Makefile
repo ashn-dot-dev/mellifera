@@ -30,12 +30,12 @@ build-py: mf.py
 		--remove-output \
 		--disable-ccache
 
-install: build
+install:
 	mkdir -p "$(MELLIFERA_HOME)/bin"
 	mkdir -p "$(MELLIFERA_HOME)/lib"
 	cp -r bin "$(MELLIFERA_HOME)"
 	cp -r lib "$(MELLIFERA_HOME)"
-	cp mf.py env "$(MELLIFERA_HOME)"
+	cp mf.py "$(MELLIFERA_HOME)"
 
 check: check-go
 

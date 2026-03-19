@@ -6680,6 +6680,11 @@ class Repl(code.InteractiveConsole):
         return False
 
 
+def mfenv(file):
+    print(f"MELLIFERA_HOME={os.getenv('MELLIFERA_HOME')}", file=file)
+    print(f"MELLIFERA_SEARCH_PATH={os.getenv('MELLIFERA_SEARCH_PATH')}", file=file)
+
+
 def usage(file):
     text = """
 usage:
@@ -6690,6 +6695,7 @@ options:
   -c, --command     Execute the provided command.
   --dump-tokens     Dump a comb-encoded vector of lexed tokens to stdout.
   --dump-ast        Dump a comb-encoded abstract syntax tree to stdout.
+  -e, --env         Display the mellifera environment and exit.
   -h, --help        Display this help text and exit.
     """.replace(
         "${PROGRAM}", sys.argv[0]
@@ -6698,6 +6704,16 @@ options:
 
 
 def main() -> None:
+    env_mellifera_home = os.getenv("MELLIFERA_HOME")
+    if env_mellifera_home is None:
+        # $MELLIFERA_HOME/mf.py -> $MELLIFERA_HOME
+        env_mellifera_home = str(Path(__file__).resolve().parent)
+        os.environ["MELLIFERA_HOME"] = env_mellifera_home
+    env_mellifera_search_path = os.getenv("MELLIFERA_SERCH_PATH")
+    if env_mellifera_search_path is None:
+        assert env_mellifera_home is not None
+        os.environ["MELLIFERA_SEARCH_PATH"] = f"{env_mellifera_home}{os.sep}lib"
+
     verbatim = False  # process arguments verbatim
     cmds: Optional[str] = None  # command string
     file: Optional[str] = None  # mf source file
@@ -6758,6 +6774,11 @@ def main() -> None:
             dump_ast = True
             argi += 1
             continue
+
+        # -e, -env
+        if m := re.match(r"^-+e(?:nv)?$", arg):
+            mfenv(file=sys.stdout)
+            sys.exit(0)
 
         # -h, -help
         if m := re.match(r"^-+h(?:elp)?(?:=(.*))?$", arg):

@@ -368,27 +368,25 @@ programs can be found under the `examples` directory.
 
 ## Installing
 
-Build and install the Mellifera interpreter and associated tooling into the
-directory specified by `MELLIFERA_HOME` (default `$HOME/.mellifera`):
+Build the Mellifera interpreter and associated tooling and install Mellifera to
+the location specified by `MELLIFERA_HOME` (default `$HOME/.mellifera`):
 
 ```sh
-make install                               # Install to the default $HOME/.mellifera
-make install MELLIFERA_HOME=/opt/mellifera # Install to /opt/mellifera
+make build install                               # Install to $HOME/.mellifera
+make build install MELLIFERA_HOME=/opt/mellifera # Install to /opt/mellifera
 ```
 
-Then, add the following snippet to your `.profile`, replacing `$HOME/.mellifera`
-with your chosen `MELLIFERA_HOME` directory if installing to a non-default
-`MELLIFERA_HOME` location:
+Then, add the following snippet to your `.bashrc` (or equivalent shell
+configuration file), replacing `$HOME/.mellifera` with your chosen
+`MELLIFERA_HOME` directory if installing to a non-default `MELLIFERA_HOME`
+location:
 
 ```sh
-export MELLIFERA_HOME="$HOME/.mellifera"
-if [ -e "$MELLIFERA_HOME/env" ]; then
-    . "$MELLIFERA_HOME/env"
-fi
+export PATH="$HOME/.mellifera/bin:$PATH"
 ```
 
-After sourcing your `.profile`, verify that the standalone Mellifera
-interpreter `mf` was installed with:
+Finally, open a new interactive shell and verify the Mellifera interpreter was
+successfully installed with:
 
 ```sh
 $ printf 'println("Hello world!");' | mf /dev/stdin
@@ -413,7 +411,6 @@ respectively.
 
 ```sh
 MELLIFERA_HOME=$(pwd)
-. ./env
 
 make build   # build standalone interpreter executable
 make check   # run unit tests and interpreter golden tests
@@ -425,7 +422,6 @@ make install # install standalone Mellifera tooling
 
 ```sh
 MELLIFERA_HOME=$(pwd)
-. ./env
 
 make build-go  # build standalone interpreter executable
 make check-go  # run unit tests interpreter golden tests
@@ -440,7 +436,6 @@ python3 -m venv .venv-mellifera
 . .venv-mellifera/bin/activate
 python3 -m pip install -r requirements.txt
 MELLIFERA_HOME=$(pwd)
-. ./env
 
 make build-py  # build standalone interpreter executable with Nuitka
 make check-py  # run interpreter golden tests

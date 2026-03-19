@@ -95,6 +95,11 @@ func evalFile(ctx *mellifera.Context, path string) (mellifera.Value, error) {
 	return evalSource(ctx, string(bytes), &mellifera.SourceLocation{path, 1})
 }
 
+func mfenv(w io.Writer) {
+	fmt.Fprintf(w, "MELLIFERA_HOME=%s\n", os.Getenv("MELLIFERA_HOME"))
+	fmt.Fprintf(w, "MELLIFERA_SEARCH_PATH=%s\n", os.Getenv("MELLIFERA_SEARCH_PATH"))
+}
+
 func usage(w io.Writer) {
 	program := os.Args[0]
 	fmt.Fprintf(w, `usage:
@@ -105,6 +110,7 @@ options:
   -c, --command     Execute the provided command.
   --dump-tokens     Dump a comb-encoded vector of lexed tokens to stdout.
   --dump-ast        Dump a comb-encoded abstract syntax tree to stdout.
+  -e, --env         Display the mellifera environment and exit.
   -h, --help        Display this help text and exit.
 `, program, program)
 }
@@ -113,7 +119,34 @@ func main() {
 	reCommand := regexp.MustCompile(`^-+c(?:ommand)?(?:=(.*))?$`)
 	reDumpTokens := regexp.MustCompile(`^-+dump-tokens$`)
 	reDumpAst := regexp.MustCompile(`^-+dump-ast$`)
-	reHelp := regexp.MustCompile(`^-+h(?:elp)?(?:=(.*))?$`)
+	reEnv := regexp.MustCompile(`^-+e(?:nv)?$`)
+	reHelp := regexp.MustCompile(`^-+h(?:elp)?$`)
+
+	envMELLIFERA_HOME, ok := os.LookupEnv("MELLIFERA_HOME")
+	if !ok {
+		// $MELLIFERA_HOME/bin/mf
+		exe, err := os.Executable()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %s\n", err.Error())
+			os.Exit(1)
+		}
+		// $MELLIFERA_HOME/bin
+		bin := filepath.Dir(exe)
+		// $MELLIFERA_HOME
+		envMELLIFERA_HOME = filepath.Dir(bin)
+		if err = os.Setenv("MELLIFERA_HOME", envMELLIFERA_HOME); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %s\n", err.Error())
+			os.Exit(1)
+		}
+	}
+	envMELLIFERA_SEARCH_PATH, ok := os.LookupEnv("MELLIFERA_SEARCH_PATH")
+	if !ok {
+		envMELLIFERA_SEARCH_PATH = fmt.Sprintf("%s/lib", envMELLIFERA_HOME)
+		if err := os.Setenv("MELLIFERA_SEARCH_PATH", envMELLIFERA_SEARCH_PATH); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %s\n", err.Error())
+			os.Exit(1)
+		}
+	}
 
 	verbatim := false
 	var cmds *string
@@ -183,6 +216,12 @@ func main() {
 			dumpAst = true
 			argi += 1
 			continue
+		}
+
+		// -e, -env
+		if m := reEnv.FindStringSubmatch(arg); m != nil {
+			mfenv(os.Stdout)
+			os.Exit(0)
 		}
 
 		// -h, -help
