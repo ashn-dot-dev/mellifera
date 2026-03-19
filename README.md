@@ -233,9 +233,9 @@ $ mf examples/explicit-references.mf
 [outside pass_by_reference] y ends as ["abc", "def", "hij", 123]
 ```
 
-Mellifera contains a small number of core builtin types, all of which have
+Mellifera contains a small number of core built-in types, all of which have
 first-class language support: null, boolean, number, string, regular
-expression, vector, map, set, reference, and function. These builtin types are
+expression, vector, map, set, reference, and function. These built-in types are
 sufficient for most simple programs, but when the need arises for more
 structured data, users have the option to define custom types with specific
 behavior.
