@@ -52,7 +52,7 @@ if file == null and text == null {
 }
 
 let occurrences = Map{};
-let words = re::split(text, r`\s+`)
+let words = re::split(text, r`\b+`)
     .into_iterator()
     .map(function(word) {
         return re::replace(word.to_lower(), r`[^\w]`, "");

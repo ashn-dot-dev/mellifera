@@ -74,7 +74,7 @@ if file == null and text == null {
 }
 
 let occurrences = Map{};
-let words = re::split(text, r`\s+`)
+let words = re::split(text, r`\b+`)
     .into_iterator()
     .map(function(word) {
         return re::replace(word.to_lower(), r`[^\w]`, "");
@@ -123,13 +123,13 @@ else {
 
 ```sh
 $ curl -s https://www.gutenberg.org/files/71/71-0.txt | mf examples/word-count.mf --top 5
-the 692
-to 440
-and 418
+the 700
+to 441
+and 421
 of 391
-a 293
+a 295
 $ curl -s https://www.gutenberg.org/files/71/71-0.txt | mf examples/word-count.mf --top=10 --json
-{"the":692,"to":440,"and":418,"of":391,"a":293,"it":212,"i":188,"in":181,"is":173,"not":171}
+{"the":700,"to":441,"and":421,"of":391,"a":295,"it":212,"i":189,"in":182,"is":176,"not":172}
 ```
 
 Mellifera uses value semantics, meaning assignment operations copy the contents
