@@ -1,0 +1,25 @@
+#!/usr/bin/env mf
+# usage: cat FILE | word-count-simple.mf
+let words = re::split(input(), r`\b+`)
+    .into_iterator()
+    .map(function(word) {
+        return re::replace(word.to_lower(), r`[^\w]`, "");
+    })
+    .filter(function(word) {
+        return word.count() != 0;
+    });
+
+let counts = Map{};
+for word in words {
+    try { counts[word] = counts[word] + 1; }
+    catch { counts[word] = 1; }
+}
+
+let ordered = counts
+    .pairs()
+    .sorted_by(function(lhs, rhs) {
+        return rhs.value - lhs.value;
+    });
+for pair in ordered {
+    println($"{pair.key} {pair.value}");
+}

@@ -1,3 +1,4 @@
+#!/usr/bin/env mf
 let help = function(writeln) {
     writeln($```
 usage: {argv[0]} [file]
@@ -79,7 +80,8 @@ let ordered = occurrences
             .word = pair.key,
             .count = pair.value,
         };
-    }).into_vector();
+    })
+    .into_vector();
 
 if top != null {
     ordered = ordered.slice(0, min(top, ordered.count()));

@@ -19,5 +19,5 @@ print("\n");
 
 let z = ["foo", {"bar": "xyz"}, "baz"];
 println($`z is {z}`);
-# y and z are separate values with structural equality
+# y and z are separate values that are structurally equal
 println($`y == z is {y == z}`);

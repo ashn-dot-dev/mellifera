@@ -5162,6 +5162,7 @@ func (self AstStatementAssignment) Eval(ctx *Context, env *Environment) (Control
 		}
 		field = lhsAccessScope.Field.Name
 	} else {
+		fmt.Printf("%s\n", reflect.TypeOf(self.Lhs).Name())
 		return nil, NewError(
 			self.Location,
 			ctx.NewString("attempted assignment to non-lvalue"),
@@ -8991,7 +8992,7 @@ func BuiltinRandomInteger(ctx *Context) *Builtin {
 			minInteger, maxInteger = maxInteger, minInteger
 		}
 
-		return ctx.NewNumber(float64(ctx.rng.Int64N(maxInteger-minInteger) + minInteger)), nil
+		return ctx.NewNumber(float64(ctx.rng.Int64N(maxInteger-minInteger+1) + minInteger)), nil
 	})
 }
 

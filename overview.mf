@@ -1,409 +1,407 @@
-# Comments begin with the # character and extend until the end of the line.
-
-println("============");
-println("== Values ==");
-println("============");
-
-println("the null value");
-println("--------------");
-dumpln( null );
-
-print("\n");
-
-println("boolean values");
-println("--------------");
-dumpln( true  );
-dumpln( false );
-
-print("\n");
-
-println("number values");
-println("-------------");
-dumpln( 123        );
-dumpln( 123.0      );
-dumpln( 123.456    );
-dumpln( 0xdeadbeef );
-
-print("\n");
-
-println("string values");
-println("-------------");
-dumpln( "hello"                      );
-dumpln( "hello world"                );
-dumpln( "hello\tworld"               );
-dumpln( "hello\nworld"               );
-dumpln( "hello\\world"               );
-dumpln( "hello\"world"               );
-dumpln( "hello\x5Fworld"             ); # 0x5F is ASCII _
-dumpln( "hello\x5fworld"             ); # 0x5f is ASCII _
-dumpln( "hello\xf0\x9f\x8d\x94world" ); # 0xf0, 0x9f, 0x8d, 0x94 is UTF-8 🍔
-dumpln( "hello🍔world"               );
-dumpln( "hello, 世界"                );
-dumpln( `hello world`                );
-dumpln(
-`hello
-world`
-);
-dumpln(
-```
-hello
-world
-```
-);
-
-print("\n");
-
-println("regex values");
-println("------------");
-dumpln( r"foo"         );
-dumpln( r`(\w+) (\w+)` );
-
-print("\n");
-
-println("vector values");
-println("-------------");
-dumpln( []                     );
-dumpln( ["foo", "bar", "baz"]  );
-dumpln( ["foo", "bar", "baz",] );
-
-print("\n");
-
-println("map values");
-println("----------");
-dumpln( Map{}                                    );
-dumpln( Map{"foo": 123, "bar": 456, "baz": 789}  );
-dumpln( Map{"foo": 123, "bar": 456, "baz": 789,} );
-dumpln( {"foo": 123, "bar": 456, "baz": 789}     );
-dumpln( {"foo": 123, "bar": 456, "baz": 789,}    );
-dumpln( {.foo: 123, .bar: 456, .baz: 789}        );
-dumpln( {.foo: 123, .bar: 456, .baz: 789,}       );
-dumpln( {"foo" = 123, "bar" = 456, "baz" = 789}  );
-dumpln( {"foo" = 123, "bar" = 456, "baz" = 789,} );
-dumpln( {.foo = 123, .bar = 456, .baz = 789}     );
-dumpln( {.foo = 123, .bar = 456, .baz = 789,}    );
-
-print("\n");
-
-println("set values");
-println("----------");
-dumpln( Set{}                     );
-dumpln( Set{"foo", "bar", "baz"}  );
-dumpln( Set{"foo", "bar", "baz",} );
-dumpln( {"foo", "bar", "baz"}     );
-dumpln( {"foo", "bar", "baz",}    );
-
-print("\n");
-
-println("reference values");
-println("----------------");
-dumpln( 123.&                                  );
-dumpln( {"foo": 123, "bar": 456, "baz": 456}.& );
-
-print("\n");
-
-println("function values");
-println("---------------");
-let named_function = function() { };
-dumpln( named_function                                          );
-dumpln( function() { }                                          );
-dumpln( function() { println("hello from inside a function"); } );
-
-print("\n");
-
-println("builtin function values");
-println("-----------------------");
-dumpln( dumpln  );
-dumpln( println );
-
-print("\n");
-
-println("===============");
-println("== Accessors ==");
-println("===============");
-
-let v = [123, 456, 789];
-println($`v is {v}`);
-println($`v[1] is {v[1]}`);
-try { v[3]; } catch err { println($`v[3] produces the error {repr(err)}`); }
-try { v["foo"]; } catch err { println($`v["foo"] produces the error {repr(err)}`); }
-
-print("\n");
-
-let m = {"foo": "bar", 123: {456, 789}, {"key": "val"}: "baz"};
-println($`m is {m}`);
-println($`m["foo"] is {repr(m["foo"])}`);
-println($`m[123] is {repr(m[123])}`);
-println($`m[{{"key": "val"}}] is {repr(m[{"key": "val"}])}`);
-println($`m::foo is {repr(m::foo)} (equivalent to m["foo"])`);
-println($`m.foo is {repr(m.foo)} (equivalent to m["foo"] for field access)`);
-try { m["qux"]; } catch err { println($`m["qux"] produces the error {repr(err)}`); }
-
-print("\n");
+# This overview will provide a brief introduction to the Mellifera programming
+# language. You can execute this overview as a Mellifera program by running:
+#
+#       $ mf overview.mf
+#
+# from the command line with Mellifera installed, or by running:
+#
+#       $ ./bin/mf overview.mf
+#
+# from the Mellifera project root after running `make build`.
 
 println("============================");
-println("== Vector Value Semantics ==");
+println("== Basic Types and Values ==");
 println("============================");
 
-let k = ["y", 456];
-println($`k is {k}`);
-println(`let v be [["x", 123], k, ["z", 789]]`);
-let v = [["x", 123], k, ["z", 789]];
-println($`v is {v}`);
-println(`set v[1][1] to "foo"`);
-v[1][1] = "foo";
-println($`k is {k}`);
-println($`v is {v}`);
+# Mellifera has a single number type which is an IEEE-754 double precision
+# float. Numbers can be written in decimal notation, or in hexadecimal notation
+# if the number is an integer.
+3.14159;
+0xdeadbeef;
 
-print("\n");
+# Arithmetic operators + - * / % work with numbers how you would.
+println($`123 + 456 is {123 + 456}`); # 123 + 456 is 579
+println($`123 - 456 is {123 - 456}`); # 123 - 456 is -333
+println($`123 * 456 is {123 * 456}`); # 123 * 456 is 56088
+println($`123 / 456 is {123 / 456}`); # 123 / 456 is 0.26973684210526316
+println($`123 % 456 is {123 % 456}`); # 123 % 456 is 123
 
-let v1 = [["x", 123], ["y", 456], ["z", 789]];
-println($`v1 is {v1}`);
-let v2 = v1;
-println(`let v2 be v1`);
-println($`v2 is {v2}`);
-println(`set v2[1][1] to "foo"`);
-v2[1][1] = "foo";
-println($`v1 is {v1}`);
-println($`v2 is {v2}`);
+# The result of the remainder operator % taking the sign of the dividend,
+# similar to C's remainder operator.
+println($`+7 % +3 is {+7 % +3}`); # +7 % +3 is 1
+println($`+7 % -3 is {+7 % -3}`); # +7 % -3 is 1
+println($`-7 % +3 is {-7 % +3}`); # -7 % +3 is -1
+println($`-7 % -3 is {-7 % -3}`); # -7 % -3 is -1
 
-print("\n");
+# Comparison operators == != <= >= < and > also work with numbers how you would
+# expect.
+println($`123 == 456 is {123 == 456}`); # 123 == 456 is false
+println($`123 != 456 is {123 != 456}`); # 123 != 456 is true
+println($`123 <= 456 is {123 <= 456}`); # 123 <= 456 is true
+println($`123 >= 456 is {123 >= 456}`); # 123 >= 456 is false
+println($`123 < 456 is {123 < 456}`); # 123 < 456 is true
+println($`123 > 456 is {123 > 456}`); # 123 > 456 is false
 
-println("=========================");
-println("== Map Value Semantics ==");
-println("=========================");
+# The special number values NaN and Inf represent the IEEE-754 not a number,
+# and infinity, respectively.
+NaN;
+Inf;
+-Inf;
 
-let k = {"y": 456};
-println($`k is {k}`);
-println(`let m be {"a": {"x": 123}, "b": k, "c": {"z": 789}}`);
-let m = {"a": {"x": 123}, "b": k, "c": {"z": 789}};
-println($`m is {m}`);
-println(`set m["b"]["y"] to "foo"`);
-m["b"]["y"] = "foo";
-println($`k is {k}`);
-println($`m is {m}`);
+# Mellifera has a string type consisting of a sequence of bytes which usually
+# represent UTF-8 encoded text.
+"hello world";
+"I could sure go for a 🍔 right about now!";
 
-print("\n");
+# Strings enclosed in double quotes may contain the following escape sequences:
+#
+#   \t => tab
+#   \n => newline
+#   \" => double quote
+#   \\ => backslash
+#   \xXY => hexadecimal byte 0xXY
+println("hello\tworld"); # "hello	world"
+println("hello\x5Fworld"); # "hello_world"
+println("hello\xf0\x9f\x8d\x94world"); # "hello🍔world"
 
-let m1 = {"a": {"x": 123}, "b": {"y": 456}, "c": {"z": 789}};
-println($`m1 is {m1}`);
-println(`let m2 be m1`);
-let m2 = m1;
-println($`m2 is {m2}`);
-println(`set m2["b"]["y"] to "foo"`);
-m2["b"]["y"] = "foo";
-println($`m1 is {m1}`);
-println($`m2 is {m2}`);
+# Strings enclosed in backticks, called raw strings, interpret their contents
+# verbatim without escaping.
+println(`hello\tworld`); # hello\tworld
 
-print("\n");
+# Multiline raw strings are enclosed in three backticks.
+println(```line 1
+line 2
+line 3```);
+# You can acheve markdown-like multiline string literals by trimming leading
+# and trailing whitespace from the string with the .trim() method.
+println(```
+line 1
+line 2
+line 3
+```.trim());
 
-println("=========================");
-println("== Set Value Semantics ==");
-println("=========================");
+# Template strings are written by placing a $ character at the start of a
+# string literal. These strings will evaluate the contents of expressions
+# enclosed in { } characters and insert the stringified result into the string.
+let name = "Ashley";
+println($"Hello there, {name}!"); # Hello there, Ashley!
 
-let k = {"b", 456};
-println($`k is {k}`);
-println(`let s be {{"a", 123}, k, {"c", 789}}`);
-let s = {{"a", 123}, k, {"c", 789}};
-println($`s is {s}`);
-println(`insert "foo" into k`);
-k.insert("foo");
-println($`k = {k}`);
-println($`s = {s}`);
+# Template strings can be used with either escaped or raw string literals, and
+# can contain any expression. We have used template strings a number of times
+# in this overview as a way to show the output of certain operations.
+println($`The square root of 1764 is {math::sqrt(1764)}`); # The square root of 1764 is 42
 
-print("\n");
+# If an evaluated expression in a template string is itself a string, then it
+# will be printed without quotes. If you would like the quotes to be displayed,
+# then wrap the evaluated expression in a call to the `repr()` function.
+println($`"foo" in a template string turns into {"foo"}`); # "foo" in a template string turns into foo
+println($`repr("foo") in a template string turns into {repr("foo")}`); # repr("foo") in a template string turn into "foo"
 
-println("===============");
-println("== Operators ==");
-println("===============");
-
-println("operator + (unary)");
-println("------------------");
-println($`+123 is {+123}`);
-println($`+-123 is {+-123}`);
-
-print("\n");
-
-println("operator - (unary)");
-println("------------------");
-println($`-123 is {-123}`);
-println($`--123 is {--123}`);
-
-print("\n");
-
-println("operator not");
-println("------------");
-println($`not true is {not true}`);
-println($`not false is {not false}`);
-
-print("\n");
-
-println("operator and");
-println("------------");
-println($`false and false is {false and false}`);
-println($`false and true is {false and true}`);
-println($`true and false is {true and false}`);
-println($`true and true is {true and true}`);
-
-print("\n");
-
-println("operator or");
-println("-----------");
-println($`false or false is {false or false}`);
-println($`false or true is {false or true}`);
-println($`true or false is {true or false}`);
-println($`true or true is {true or true}`);
-
-print("\n");
-
-println("operator ==");
-println("-----------");
-println($`123 == 123 is {123 == 123}`);
-println($`123 == 456 is {123 == 456}`);
-println($`"foo" == "foo" is {"foo" == "foo"}`);
-println($`"foo" == "bar" is {"foo" == "bar"}`);
-println($`123 == "foo" is {123 == "foo"}`);
-
-print("\n");
-
-println("operator !=");
-println("-----------");
-println($`123 != 123 is {123 != 123}`);
-println($`123 != 456 is {123 != 456}`);
-println($`"foo" != "foo" is {"foo" != "foo"}`);
-println($`"foo" != "bar" is {"foo" != "bar"}`);
-println($`123 != "foo" is {123 != "foo"}`);
-
-print("\n");
-
-println("operator <=");
-println("-----------");
-println($`123 <= 123 is {123 <= 123}`);
-println($`123 <= 456 is {123 <= 456}`);
-println($`"foo" <= "foo" is {"foo" <= "foo"}`);
-println($`"foo" <= "bar" is {"foo" <= "bar"}`);
-
-print("\n");
-
-println("operator >=");
-println("-----------");
-println($`123 >= 123 is {123 >= 123}`);
-println($`123 >= 456 is {123 >= 456}`);
-println($`"foo" >= "foo" is {"foo" >= "foo"}`);
-println($`"foo" >= "bar" is {"foo" >= "bar"}`);
-
-print("\n");
-
-println("operator <");
-println("----------");
-println($`123 < 123 is {123 < 123}`);
-println($`123 < 456 is {123 < 456}`);
-println($`"foo" < "foo" is {"foo" < "foo"}`);
-println($`"foo" < "bar" is {"foo" < "bar"}`);
-
-print("\n");
-
-println("operator >");
-println("----------");
-println($`123 > 123 is {123 > 123}`);
-println($`123 > 456 is {123 > 456}`);
-println($`"foo" > "foo" is {"foo" > "foo"}`);
-println($`"foo" > "bar" is {"foo" > "bar"}`);
-
-print("\n");
-
-println("operator =~");
-println("-----------");
-println($"\"foobar\" =~ r`foo` is {repr("foobar" =~ r`foo`)}");
-println($"\"foobar\" =~ r`^foo` is {repr("foobar" =~ r`^foo`)}");
-println($"\"foobar\" =~ r`^foo$` is {repr("foobar" =~ r`^foo$`)}");
-println($"\"Isaac Newton, physicist\" =~ r`(\\w+) (\\w+)` is {repr("Isaac Newton, physicist" =~ r`(\w+) (\w+)`)}");
-println($`$0 is {repr($0)}`);
-println($`$1 is {repr($1)}`);
-println($`$2 is {repr($2)}`);
+# Strings can be concatenated with the + operator, and do not support any other
+# arithmetic operators.
+println("foo" + "bar"); # foobar
 try {
-    $3;
-} catch err {
-    println($`$3 produces the error {repr(err)}`);
+    "foo" - "bar";
+}
+catch err {
+    println($`"foo" - "bar" produced the error {repr(err)}`); # "foo" - "bar" produced the error "attempted - operation with types `string` and `string`"
 }
 
-print("\n");
+# Comparison operators == != <= >= < and > will compare string
+# lexicographically, e.g. "abc" is less than "def".
+println($`"abc" == "def" is {"abc" == "def"}`);
+println($`"abc" != "def" is {"abc" != "def"}`);
+println($`"abc" <= "def" is {"abc" <= "def"}`);
+println($`"abc" >= "def" is {"abc" >= "def"}`);
+println($`"abc" < "def" is {"abc" < "def"}`);
+println($`"abc" > "def" is {"abc" > "def"}`);
 
-println("operator !~");
-println("-----------");
-println($"\"foobar\" !~ r`foo` is {repr("foobar" !~ r`foo`)}");
-println($"\"foobar\" !~ r`^foo` is {repr("foobar" !~ r`^foo`)}");
-println($"\"foobar\" !~ r`^foo$` is {repr("foobar" !~ r`^foo$`)}");
+# Mellifera has booleans written using the keywords true and false.
+true;
+false;
 
-print("\n");
+# The unary `not` operator will negate a boolean.
+println($`not true is {not true}`); # not true is false
+println($`not false is {not false}`); # not false is true
 
-println("operator +");
-println("----------");
-println($`123 + 456 is {123 + 456}`);
-println($`"foo" + "bar" is {repr("foo" + "bar")}`);
-println($`["foo", "bar"] + ["baz"] is {["foo", "bar"] + ["baz"]}`);
+# Mellifera does not have a concept of truthy values seen in other scripting
+# languages. Statements with conditional expressions in Mellifera such as
+# if-statements and while-loops *must* be provided a boolean value.
+if not false {
+    println("not false is true, so the block of the if-statement is executed");
+}
 
-print("\n");
+try {
+    while 1 + 1 { }
+}
+catch err {
+    println($`while-loop with the conditional 1 + 1 produced the error {repr(err)}`);
+}
 
-println("operator -");
-println("----------");
-println($`123 - 456 is {123 - 456}`);
+# Mellifera has the null type and value, which represents the absence of
+# another meaningful value, similar to null in JavaScript or None in Python.
+null;
+# Null is commonly returned by functions indicating that nothing found.
+println($`[123, 456, 789].find(456) returns {[123, 456, 789].find(456)}`); # [123, 456, 789].find(456) returns 1
+println($`[123, 456, 789].find("nope") returns {[123, 456, 789].find("nope")}`); # [123, 456, 789].find("nope") returns null
 
-print("\n");
+# Mellifera supports regular expression matching using the =~ and !~ operators.
+# These are always written as STRING =~ REGEXP or STRING !~ REGEXP with regular
+# expression values written as strings prefixed with an r character, similar to
+# how template strings are prefixed with a $ character.
+if "foobar" =~ r`foo(bar|baz)(qux)?` {
+    # Regular expression capture groups are accessed with $n where n is the nth
+    # capture group in the most recently executed regular expression in scope.
+    # The result of $n will be the matched string capture if the nth capture
+    # group successfully matched, or null if that capture group did not match.
+    # The result of $0 is the entire matched string.
+    dumpln($0); # "foobar"
+    dumpln($1); # "bar"
+    dumpln($2); # null
+}
 
-println("operator *");
-println("----------");
-println($`123 * 456 is {123 * 456}`);
+# Mellifera has three aggregate data types, vector, map, and set. We will first
+# learn about vector, which is an ordered sequence of values, also known as a
+# dynamic array.
+[]; # empty vector
+[123, 456, 789];
 
-print("\n");
+# Vectors may contain elements of any type, including other aggregate types.
+[123, ["foo", "bar"], null];
 
-println("operator /");
-println("----------");
-println($`123 / 456 is {123 / 456}`);
-println($`123 / Inf is {123 / Inf}`);
-try { 123 / 0; } catch err { println($`123 / 0 produces the error {repr(err)}`); }
+# Elements of a vector are accessed using the postfix [] operator, which uses
+# zero-based indexing.
+println($`[123, 456, 789][1] is {[123, 456, 789][1]}`); # [123, 456, 789][1]
 
-print("\n");
+# You can get the number of elements in a vector using the .count() method.
+let v = [123, 456, 789];
+println($`v is {v}`); # v is [123, 456, 789]
+println($`v.count() is {v.count()}`); # v.count() is 3
 
-println("operator %");
-println("----------");
-println($`+7 % +3 is {+7 % +3}`);
-println($`+7 % -3 is {+7 % -3}`);
-println($`-7 % +3 is {-7 % +3}`);
-println($`-7 % -3 is {-7 % -3}`);
-println($`10 % 3.5 is {10 % 3.5}`);
-println($`123 % Inf is {123 % Inf}`);
-try { 123 % 0; } catch err { println($`123 % 0 produces the error {repr(err)}`); }
+# You can insert an element at the end of a vector with the .push() method.
+v.push("foo");
+println($`v after v.push("foo") is {v}`); # v after v.push("foo") is [123, 456, 789, "foo"]
 
-print("\n");
+# You can remove an element from the end of a vector with the .pop() method.
+let popped = v.pop();
+println($`v after v.pop() is {v} and the popped element is {repr(popped)}`); # v after v.pop() is [123, 456, 789] and the popped element is "foo"
 
-println("operator .&");
-println("-----------");
-println($`123.& is {123.&}`);
+# Iteration over the elements of a vector is performed with a for statement.
+for element in v {
+    println($`element is {repr(element)}`); # element is 123
+                                            # element is 456
+                                            # element is 789
+}
 
-print("\n");
+# Vectors can be concatenated with the + operator, and do not support any other
+# arithmetic operators.
+println(["foo"] + ["bar"]); # ["foo", "bar"]
+try {
+    ["foo"] - ["bar"];
+}
+catch err {
+    println($`["foo"] - ["bar"] produced the error {repr(err)}`); # ["foo"] - ["bar"] produced the error "attempted - operation with types `vector` and `vector`"
+}
 
-println("operator .*");
-println("-----------");
-println($`123.&.* is {123.&.*}`);
-println(`let x be Map{}`);
-let x = Map{};
-println(`let y be x.&`);
-let y = x.&;
-println(`set y.*["foo"] to "bar"`);
-y.*["foo"] = "bar";
-println($`x is {x}`);
+# The next aggregate data type is the map, which is an ordered collection of
+# key-value pairs with unique keys, also known as an associative array.
+# Key-value pairs can be written using either the syntax:
+#
+#   key: value
+#
+# or using the syntax:
+#
+#   .name = value
+#
+# where `.name` is transformed into the key "name".
+#
+# Maps may optionally be prefixed with the Map keyword to disambiguate them
+# from sets, which we will see in just a moment. The empty map *must* be
+# written as Map{}.
+Map{}; # empty map
+{"name": "Ashley", "age": 21};
+{.name = "Ashley", .age = 21}; # equivalent to the map above
+Map{"name": "Ashley", "age": 21}; # equivalent to the map above
 
-print("\n");
+# Maps may contain keys and values of any type, including other aggregate
+# types. Use of non-string keys is supported and actively encouraged when doing
+# so would fit your problem domain.
+{
+    [123, 456, 789]: [135, 246],
+    {.abc = 123}: "you and me",
+    .worries = null,
+};
 
-println("operator precedence");
-println("-------------------");
-println($`(123 + 456) * 789 + Map{{"x": 3.14}}["x"] evaluates to { (123 + 456) * 789 + Map{"x": 3.14}["x"] }`);
+# Elements of a map are accessed using the postfix [] operator.
+println($`{{.name = "Ashley", .age = 21}}["name"] is {repr({.name = "Ashley", .age = 21}["name"])}`); # {.name = "Ashley", .age = 21}["name"] is "Ashley"
 
-print("\n");
+# You can get the number of elements in a map using the .count() method.
+let m = {.name = "Ashley", .age = 21};
+println($`m is {m}`); # m is {"name": "Ashley", "age": 21}
+println($`m.count() is {m.count()}`); # m.count() is 2
 
-println("========================");
-println("== If, Elif, and Else ==");
-println("========================");
+# You can insert an element into a map with the .insert() method.
+m.insert("profession", "student");
+println($`m after m.insert("profession", "student") is {m}`); # m after m.insert("profession", "student") is {"name": "Ashley", "age": 21, "profession": "student"}
+
+# You can remove an element from a map with the .remove() method.
+let removed = m.remove("age");
+println($`m after m.remove("age") is {m} and the removed value is {repr(removed)}`); # m after m.remove("age") is {"name": "Ashley", "profession": "student"} and the removed value is 21
+
+# Iteration over the key-value elements of a map is performed with a for
+# statement. Maps are *ordered* based on the insertion order of their elements,
+# so iterating over a map is deterministic.
+for key, value in m {
+    println($`key is {repr(key)} and value is {repr(value)}`); # key is "name" and value is "Ashley"
+                                                               # key is "profession" and value is "student"
+}
+
+# The final aggregate data type is the set, which is an ordered collection of
+# unique elements. Unlike vectors, attempting to construct a set with
+# duplicates of the same element will result in only one of those elements
+# appearing in the set.
+#
+# Sets may optionally be prefixed with the Set keyword to disambiguate them
+# from maps. The empty set *must* be written as Set{}.
+Set{}; # empty map
+{"foo", "bar", "baz"};
+Set{"foo", "bar", "baz"}; # equivalent to the set above
+
+# Sets may contain elements of any type, including other aggregate types.
+{123, ["foo", "bar"], null};
+
+# Duplicate elements are only represented once in a set.
+dumpln($`{{123, 456, 123}} is {repr({123, 456, 123})}`);
+
+# You can get the number of elements in a set using the .count() method.
+let s = {123, 456, 789};
+println($`s is {s}`); # s is {123, 456, 789}
+println($`s.count() is {s.count()}`); # s.count() is 3
+
+# You can insert an element into a set with the .insert() method.
+s.insert("foo");
+println($`s after s.insert("foo") is {s}`); # s after s.insert("foo") is {123, 456, 789, "foo"}
+
+# You can remove an element from a set with the .remove() method.
+let removed = s.remove(456);
+println($`s after s.remove(456) is {s} and the removed value is {repr(removed)}`); # s after s.remove(456) is {123, 789, "foo"} and the removed value is 456
+
+# Iteration over the elements of a set is performed with a for statement. Sets
+# are *ordered* based on the insertion order of there elements, so iterating
+# over a set is deterministic.
+for element in s {
+    println($`element is {repr(element)}`); # element is 123
+                                            # element is 789
+                                            # element is "foo"
+}
+
+# Mellifera has an explicit reference type representing the location of a value
+# in memory. References are useful when you want to access a specific value
+# such as vector or map without creating a separate copy of that value.
+#
+# References are obtained by using the postfix .& operator on a value, and are
+# dereferenced using the postfix .* operator.
+123.&; # reference to the value 123
+{"foo": "bar"}; # reference to the value {"foo": "bar"}
+
+# References are most useful when you would like to keep track of a value that
+# is updated elsewhere.
+let m = {"foo": "bar"};
+let r = m.&; # reference to the value stored in m
+println($`m is {m}`); # m is {"foo": "bar"}
+println($`r is {r} and r.* is {r.*}`); # r is reference@0x140001de900 and r.* is {"foo": "bar"}
+# ...pretend that m is being updated from some external operation
+m["foo"] = 123;
+println($`m after being updated with m["foo"] = 123 is {m}`); # m after being updated with m["foo"] = 123 is {"foo": 123}
+println($`r after m was updated with m["foo"] = 123 is {r} and r.* is {r.*}`); # r after m was updated with m["foo"] = 123 is reference@0x140001de900 and r.* is {"foo": 123}
+
+# References can be used to update the referenced value directly.
+r.*["foo"] = 456;
+println($`m after being updated with r.*["foo"] = 456 is {m}`); # m after being updated with r.*["foo"] = 456 is {"foo": 456}
+println($`r after m was updated with r.*["foo"] = 456 is {r} and r.* is {r.*}`); # r after m was updated with r.*["foo"] = 456 is reference@0x140001de900 and r.* is {"foo": 456}
+
+# For convenience, accessing elements of a referenced value with:
+#
+#   reference.*[index]
+#
+# can be equivalently performed using the syntax, known as auto-dereferencing:
+#
+#   reference[index]
+r["foo"] = null;
+println($`m after being updated with r["foo"] = null is {m}`); # m after being updated with r["foo"] = null is {"foo": null}
+println($`r after m was updated with r["foo"] = null is {r} and r.* is {r.*}`); # r after m was updated with r["foo"] = null is reference@0x140001de900 and r.* is {"foo": null}
+
+# Mellifera supports first class functions, defined using the function keyword.
+function(a, b) { return a + b; };
+
+# Functions close over their environment.
+let n = 3;
+let addn = function(x) {
+    return x + n;
+};
+println($`addn(5) is {addn(5)}`); # addn(5) is 8
+
+# If a function does not return a value with a return statement, then the
+# result of that function is null.
+let do_nothing = function() { };
+println($`do_nothing() is {do_nothing()}`); # do_nothing() is null
+
+println("==============================================");
+println("== Value Semantics and Structural Equality  ==");
+println("==============================================");
+
+# Mellifera features value semantics, meaning assignment operations copy the
+# contents of a value when executed. After a variable declaration or assignment
+# statement such as:
+#
+#   let a = b;
+#
+# or:
+#
+#   a = b;
+#
+# `a` and `b` will contain separate copies of the same value. Mellifera also
+# performs equality comparisons based on structural equality, so two values
+# are considered to be equal if they have the same contents.
+
+let x = ["foo", {"bar": 123}, "baz"];
+println($`x is {x} with address {x.&}`); # x is ["foo", {"bar": 123}, "baz"] with address reference@0x140002000a0
+
+let y = x; # x is assigned to y by copy
+println($`y is {y} with address {y.&}`); # y is ["foo", {"bar": 123}, "baz"] with address reference@0x14000200140
+
+# x and y are separate values that are structurally equal.
+println($`x == y is {x == y}`); # x == y is true
+
+# Updates to x and y do not affect each other, because they are separate values
+# with separate addresses.
+x[0] = "abc";
+y[1]["bar"] = "xyz";
+println($`x is {x}`); # x is ["abc", {"bar": 123}, "baz"]
+println($`y is {y}`); # y is ["foo", {"bar": "xyz"}, "baz"]
+
+# x and y are no longer structurally equal as their contents now differ.
+println($`x == y is {x == y}`); # x == y is false
+
+let z = ["foo", {"bar": "xyz"}, "baz"];
+println($`z is {z} with address {z.&}`); # z is ["foo", {"bar": "xyz"}, "baz"] with address reference@0x14000200370
+# y and z are separate values that are structurally equal.
+println($`y == z is {y == z}`); # y == z is true
+
+# Copying an immutable value such as an integer will produce that same value
+# verbatim as a memory saving optimization.
+let a = 123;
+println($`a is {a} with address {a.&}`); # a is 123 with address reference@0x140001d0bf0
+
+let b = a;
+println($`b is {b} with address {b.&}`); # b is 123 with address reference@0x140001d0bf0
+
+println("====================================");
+println("== If, Elif, and Else, Statements ==");
+println("====================================");
+
+# Arms of an if statement are evaluated in order until a condition evaluates as
+# true, at which point the body of that conditional is executed.
 
 if true {
     println("A (if)");
@@ -443,93 +441,81 @@ else {
     println("D (else)");
 }
 
-print("\n");
+println("=====================");
+println("== Loop Statements ==");
+println("=====================");
 
-println("===========");
-println("== Loops ==");
-println("===========");
-
-println("integer loop: for x in 3");
+# Integer loops of the form:
+#
+#   for i in n {
+#       # body
+#   }
+#
+# iterate over integers in the half-open range [0, n].
 for x in 3 {
     println($"x is {x}");
 }
 
-print("\n");
-
-println($"integer loops with references are not permitted: for reference x in 3");
-try {
-    for k.& in 3 { }
-}
-catch err {
-    println($"error: {err}");
-}
-
-print("\n");
-
-let v = ["a", "b", "c"];
-println($"vector loop: for x in {v}");
-for x in v {
-    println($"x is {x}");
+# As seen previously you can loop over the elements of a vector with a loop of
+# the form:
+#
+#   for element in vector {
+#       # body
+#   }
+for y in ["a", "b", "c"] {
+    println($"y is {y}");
 }
 
-print("\n");
-
-let v = [{"value": 123}, {"value": 456}, {"value": 789}];
-println($"vector loop with references: for reference x in vector {v} increment x.*.value by one");
-for x.& in v {
-    x.*.value = x.*.value + 1;
+# You can also directly update the elements of a vector by iterating over the
+# elements of the vector with special syntax that takes a reference to the
+# iterated-over element.
+let v = [{"n": 123}, {"n": 456}, {"n": 789}];
+println($`v is {v}`); # v is [{"n": 123}, {"n": 456}, {"n": 789}]
+for y.& in v {
+    y.n = y.n + 1;
 }
-println($"vector post-loop is {v}");
+println($`v after update loop is {v}`); # v after update loop is [{"n": 124}, {"n": 457}, {"n": 790}]
 
-print("\n");
-
-let m = Map{"a": 123, "b": 456, "c": 789};
-println($"map loop: for k, v in {m}");
-for k, v in m {
+# As seen previously you can loop over the key-value pairs of a map with a loop
+# of the form:
+#
+#   for key, value in map {
+#       # body
+#   }
+for k, v in {"foo": {"n": 123}, "bar": {"n": 456}, "baz": {"n": 789}} {
     println($"k is {k}, v is {v}");
 }
 
-print("\n");
-
-let m = {{"id": 123}: "foo", {"id": 456}: "bar", {"id": 789}: "baz"};
-println($"map loops with key references are not permitted: for reference k in map {m}");
-try {
-    for k.& in m { }
-}
-catch err {
-    println($"error: {err}");
-}
-
-print("\n");
-
-let m = {"foo": {"value": 123}, "bar": {"value": 456}, "baz": {"value": 789}};
-println($"map loops with value references: for k, reference v in map {m} increment v.*.value by one");
+# You can also directly update the elements of a map by iterating over the
+# key-value pairs of the map with special syntax that takes a reference to the
+# iterated-over value.
+let m = {"foo": {"n": 123}, "bar": {"n": 456}, "baz": {"n": 789}};
+println($`m is {m}`); # m is {"foo": {"n": 123}, "bar": {"n": 456}, "baz": {"n": 789}}
 for k, v.& in m {
-    v.*.value = v.*.value + 1;
+    v.n = v.n + 1;
 }
-println($"map post-loop is {m}");
+println($`m after update loop is {m}`); # m after update loop is {"foo": {"n": 124}, "bar": {"n": 457}, "baz": {"n": 790}}
 
-print("\n");
-
-let s = Set{"a", "b", "c"};
-println($"set loop: for x in {s}");
-for x in s {
-    println($"x is {x}");
+# To iterate over just the keys of a map, omit the value variable.
+for k in {"foo": {"n": 123}, "bar": {"n": 456}, "baz": {"n": 789}} {
+    println($"k is {k}");
 }
 
-print("\n");
-
-let s = {{"value": 123}, {"value": 456}, {"value": 789}};
-println($"set loops with references are not permitted: for reference x in set {s}");
-try {
-    for x.& in s { }
+# As seen previously you can loop over the elements of a set with a loop of the
+# form:
+#
+#   for element in set {
+#       # body
+#   }
+for z in {"a", "b", "c"} {
+    println($"z is {z}");
 }
-catch err {
-    println($"error: {err}");
-}
 
-print("\n");
-
+# You can iterate over values of custom types that define a `next` method which
+# produces the next iterated value when called, erroring with a null value when
+# an end-of-iteration condition is reached. Defining a custom iterator this way
+# uses several concepts that have not yet been touched on in this overview, so
+# for now just know that Mellifera supports custom user-defined iterators.
 let fizzbuzzer = type extends(iterator, {
     "init": function(n, max) {
         return new fizzbuzzer {"n": n, "max": max};
@@ -553,234 +539,419 @@ let fizzbuzzer = type extends(iterator, {
     },
 });
 let fb = fizzbuzzer::init(1, 15);
-println($"custom iterator loop: for x in {fb} with type {typename(fb)}");
+println($`Executing fizzbuzz with custom iterator type {typename(fb)}...`);
 for x in fb {
     println(x);
 }
 
-print("\n");
+# While-loops execute the body of the loop every time the while-condition
+# evaluates as true.
+let n = -3;
+while n <= 3 {
+    println($"n <= 5 is true for n == {n}");
+    n = n + 1;
+}
 
-let fb = fizzbuzzer::init(1, 15);
-println($"custom iterator loops with references are not permitted: for reference x in {fb} with type {typename(fb)}");
+# The break statement will immediately jump out of the inner-most for or while
+# loop and continue execution after that loop.
+for x in [123, 456, 789] {
+    println($`x is {repr(x)} before the break statement`);
+    break; # break out of the loop before an error occurs
+    error "oopsie";
+}
+
+# The continue statement will immediately jump back to the loop conditional and
+# continue execution with the next iteration of that loop.
+for x in ["abc", "def", "hij"] {
+    println($`x is {repr(x)} before the continue statement`);
+    continue; # continue with the next iteration of the loop before an error occurs
+    error "oopsie";
+}
+
+println("==============================================");
+println("== Lexical Scoping, Functions, and Closures ==");
+println("==============================================");
+
+# Variables are declared with a let statement.
+let color = "maroon"; # declaration and assignment
+
+# Executing the let statement above creates a variable in the current lexical
+# scope named `color` and gives it a copy of the value "maroon" on the right
+# hand side of the assignment operator. Once the variable has been declared,
+# it can be re-assigned using similar syntax without the let keyword.
+color = "teal"; # assignment without declaration
+
+# It is an error to attempt to assign a value to a variable that has not been
+# declared.
 try {
-    for x.& in fb { }
+    shirt = "flannel";
 }
 catch err {
-    println($"error: {err}");
+    println($`shirt = "flannel" produced the error {repr(err)}`); # shirt = "flannel" produced the error "identifier `shirt` is not defined"
 }
 
-print("\n");
+# Re-declaring the same variable with another let statement is explicitly
+# allowed and encouraged. When you see `let` in a Mellifera program, think
+# of it as a way of saying "this variable means something new".
+let foo = 123;
+let foo = "bar";
 
-println("let x be 1");
-let x = 1;
-println("while x <= 5 print x and then increment x by 1");
-while x <= 5 {
-    println($"x is {x}");
-    x = x + 1;
-}
-
-print("\n");
-
-println("break: while true break before an error occurs");
-while true {
-    break;
-    error "oopsie";
-}
-
-print("\n");
-
-let v = ["foo", "bar", "baz"];
-println($"continue: for x in {v} continue before an error occurs");
-for x in v {
-    continue;
-    error "oopsie";
-}
-
-print("\n");
-
-println("======================================");
-println("== Scoping, Functions, and Closures ==");
-println("======================================");
-
-let hello = function() {
-    println("hello from inside a function");
-};
-hello();
-
-print("\n");
-
-println("let x be 123");
-let x = 123;
-println("open a new scope");
+# Any time you see curly braces { }, a new variable scope has been declared.
+# Within this new scope you can access variables from outer scopes, but new
+# variables declared within that scope are not accessible from outside that
+# scope. Declarations of new variables with the same name as a variable in an
+# outer scope will shadow the variable in the outer scope.
+let b = 123;
+let c = "foo";
+println($`b is {repr(b)}`); # b is 123
+println($`c is {repr(c)}`); # c is "foo"
 if true {
-    println("\tlet x be 456 inside the new scope");
-    let x = 456;
-    println($"\tinside the scope x is {x}");
+    let a = 456; # a is only accessible inside this if-body scope
+    let b = 789; # b shadows the outer variable with the same name
+    c = "bar"; # c updates the variable in the outer scope
+    println($`a inside the new scope is {repr(a)}`); # a inside the new scope is 456
+    println($`b inside the new scope is {repr(b)}`); # b inside the new scope is 789
+    println($`c inside the new scope is {repr(c)}`); # c inside the new scope is "bar"
 }
-println($"outside the scope x is {x} due to lexical scoping");
+println($`b outside that new scope is still {repr(b)}`); # b outside that new scope is still 123
+println($`c outside that new scope is {repr(c)}`); # c outside that new scope is "bar"
 
-print("\n");
-
-println("let x be 123");
-let x = 123;
-println("open a new scope");
-if true {
-    println("\tset x to 456 inside the new scope (using assignment without let)");
-    x = 456;
-    println($"\tinside the scope x is {x}");
-}
-println($"outside the scope x is {x}");
-
-print("\n");
-
-println("let x be 123");
-let x = 123;
-println("call a function");
-function() {
-    println("\tset x to 456 from within the function (using assignment without let)");
-    x = 456;
-    println($"\tinside the function x is {x}");
-}();
-println($"outside the function x is {x}");
-
-print("\n");
-
-println("create a function `adder(x)` returning a `function(y)` that returns the sum of the closed-over x and argument y when invoked");
+# As we saw before, functions close over their environment, retaining access to
+# outer scopes even after program control has left that scope.
 let adder = function(x) {
+    # x is introduced into this scope by the function parameter list
     return function(y) {
+        # x is still in scope and can be accessed here.
+        # y is introduced into this scope by the function parameter list
         return x + y;
     };
 };
-println($"adder is {adder}");
-println("let add1 be adder(1)");
 let add1 = adder(1);
-println($"add1 is {add1}");
-println($"add1(2) is {add1(2)}");
+println($"add1(2) is {add1(2)}"); # add1(2) is 3
 
-print("\n");
+println("===========================");
+println("== Try, Catch, and Error ==");
+println("===========================");
 
-let x = Map{
-    "a": 123,
-    "f": function(self) {
-        println($"\t[inside f] self is {self}");
-        println($"\t[inside f] self.a is {self.a}");
-    },
-};
-println($`x is {x}`);
-println(`x["f"] is a function with a single self parameter`);
-println(`calling x["f"] as x["f"](x.&)`);
-x["f"](x.&);
-println(`calling x["f"] as x::f(x.&) (equivalent to the call above)`);
-x::f(x.&);
-println(`calling x["f"] as x.f() (equivalent to the call above, x.& is implicitly passed as the first argument)`);
-x.f();
+# Errors are a way of reporting unexpected conditions or invalid state within
+# a Mellifera program. An error is generated using an error statement, and will
+# propagate up the call stack until it is caught by the catch block of a
+# try-catch statement.
+try {
+    error "oopsie";
+}
+catch err {
+    println($"caught error {repr(err)}"); # caught error "oopsie"
+}
 
-print("\n");
+# Errors can also be generated by the Mellifera runtime when an invalid
+# operation occurs, e.g. from an invalid index out-of-bounds operation.
+try {
+    let v = [123, 456, 789]; # vector with three elements
+    v[100]; # attempt to access a vector element with an invalid index
+}
+catch err {
+    println($"caught error {repr(err)}"); # caught error "invalid vector access with index 100"
+}
 
-println("===============");
-println("== Try-Catch ==");
-println("===============");
-
-try { println("inside try block"); } catch err { println($"inside try-catch block: {err}"); }
-try { error "some user defined error"; } catch err { println($"inside try-catch block: {err}"); }
-try { let x = []; x[1]; } catch err { println($"inside try-catch block: {err}"); }
-try { let x = []; x[1] = 123; } catch err { println($"inside try-catch block: {err}"); }
-try { let x = Map{}; x["foo"]; } catch err { println($"inside try-catch block: {err}"); }
-try { let x = Map{}; x["foo"] = 123; } catch err { println($"inside try-catch block: {err}"); }
-try { let x = Map{}; x::foo; } catch err { println($"inside try-catch block: {err}"); }
-try { let x = Map{}; x.foo; } catch err { println($"inside try-catch block: {err}"); }
-
-print("\n");
-
-println("==================");
-println("== Custom Types ==");
-println("==================");
-
-println("types are created using the `type` keyword");
-let vec2 = type {
-    "init": function(x, y) {
-        return new vec2 {
-            "x": x,
-            "y": y,
+# Most errors generated by the Mellifera runtime and user code are strings
+# describing the caught error. However, an error statement can use any value,
+# including structured data in the form of a map.
+let is_even = function(n) {
+    if not ty::is_number(n) or not n.is_integer() {
+        error {
+            .kind = "invalid argument",
+            .message = $"expected a number, received {typename(n)} with value {repr(n)}",
         };
-    },
+    }
+    return n % 2 == 0;
+};
+try {
+    println($`is_even(4) is {is_even(4)}`); # is_even(4) is true
+    println($`is_even("foo") is {is_even("foo")}`); # ERROR!!!
+}
+catch err {
+    println($"caught error {repr(err)}"); # caught error {"kind": "invalid argument", "message": "expected a number, received string with value \"foo\""}
+}
+
+# The error capture variable in a catch block can be omitted you do not intend
+# to use the error value.
+try {
+    let bytes = fs::read("/path/to/file/that/does/not/exist");
+    println(bytes);
+}
+catch {
+    # We failed to read the file, but that may be expected behavior, so ignore
+    # the error and move on...
+}
+
+# If an error propagates all the way up the call stack without being caught
+# then the error will automatically be reported alongside a stack trace.
+# Letting an error propagate this way will terminate a Mellifera program, which
+# would end this overview, so an example top-level error trace will be shown
+# below without actually generating that error trace.
+let g = function() {
+    let f = function() {
+        error "oopsie";
+    };
+    f();
+};
+let bad = function() {
+    let h = function() {
+        g();
+    };
+    h();
+};
+# bad();
+# ^^^^^^ Executing this line would generate an error trace similar to:
+# [example.mf, line 3] error: oopsie
+# ...within f@[example.mf, line 2] called from example.mf, line 5
+# ...within g@[example.mf, line 1] called from example.mf, line 9
+# ...within h@[example.mf, line 8] called from example.mf, line 11
+# ...within bad@[example.mf, line 7] called from example.mf, line 13
+
+println("=====================================");
+println("== Builtin Variables and Functions ==");
+println("=====================================");
+
+# Mellifera aims to be a "batteries-included" scripting language, shipping with
+# out-of-the-box support for common algorithms and data formats. Adding this
+# out-of-the-box support to the core language is a work-in-progress and will
+# improve as the language develops further.
+
+# In this overview, you have already seen a few of the most frequently used
+# builtin functions including `println` and `dumpln` which will write the
+# stringified representation of a value to the standard output stream. For
+# string values, the `println` function will write the string data itself,
+# whereas `dumpln` will write the escaped string data in double quotes as it
+# would appear in Mellifera source code.
+println("hello\nworld"); # hello
+                         # world
+dumpln("hello\nworld"); # "hello\nworld"
+
+# The values of NaN and Inf, representing the not-a-number and infinity values
+# of the number type, are actually just builtin variables.
+NaN; # this is the builtin NaN defined by the interpreter
+let NaN = 0 / 0; # but it could have just as easily been defined in user-code
+
+# In addition the top-level builtins seen so far, there are a number of builtin
+# variables and functions grouped into categories like "math" and "random".
+math::sin(-math::pi); # sine trigonometric function with input -π
+random::integer(1, 10); # generate a random integer in the range [1, 10]
+json::encode({
+    .name = "Ashley",
+    .profession = "student",
+    .allergies = ["seasonal (winter)", "lavender"],
+});
+
+println("===============================");
+println("== Custom User-Defined Types ==");
+println("===============================");
+
+# In addition to the core Mellifera types, users can define custom types using
+# the type keyword. In the example below, we define a new type called `vec2`
+# representing a 2D vector, similar to what one might see in a video game
+# development framework.
+let vec2 = type {
     "fixed": function(self, ndigits) {
-        return vec2::init(self.x.fixed(ndigits), self.y.fixed(ndigits));
+        return new vec2 {
+            .x = self.x.fixed(ndigits),
+            .y = self.y.fixed(ndigits),
+        };
     },
     "magnitude": function(self) {
         return math::sqrt(self.x * self.x + self.y * self.y);
     },
-    "normalized": function(self) {
-        let magnitude = vec2::magnitude(self);
-        if magnitude == 0 {
-            return vec2::init(0, 0);
-        }
-        return vec2::div(self.*, magnitude);
+};
+
+# Custom types are instantiated using the new keyword. Our vec2 expects to
+# operate on a map with number fields x and y, so we instantiate a vec2
+# instance using a map literal with those x and y fields.
+let v2 = new vec2 {.x = 3, .y = 4};
+
+# You can invoke vec2 methods on this newly created vec2 instance, as the type
+# of the value we created is vec2 instead of map.
+println($`v2.magnitude() is {v2.magnitude()}`);
+
+# You can get the type of a value using the builtin `typeof` function, and the
+# name of that type using the builtin `typename` function.
+println($`v2 is a {typename(v2)} => {typeof(v2)}`); # v2 is a vec2 => {"fixed": vec2::fixed@[overview2.mf, line XXX], "magnitude": vec2::magnitude@[overview2.mf, line YYY]}
+
+# Custom types will commonly be defined with an `init` method which acts as the
+# canonical constructor for that type wrapping the actual new expression.
+let vec2 = type {
+    "init": function(x, y) {
+        return new vec2 {.x = x, .y = y};
     },
-    "dot": function(lhs, rhs) {
-        return lhs.x * rhs.x + lhs.y * rhs.y;
+    "fixed": function(self, ndigits) {
+        return new vec2 {
+            .x = self.x.fixed(ndigits),
+            .y = self.y.fixed(ndigits),
+        };
     },
-    "cross": function(lhs, rhs) {
-        return lhs.x * rhs.y - lhs.y * rhs.x;
-    },
-    "add": function(lhs, rhs) {
-        return vec2::init(lhs.x + rhs.x, lhs.y + rhs.y);
-    },
-    "sub": function(lhs, rhs) {
-        return vec2::init(lhs.x - rhs.x, lhs.y - rhs.y);
-    },
-    "mul": function(lhs, rhs) {
-        if ty::is_number(lhs) {
-            return vec2::init(lhs * rhs.x, lhs * rhs.y);
-        }
-        if ty::is_number(rhs) {
-            return vec2::init(lhs.x * rhs, lhs.y * rhs);
-        }
-        return vec2::init(lhs.x * rhs.x, lhs.y * rhs.y);
-    },
-    "div": function(lhs, rhs) {
-        if ty::is_number(rhs) {
-            return vec2::init(lhs.x / rhs, lhs.y / rhs);
-        }
-        return vec2::init(lhs.x / rhs.x, lhs.y / rhs.y);
-    },
-    "distance": function(a, b) {
-        let xdiff = a.x - b.x;
-        let ydiff = a.y - b.y;
-        return math::sqrt(xdiff * xdiff + ydiff * ydiff);
+    "magnitude": function(self) {
+        return math::sqrt(self.x * self.x + self.y * self.y);
     },
 };
-println($`the type vec2 is {vec2}`);
+let v2 = vec2::init(3, 4);
+println($`v2 created with vec2::init is {v2} of type {typename(v2)}`); # v2 created with vec2::init is {"x": 3, "y": 4} of type vec2
 
-print("\n");
+# You may have noticed that sometimes methods are accessed using the ::
+# operator, such as in the case of our `vec2::init` method invocation:
+#
+#   vec2::init(3, 4);
+#
+# and that other times methods are accessed using the . operator, such as in
+# the case of our `v2.magnitude()` invocation. What is up with that?
+#
+# Mellifera has syntax sugar intended to make property access and method
+# invocation more convenient. Since types are just fancy maps, you can access
+# any method of a type using the same [] operator used to access the field of
+# any other map.
+println($`vec2["init"] is {vec2["init"]}`); # vec2["init"] is vec2::init@[overview.mf, line XXX]
 
-println("instances of a type are created using the `new` keyword");
-println(`let v be new vec2 {.x = 3, .y = 4}`);
-let v = new vec2 {.x = 3, .y = 4};
-println($`v is {v}`);
-println($`typeof(v) == vec2 is {typeof(v) == vec2}`);
-println($`typename(v) is {repr(typename(v))}`);
-println($`v.magnitude() is {v.magnitude()}`);
-println($`vec2::mul(v, 2) is {vec2::mul(v, 2)}`);
+# If we wanted to invoke our init method, we could theoretically do so using
+# the [] operator like so.
+println($`vec2["init"](3, 4) is {vec2["init"](3, 4)} with type {typename(vec2["init"](3, 4))}`); # vec2["init"](3, 4) is {"x": 3, "y": 4} with type vec2
 
-print("\n");
+# That is a lot of characters for a relatively common operation, so as syntax
+# sugar the :: operator will lookup the value of map without needing to include
+# the square brackets and quotes.
+println($`vec2::init is {vec2::init}`); # vec2::init is vec2::init@[overview.mf, line XXX]
 
-println("custom types will often define an `init` function for canonical initialization");
-println(`let v be vec2::init(3, 4)`);
-let v = vec2::init(3, 4);
-println($`v is {v}`);
-println($`typeof(v) == vec2 is {typeof(v) == vec2}`);
-println($`typename(v) is {repr(typename(v))}`);
-println($`v.magnitude() is {v.magnitude()}`);
+# So `vec2::init(3, 4)` is exactly equivalent to `vec2["init"](3, 4)`, just
+# with a little bit nicer syntax.
+println($`vec2::init(3, 4) is {vec2::init(3, 4)} with type {typename(vec2::init(3, 4))}`); # vec2::init(3, 4) is {"x": 3, "y": 4} with type vec2
 
-print("\n");
+# The . operator can also be used to access the fields of a map, similar to the
+# :: operator.
+println($`vec2.init is {vec2.init}`); # vec2.init is vec2::init@[overview.mf, line XXX]
+
+# However, there is one major difference between the :: operator and the .
+# operator: when invoking a function call on a function accessed using the .
+# operator, a reference to the value on the left hand side of the . operator is
+# implicitly passed to the invoked function.
+try {
+    vec2.init(3, 4); # arguments passed to the init function are vec2.&, 3, and 4
+}
+catch err {
+    println($`encountered the error {repr(err)}`); # encountered the error "invalid function argument count (expected 2, received 3)"
+}
+
+# You may ask why you would want a reference to the value on the left hand side
+# of the . operator to be implicitly passed to the invoked function. Well, by
+# implicitly passing a reference to that value, it is possible to write code
+# where functions can easily act on and modify values on the left hand side of
+# the . operator. A great example of this is with with the `vector::push`
+# function. If we wanted to push an element onto the back of a vector, we could
+# do so using the :: operator syntax, but that would require manually taking a
+# reference to the vector that needs to be modified.
+let v = [123, 456, 789];
+println($`v before vector::push(v.&, "foo") is {v}`); # v before vector::push(v.&, "foo") is [123, 456, 789]
+vector::push(v.&, "foo");
+println($`v after vector::push(v.&, "foo") is {v}`); # v after vector::push(v.&, "foo") is [123, 456, 789, "foo"]
+
+# Similar to how it is much more convenient to write `vec2::init` than it is to
+# write `vec2["init"]` everywhere, it is much more convenient to write
+# `v.push(value)` than it is to write `vector::push(v.&, value)` everywhere.
+let v = [123, 456, 789];
+println($`v before v.push("foo") is {v}`); # v before v.push("foo") is [123, 456, 789]
+v.push("foo");
+println($`v after v.push("foo") is {v}`); # v after v.push("foo") is [123, 456, 789, "foo"]
+
+# Additionally, when using the . syntax, the programmer does not need to know
+# the exact type of a value when invoking methods. In the example above, we
+# happen to know that `v` was a vector, but what if it was some unknown type?
+# Maybe we have a generic function that works on any value with a `call`
+# method. Without this implicit reference passing, we would have to sprinkle
+# `typeof` everywhere in order to actually get to the generic functions we want
+# call.
+let print_count = function(value) {
+    let count = typeof(value)::count(value.&); # YUCK!!!
+    println($`{repr(value)} has an element count of {count}`);
+};
+print_count(["foo", "bar", "baz"]); # ["foo", "bar", "baz"] has an element count of 3
+print_count({.weather = "rainy", .temperature = "46°F"}); # {"weather": "rainy", "temperature": "46°F"} has an element count of 2
+
+let print_count = function(value) {
+    let count = value.count(); # MUCH NICER!!!
+    println($`{repr(value)} has an element count of {count}`);
+};
+print_count(["foo", "bar", "baz"]); # ["foo", "bar", "baz"] has an element count of 3
+print_count({.weather = "rainy", .temperature = "46°F"}); # {"weather": "rainy", "temperature": "46°F"} has an element count of 2
+
+# When not invoking a function, the . operator behaves similar to the ::
+# operator, accessing the properties of a value by name.
+let m = {"foo": 123, "bar": 456};
+m.foo = 789;
+math::exp10(m.bar);
+
+# This leads to the general advice that you should use the :: operator when
+# accessing the properties of a type and you should use . operator when
+# accessing the properties on an instance of a type.
+let v2 = vec2::init(3, 4); # vec2 is a type => use ::
+v2.x; # v2 is an instance of type vec2 => use .
+v2.magnitude(); # v2 is an instance of type vec2 => use .
+
+# Previously in this overview, it was mentioned that it is possible to create
+# custom types that act as iterators by defining a type with a `next` method.
+# The easiest way to define one of these types is by extending the builtin
+# iterator type with the `extends` function. Note that Mellifera uses
+# structural typing, so the `extends` function is *not* creating an is-a
+# relationship that one would find in a language with inheritance. Rather, the
+# `extends` function is a convenient way of saying "take all of the methods
+# from this existing type and override some of them with any additional methods
+# I define here".
+let count_by_threes = type extends(iterator, {
+    "init": function(begin, end) {
+        return new count_by_threes {
+            .cur = begin,
+            .end = end,
+        };
+    },
+    "next": function(self) {
+        if self.cur >= self.end {
+            error null; # error null signals end-of-iteration
+        }
+        self.cur = self.cur + 3;
+        return self.cur - 3;
+    },
+});
+
+# Since our count_by_threes instance acts as an iterator, we can iterate over
+# that instance with a for-loop.
+let iter = count_by_threes::init(10, 32);
+for x in iter {
+    println(x); # 10
+                # 13
+                # 16
+                # 19
+                # 22
+                # 25
+                # 28
+                # 31
+}
+
+# Additionally, since the count_by_threes type is extended from iterator, we
+# can use all of the iterator methods on our count_by_threes instance.
+let iter = count_by_threes::init(10, 32);
+let even = iter.filter(function(x) { return x % 2 == 0; }).into_vector();
+println($`even is {even}`); # even is [10, 16, 22, 28]
 
 println("==================");
 println("== Example Code ==");
 println("==================");
 
-println("example merge sort");
-println("------------------");
+# Example recursive fibonacci implementation.
+let fibonacci = function(x) {
+    if x == 0 or x == 1 {
+        return x;
+    }
+    return fibonacci(x - 1) + fibonacci(x - 2);
+};
+println($"fibonacci(10) is {fibonacci(10)}");
+
+# Example merge sort implementation.
 let sort = function(x) {
     if x.count() <= 1 {
         return x;
@@ -812,43 +983,34 @@ let sort = function(x) {
     return result;
 };
 let vec = [6, 8, 3, 1, 7, 2, 4, 5, 9];
-dumpln(sort);
 println($"unsorted vector is {vec}");
 println($"sorted vector is {sort(vec)}");
 
-print("\n");
+# Example implementation counting the frequency of words in a string. Returns a
+# map of individual words to that word's occurrence count.
+let word_count = function(s) {
+    let words = re::split(s, r`\b+`)
+        .into_iterator()
+        .map(function(word) {
+            return re::replace(word.to_lower(), r`[^\w]`, "");
+        })
+        .filter(function(word) {
+            return word.count() != 0;
+        });
 
-println("example fibonacci");
-println("-----------------");
-let fibonacci = function(x) {
-    if x == 0 {
-        return 0;
+    let counts = Map{};
+    for word in words {
+        try { counts[word] = counts[word] + 1; }
+        catch { counts[word] = 1; }
     }
-    elif x == 1 {
-        return 1;
-    }
-    else {
-        return fibonacci(x - 1) + fibonacci(x - 2);
-    }
+
+    return counts;
 };
-dumpln(fibonacci);
-println($"fibonacci(10) is {fibonacci(10)}");
 
-print("\n");
-
-println("============================");
-println("== Top-Level Error Traces ==");
-println("============================");
-
-let g = function() {
-    let f = function() {
-        error "oopsie";
-    };
-    f();
-};
-function() {
-    let h = function() {
-        g();
-    };
-    h();
-}();
+let text = ```
+Peter Piper picked a peck of pickled peppers,
+A peck of pickled peppers Peter Piper picked;
+If Peter Piper picked a peck of pickled peppers,
+Where’s the peck of pickled peppers Peter Piper picked?
+```;
+println($"word count of the input text: {word_count(text)}");

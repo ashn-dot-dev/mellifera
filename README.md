@@ -20,6 +20,7 @@ Here is an example word counting program in Mellifera showcasing some of the
 syntax and semantics of the language.
 
 ```mellifera
+#!/usr/bin/env mf
 let help = function(writeln) {
     writeln($```
 usage: {argv[0]} [file]
@@ -101,7 +102,8 @@ let ordered = occurrences
             .word = pair.key,
             .count = pair.value,
         };
-    }).into_vector();
+    })
+    .into_vector();
 
 if top != null {
     ordered = ordered.slice(0, min(top, ordered.count()));
@@ -132,12 +134,11 @@ $ curl -s https://www.gutenberg.org/files/71/71-0.txt | mf examples/word-count.m
 {"the":700,"to":441,"and":421,"of":391,"a":295,"it":212,"i":189,"in":182,"is":176,"not":172}
 ```
 
-Mellifera uses value semantics, meaning assignment operations copy the contents
-(i.e. the "value") of an object when executed. After an assignment statement
-such as `a = b`, the objects `a` and `b` will contain separate copies of the
-same value. Mellifera also performs equality comparisons based on structural
-equality, so two objects are considered to be equal if they have the same
-contents.
+Mellifera features value semantics, meaning assignment operations copy the
+contents of a value when executed. After an assignment statement such as `a =
+b`, `a` and `b` will contain separate copies of the same value. Mellifera also
+performs equality comparisons based on structural equality, so two values are
+considered to be equal if they have the same contents.
 
 ```mellifera
 let x = ["foo", {"bar": 123}, "baz"];
@@ -161,7 +162,7 @@ print("\n");
 
 let z = ["foo", {"bar": "xyz"}, "baz"];
 println($`z is {z}`);
-# y and z are separate values with structural equality
+# y and z are separate values that are structurally equal
 println($`y == z is {y == z}`);
 ```
 
@@ -182,8 +183,8 @@ y == z is true
 Unlike most scripting languages, in which reference semantics are the default
 way of assigning and passing around composite data, Mellifera uses value
 semantics with explicit references. One may obtain a reference to a value using
-the postfix `.&` operator, then later dereference that reference-object to get
-the original value using the postfix `.*` operator.
+the postfix `.&` operator, then later dereference that reference-value to get
+the original referenced value using the postfix `.*` operator.
 
 ```mellifera
 let pass_by_value = function(val) {
@@ -437,7 +438,6 @@ python3 -m venv .venv-mellifera
 python3 -m pip install -r requirements.txt
 MELLIFERA_HOME=$(pwd)
 
-make build-py  # build standalone interpreter executable with Nuitka
 make check-py  # run interpreter golden tests
 make lint-py   # lint with mypy and flake8
 make format-py # format using black
