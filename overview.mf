@@ -19,7 +19,7 @@ println("============================");
 3.14159;
 0xdeadbeef;
 
-# Arithmetic operators + - * / % work with numbers how you would.
+# Arithmetic operators + - * / % work with numbers how you would expect.
 println($`123 + 456 is {123 + 456}`); # 123 + 456 is 579
 println($`123 - 456 is {123 - 456}`); # 123 - 456 is -333
 println($`123 * 456 is {123 * 456}`); # 123 * 456 is 56088
