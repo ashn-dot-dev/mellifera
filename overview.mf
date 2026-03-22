@@ -33,7 +33,7 @@ println($`+7 % -3 is {+7 % -3}`); # +7 % -3 is 1
 println($`-7 % +3 is {-7 % +3}`); # -7 % +3 is -1
 println($`-7 % -3 is {-7 % -3}`); # -7 % -3 is -1
 
-# Comparison operators == != <= >= < and > also work with numbers how you would
+# Comparison operators == != <= >= < > also work with numbers how you would
 # expect.
 println($`123 == 456 is {123 == 456}`); # 123 == 456 is false
 println($`123 != 456 is {123 != 456}`); # 123 != 456 is true
