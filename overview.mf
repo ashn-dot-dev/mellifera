@@ -59,7 +59,7 @@ Inf;
 #   \n => newline
 #   \" => double quote
 #   \\ => backslash
-#   \xXY => hexadecimal byte 0xXY
+#   \xMN => hexadecimal byte 0xMN
 println("hello\tworld"); # "hello	world"
 println("hello\x5Fworld"); # "hello_world"
 println("hello\xf0\x9f\x8d\x94world"); # "hello🍔world"
