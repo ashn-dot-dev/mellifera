@@ -277,7 +277,7 @@ for key, value in m {
 #
 # Sets may optionally be prefixed with the Set keyword to disambiguate them
 # from maps. The empty set *must* be written as Set{}.
-Set{}; # empty map
+Set{}; # empty set
 {"foo", "bar", "baz"};
 Set{"foo", "bar", "baz"}; # equivalent to the set above
 
