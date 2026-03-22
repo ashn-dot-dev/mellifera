@@ -74,7 +74,7 @@ line 2
 line 3```);
 
 # You can acheve markdown-like multiline string literals by trimming leading
-# and trailing whitespace from the string with the .trim() method.
+# and trailing whitespace from the string with the `trim` method.
 println(```
 line 1
 line 2
@@ -192,11 +192,11 @@ let v = [123, 456, 789];
 println($`v is {v}`); # v is [123, 456, 789]
 println($`v.count() is {v.count()}`); # v.count() is 3
 
-# You can insert an element at the end of a vector with the .push() method.
+# You can insert an element at the end of a vector with the `push` method.
 v.push("foo");
 println($`v after v.push("foo") is {v}`); # v after v.push("foo") is [123, 456, 789, "foo"]
 
-# You can remove an element from the end of a vector with the .pop() method.
+# You can remove an element from the end of a vector with the `pop` method.
 let popped = v.pop();
 println($`v after v.pop() is {v} and the popped element is {repr(popped)}`); # v after v.pop() is [123, 456, 789] and the popped element is "foo"
 
@@ -254,11 +254,11 @@ let m = {.name = "Ashley", .age = 21};
 println($`m is {m}`); # m is {"name": "Ashley", "age": 21}
 println($`m.count() is {m.count()}`); # m.count() is 2
 
-# You can insert an element into a map with the .insert() method.
+# You can insert an element into a map with the `insert` method.
 m.insert("profession", "student");
 println($`m after m.insert("profession", "student") is {m}`); # m after m.insert("profession", "student") is {"name": "Ashley", "age": 21, "profession": "student"}
 
-# You can remove an element from a map with the .remove() method.
+# You can remove an element from a map with the `remove` method.
 let removed = m.remove("age");
 println($`m after m.remove("age") is {m} and the removed value is {repr(removed)}`); # m after m.remove("age") is {"name": "Ashley", "profession": "student"} and the removed value is 21
 
@@ -292,11 +292,11 @@ let s = {123, 456, 789};
 println($`s is {s}`); # s is {123, 456, 789}
 println($`s.count() is {s.count()}`); # s.count() is 3
 
-# You can insert an element into a set with the .insert() method.
+# You can insert an element into a set with the `insert` method.
 s.insert("foo");
 println($`s after s.insert("foo") is {s}`); # s after s.insert("foo") is {123, 456, 789, "foo"}
 
-# You can remove an element from a set with the .remove() method.
+# You can remove an element from a set with the `remove` method.
 let removed = s.remove(456);
 println($`s after s.remove(456) is {s} and the removed value is {repr(removed)}`); # s after s.remove(456) is {123, 789, "foo"} and the removed value is 456
 
