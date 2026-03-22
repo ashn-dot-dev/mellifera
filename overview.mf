@@ -729,7 +729,7 @@ println("hello\nworld"); # hello
                          # world
 dumpln("hello\nworld"); # "hello\nworld"
 
-# The values of NaN and Inf, representing the not-a-number and infinity values
+# The values of NaN and Inf, representing the not a number and infinity values
 # of the number type, are actually just builtin variables.
 NaN; # this is the builtin NaN defined by the interpreter
 let NaN = 0 / 0; # but it could have just as easily been defined in user-code
