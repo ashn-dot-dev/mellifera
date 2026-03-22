@@ -72,6 +72,7 @@ println(`hello\tworld`); # hello\tworld
 println(```line 1
 line 2
 line 3```);
+
 # You can acheve markdown-like multiline string literals by trimming leading
 # and trailing whitespace from the string with the .trim() method.
 println(```
@@ -141,6 +142,7 @@ catch err {
 # Mellifera has the null type and value, which represents the absence of
 # another meaningful value, similar to null in JavaScript or None in Python.
 null;
+
 # Null is commonly returned by functions indicating that nothing found.
 println($`[123, 456, 789].find(456) returns {[123, 456, 789].find(456)}`); # [123, 456, 789].find(456) returns 1
 println($`[123, 456, 789].find("nope") returns {[123, 456, 789].find("nope")}`); # [123, 456, 789].find("nope") returns null
@@ -402,7 +404,6 @@ println("====================================");
 
 # Arms of an if statement are evaluated in order until a condition evaluates as
 # true, at which point the body of that conditional is executed.
-
 if true {
     println("A (if)");
 }
@@ -949,6 +950,7 @@ let fibonacci = function(x) {
     }
     return fibonacci(x - 1) + fibonacci(x - 2);
 };
+
 println($"fibonacci(10) is {fibonacci(10)}");
 
 # Example merge sort implementation.
@@ -982,6 +984,7 @@ let sort = function(x) {
     }
     return result;
 };
+
 let vec = [6, 8, 3, 1, 7, 2, 4, 5, 9];
 println($"unsorted vector is {vec}");
 println($"sorted vector is {sort(vec)}");
