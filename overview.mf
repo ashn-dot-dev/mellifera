@@ -125,6 +125,18 @@ false;
 println($`not true is {not true}`); # not true is false
 println($`not false is {not false}`); # not false is true
 
+# The binary `and` operator produces a true value when both operands are true.
+println($`true and true is {true and true}`); # true and true is true
+println($`true and false is {true and false}`); # true and false is false
+println($`false and true is {false and true}`); # false and true is false
+println($`false and false is {false and false}`); # false and false is false
+
+# The binary `or` operator produces a true value when either operand is true.
+println($`true or true is {true or true}`); # true or true is true
+println($`true or false is {true or false}`); # true or false is true
+println($`false or true is {false or true}`); # false or true is true
+println($`false or false is {false or false}`); # false or false is false
+
 # Mellifera does not have a concept of truthy values seen in other scripting
 # languages. Statements with conditional expressions in Mellifera such as
 # if-statements and while-loops *must* be provided a boolean value.
