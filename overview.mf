@@ -185,7 +185,7 @@ if "foobar" =~ r`foo(bar|baz)(qux)?` {
 
 # Elements of a vector are accessed using the postfix [] operator, which uses
 # zero-based indexing.
-println($`[123, 456, 789][1] is {[123, 456, 789][1]}`); # [123, 456, 789][1]
+println($`[123, 456, 789][1] is {[123, 456, 789][1]}`); # [123, 456, 789][1] is 456
 
 # You can get the number of elements in a vector using the .count() method.
 let v = [123, 456, 789];
