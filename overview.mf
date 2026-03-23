@@ -324,8 +324,7 @@ let m = {"foo": "bar"};
 let r = m.&; # reference to the value stored in m
 println($`m is {m}`); # m is {"foo": "bar"}
 println($`r is {r} and r.* is {r.*}`); # r is reference@0x140001de900 and r.* is {"foo": "bar"}
-# ...pretend that m is being updated from some external operation
-m["foo"] = 123;
+m["foo"] = 123; # ...pretend that m is being updated from some external operation
 println($`m after being updated with m["foo"] = 123 is {m}`); # m after being updated with m["foo"] = 123 is {"foo": 123}
 println($`r after m was updated with m["foo"] = 123 is {r} and r.* is {r.*}`); # r after m was updated with m["foo"] = 123 is reference@0x140001de900 and r.* is {"foo": 123}
 
