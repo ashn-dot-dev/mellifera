@@ -723,7 +723,7 @@ let bad = function() {
 # ...within bad@[example.mf, line 7] called from example.mf, line 13
 
 println("=====================================");
-println("== Builtin Variables and Functions ==");
+println("== Built-in Variables and Functions ==");
 println("=====================================");
 
 # Mellifera aims to be a "batteries-included" scripting language, shipping with
@@ -732,7 +732,7 @@ println("=====================================");
 # improve as the language develops further.
 
 # In this overview, you have already seen a few of the most frequently used
-# builtin functions including `println` and `dumpln` which will write the
+# built-in functions including `println` and `dumpln` which will write the
 # stringified representation of a value to the standard output stream. For
 # string values, the `println` function will write the string data itself,
 # whereas `dumpln` will write the escaped string data in double quotes as it
@@ -742,12 +742,13 @@ println("hello\nworld"); # hello
 dumpln("hello\nworld"); # "hello\nworld"
 
 # The values of NaN and Inf, representing the not a number and infinity values
-# of the number type, are actually just builtin variables.
-NaN; # this is the builtin NaN defined by the interpreter
+# of the number type, are actually just built-in variables.
+NaN; # this is the built-in NaN defined by the interpreter
 let NaN = 0 / 0; # but it could have just as easily been defined in user-code
 
-# In addition the top-level builtins seen so far, there are a number of builtin
-# variables and functions grouped into categories like "math" and "random".
+# In addition the top-level built-ins seen so far, there are a number of
+# built-in variables and functions grouped into categories like "math" and
+# "random".
 math::sin(-math::pi); # sine trigonometric function with input -π
 random::integer(1, 10); # generate a random integer in the range [1, 10]
 json::encode({
@@ -785,8 +786,8 @@ let v2 = new vec2 {.x = 3, .y = 4};
 # of the value we created is vec2 instead of map.
 println($`v2.magnitude() is {v2.magnitude()}`);
 
-# You can get the type of a value using the builtin `typeof` function, and the
-# name of that type using the builtin `typename` function.
+# You can get the type of a value using the built-in `typeof` function, and the
+# name of that type using the built-in `typename` function.
 println($`v2 is a {typename(v2)} => {typeof(v2)}`); # v2 is a vec2 => {"fixed": vec2::fixed@[overview2.mf, line XXX], "magnitude": vec2::magnitude@[overview2.mf, line YYY]}
 
 # Custom types will commonly be defined with an `init` method which acts as the
@@ -907,7 +908,7 @@ v2.magnitude(); # v2 is an instance of type vec2 => use .
 
 # Previously in this overview, it was mentioned that it is possible to create
 # custom types that act as iterators by defining a type with a `next` method.
-# The easiest way to define one of these types is by extending the builtin
+# The easiest way to define one of these types is by extending the built-in
 # iterator type with the `extends` function. Note that Mellifera uses
 # structural typing, so the `extends` function is *not* creating an is-a
 # relationship that one would find in a language with inheritance. Rather, the
