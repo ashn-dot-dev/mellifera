@@ -337,7 +337,7 @@ println($`r after m was updated with r.*["foo"] = 456 is {r} and r.* is {r.*}`);
 #
 #   reference.*[index]
 #
-# can be equivalently performed using the syntax, known as auto-dereferencing:
+# is equivalent to the following syntax, known as auto-dereferencing:
 #
 #   reference[index]
 r["foo"] = null;
