@@ -409,9 +409,9 @@ println($`a is {a} with address {a.&}`); # a is 123 with address reference@0x140
 let b = a;
 println($`b is {b} with address {b.&}`); # b is 123 with address reference@0x140001d0bf0
 
-println("====================================");
-println("== If, Elif, and Else, Statements ==");
-println("====================================");
+println("===================================");
+println("== If, Elif, and Else Statements ==");
+println("===================================");
 
 # Arms of an if statement are evaluated in order until a condition evaluates as
 # true, at which point the body of that conditional is executed.
