@@ -1,11 +1,11 @@
 let vec2 = type {
-    "fixed": function(self, ndigits) {
+    .fixed = function(self, ndigits) {
         return new vec2 {
             .x = self.x.fixed(ndigits),
             .y = self.y.fixed(ndigits),
         };
     },
-    "magnitude": function(self) {
+    .magnitude = function(self) {
         return math::sqrt(self.x * self.x + self.y * self.y);
     },
 };

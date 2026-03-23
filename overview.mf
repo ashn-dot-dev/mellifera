@@ -529,10 +529,10 @@ for z in {"a", "b", "c"} {
 # uses several concepts that have not yet been touched on in this overview, so
 # for now just know that Mellifera supports custom user-defined iterators.
 let fizzbuzzer = type extends(iterator, {
-    "init": function(n, max) {
+    .init = function(n, max) {
         return new fizzbuzzer {"n": n, "max": max};
     },
-    "next": function(self) {
+    .next = function(self) {
         let n = self.n;
         if n > self.max {
             error null; # error null signals end-of-iteration
@@ -766,13 +766,13 @@ println("===============================");
 # representing a 2D vector, similar to what one might see in a video game
 # development framework.
 let vec2 = type {
-    "fixed": function(self, ndigits) {
+    .fixed = function(self, ndigits) {
         return new vec2 {
             .x = self.x.fixed(ndigits),
             .y = self.y.fixed(ndigits),
         };
     },
-    "magnitude": function(self) {
+    .magnitude = function(self) {
         return math::sqrt(self.x * self.x + self.y * self.y);
     },
 };
@@ -793,16 +793,16 @@ println($`v2 is a {typename(v2)} => {typeof(v2)}`); # v2 is a vec2 => {"fixed": 
 # Custom types will commonly be defined with an `init` method which acts as the
 # canonical constructor for that type wrapping the actual new expression.
 let vec2 = type {
-    "init": function(x, y) {
+    .init = function(x, y) {
         return new vec2 {.x = x, .y = y};
     },
-    "fixed": function(self, ndigits) {
+    .fixed = function(self, ndigits) {
         return new vec2 {
             .x = self.x.fixed(ndigits),
             .y = self.y.fixed(ndigits),
         };
     },
-    "magnitude": function(self) {
+    .magnitude = function(self) {
         return math::sqrt(self.x * self.x + self.y * self.y);
     },
 };
@@ -916,13 +916,13 @@ v2.magnitude(); # v2 is an instance of type vec2 => use .
 # from this existing type and override some of them with any additional methods
 # I define here".
 let count_by_threes = type extends(iterator, {
-    "init": function(begin, end) {
+    .init = function(begin, end) {
         return new count_by_threes {
             .cur = begin,
             .end = end,
         };
     },
-    "next": function(self) {
+    .next = function(self) {
         if self.cur >= self.end {
             error null; # error null signals end-of-iteration
         }

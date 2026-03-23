@@ -1,17 +1,17 @@
 let node = type {
-    "init": function(name) {
+    .init = function(name) {
         return new node {"name": name, "children": Set{}};
     },
-    "into_string": function(self) {
+    .into_string = function(self) {
         return self.name;
     },
 };
 
 let graph = type {
-    "init": function(nodes) {
+    .init = function(nodes) {
         return new graph {"nodes": nodes};
     },
-    "into_string": function(self) {
+    .into_string = function(self) {
         let elements = [];
         for node in self.nodes {
             elements.push(string::init(node.*));
