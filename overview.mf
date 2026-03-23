@@ -897,7 +897,7 @@ print_count({.weather = "rainy", .temperature = "46°F"}); # {"weather": "rainy"
 # operator, accessing the properties of a value by name.
 let m = {"foo": 123, "bar": 456};
 m.foo = 789;
-math::exp10(m.bar);
+math::log10(m.bar);
 
 # This leads to the general advice that you should use the :: operator when
 # accessing the properties of a type and you should use . operator when

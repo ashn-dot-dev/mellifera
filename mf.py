@@ -2927,7 +2927,15 @@ class AstExpressionDiv(AstExpression):
                 self.location,
                 f"attempted / operation with types {quote(typename(lhs))} and {quote(typename(rhs))}",
             )
-        return Number.new(float(lhs.data) / float(rhs.data))
+        lhs = float(lhs.data)
+        rhs = float(rhs.data)
+        if rhs == 0.0:
+            if lhs > 0.0:
+                return Number.new(+math.inf)
+            if lhs < 0.0:
+                return Number.new(-math.inf)
+            return Number.new(math.nan)
+        return Number.new(lhs / rhs)
 
 
 @final
@@ -3814,20 +3822,19 @@ class AstStatementAssignment(AstStatement):
             except Exception as e:
                 return Error(self.location, str(e))
 
-        if isinstance(store, Reference) and isinstance(
-            self.lhs, AstExpressionAccessDot
-        ):
+        if isinstance(store, Reference):
             store_deref = store.data
-            try:
-                store_deref[field] = copy(rhs)
-                return None
-            except (NotImplementedError, IndexError, KeyError):
-                return Error(
-                    self.location,
-                    f"invalid {store.typename()} to {store_deref.typename()} access with field {field}",
-                )
-            except Exception as e:
-                return Error(self.location, str(e))
+            if isinstance(store_deref, (Vector, Map)):
+                try:
+                    store_deref[field] = copy(rhs)
+                    return None
+                except (NotImplementedError, IndexError, KeyError):
+                    return Error(
+                        self.location,
+                        f"invalid {store.typename()} to {store_deref.typename()} access with field {field}",
+                    )
+                except Exception as e:
+                    return Error(self.location, str(e))
         return Error(
             self.location,
             f"attempted access into type {quote(typename(store))} with type {quote(typename(field))}",
