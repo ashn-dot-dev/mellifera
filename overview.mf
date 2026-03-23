@@ -708,19 +708,19 @@ let g = function() {
     };
     f();
 };
-let bad = function() {
+let boom = function() {
     let h = function() {
         g();
     };
     h();
 };
-# bad();
+# boom();
 # ^^^^^^ Executing this line would generate an error trace similar to:
 # [example.mf, line 3] error: oopsie
 # ...within f@[example.mf, line 2] called from example.mf, line 5
 # ...within g@[example.mf, line 1] called from example.mf, line 9
 # ...within h@[example.mf, line 8] called from example.mf, line 11
-# ...within bad@[example.mf, line 7] called from example.mf, line 13
+# ...within boom@[example.mf, line 7] called from example.mf, line 13
 
 println("=====================================");
 println("== Built-in Variables and Functions ==");
