@@ -344,7 +344,7 @@ r["foo"] = null;
 println($`m after being updated with r["foo"] = null is {m}`); # m after being updated with r["foo"] = null is {"foo": null}
 println($`r after m was updated with r["foo"] = null is {r} and r.* is {r.*}`); # r after m was updated with r["foo"] = null is reference@0x140001de900 and r.* is {"foo": null}
 
-# Mellifera supports first class functions, defined using the function keyword.
+# Mellifera supports first-class functions, defined using the function keyword.
 function(a, b) { return a + b; };
 
 # Functions close over their environment.
