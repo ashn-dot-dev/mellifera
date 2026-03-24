@@ -1,0 +1,12 @@
+let m = {"foo": "bar"};
+let r = m.&;
+
+# lvalue auto-deref
+r.foo = "abc";
+dumpln(m);
+
+# rvalue auto-deref
+dumpln(r.foo);
+################################################################################
+# {"foo": "abc"}
+# "abc"
