@@ -21,61 +21,8 @@ syntax and semantics of the language.
 
 ```mellifera
 #!/usr/bin/env mf
-let help = function(writeln) {
-    writeln($```
-usage: {argv[0]} [file]
-
-positional arguments:
-  file          Text file to process (defaults to stdin).
-
-optional arguments:
-      --json    Output results as a JSON object.
-      --top=n   Output only the top n words.
-  -h, --help    Display this help text and exit.
-    ```.trim());
-};
-
-let file = null;
-let text = null;
-let fmt = null;
-let top = null;
-let argi = 1;
-while argi < argv.count() {
-    if argv[argi] =~ r`^-+json$` {
-        fmt = "json";
-        argi = argi + 1;
-        continue;
-    }
-    if argv[argi] =~ r`^-+top(=(.*))?$` {
-        if $2 != null {
-            top = number::init($2);
-        }
-        else {
-            argi = argi + 1;
-            top = number::init(argv[argi]);
-        }
-        argi = argi + 1;
-        continue;
-    }
-    if argv[argi] =~ r`^-+h(elp)?$` {
-        help(println);
-        exit(0);
-    }
-
-    if file != null and text != null {
-        error $"multiple input files, {file} and {argv[argi]}";
-    }
-    file = argv[argi];
-    text = fs::read(file);
-    argi = argi + 1;
-}
-if file == null and text == null {
-    file = "<stdin>";
-    text = input();
-}
-
-let occurrences = Map{};
-let words = re::split(text, r`\b+`)
+# usage: cat FILE | word-count-simple.mf
+let words = re::split(input(), r`\b+`)
     .into_iterator()
     .map(function(word) {
         return re::replace(word.to_lower(), r`[^\w]`, "");
@@ -83,55 +30,30 @@ let words = re::split(text, r`\b+`)
     .filter(function(word) {
         return word.count() != 0;
     });
+
+let counts = Map{};
 for word in words {
-    if occurrences.contains(word) {
-        occurrences[word] = occurrences[word] + 1;
-        continue;
-    }
-    occurrences[word] = 1;
+    try { counts[word] = counts[word] + 1; }
+    catch { counts[word] = 1; }
 }
 
-let ordered = occurrences
+let ordered = counts
     .pairs()
     .sorted_by(function(lhs, rhs) {
         return rhs.value - lhs.value;
-    })
-    .into_iterator()
-    .map(function(pair) {
-        return {
-            .word = pair.key,
-            .count = pair.value,
-        };
-    })
-    .into_vector();
-
-if top != null {
-    ordered = ordered.slice(0, min(top, ordered.count()));
-}
-
-if fmt == "json" {
-    let map = Map{};
-    for x in ordered {
-        map[x.word] = x.count;
-    }
-    println(json::encode(map));
-}
-else {
-    for x in ordered {
-        println($"{x.word} {x.count}");
-    }
+    });
+for pair in ordered {
+    println($"{pair.key} {pair.value}");
 }
 ```
 
 ```sh
-$ curl -s https://www.gutenberg.org/files/71/71-0.txt | mf examples/word-count.mf --top 5
+curl -s https://www.gutenberg.org/files/71/71-0.txt | mf examples/word-count-simple.mf | head -n 5
 the 700
 to 441
 and 421
 of 391
 a 295
-$ curl -s https://www.gutenberg.org/files/71/71-0.txt | mf examples/word-count.mf --top=10 --json
-{"the":700,"to":441,"and":421,"of":391,"a":295,"it":212,"i":189,"in":182,"is":176,"not":172}
 ```
 
 Mellifera features value semantics, meaning assignment operations copy the
