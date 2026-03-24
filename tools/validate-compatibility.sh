@@ -37,7 +37,7 @@ validate() {
     fi
 }
 
-for f in $(find examples tests -name '*.mf' | sort); do
+for f in overview.mf $(find examples tests -name '*.mf' | sort); do
     validate "${f}"
 done
 
