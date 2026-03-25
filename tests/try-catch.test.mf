@@ -1,6 +1,6 @@
-try {                 } catch     { println("error");               }
+try {                 } catch     { println("error");         }
 try {                 } catch err { println($"error: {err}"); }
-try { 1 + 1;          } catch     { println("error");               }
+try { 1 + 1;          } catch     { println("error");         }
 try { 1 + "foo";      } catch err { println($"error: {err}"); }
 try { error "oopsie"; } catch err { println($"error: {err}"); }
 ################################################################################
