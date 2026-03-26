@@ -3,4 +3,3 @@ println($`Set{{"foo", "bar", "baz"}}.count() is {Set{"foo", "bar", "baz"}.count(
 ################################################################################
 # Set{}.count() is 0
 # Set{"foo", "bar", "baz"}.count() is 3
-
