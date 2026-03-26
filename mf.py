@@ -2927,15 +2927,15 @@ class AstExpressionDiv(AstExpression):
                 self.location,
                 f"attempted / operation with types {quote(typename(lhs))} and {quote(typename(rhs))}",
             )
-        lhs = float(lhs.data)
-        rhs = float(rhs.data)
-        if rhs == 0.0:
-            if lhs > 0.0:
+        lhs_float = float(lhs.data)
+        rhs_float = float(rhs.data)
+        if rhs_float == 0.0:
+            if lhs_float > 0.0:
                 return Number.new(+math.inf)
-            if lhs < 0.0:
+            if lhs_float < 0.0:
                 return Number.new(-math.inf)
             return Number.new(math.nan)
-        return Number.new(lhs / rhs)
+        return Number.new(lhs_float / rhs_float)
 
 
 @final
@@ -3831,7 +3831,7 @@ class AstStatementAssignment(AstStatement):
                     store_deref[field] = copy(rhs)
                     return None
                 except (NotImplementedError, IndexError, KeyError):
-                    pass # Handled by generic error just below
+                    pass  # Handled by generic error just below
                 except Exception as e:
                     return Error(self.location, str(e))
 
