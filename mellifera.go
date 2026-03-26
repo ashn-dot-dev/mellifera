@@ -83,7 +83,7 @@ func fnv1a(s string) uint64 {
 type Value interface {
 	Typename() string
 	String() string
-	Meta() *Map
+	Meta(ctx *Context) *Map
 	Copy() Value
 	CopyOnWrite()
 	Hash() uint64
@@ -91,8 +91,8 @@ type Value interface {
 	CombEncode(e *CombEncoder) error
 }
 
-func MetaFunction(value Value, name Value) (Value, bool) {
-	meta := value.Meta()
+func MetaFunction(ctx *Context, value Value, name Value) (Value, bool) {
+	meta := value.Meta(ctx)
 	if meta == nil {
 		return nil, false
 	}
@@ -308,10 +308,10 @@ func NewContext() Context {
 	})
 	ctx.referenceMeta = ctx.NewMetaMap("reference", nil)
 
-	ctx.Null = &Null{nil}
+	ctx.Null = &Null{}
 
-	ctx.True = &Boolean{true, ctx.booleanMeta}
-	ctx.False = &Boolean{false, ctx.booleanMeta}
+	ctx.True = &Boolean{true}
+	ctx.False = &Boolean{false}
 
 	ctx.BaseEnvironment = NewEnvironment(nil)
 
@@ -469,15 +469,15 @@ func (ctx *Context) NewBoolean(data bool) *Boolean {
 }
 
 func (ctx *Context) NewNumber(data float64) *Number {
-	return &Number{data, ctx.numberMeta}
+	return &Number{data}
 }
 
 func (ctx *Context) NewString(data string) *String {
-	return &String{data, ctx.stringMeta}
+	return &String{data}
 }
 
 func (ctx *Context) NewStringf(format string, args ...any) *String {
-	return &String{fmt.Sprintf(format, args...), ctx.stringMeta}
+	return &String{fmt.Sprintf(format, args...)}
 }
 
 func (ctx *Context) NewRegexp(text string) (*Regexp, error) {
@@ -485,15 +485,12 @@ func (ctx *Context) NewRegexp(text string) (*Regexp, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid regular expression \"%s\"", escape(text))
 	}
-	return &Regexp{data, ctx.regexpMeta}, nil
+	return &Regexp{data}, nil
 }
 
 func (ctx *Context) NewVector(elements []Value) *Vector {
 	if elements == nil || len(elements) == 0 {
-		return &Vector{
-			data: nil,
-			meta: ctx.vectorMeta,
-		}
+		return &Vector{data: nil}
 	}
 
 	return &Vector{
@@ -501,7 +498,6 @@ func (ctx *Context) NewVector(elements []Value) *Vector {
 			elements: elements,
 			uses:     1,
 		},
-		meta: ctx.vectorMeta,
 	}
 }
 
@@ -510,12 +506,14 @@ func (ctx *Context) NewMap(elements []MapPair) *Map {
 		return &Map{
 			data: nil,
 			meta: ctx.mapMeta,
+			name: nil,
 		}
 	}
 
 	result := &Map{
 		data: nil,
 		meta: ctx.mapMeta,
+		name: nil,
 	}
 	for _, element := range elements {
 		result.Insert(element.Key, element.Value)
@@ -527,6 +525,7 @@ func (ctx *Context) NewMetaMap(name string, elements []MapPair) *Map {
 	if elements == nil || len(elements) == 0 {
 		return &Map{
 			data: nil,
+			meta: nil,
 			name: &name,
 		}
 	}
@@ -541,16 +540,10 @@ func (ctx *Context) NewMetaMap(name string, elements []MapPair) *Map {
 
 func (ctx *Context) NewSet(elements []Value) *Set {
 	if elements == nil || len(elements) == 0 {
-		return &Set{
-			data: nil,
-			meta: ctx.setMeta,
-		}
+		return &Set{data: nil}
 	}
 
-	result := &Set{
-		data: nil,
-		meta: ctx.setMeta,
-	}
+	result := &Set{data: nil}
 	for _, element := range elements {
 		result.Insert(element)
 	}
@@ -558,19 +551,19 @@ func (ctx *Context) NewSet(elements []Value) *Set {
 }
 
 func (ctx *Context) NewReference(value Value) *Reference {
-	return &Reference{value, ctx.referenceMeta}
+	return &Reference{value}
 }
 
 func (ctx *Context) NewFunction(ast *AstExpressionFunction, env *Environment) *Function {
-	return &Function{ast, env, ctx.functionMeta}
+	return &Function{ast, env}
 }
 
 func (ctx *Context) NewBuiltin(name string, types []Type, impl func(*Context, []Value) (Value, error)) *Builtin {
-	return &Builtin{name, types, impl, ctx.functionMeta}
+	return &Builtin{name, types, impl}
 }
 
 func (ctx *Context) NewExternal(data any) *External {
-	return &External{data, nil}
+	return &External{data}
 }
 
 func (ctx *Context) NewValueFromSource(name string, source string) (Value, error) {
@@ -601,7 +594,6 @@ func (ctx *Context) NewValueFromSourceOrPanic(name string, source string) Value 
 }
 
 type Null struct {
-	meta *Map // Optional
 }
 
 func (self *Null) Typename() string {
@@ -612,8 +604,8 @@ func (self *Null) String() string {
 	return "null"
 }
 
-func (self *Null) Meta() *Map {
-	return self.meta
+func (self *Null) Meta(ctx *Context) *Map {
+	return nil
 }
 
 func (self *Null) Copy() Value {
@@ -639,7 +631,6 @@ func (self *Null) CombEncode(e *CombEncoder) error {
 
 type Boolean struct {
 	data bool
-	meta *Map // Optional
 }
 
 func (self *Boolean) Typename() string {
@@ -653,8 +644,8 @@ func (self *Boolean) String() string {
 	return "false"
 }
 
-func (self *Boolean) Meta() *Map {
-	return self.meta
+func (self *Boolean) Meta(ctx *Context) *Map {
+	return ctx.booleanMeta
 }
 
 func (self *Boolean) Copy() Value {
@@ -686,7 +677,6 @@ func (self *Boolean) CombEncode(e *CombEncoder) error {
 
 type Number struct {
 	data float64
-	meta *Map // Optional
 }
 
 func (self *Number) Typename() string {
@@ -706,8 +696,8 @@ func (self *Number) String() string {
 	return strconv.FormatFloat(self.data, 'f', -1, 64)
 }
 
-func (self *Number) Meta() *Map {
-	return self.meta
+func (self *Number) Meta(ctx *Context) *Map {
+	return ctx.numberMeta
 }
 
 func (self *Number) Copy() Value {
@@ -740,7 +730,6 @@ func (self *Number) CombEncode(e *CombEncoder) error {
 
 type String struct {
 	data string
-	meta *Map // Optional
 }
 
 func (self *String) Typename() string {
@@ -751,8 +740,8 @@ func (self *String) String() string {
 	return fmt.Sprintf("\"%s\"", escape(self.data))
 }
 
-func (self *String) Meta() *Map {
-	return self.meta
+func (self *String) Meta(ctx *Context) *Map {
+	return ctx.stringMeta
 }
 
 func (self *String) Copy() Value {
@@ -781,7 +770,6 @@ func (self *String) CombEncode(e *CombEncoder) error {
 
 type Regexp struct {
 	data *regexp.Regexp
-	meta *Map // Optional
 }
 
 func (self *Regexp) Typename() string {
@@ -792,8 +780,8 @@ func (self *Regexp) String() string {
 	return fmt.Sprintf("r\"%s\"", escape(self.data.String()))
 }
 
-func (self *Regexp) Meta() *Map {
-	return self.meta
+func (self *Regexp) Meta(ctx *Context) *Map {
+	return ctx.regexpMeta
 }
 
 func (self *Regexp) Copy() Value {
@@ -830,7 +818,6 @@ type VectorData struct {
 
 type Vector struct {
 	data *VectorData
-	meta *Map // Optional
 }
 
 func (self *Vector) Typename() string {
@@ -849,23 +836,17 @@ func (self *Vector) String() string {
 	return fmt.Sprintf("[%s]", strings.Join(s, ", "))
 }
 
-func (self *Vector) Meta() *Map {
-	return self.meta
+func (self *Vector) Meta(ctx *Context) *Map {
+	return ctx.vectorMeta
 }
 
 func (self *Vector) Copy() Value {
 	if self.data == nil {
-		return &Vector{
-			data: nil,
-			meta: self.meta,
-		}
+		return &Vector{data: nil}
 	}
 
 	self.data.uses += 1
-	return &Vector{
-		data: self.data,
-		meta: self.meta,
-	}
+	return &Vector{data: self.data}
 }
 
 func (self *Vector) CopyOnWrite() {
@@ -1125,7 +1106,7 @@ func (self *MapData) Remove(key Value) {
 
 type Map struct {
 	data *MapData
-	meta *Map    // Optional
+	meta *Map    // Optional (non-nil implies that this is a mutable map)
 	name *string // Optional (non-nil implies that this is a frozen metamap)
 }
 
@@ -1147,7 +1128,7 @@ func (self *Map) String() string {
 	return fmt.Sprintf("{%s}", strings.Join(s, ", "))
 }
 
-func (self *Map) Meta() *Map {
+func (self *Map) Meta(ctx *Context) *Map {
 	return self.meta
 }
 
@@ -1444,7 +1425,6 @@ func (self *SetData) Remove(key Value) {
 
 type Set struct {
 	data *SetData
-	meta *Map // Optional
 }
 
 func (self *Set) Typename() string {
@@ -1465,23 +1445,17 @@ func (self *Set) String() string {
 	return fmt.Sprintf("{%s}", strings.Join(s, ", "))
 }
 
-func (self *Set) Meta() *Map {
-	return self.meta
+func (self *Set) Meta(ctx *Context) *Map {
+	return ctx.setMeta
 }
 
 func (self *Set) Copy() Value {
 	if self.data == nil {
-		return &Set{
-			data: nil,
-			meta: self.meta,
-		}
+		return &Set{data: nil}
 	}
 
 	self.data.uses += 1
-	return &Set{
-		data: self.data,
-		meta: self.meta,
-	}
+	return &Set{data: self.data}
 }
 
 func (self *Set) CopyOnWrite() {
@@ -1628,7 +1602,6 @@ func (self *Set) Remove(value Value) {
 
 type Reference struct {
 	data Value
-	meta *Map // Optional
 }
 
 func (self *Reference) Typename() string {
@@ -1639,8 +1612,8 @@ func (self *Reference) String() string {
 	return fmt.Sprintf("reference@%p", self.data)
 }
 
-func (self *Reference) Meta() *Map {
-	return self.meta
+func (self *Reference) Meta(ctx *Context) *Map {
+	return ctx.referenceMeta
 }
 
 func (self *Reference) Copy() Value {
@@ -1671,9 +1644,8 @@ func (self *Reference) CombEncode(e *CombEncoder) error {
 }
 
 type Function struct {
-	Ast  *AstExpressionFunction
-	Env  *Environment
-	meta *Map // Optional
+	Ast *AstExpressionFunction
+	Env *Environment
 }
 
 func (self *Function) Typename() string {
@@ -1697,8 +1669,8 @@ func (self *Function) String() string {
 	return name
 }
 
-func (self *Function) Meta() *Map {
-	return self.meta
+func (self *Function) Meta(ctx *Context) *Map {
+	return ctx.functionMeta
 }
 
 func (self *Function) Copy() Value {
@@ -1732,7 +1704,6 @@ type Builtin struct {
 	name  string
 	types []Type
 	impl  func(*Context, []Value) (Value, error)
-	meta  *Map // Optional
 }
 
 func (self *Builtin) Typename() string {
@@ -1743,8 +1714,8 @@ func (self *Builtin) String() string {
 	return fmt.Sprintf("%s@builtin", self.name)
 }
 
-func (self *Builtin) Meta() *Map {
-	return self.meta
+func (self *Builtin) Meta(ctx *Context) *Map {
+	return ctx.functionMeta
 }
 
 func (self *Builtin) Copy() Value {
@@ -1776,7 +1747,6 @@ func (self *Builtin) CombEncode(e *CombEncoder) error {
 
 type External struct {
 	data any
-	meta *Map // Optional
 }
 
 func (self *External) Typename() string {
@@ -1787,8 +1757,8 @@ func (self *External) String() string {
 	return fmt.Sprintf("external(%v)", self.data)
 }
 
-func (self *External) Meta() *Map {
-	return self.meta
+func (self *External) Meta(ctx *Context) *Map {
+	return nil
 }
 
 func (self *External) Copy() Value {
@@ -2776,8 +2746,10 @@ func (self Continue) ControlFlowLocation() *SourceLocation {
 }
 
 func Typename(value Value) string {
-	if value.Meta() != nil && value.Meta().name != nil {
-		return *value.Meta().name
+	if valueMap, ok := value.(*Map); ok && valueMap.meta != nil && valueMap.meta.name != nil {
+		// Instance of a custom type that that has its own name. Use this name
+		// instead of the default typename of the value.
+		return *valueMap.meta.name
 	}
 	return value.Typename()
 }
@@ -2939,7 +2911,7 @@ func (self AstExpressionTemplate) Eval(ctx *Context, env *Environment) (Value, e
 			return nil, err
 		}
 
-		if metaFunction, ok := MetaFunction(value, ctx.constStringIntoString); ok {
+		if metaFunction, ok := MetaFunction(ctx, value, ctx.constStringIntoString); ok {
 			result, err := Call(ctx, element.ExpressionLocation(), metaFunction, []Value{ctx.NewReference(value)})
 			if err != nil {
 				return nil, err
@@ -4476,7 +4448,7 @@ func (self AstExpressionFunctionCall) Eval(ctx *Context, env *Environment) (Valu
 		//
 		// will find the metafunction `foo` rather than some key "foo" in
 		// the map, which is almost certainly *not* the desired behavior.
-		if meta := store.Meta(); meta != nil {
+		if meta := store.Meta(ctx); meta != nil {
 			// Value meta lookup.
 			function, _ = meta.Lookup(accessDot.Field.Name)
 		}
@@ -4489,7 +4461,7 @@ func (self AstExpressionFunctionCall) Eval(ctx *Context, env *Environment) (Valu
 		if function == nil {
 			// Implicit value dereference meta lookup.
 			if storeReference, ok := store.(*Reference); ok {
-				if meta := storeReference.data.Meta(); meta != nil {
+				if meta := storeReference.data.Meta(ctx); meta != nil {
 					selfArgument = storeReference
 					function, _ = meta.Lookup(accessDot.Field.Name)
 				}
@@ -4717,7 +4689,7 @@ func (self AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, e
 
 	loopEnv := NewEnvironment(env)
 
-	if metaFunction, ok := MetaFunction(collection, ctx.constStringNext); ok {
+	if metaFunction, ok := MetaFunction(ctx, collection, ctx.constStringNext); ok {
 		if self.IdentifierV != nil {
 			return nil, NewError(
 				self.Location,
@@ -6990,7 +6962,7 @@ func BuiltinStringInit(ctx *Context) *Builtin {
 	return ctx.NewBuiltin("string::init", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		value := arguments[0]
 
-		if metaFunction, ok := MetaFunction(value, ctx.constStringIntoString); ok {
+		if metaFunction, ok := MetaFunction(ctx, value, ctx.constStringIntoString); ok {
 			result, err := Call(ctx, nil, metaFunction, []Value{ctx.NewReference(value)})
 			if err != nil {
 				return nil, err
@@ -7326,7 +7298,7 @@ func BuiltinVectorInit(ctx *Context) *Builtin {
 	return ctx.NewBuiltin("vector::init", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		value := arguments[0]
 
-		if metaFunction, ok := MetaFunction(value, ctx.constStringNext); ok {
+		if metaFunction, ok := MetaFunction(ctx, value, ctx.constStringNext); ok {
 			reference := ctx.NewReference(value)
 			result := ctx.NewVector(nil)
 			for {
@@ -8004,11 +7976,11 @@ func BuiltinTypeof(ctx *Context) *Builtin {
 	return ctx.NewBuiltin("typeof", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		value := arguments[0]
 
-		if value.Meta() == nil {
+		if value.Meta(ctx) == nil {
 			return ctx.NewNull(), nil
 		}
 
-		return value.Meta(), nil
+		return value.Meta(ctx), nil
 	})
 }
 
@@ -8074,7 +8046,7 @@ func BuiltinDumpln(ctx *Context) *Builtin {
 
 func BuiltinPrint(ctx *Context) *Builtin {
 	return ctx.NewBuiltin("print", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
-		if metaFunction, ok := MetaFunction(arguments[0], ctx.constStringIntoString); ok {
+		if metaFunction, ok := MetaFunction(ctx, arguments[0], ctx.constStringIntoString); ok {
 			result, err := Call(ctx, nil, metaFunction, []Value{ctx.NewReference(arguments[0])})
 			if err != nil {
 				return nil, err
@@ -8102,7 +8074,7 @@ func BuiltinPrint(ctx *Context) *Builtin {
 
 func BuiltinPrintln(ctx *Context) *Builtin {
 	return ctx.NewBuiltin("println", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
-		if metaFunction, ok := MetaFunction(arguments[0], ctx.constStringIntoString); ok {
+		if metaFunction, ok := MetaFunction(ctx, arguments[0], ctx.constStringIntoString); ok {
 			result, err := Call(ctx, nil, metaFunction, []Value{ctx.NewReference(arguments[0])})
 			if err != nil {
 				return nil, err
@@ -8130,7 +8102,7 @@ func BuiltinPrintln(ctx *Context) *Builtin {
 
 func BuiltinEprint(ctx *Context) *Builtin {
 	return ctx.NewBuiltin("eprint", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
-		if metaFunction, ok := MetaFunction(arguments[0], ctx.constStringIntoString); ok {
+		if metaFunction, ok := MetaFunction(ctx, arguments[0], ctx.constStringIntoString); ok {
 			result, err := Call(ctx, nil, metaFunction, []Value{ctx.NewReference(arguments[0])})
 			if err != nil {
 				return nil, err
@@ -8158,7 +8130,7 @@ func BuiltinEprint(ctx *Context) *Builtin {
 
 func BuiltinEprintln(ctx *Context) *Builtin {
 	return ctx.NewBuiltin("eprintln", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
-		if metaFunction, ok := MetaFunction(arguments[0], ctx.constStringIntoString); ok {
+		if metaFunction, ok := MetaFunction(ctx, arguments[0], ctx.constStringIntoString); ok {
 			result, err := Call(ctx, nil, metaFunction, []Value{ctx.NewReference(arguments[0])})
 			if err != nil {
 				return nil, err
@@ -9026,11 +8998,11 @@ func BuiltinTyIs(ctx *Context) *Builtin {
 		ty := arguments[1]
 
 		if _, ok := ty.(*Null); ok {
-			return ctx.NewBoolean(value.Meta() == nil), nil
+			return ctx.NewBoolean(value.Meta(ctx) == nil), nil
 		}
 
 		if tyMap, ok := ty.(*Map); ok && tyMap.IsFrozen() {
-			return ctx.NewBoolean(value.Meta() == tyMap), nil
+			return ctx.NewBoolean(value.Meta(ctx) == tyMap), nil
 		}
 
 		return nil, NewError(nil, ctx.NewStringf("expected null or map value created with the `type` keyword, received %v", ty))
