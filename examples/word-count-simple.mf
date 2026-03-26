@@ -1,6 +1,6 @@
 #!/usr/bin/env mf
 # usage: cat FILE | word-count-simple.mf
-let words = re::split(input(), r`\b+`)
+let words = re::split(input(), r`\b`)
     .into_iterator()
     .map(function(word) {
         return re::replace(word.to_lower(), r`[^\w]`, "");
