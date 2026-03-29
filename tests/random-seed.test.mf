@@ -11,7 +11,7 @@ random::seed(dumpln);
 
 # Test that the same seed will produce the same set of random values.
 random::seed("foo");
-let x = [random::number(0, 1), random::number(0, 1), random::number(0, 1)];
+let x = [random::integer(0, 1), random::integer(0, 1), random::integer(0, 1)];
 random::seed("foo");
-let y = [random::number(0, 1), random::number(0, 1), random::number(0, 1)];
+let y = [random::integer(0, 1), random::integer(0, 1), random::integer(0, 1)];
 assert(x == y);

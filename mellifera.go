@@ -423,7 +423,6 @@ func NewContext() Context {
 	}))
 	ctx.BaseEnvironment.Let("random", ctx.NewMap([]MapPair{
 		{ctx.NewString("seed"), BuiltinRandomSeed(&ctx)},
-		{ctx.NewString("number"), BuiltinRandomNumber(&ctx)},
 		{ctx.NewString("integer"), BuiltinRandomInteger(&ctx)},
 	}))
 	ctx.BaseEnvironment.Let("re", ctx.NewMap([]MapPair{
@@ -8930,19 +8929,6 @@ func BuiltinRandomSeed(ctx *Context) *Builtin {
 		seed := arguments[0].Hash()
 		ctx.rng = rand.New(rand.NewPCG(seed, seed))
 		return ctx.NewNull(), nil
-	})
-}
-
-func BuiltinRandomNumber(ctx *Context) *Builtin {
-	return ctx.NewBuiltin("random::number", []Type{TVal(NUMBER), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
-		min := arguments[0].(*Number)
-		max := arguments[1].(*Number)
-
-		if min.data > max.data {
-			min, max = max, min
-		}
-
-		return ctx.NewNumber(min.data + ctx.rng.Float64()*(max.data-min.data)), nil
 	})
 }
 

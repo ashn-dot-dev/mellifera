@@ -6122,14 +6122,6 @@ def builtin_random_seed(seed: Value) -> Union[Value, Error]:
     return null
 
 
-@builtin("random::number", [Number, Number])
-def builtin_random_number(min: Number, max: Number) -> Union[Value, Error]:
-    if float(min.data) > float(max.data):
-        min, max = max, min
-
-    return Number.new(rng.uniform(float(min.data), float(max.data)))
-
-
 @builtin("random::integer", [Number, Number])
 def builtin_random_integer(min: Number, max: Number) -> Union[Value, Error]:
     if not float(min).is_integer():
@@ -6612,7 +6604,6 @@ BASE_ENVIRONMENT.let(
     Map.new(
         {
             String.new("seed"): builtin_random_seed(),
-            String.new("number"): builtin_random_number(),
             String.new("integer"): builtin_random_integer(),
         }
     ),
