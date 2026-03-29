@@ -4,26 +4,38 @@ import (
 	"math"
 	"strings"
 	"testing"
-
-	"github.com/stretchr/testify/require"
 )
+
+// Asserts a == b
+func AssertEq[T comparable](t *testing.T, a T, b T) {
+	if !(a == b) {
+		t.Fatalf("expected a == b, received...\na: %+v\nb: %+v", a, b)
+	}
+}
+
+// Asserts a != b
+func AssertNe[T comparable](t *testing.T, a T, b T) {
+	if !(a != b) {
+		t.Fatalf("expected a != b, received...\na: %+v\nb: %+v", a, b)
+	}
+}
 
 func TestNullTypename(t *testing.T) {
 	ctx := NewContext()
 	null := ctx.NewNull()
-	require.Equal(t, "null", null.Typename())
+	AssertEq(t, "null", null.Typename())
 }
 
 func TestNullString(t *testing.T) {
 	ctx := NewContext()
 	null := ctx.NewNull()
-	require.Equal(t, "null", null.String())
+	AssertEq(t, "null", null.String())
 }
 
 func TestNullCopy(t *testing.T) {
 	ctx := NewContext()
 	null := ctx.NewNull()
-	require.Same(t, null, null.Copy())
+	AssertEq(t, null, null.Copy().(*Null))
 }
 
 func TestNullCombEncode(t *testing.T) {
@@ -33,15 +45,15 @@ func TestNullCombEncode(t *testing.T) {
 		var sb strings.Builder
 		e := NewCombEncoder(&sb, nil)
 		err := null.CombEncode(e)
-		require.Nil(t, err)
-		require.Equal(t, "null", sb.String())
+		AssertEq(t, err, nil)
+		AssertEq(t, "null", sb.String())
 	}
 	{
 		var sb strings.Builder
 		e := NewCombEncoder(&sb, Ptr("\t"))
 		err := null.CombEncode(e)
-		require.Nil(t, err)
-		require.Equal(t, "null", sb.String())
+		AssertEq(t, err, nil)
+		AssertEq(t, "null", sb.String())
 	}
 }
 
@@ -49,11 +61,11 @@ func TestBooleanTypename(t *testing.T) {
 	ctx := NewContext()
 	{
 		boolean := ctx.NewBoolean(true)
-		require.Equal(t, "boolean", boolean.Typename())
+		AssertEq(t, "boolean", boolean.Typename())
 	}
 	{
 		boolean := ctx.NewBoolean(false)
-		require.Equal(t, "boolean", boolean.Typename())
+		AssertEq(t, "boolean", boolean.Typename())
 	}
 }
 
@@ -61,11 +73,11 @@ func TestBooleanString(t *testing.T) {
 	ctx := NewContext()
 	{
 		boolean := ctx.NewBoolean(true)
-		require.Equal(t, "true", boolean.String())
+		AssertEq(t, "true", boolean.String())
 	}
 	{
 		boolean := ctx.NewBoolean(false)
-		require.Equal(t, "false", boolean.String())
+		AssertEq(t, "false", boolean.String())
 	}
 }
 
@@ -73,11 +85,11 @@ func TestBooleanCopy(t *testing.T) {
 	ctx := NewContext()
 	{
 		boolean := ctx.NewBoolean(true)
-		require.Same(t, boolean, boolean.Copy())
+		AssertEq(t, boolean, boolean.Copy().(*Boolean))
 	}
 	{
 		boolean := ctx.NewBoolean(false)
-		require.Same(t, boolean, boolean.Copy())
+		AssertEq(t, boolean, boolean.Copy().(*Boolean))
 	}
 }
 
@@ -88,68 +100,68 @@ func TestBooleanCombEncode(t *testing.T) {
 		var sb strings.Builder
 		e := NewCombEncoder(&sb, nil)
 		err := boolean.CombEncode(e)
-		require.Nil(t, err)
-		require.Equal(t, "true", sb.String())
+		AssertEq(t, err, nil)
+		AssertEq(t, "true", sb.String())
 	}
 	{
 		var sb strings.Builder
 		e := NewCombEncoder(&sb, Ptr("\t"))
 		err := boolean.CombEncode(e)
-		require.Nil(t, err)
-		require.Equal(t, "true", sb.String())
+		AssertEq(t, err, nil)
+		AssertEq(t, "true", sb.String())
 	}
 }
 
 func TestNumberTypename(t *testing.T) {
 	ctx := NewContext()
 	number := ctx.NewNumber(123.456)
-	require.Equal(t, "number", number.Typename())
+	AssertEq(t, "number", number.Typename())
 }
 
 func TestNumberString(t *testing.T) {
 	ctx := NewContext()
 	{
 		number := ctx.NewNumber(0)
-		require.Equal(t, "0", number.String())
+		AssertEq(t, "0", number.String())
 	}
 	{
 		number := ctx.NewNumber(+1)
-		require.Equal(t, "1", number.String())
+		AssertEq(t, "1", number.String())
 	}
 	{
 		number := ctx.NewNumber(-1)
-		require.Equal(t, "-1", number.String())
+		AssertEq(t, "-1", number.String())
 	}
 	{
 		number := ctx.NewNumber(+123.456)
-		require.Equal(t, "123.456", number.String())
+		AssertEq(t, "123.456", number.String())
 	}
 	{
 		number := ctx.NewNumber(-123.456)
-		require.Equal(t, "-123.456", number.String())
+		AssertEq(t, "-123.456", number.String())
 	}
 	{
 		number := ctx.NewNumber(float64(0xdeadbeef))
-		require.Equal(t, "3735928559", number.String())
+		AssertEq(t, "3735928559", number.String())
 	}
 	{
 		number := ctx.NewNumber(math.NaN())
-		require.Equal(t, "NaN", number.String())
+		AssertEq(t, "NaN", number.String())
 	}
 	{
 		number := ctx.NewNumber(math.Inf(+1))
-		require.Equal(t, "Inf", number.String())
+		AssertEq(t, "Inf", number.String())
 	}
 	{
 		number := ctx.NewNumber(math.Inf(-1))
-		require.Equal(t, "-Inf", number.String())
+		AssertEq(t, "-Inf", number.String())
 	}
 }
 
 func TestNumberCopy(t *testing.T) {
 	ctx := NewContext()
 	number := ctx.NewNumber(123.456)
-	require.Same(t, number, number.Copy())
+	AssertEq(t, number, number.Copy().(*Number))
 }
 
 func TestNumberCombEncode(t *testing.T) {
@@ -159,15 +171,15 @@ func TestNumberCombEncode(t *testing.T) {
 		var sb strings.Builder
 		e := NewCombEncoder(&sb, nil)
 		err := number.CombEncode(e)
-		require.Nil(t, err)
-		require.Equal(t, "123.456", sb.String())
+		AssertEq(t, err, nil)
+		AssertEq(t, "123.456", sb.String())
 	}
 	{
 		var sb strings.Builder
 		e := NewCombEncoder(&sb, Ptr("\t"))
 		err := number.CombEncode(e)
-		require.Nil(t, err)
-		require.Equal(t, "123.456", sb.String())
+		AssertEq(t, err, nil)
+		AssertEq(t, "123.456", sb.String())
 	}
 
 	{
@@ -175,43 +187,43 @@ func TestNumberCombEncode(t *testing.T) {
 		var sb strings.Builder
 		e := NewCombEncoder(&sb, Ptr("\t"))
 		err := nan.CombEncode(e)
-		require.NotNil(t, err)
-		require.Equal(t, "invalid comb value NaN", err.Error())
+		AssertNe(t, err, nil)
+		AssertEq(t, "invalid comb value NaN", err.Error())
 	}
 	{
 		positiveInf := ctx.NewNumber(math.Inf(+1))
 		var sb strings.Builder
 		e := NewCombEncoder(&sb, Ptr("\t"))
 		err := positiveInf.CombEncode(e)
-		require.NotNil(t, err)
-		require.Equal(t, "invalid comb value Inf", err.Error())
+		AssertNe(t, err, nil)
+		AssertEq(t, "invalid comb value Inf", err.Error())
 	}
 	{
 		negativeInf := ctx.NewNumber(math.Inf(-1))
 		var sb strings.Builder
 		e := NewCombEncoder(&sb, Ptr("\t"))
 		err := negativeInf.CombEncode(e)
-		require.NotNil(t, err)
-		require.Equal(t, "invalid comb value -Inf", err.Error())
+		AssertNe(t, err, nil)
+		AssertEq(t, "invalid comb value -Inf", err.Error())
 	}
 }
 
 func TestStringTypename(t *testing.T) {
 	ctx := NewContext()
 	string := ctx.NewString("foo")
-	require.Equal(t, "string", string.Typename())
+	AssertEq(t, "string", string.Typename())
 }
 
 func TestStringString(t *testing.T) {
 	ctx := NewContext()
 	string := ctx.NewString("foo\t\n\"\\bar")
-	require.Equal(t, "\"foo\\t\\n\\\"\\\\bar\"", string.String())
+	AssertEq(t, "\"foo\\t\\n\\\"\\\\bar\"", string.String())
 }
 
 func TestStringCopy(t *testing.T) {
 	ctx := NewContext()
 	string := ctx.NewString("foo")
-	require.Same(t, string, string.Copy())
+	AssertEq(t, string, string.Copy().(*String))
 }
 
 func TestStringCombEncode(t *testing.T) {
@@ -221,37 +233,37 @@ func TestStringCombEncode(t *testing.T) {
 		var sb strings.Builder
 		e := NewCombEncoder(&sb, nil)
 		err := string.CombEncode(e)
-		require.Nil(t, err)
-		require.Equal(t, `"foo\nbar"`, sb.String())
+		AssertEq(t, err, nil)
+		AssertEq(t, `"foo\nbar"`, sb.String())
 	}
 	{
 		var sb strings.Builder
 		e := NewCombEncoder(&sb, Ptr("\t"))
 		err := string.CombEncode(e)
-		require.Nil(t, err)
-		require.Equal(t, `"foo\nbar"`, sb.String())
+		AssertEq(t, err, nil)
+		AssertEq(t, `"foo\nbar"`, sb.String())
 	}
 }
 
 func TestRegexpTypename(t *testing.T) {
 	ctx := NewContext()
 	regexp, err := ctx.NewRegexp(`^\w+$`)
-	require.NoError(t, err)
-	require.Equal(t, "regexp", regexp.Typename())
+	AssertEq(t, err, nil)
+	AssertEq(t, "regexp", regexp.Typename())
 }
 
 func TestRegexpString(t *testing.T) {
 	ctx := NewContext()
 	regexp, err := ctx.NewRegexp(`^\w+$`)
-	require.NoError(t, err)
-	require.Equal(t, `r"^\\w+$"`, regexp.String())
+	AssertEq(t, err, nil)
+	AssertEq(t, `r"^\\w+$"`, regexp.String())
 }
 
 func TestRegexpCopy(t *testing.T) {
 	ctx := NewContext()
 	regexp, err := ctx.NewRegexp(`^\w+$`)
-	require.NoError(t, err)
-	require.Same(t, regexp, regexp.Copy())
+	AssertEq(t, err, nil)
+	AssertEq(t, regexp, regexp.Copy().(*Regexp))
 }
 
 func TestRegexpCombEncode(t *testing.T) {
@@ -260,27 +272,28 @@ func TestRegexpCombEncode(t *testing.T) {
 	var sb strings.Builder
 	e := NewCombEncoder(&sb, nil)
 	err := regexp.CombEncode(e)
-	require.NotNil(t, err)
-	require.Equal(t, `invalid comb value r"^.*$"`, err.Error())
+	AssertNe(t, err, nil)
+	AssertEq(t, `invalid comb value r"^.*$"`, err.Error())
 }
 
 func TestRegexpInvalidText(t *testing.T) {
 	ctx := NewContext()
 	_, err := ctx.NewRegexp(`\q`)
-	require.EqualError(t, err, `invalid regular expression "\\q"`)
+	AssertNe(t, err, nil)
+	AssertEq(t, err.Error(), `invalid regular expression "\\q"`)
 }
 
 func TestVectorConstructorNilElements(t *testing.T) {
 	ctx := NewContext()
 	vector := ctx.NewVector(nil)
-	require.Equal(t, 0, vector.Count())
+	AssertEq(t, 0, vector.Count())
 }
 
 func TestVectorConstructorNonNilElements(t *testing.T) {
 	ctx := NewContext()
 	{
 		vector := ctx.NewVector([]Value{})
-		require.Equal(t, 0, vector.Count())
+		AssertEq(t, 0, vector.Count())
 	}
 	{
 		vector := ctx.NewVector([]Value{
@@ -288,25 +301,25 @@ func TestVectorConstructorNonNilElements(t *testing.T) {
 			ctx.NewString("bar"),
 			ctx.NewString("baz"),
 		})
-		require.Equal(t, 3, vector.Count())
+		AssertEq(t, 3, vector.Count())
 	}
 }
 
 func TestVectorTypename(t *testing.T) {
 	ctx := NewContext()
 	vector := ctx.NewVector(nil)
-	require.Equal(t, "vector", vector.Typename())
+	AssertEq(t, "vector", vector.Typename())
 }
 
 func TestVectorString(t *testing.T) {
 	ctx := NewContext()
 	{
 		vector := ctx.NewVector(nil)
-		require.Equal(t, "[]", vector.String())
+		AssertEq(t, "[]", vector.String())
 	}
 	{
 		vector := ctx.NewVector([]Value{})
-		require.Equal(t, "[]", vector.String())
+		AssertEq(t, "[]", vector.String())
 	}
 	{
 		vector := ctx.NewVector([]Value{
@@ -314,7 +327,7 @@ func TestVectorString(t *testing.T) {
 			ctx.NewString("bar"),
 			ctx.NewString("baz"),
 		})
-		require.Equal(t, `["foo", "bar", "baz"]`, vector.String())
+		AssertEq(t, `["foo", "bar", "baz"]`, vector.String())
 	}
 }
 
@@ -322,11 +335,11 @@ func TestVectorCopy(t *testing.T) {
 	ctx := NewContext()
 	{
 		vector := ctx.NewVector(nil)
-		require.Equal(t, vector.Count(), vector.Copy().(*Vector).Count())
+		AssertEq(t, vector.Count(), vector.Copy().(*Vector).Count())
 	}
 	{
 		vector := ctx.NewVector([]Value{})
-		require.Equal(t, vector.Count(), vector.Copy().(*Vector).Count())
+		AssertEq(t, vector.Count(), vector.Copy().(*Vector).Count())
 	}
 	{
 		vector := ctx.NewVector([]Value{
@@ -334,10 +347,10 @@ func TestVectorCopy(t *testing.T) {
 			ctx.NewString("bar"),
 			ctx.NewString("baz"),
 		})
-		require.Equal(t, vector.Count(), vector.Copy().(*Vector).Count())
-		require.Equal(t, "foo", vector.Copy().(*Vector).Get(0).(*String).data)
-		require.Equal(t, "bar", vector.Copy().(*Vector).Get(1).(*String).data)
-		require.Equal(t, "baz", vector.Copy().(*Vector).Get(2).(*String).data)
+		AssertEq(t, vector.Count(), vector.Copy().(*Vector).Count())
+		AssertEq(t, "foo", vector.Copy().(*Vector).Get(0).(*String).data)
+		AssertEq(t, "bar", vector.Copy().(*Vector).Get(1).(*String).data)
+		AssertEq(t, "baz", vector.Copy().(*Vector).Get(2).(*String).data)
 	}
 }
 
@@ -349,24 +362,24 @@ func TestVectorCopyOnWrite(t *testing.T) {
 		ctx.NewString("baz"),
 	})
 	b := a.Copy().(*Vector)
-	require.Equal(t, a.Count(), b.Count())
-	require.Equal(t, 2, a.data.uses)
-	require.Equal(t, 2, b.data.uses)
-	require.Same(t, a.data, b.data)
+	AssertEq(t, a.Count(), b.Count())
+	AssertEq(t, 2, a.data.uses)
+	AssertEq(t, 2, b.data.uses)
+	AssertEq(t, a.data, b.data)
 
 	b.Set(1, ctx.NewNumber(123.456))
-	require.Equal(t, a.Count(), b.Count())
-	require.Equal(t, 1, a.data.uses)
-	require.Equal(t, 1, b.data.uses)
-	require.NotSame(t, a.data, b.data)
+	AssertEq(t, a.Count(), b.Count())
+	AssertEq(t, 1, a.data.uses)
+	AssertEq(t, 1, b.data.uses)
+	AssertNe(t, a.data, b.data)
 
-	require.Equal(t, "foo", a.Get(0).(*String).data)
-	require.Equal(t, "bar", a.Get(1).(*String).data)
-	require.Equal(t, "baz", a.Get(2).(*String).data)
+	AssertEq(t, "foo", a.Get(0).(*String).data)
+	AssertEq(t, "bar", a.Get(1).(*String).data)
+	AssertEq(t, "baz", a.Get(2).(*String).data)
 
-	require.Equal(t, "foo", b.Get(0).(*String).data)
-	require.Equal(t, 123.456, b.Get(1).(*Number).data)
-	require.Equal(t, "baz", b.Get(2).(*String).data)
+	AssertEq(t, "foo", b.Get(0).(*String).data)
+	AssertEq(t, 123.456, b.Get(1).(*Number).data)
+	AssertEq(t, "baz", b.Get(2).(*String).data)
 }
 
 func TestVectorCombEncode(t *testing.T) {
@@ -377,15 +390,15 @@ func TestVectorCombEncode(t *testing.T) {
 		var sb strings.Builder
 		e := NewCombEncoder(&sb, nil)
 		err := empty.CombEncode(e)
-		require.Nil(t, err)
-		require.Equal(t, "[]", sb.String())
+		AssertEq(t, err, nil)
+		AssertEq(t, "[]", sb.String())
 	}
 	{
 		var sb strings.Builder
 		e := NewCombEncoder(&sb, Ptr("\t"))
 		err := empty.CombEncode(e)
-		require.Nil(t, err)
-		require.Equal(t, "[]", sb.String())
+		AssertEq(t, err, nil)
+		AssertEq(t, "[]", sb.String())
 	}
 
 	nonEmpty := ctx.NewVector([]Value{
@@ -404,15 +417,15 @@ func TestVectorCombEncode(t *testing.T) {
 		var sb strings.Builder
 		e := NewCombEncoder(&sb, nil)
 		err := nonEmpty.CombEncode(e)
-		require.Nil(t, err)
-		require.Equal(t, `[null, false, 123.456, "foo", [], ["foo", "bar", "baz"]]`, sb.String())
+		AssertEq(t, err, nil)
+		AssertEq(t, `[null, false, 123.456, "foo", [], ["foo", "bar", "baz"]]`, sb.String())
 	}
 	{
 		var sb strings.Builder
 		e := NewCombEncoder(&sb, Ptr("\t"))
 		err := nonEmpty.CombEncode(e)
-		require.Nil(t, err)
-		require.Equal(t, `[
+		AssertEq(t, err, nil)
+		AssertEq(t, `[
 	null,
 	false,
 	123.456,
@@ -439,15 +452,15 @@ func TestVectorCombEncode(t *testing.T) {
 		var sb strings.Builder
 		e := NewCombEncoder(&sb, nil)
 		err := deeplyNested.CombEncode(e)
-		require.Nil(t, err)
-		require.Equal(t, `[[[["foo"]]]]`, sb.String())
+		AssertEq(t, err, nil)
+		AssertEq(t, `[[[["foo"]]]]`, sb.String())
 	}
 	{
 		var sb strings.Builder
 		e := NewCombEncoder(&sb, Ptr("\t"))
 		err := deeplyNested.CombEncode(e)
-		require.Nil(t, err)
-		require.Equal(t, `[
+		AssertEq(t, err, nil)
+		AssertEq(t, `[
 	[
 		[
 			[
@@ -462,17 +475,17 @@ func TestVectorCombEncode(t *testing.T) {
 func TestMapConstructorNilElements(t *testing.T) {
 	ctx := NewContext()
 	m := ctx.NewMap(nil)
-	require.Equal(t, 0, m.Count())
+	AssertEq(t, 0, m.Count())
 
-	require.Nil(t, m.Get(ctx.NewNull()))
-	require.Nil(t, m.Get(ctx.NewNumber(456.123)))
+	AssertEq(t, m.Get(ctx.NewNull()), nil)
+	AssertEq(t, m.Get(ctx.NewNumber(456.123)), nil)
 }
 
 func TestMapConstructorNonNilElements(t *testing.T) {
 	ctx := NewContext()
 	{
 		m := ctx.NewMap([]MapPair{})
-		require.Equal(t, 0, m.Count())
+		AssertEq(t, 0, m.Count())
 	}
 	{
 		m := ctx.NewMap([]MapPair{
@@ -480,32 +493,32 @@ func TestMapConstructorNonNilElements(t *testing.T) {
 			{ctx.NewString("foo"), ctx.NewString("def")},
 			{ctx.NewVector(nil), ctx.NewString("hij")},
 		})
-		require.Equal(t, 3, m.Count())
+		AssertEq(t, 3, m.Count())
 
-		require.True(t, m.Get(ctx.NewNumber(123.456)).Equal(ctx.NewString("abc")))
-		require.True(t, m.Get(ctx.NewString("foo")).Equal(ctx.NewString("def")))
-		require.True(t, m.Get(ctx.NewVector(nil)).Equal(ctx.NewString("hij")))
+		AssertEq(t, m.Get(ctx.NewNumber(123.456)).Equal(ctx.NewString("abc")), true)
+		AssertEq(t, m.Get(ctx.NewString("foo")).Equal(ctx.NewString("def")), true)
+		AssertEq(t, m.Get(ctx.NewVector(nil)).Equal(ctx.NewString("hij")), true)
 
-		require.Nil(t, m.Get(ctx.NewNull()))
-		require.Nil(t, m.Get(ctx.NewNumber(456.123)))
+		AssertEq(t, m.Get(ctx.NewNull()), nil)
+		AssertEq(t, m.Get(ctx.NewNumber(456.123)), nil)
 	}
 }
 
 func TestMapTypename(t *testing.T) {
 	ctx := NewContext()
 	m := ctx.NewMap(nil)
-	require.Equal(t, "map", m.Typename())
+	AssertEq(t, "map", m.Typename())
 }
 
 func TestMapString(t *testing.T) {
 	ctx := NewContext()
 	{
 		m := ctx.NewMap(nil)
-		require.Equal(t, "Map{}", m.String())
+		AssertEq(t, "Map{}", m.String())
 	}
 	{
 		m := ctx.NewMap([]MapPair{})
-		require.Equal(t, "Map{}", m.String())
+		AssertEq(t, "Map{}", m.String())
 	}
 	{
 		m := ctx.NewMap([]MapPair{
@@ -513,7 +526,7 @@ func TestMapString(t *testing.T) {
 			{ctx.NewString("foo"), ctx.NewString("def")},
 			{ctx.NewVector(nil), ctx.NewString("hij")},
 		})
-		require.Equal(t, `{123.456: "abc", "foo": "def", []: "hij"}`, m.String())
+		AssertEq(t, `{123.456: "abc", "foo": "def", []: "hij"}`, m.String())
 	}
 }
 
@@ -521,11 +534,11 @@ func TestMapCopy(t *testing.T) {
 	ctx := NewContext()
 	{
 		m := ctx.NewMap(nil)
-		require.Equal(t, m.Count(), m.Copy().(*Map).Count())
+		AssertEq(t, m.Count(), m.Copy().(*Map).Count())
 	}
 	{
 		m := ctx.NewMap([]MapPair{})
-		require.Equal(t, m.Count(), m.Copy().(*Map).Count())
+		AssertEq(t, m.Count(), m.Copy().(*Map).Count())
 	}
 	{
 		m := ctx.NewMap([]MapPair{
@@ -533,14 +546,14 @@ func TestMapCopy(t *testing.T) {
 			{ctx.NewString("foo"), ctx.NewString("def")},
 			{ctx.NewVector(nil), ctx.NewString("hij")},
 		})
-		require.Equal(t, m.Count(), m.Copy().(*Map).Count())
+		AssertEq(t, m.Count(), m.Copy().(*Map).Count())
 
-		require.True(t, m.Copy().(*Map).Get(ctx.NewNumber(123.456)).Equal(ctx.NewString("abc")))
-		require.True(t, m.Copy().(*Map).Get(ctx.NewString("foo")).Equal(ctx.NewString("def")))
-		require.True(t, m.Copy().(*Map).Get(ctx.NewVector(nil)).Equal(ctx.NewString("hij")))
+		AssertEq(t, m.Copy().(*Map).Get(ctx.NewNumber(123.456)).Equal(ctx.NewString("abc")), true)
+		AssertEq(t, m.Copy().(*Map).Get(ctx.NewString("foo")).Equal(ctx.NewString("def")), true)
+		AssertEq(t, m.Copy().(*Map).Get(ctx.NewVector(nil)).Equal(ctx.NewString("hij")), true)
 
-		require.Nil(t, m.Copy().(*Map).Get(ctx.NewNull()))
-		require.Nil(t, m.Copy().(*Map).Get(ctx.NewNumber(456.123)))
+		AssertEq(t, m.Copy().(*Map).Get(ctx.NewNull()), nil)
+		AssertEq(t, m.Copy().(*Map).Get(ctx.NewNumber(456.123)), nil)
 	}
 }
 
@@ -552,40 +565,40 @@ func TestMapCopyOnWrite(t *testing.T) {
 		{ctx.NewVector(nil), ctx.NewString("hij")},
 	})
 	b := a.Copy().(*Map)
-	require.Equal(t, a.Count(), b.Count())
-	require.Equal(t, 2, a.data.uses)
-	require.Equal(t, 2, b.data.uses)
-	require.Same(t, a.data, b.data)
+	AssertEq(t, a.Count(), b.Count())
+	AssertEq(t, 2, a.data.uses)
+	AssertEq(t, 2, b.data.uses)
+	AssertEq(t, a.data, b.data)
 
 	b.Insert(ctx.NewNumber(123.456), ctx.NewNull())
-	require.Equal(t, a.Count(), b.Count())
-	require.Equal(t, 1, a.data.uses)
-	require.Equal(t, 1, b.data.uses)
-	require.NotSame(t, a.data, b.data)
+	AssertEq(t, a.Count(), b.Count())
+	AssertEq(t, 1, a.data.uses)
+	AssertEq(t, 1, b.data.uses)
+	AssertNe(t, a.data, b.data)
 
-	require.True(t, a.Get(ctx.NewNumber(123.456)).Equal(ctx.NewString("abc")))
-	require.True(t, a.Get(ctx.NewString("foo")).Equal(ctx.NewString("def")))
-	require.True(t, a.Get(ctx.NewVector(nil)).Equal(ctx.NewString("hij")))
+	AssertEq(t, a.Get(ctx.NewNumber(123.456)).Equal(ctx.NewString("abc")), true)
+	AssertEq(t, a.Get(ctx.NewString("foo")).Equal(ctx.NewString("def")), true)
+	AssertEq(t, a.Get(ctx.NewVector(nil)).Equal(ctx.NewString("hij")), true)
 
-	require.True(t, b.Get(ctx.NewNumber(123.456)).Equal(ctx.NewNull()))
-	require.True(t, b.Get(ctx.NewString("foo")).Equal(ctx.NewString("def")))
-	require.True(t, b.Get(ctx.NewVector(nil)).Equal(ctx.NewString("hij")))
+	AssertEq(t, b.Get(ctx.NewNumber(123.456)).Equal(ctx.NewNull()), true)
+	AssertEq(t, b.Get(ctx.NewString("foo")).Equal(ctx.NewString("def")), true)
+	AssertEq(t, b.Get(ctx.NewVector(nil)).Equal(ctx.NewString("hij")), true)
 
 	c := a.Copy().(*Map)
 	c.Remove(ctx.NewString("foo"))
 
-	require.Equal(t, a.Count()-1, c.Count())
-	require.Equal(t, 1, a.data.uses)
-	require.Equal(t, 1, c.data.uses)
-	require.NotSame(t, a.data, c.data)
+	AssertEq(t, a.Count()-1, c.Count())
+	AssertEq(t, 1, a.data.uses)
+	AssertEq(t, 1, c.data.uses)
+	AssertNe(t, a.data, c.data)
 
-	require.True(t, a.Get(ctx.NewNumber(123.456)).Equal(ctx.NewString("abc")))
-	require.True(t, a.Get(ctx.NewString("foo")).Equal(ctx.NewString("def")))
-	require.True(t, a.Get(ctx.NewVector(nil)).Equal(ctx.NewString("hij")))
+	AssertEq(t, a.Get(ctx.NewNumber(123.456)).Equal(ctx.NewString("abc")), true)
+	AssertEq(t, a.Get(ctx.NewString("foo")).Equal(ctx.NewString("def")), true)
+	AssertEq(t, a.Get(ctx.NewVector(nil)).Equal(ctx.NewString("hij")), true)
 
-	require.True(t, c.Get(ctx.NewNumber(123.456)).Equal(ctx.NewString("abc")))
-	require.Nil(t, c.Get(ctx.NewString("foo")))
-	require.True(t, c.Get(ctx.NewVector(nil)).Equal(ctx.NewString("hij")))
+	AssertEq(t, c.Get(ctx.NewNumber(123.456)).Equal(ctx.NewString("abc")), true)
+	AssertEq(t, c.Get(ctx.NewString("foo")), nil)
+	AssertEq(t, c.Get(ctx.NewVector(nil)).Equal(ctx.NewString("hij")), true)
 }
 
 func TestMapCombEncode(t *testing.T) {
@@ -596,15 +609,15 @@ func TestMapCombEncode(t *testing.T) {
 		var sb strings.Builder
 		e := NewCombEncoder(&sb, nil)
 		err := empty.CombEncode(e)
-		require.Nil(t, err)
-		require.Equal(t, "Map{}", sb.String())
+		AssertEq(t, err, nil)
+		AssertEq(t, "Map{}", sb.String())
 	}
 	{
 		var sb strings.Builder
 		e := NewCombEncoder(&sb, Ptr("\t"))
 		err := empty.CombEncode(e)
-		require.Nil(t, err)
-		require.Equal(t, "Map{}", sb.String())
+		AssertEq(t, err, nil)
+		AssertEq(t, "Map{}", sb.String())
 	}
 
 	nonEmpty := ctx.NewMap([]MapPair{
@@ -623,15 +636,15 @@ func TestMapCombEncode(t *testing.T) {
 		var sb strings.Builder
 		e := NewCombEncoder(&sb, nil)
 		err := nonEmpty.CombEncode(e)
-		require.Nil(t, err)
-		require.Equal(t, `{null: null, false: false, 123.456: 123.456, "foo": "foo", "empty": Map{}, "non-empty": {"abc": "foo", "def": "bar", "hij": "baz"}}`, sb.String())
+		AssertEq(t, err, nil)
+		AssertEq(t, `{null: null, false: false, 123.456: 123.456, "foo": "foo", "empty": Map{}, "non-empty": {"abc": "foo", "def": "bar", "hij": "baz"}}`, sb.String())
 	}
 	{
 		var sb strings.Builder
 		e := NewCombEncoder(&sb, Ptr("\t"))
 		err := nonEmpty.CombEncode(e)
-		require.Nil(t, err)
-		require.Equal(t, `{
+		AssertEq(t, err, nil)
+		AssertEq(t, `{
 	null: null,
 	false: false,
 	123.456: 123.456,
@@ -658,15 +671,15 @@ func TestMapCombEncode(t *testing.T) {
 		var sb strings.Builder
 		e := NewCombEncoder(&sb, nil)
 		err := deeplyNested.CombEncode(e)
-		require.Nil(t, err)
-		require.Equal(t, `{"foo": {"bar": {"baz": {"qux": Map{}}}}}`, sb.String())
+		AssertEq(t, err, nil)
+		AssertEq(t, `{"foo": {"bar": {"baz": {"qux": Map{}}}}}`, sb.String())
 	}
 	{
 		var sb strings.Builder
 		e := NewCombEncoder(&sb, Ptr("\t"))
 		err := deeplyNested.CombEncode(e)
-		require.Nil(t, err)
-		require.Equal(t, `{
+		AssertEq(t, err, nil)
+		AssertEq(t, `{
 	"foo": {
 		"bar": {
 			"baz": {
@@ -687,8 +700,8 @@ func TestMapInsert(t *testing.T) {
 		{ctx.NewVector(nil), ctx.NewString("hij")},
 	})
 	aInsertErr := a.Insert(ctx.NewString("xyz"), ctx.NewString("inserted"))
-	require.Nil(t, aInsertErr)
-	require.Equal(t, `{123.456: "abc", "foo": "def", []: "hij", "xyz": "inserted"}`, a.String())
+	AssertEq(t, aInsertErr, nil)
+	AssertEq(t, `{123.456: "abc", "foo": "def", []: "hij", "xyz": "inserted"}`, a.String())
 
 	b := ctx.NewMetaMap("meta", []MapPair{
 		{ctx.NewNumber(123.456), ctx.NewString("abc")},
@@ -696,9 +709,9 @@ func TestMapInsert(t *testing.T) {
 		{ctx.NewVector(nil), ctx.NewString("hij")},
 	})
 	bInsertErr := b.Insert(ctx.NewString("xyz"), ctx.NewString("inserted"))
-	require.NotNil(t, bInsertErr)
-	require.Equal(t, `attempted to modify immutable map {123.456: "abc", "foo": "def", []: "hij"}`, bInsertErr.Error())
-	require.Equal(t, `{123.456: "abc", "foo": "def", []: "hij"}`, b.String())
+	AssertNe(t, bInsertErr, nil)
+	AssertEq(t, `attempted to modify immutable map {123.456: "abc", "foo": "def", []: "hij"}`, bInsertErr.Error())
+	AssertEq(t, `{123.456: "abc", "foo": "def", []: "hij"}`, b.String())
 }
 
 func TestMapRemove(t *testing.T) {
@@ -710,8 +723,8 @@ func TestMapRemove(t *testing.T) {
 		{ctx.NewVector(nil), ctx.NewString("hij")},
 	})
 	aRemoveErr := a.Remove(ctx.NewString("foo"))
-	require.Nil(t, aRemoveErr)
-	require.Equal(t, `{123.456: "abc", []: "hij"}`, a.String())
+	AssertEq(t, aRemoveErr, nil)
+	AssertEq(t, `{123.456: "abc", []: "hij"}`, a.String())
 
 	b := ctx.NewMetaMap("meta", []MapPair{
 		{ctx.NewNumber(123.456), ctx.NewString("abc")},
@@ -719,25 +732,25 @@ func TestMapRemove(t *testing.T) {
 		{ctx.NewVector(nil), ctx.NewString("hij")},
 	})
 	bRemoveErr := b.Remove(ctx.NewString("foo"))
-	require.NotNil(t, bRemoveErr)
-	require.Equal(t, `attempted to modify immutable map {123.456: "abc", "foo": "def", []: "hij"}`, bRemoveErr.Error())
-	require.Equal(t, `{123.456: "abc", "foo": "def", []: "hij"}`, b.String())
+	AssertNe(t, bRemoveErr, nil)
+	AssertEq(t, `attempted to modify immutable map {123.456: "abc", "foo": "def", []: "hij"}`, bRemoveErr.Error())
+	AssertEq(t, `{123.456: "abc", "foo": "def", []: "hij"}`, b.String())
 }
 
 func TestSetConstructorNilElements(t *testing.T) {
 	ctx := NewContext()
 	set := ctx.NewSet(nil)
-	require.Equal(t, 0, set.Count())
+	AssertEq(t, 0, set.Count())
 
-	require.Nil(t, set.Get(ctx.NewNull()))
-	require.Nil(t, set.Get(ctx.NewNumber(456.123)))
+	AssertEq(t, set.Get(ctx.NewNull()), nil)
+	AssertEq(t, set.Get(ctx.NewNumber(456.123)), nil)
 }
 
 func TestSetConstructorNonNilElements(t *testing.T) {
 	ctx := NewContext()
 	{
 		set := ctx.NewSet([]Value{})
-		require.Equal(t, 0, set.Count())
+		AssertEq(t, 0, set.Count())
 	}
 	{
 		set := ctx.NewSet([]Value{
@@ -745,32 +758,32 @@ func TestSetConstructorNonNilElements(t *testing.T) {
 			ctx.NewString("foo"),
 			ctx.NewVector(nil),
 		})
-		require.Equal(t, 3, set.Count())
+		AssertEq(t, 3, set.Count())
 
-		require.True(t, set.Get(ctx.NewNumber(123.456)).Equal(ctx.NewNumber(123.456)))
-		require.True(t, set.Get(ctx.NewString("foo")).Equal(ctx.NewString("foo")))
-		require.True(t, set.Get(ctx.NewVector(nil)).Equal(ctx.NewVector(nil)))
+		AssertEq(t, set.Get(ctx.NewNumber(123.456)).Equal(ctx.NewNumber(123.456)), true)
+		AssertEq(t, set.Get(ctx.NewString("foo")).Equal(ctx.NewString("foo")), true)
+		AssertEq(t, set.Get(ctx.NewVector(nil)).Equal(ctx.NewVector(nil)), true)
 
-		require.Nil(t, set.Get(ctx.NewNull()))
-		require.Nil(t, set.Get(ctx.NewNumber(456.123)))
+		AssertEq(t, set.Get(ctx.NewNull()), nil)
+		AssertEq(t, set.Get(ctx.NewNumber(456.123)), nil)
 	}
 }
 
 func TestSetTypename(t *testing.T) {
 	ctx := NewContext()
 	set := ctx.NewSet(nil)
-	require.Equal(t, "set", set.Typename())
+	AssertEq(t, "set", set.Typename())
 }
 
 func TestSetString(t *testing.T) {
 	ctx := NewContext()
 	{
 		set := ctx.NewSet(nil)
-		require.Equal(t, "Set{}", set.String())
+		AssertEq(t, "Set{}", set.String())
 	}
 	{
 		set := ctx.NewSet([]Value{})
-		require.Equal(t, "Set{}", set.String())
+		AssertEq(t, "Set{}", set.String())
 	}
 	{
 		set := ctx.NewSet([]Value{
@@ -778,7 +791,7 @@ func TestSetString(t *testing.T) {
 			ctx.NewString("foo"),
 			ctx.NewVector(nil),
 		})
-		require.Equal(t, `{123.456, "foo", []}`, set.String())
+		AssertEq(t, `{123.456, "foo", []}`, set.String())
 	}
 }
 
@@ -786,11 +799,11 @@ func TestSetCopy(t *testing.T) {
 	ctx := NewContext()
 	{
 		set := ctx.NewSet(nil)
-		require.Equal(t, set.Count(), set.Copy().(*Set).Count())
+		AssertEq(t, set.Count(), set.Copy().(*Set).Count())
 	}
 	{
 		set := ctx.NewSet([]Value{})
-		require.Equal(t, set.Count(), set.Copy().(*Set).Count())
+		AssertEq(t, set.Count(), set.Copy().(*Set).Count())
 	}
 	{
 		set := ctx.NewSet([]Value{
@@ -798,14 +811,14 @@ func TestSetCopy(t *testing.T) {
 			ctx.NewString("foo"),
 			ctx.NewVector(nil),
 		})
-		require.Equal(t, set.Count(), set.Copy().(*Set).Count())
+		AssertEq(t, set.Count(), set.Copy().(*Set).Count())
 
-		require.True(t, set.Copy().(*Set).Get(ctx.NewNumber(123.456)).Equal(ctx.NewNumber(123.456)))
-		require.True(t, set.Copy().(*Set).Get(ctx.NewString("foo")).Equal(ctx.NewString("foo")))
-		require.True(t, set.Copy().(*Set).Get(ctx.NewVector(nil)).Equal(ctx.NewVector(nil)))
+		AssertEq(t, set.Copy().(*Set).Get(ctx.NewNumber(123.456)).Equal(ctx.NewNumber(123.456)), true)
+		AssertEq(t, set.Copy().(*Set).Get(ctx.NewString("foo")).Equal(ctx.NewString("foo")), true)
+		AssertEq(t, set.Copy().(*Set).Get(ctx.NewVector(nil)).Equal(ctx.NewVector(nil)), true)
 
-		require.Nil(t, set.Copy().(*Set).Get(ctx.NewNull()))
-		require.Nil(t, set.Copy().(*Set).Get(ctx.NewNumber(456.123)))
+		AssertEq(t, set.Copy().(*Set).Get(ctx.NewNull()), nil)
+		AssertEq(t, set.Copy().(*Set).Get(ctx.NewNumber(456.123)), nil)
 	}
 }
 
@@ -817,41 +830,41 @@ func TestSetCopyOnWrite(t *testing.T) {
 		ctx.NewVector(nil),
 	})
 	b := a.Copy().(*Set)
-	require.Equal(t, a.Count(), b.Count())
-	require.Equal(t, 2, a.data.uses)
-	require.Equal(t, 2, b.data.uses)
-	require.Same(t, a.data, b.data)
+	AssertEq(t, a.Count(), b.Count())
+	AssertEq(t, 2, a.data.uses)
+	AssertEq(t, 2, b.data.uses)
+	AssertEq(t, a.data, b.data)
 
 	b.Insert(ctx.NewString("bar"))
-	require.Equal(t, a.Count()+1, b.Count())
-	require.Equal(t, 1, a.data.uses)
-	require.Equal(t, 1, b.data.uses)
-	require.NotSame(t, a.data, b.data)
+	AssertEq(t, a.Count()+1, b.Count())
+	AssertEq(t, 1, a.data.uses)
+	AssertEq(t, 1, b.data.uses)
+	AssertNe(t, a.data, b.data)
 
-	require.True(t, a.Get(ctx.NewNumber(123.456)).Equal(ctx.NewNumber(123.456)))
-	require.True(t, a.Get(ctx.NewString("foo")).Equal(ctx.NewString("foo")))
-	require.True(t, a.Get(ctx.NewVector(nil)).Equal(ctx.NewVector(nil)))
+	AssertEq(t, a.Get(ctx.NewNumber(123.456)).Equal(ctx.NewNumber(123.456)), true)
+	AssertEq(t, a.Get(ctx.NewString("foo")).Equal(ctx.NewString("foo")), true)
+	AssertEq(t, a.Get(ctx.NewVector(nil)).Equal(ctx.NewVector(nil)), true)
 
-	require.True(t, b.Get(ctx.NewNumber(123.456)).Equal(ctx.NewNumber(123.456)))
-	require.True(t, b.Get(ctx.NewString("foo")).Equal(ctx.NewString("foo")))
-	require.True(t, b.Get(ctx.NewVector(nil)).Equal(ctx.NewVector(nil)))
-	require.True(t, b.Get(ctx.NewString("bar")).Equal(ctx.NewString("bar")))
+	AssertEq(t, b.Get(ctx.NewNumber(123.456)).Equal(ctx.NewNumber(123.456)), true)
+	AssertEq(t, b.Get(ctx.NewString("foo")).Equal(ctx.NewString("foo")), true)
+	AssertEq(t, b.Get(ctx.NewVector(nil)).Equal(ctx.NewVector(nil)), true)
+	AssertEq(t, b.Get(ctx.NewString("bar")).Equal(ctx.NewString("bar")), true)
 
 	c := a.Copy().(*Set)
 	c.Remove(ctx.NewString("foo"))
 
-	require.Equal(t, a.Count()-1, c.Count())
-	require.Equal(t, 1, a.data.uses)
-	require.Equal(t, 1, c.data.uses)
-	require.NotSame(t, a.data, c.data)
+	AssertEq(t, a.Count()-1, c.Count())
+	AssertEq(t, 1, a.data.uses)
+	AssertEq(t, 1, c.data.uses)
+	AssertNe(t, a.data, c.data)
 
-	require.True(t, a.Get(ctx.NewNumber(123.456)).Equal(ctx.NewNumber(123.456)))
-	require.True(t, a.Get(ctx.NewString("foo")).Equal(ctx.NewString("foo")))
-	require.True(t, a.Get(ctx.NewVector(nil)).Equal(ctx.NewVector(nil)))
+	AssertEq(t, a.Get(ctx.NewNumber(123.456)).Equal(ctx.NewNumber(123.456)), true)
+	AssertEq(t, a.Get(ctx.NewString("foo")).Equal(ctx.NewString("foo")), true)
+	AssertEq(t, a.Get(ctx.NewVector(nil)).Equal(ctx.NewVector(nil)), true)
 
-	require.True(t, c.Get(ctx.NewNumber(123.456)).Equal(ctx.NewNumber(123.456)))
-	require.Nil(t, c.Get(ctx.NewString("foo")))
-	require.True(t, c.Get(ctx.NewVector(nil)).Equal(ctx.NewVector(nil)))
+	AssertEq(t, c.Get(ctx.NewNumber(123.456)).Equal(ctx.NewNumber(123.456)), true)
+	AssertEq(t, c.Get(ctx.NewString("foo")), nil)
+	AssertEq(t, c.Get(ctx.NewVector(nil)).Equal(ctx.NewVector(nil)), true)
 }
 
 func TestSetCombEncode(t *testing.T) {
@@ -862,15 +875,15 @@ func TestSetCombEncode(t *testing.T) {
 		var sb strings.Builder
 		e := NewCombEncoder(&sb, nil)
 		err := empty.CombEncode(e)
-		require.Nil(t, err)
-		require.Equal(t, "Set{}", sb.String())
+		AssertEq(t, err, nil)
+		AssertEq(t, "Set{}", sb.String())
 	}
 	{
 		var sb strings.Builder
 		e := NewCombEncoder(&sb, Ptr("\t"))
 		err := empty.CombEncode(e)
-		require.Nil(t, err)
-		require.Equal(t, "Set{}", sb.String())
+		AssertEq(t, err, nil)
+		AssertEq(t, "Set{}", sb.String())
 	}
 
 	nonEmpty := ctx.NewSet([]Value{
@@ -889,15 +902,15 @@ func TestSetCombEncode(t *testing.T) {
 		var sb strings.Builder
 		e := NewCombEncoder(&sb, nil)
 		err := nonEmpty.CombEncode(e)
-		require.Nil(t, err)
-		require.Equal(t, `{null, false, 123.456, "foo", Set{}, {"foo", "bar", "baz"}}`, sb.String())
+		AssertEq(t, err, nil)
+		AssertEq(t, `{null, false, 123.456, "foo", Set{}, {"foo", "bar", "baz"}}`, sb.String())
 	}
 	{
 		var sb strings.Builder
 		e := NewCombEncoder(&sb, Ptr("\t"))
 		err := nonEmpty.CombEncode(e)
-		require.Nil(t, err)
-		require.Equal(t, `{
+		AssertEq(t, err, nil)
+		AssertEq(t, `{
 	null,
 	false,
 	123.456,
@@ -924,15 +937,15 @@ func TestSetCombEncode(t *testing.T) {
 		var sb strings.Builder
 		e := NewCombEncoder(&sb, nil)
 		err := deeplyNested.CombEncode(e)
-		require.Nil(t, err)
-		require.Equal(t, `{{{{"foo"}}}}`, sb.String())
+		AssertEq(t, err, nil)
+		AssertEq(t, `{{{{"foo"}}}}`, sb.String())
 	}
 	{
 		var sb strings.Builder
 		e := NewCombEncoder(&sb, Ptr("\t"))
 		err := deeplyNested.CombEncode(e)
-		require.Nil(t, err)
-		require.Equal(t, `{
+		AssertEq(t, err, nil)
+		AssertEq(t, `{
 	{
 		{
 			{
@@ -947,19 +960,19 @@ func TestSetCombEncode(t *testing.T) {
 func TestReferenceTypename(t *testing.T) {
 	ctx := NewContext()
 	reference := ctx.NewReference(ctx.NewNumber(123.456))
-	require.Equal(t, "reference", reference.Typename())
+	AssertEq(t, "reference", reference.Typename())
 }
 
 func TestReferenceString(t *testing.T) {
 	ctx := NewContext()
 	reference := ctx.NewReference(ctx.NewNumber(123.456))
-	require.True(t, strings.HasPrefix(reference.String(), "reference@"))
+	AssertEq(t, strings.HasPrefix(reference.String(), "reference@"), true)
 }
 
 func TestReferenceCopy(t *testing.T) {
 	ctx := NewContext()
 	reference := ctx.NewReference(ctx.NewNumber(123.456))
-	require.Same(t, reference, reference.Copy())
+	AssertEq(t, reference, reference.Copy().(*Reference))
 }
 
 func TestReferenceCombEncode(t *testing.T) {
@@ -968,29 +981,29 @@ func TestReferenceCombEncode(t *testing.T) {
 	var sb strings.Builder
 	e := NewCombEncoder(&sb, nil)
 	err := reference.CombEncode(e)
-	require.NotNil(t, err)
-	require.True(t, strings.HasPrefix(err.Error(), "invalid comb value reference@"))
+	AssertNe(t, err, nil)
+	AssertEq(t, strings.HasPrefix(err.Error(), "invalid comb value reference@"), true)
 }
 
 func TestExternalTypename(t *testing.T) {
 	ctx := NewContext()
 	var x int32 = 42
 	external := ctx.NewExternal(x)
-	require.Equal(t, "external", external.Typename())
+	AssertEq(t, "external", external.Typename())
 }
 
 func TestExternalString(t *testing.T) {
 	ctx := NewContext()
 	var x int32 = 42
 	external := ctx.NewExternal(x)
-	require.Equal(t, "external(42)", external.String())
+	AssertEq(t, "external(42)", external.String())
 }
 
 func TestExternalCopy(t *testing.T) {
 	ctx := NewContext()
 	var x int32 = 42
 	external := ctx.NewExternal(x)
-	require.Same(t, external, external.Copy())
+	AssertEq(t, external, external.Copy().(*External))
 }
 
 func TestExternalCombEncode(t *testing.T) {
@@ -1000,6 +1013,6 @@ func TestExternalCombEncode(t *testing.T) {
 	var sb strings.Builder
 	e := NewCombEncoder(&sb, nil)
 	err := external.CombEncode(e)
-	require.NotNil(t, err)
-	require.Equal(t, "invalid comb value external(42)", err.Error())
+	AssertNe(t, err, nil)
+	AssertEq(t, "invalid comb value external(42)", err.Error())
 }
