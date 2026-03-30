@@ -93,11 +93,6 @@ def escape(text: Union[bytes, str]) -> str:
     return result
 
 
-def hexscape(text: Union[bytes, str]) -> str:
-    data = text if isinstance(text, bytes) else text.encode("utf-8")
-    return "".join([f"\\x{b:02X}" for b in data])
-
-
 def quote(item: Any) -> str:
     text = str(item)
     return f"`{text}`" if "`" not in text else f'"{text}"'
