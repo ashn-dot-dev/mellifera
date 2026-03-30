@@ -360,6 +360,21 @@ make lint-py   # lint with mypy and flake8
 make format-py # format using black
 ```
 
+## Contributing
+
+Contributions are welcomed and appreciated! 😊
+
+One of the best ways to help Mellifera is to use the language for your own
+projects and let me know what works and what needs improvement. Is Mellifera
+missing a critical built-in function? Is there a misleading error message that
+could use some attention? Did you find a bug in the interpreter? Let me know by
+creating a [new issue](https://github.com/ashn-dot-dev/mellifera/issues/new)!
+
+If you would like to assist the project through code or documentation
+contributions, take a look at open issues marked with the
+[help-wanted](https://github.com/ashn-dot-dev/mellifera/issues?q=state%3Aopen%20label%3A%22help-wanted%22)
+label for areas where extra assistance would be particularly helpful.
+
 ## License and Credits
 
 All content in this repository, unless otherwise noted, is licensed under the
