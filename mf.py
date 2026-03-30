@@ -193,7 +193,7 @@ class Value(ABC):
 
     @abstractmethod
     def comb_encode(
-        self, indent_text: Optional[str] = None, indent_level: int = 0
+        self, indent: Optional[str] = None, separator: str = "", indent_level: int = 0
     ) -> str:
         raise NotImplementedError()
 
@@ -257,7 +257,7 @@ class Null(Value):
         return "null"
 
     def comb_encode(
-        self, indent_text: Optional[str] = None, indent_level: int = 0
+        self, indent: Optional[str] = None, separator: str = "", indent_level: int = 0
     ) -> str:
         return str(self)
 
@@ -289,7 +289,7 @@ class Boolean(Value):
         return "true" if self.data else "false"
 
     def comb_encode(
-        self, indent_text: Optional[str] = None, indent_level: int = 0
+        self, indent: Optional[str] = None, separator: str = "", indent_level: int = 0
     ) -> str:
         return str(self)
 
@@ -349,7 +349,7 @@ class Number(Value):
         return string[0:end]
 
     def comb_encode(
-        self, indent_text: Optional[str] = None, indent_level: int = 0
+        self, indent: Optional[str] = None, separator: str = "", indent_level: int = 0
     ) -> str:
         if math.isinf(float(self)) or math.isnan(float(self)):
             raise ValueError(f"invalid comb value {self}")
@@ -390,7 +390,7 @@ class String(Value):
         return f'"{escape(self.bytes)}"'
 
     def comb_encode(
-        self, indent_text: Optional[str] = None, indent_level: int = 0
+        self, indent: Optional[str] = None, separator: str = "", indent_level: int = 0
     ) -> str:
         return f'"{escape(self.bytes)}"'
 
@@ -455,7 +455,7 @@ class Regexp(Value):
         return f'r"{escape(self.text.decode("utf-8"))}"'
 
     def comb_encode(
-        self, indent_text: Optional[str] = None, indent_level: int = 0
+        self, indent: Optional[str] = None, separator: str = "", indent_level: int = 0
     ) -> str:
         raise ValueError(f"invalid comb value {self}")
 
@@ -512,22 +512,25 @@ class Vector(Value):
         return f"[{elements}]"
 
     def comb_encode(
-        self, indent_text: Optional[str] = None, indent_level: int = 0
+        self, indent: Optional[str] = None, separator: str = "", indent_level: int = 0
     ) -> str:
         if len(self.data) == 0:
             return "[]"
 
-        if indent_text is not None:
+        if indent is not None:
             elements = ""
             for i, element in enumerate(self.data):
-                elements += f"{indent_text * (indent_level + 1)}{element.comb_encode(indent_text, indent_level + 1)}"
+                indent_text = indent * (indent_level + 1)
+                elements += f"{indent_text}{element.comb_encode(indent=indent, separator=separator, indent_level=indent_level + 1)}"
                 if i != len(self.data) - 1:
                     elements += ",\n"
                 else:
                     elements += "\n"
-            return "[\n" + elements + f"{indent_text * indent_level}]"
+            return "[\n" + elements + f"{indent * indent_level}]"
 
-        elements = ", ".join([x.comb_encode() for x in self.data])
+        elements = f",{separator}".join(
+            [x.comb_encode(separator=separator) for x in self.data]
+        )
         return f"[{elements}]"
 
     def __contains__(self, item) -> bool:
@@ -641,23 +644,33 @@ class Map(Value):
         return f"{{{elements}}}"
 
     def comb_encode(
-        self, indent_text: Optional[str] = None, indent_level: int = 0
+        self, indent: Optional[str] = None, separator: str = "", indent_level: int = 0
     ) -> str:
         if len(self.data) == 0:
             return "Map{}"
 
-        if indent_text is not None:
+        if indent is not None:
             elements = ""
             for i, k in enumerate(self.data):
-                elements += f"{indent_text * (indent_level + 1)}{k.comb_encode(indent_text, indent_level + 1)}: {self.data[k].comb_encode(indent_text, indent_level + 1)}"
+                indent_text = indent * (indent_level + 1)
+                k_text = k.comb_encode(
+                    indent=indent, separator=separator, indent_level=indent_level + 1
+                )
+                v_text = self.data[k].comb_encode(
+                    indent=indent, separator=separator, indent_level=indent_level + 1
+                )
+                elements += f"{indent_text}{k_text}:{separator}{v_text}"
                 if i != len(self.data) - 1:
                     elements += ",\n"
                 else:
                     elements += "\n"
-            return "{\n" + elements + f"{indent_text * indent_level}}}"
+            return "{\n" + elements + f"{indent * indent_level}}}"
 
-        elements = ", ".join(
-            [f"{k.comb_encode()}: {v.comb_encode()}" for k, v in self.data.items()]
+        elements = f",{separator}".join(
+            [
+                f"{k.comb_encode(separator=separator)}:{separator}{v.comb_encode(separator=separator)}"
+                for k, v in self.data.items()
+            ]
         )
         return f"{{{elements}}}"
 
@@ -760,22 +773,25 @@ class Set(Value):
         return f"{{{elements}}}"
 
     def comb_encode(
-        self, indent_text: Optional[str] = None, indent_level: int = 0
+        self, indent: Optional[str] = None, separator: str = "", indent_level: int = 0
     ) -> str:
         if len(self.data) == 0:
             return "Set{}"
 
-        if indent_text is not None:
+        if indent is not None:
             elements = ""
             for i, element in enumerate(self.data):
-                elements += f"{indent_text * (indent_level + 1)}{element.comb_encode(indent_text, indent_level + 1)}"
+                indent_text = indent * (indent_level + 1)
+                elements += f"{indent_text}{element.comb_encode(indent=indent, separator=separator, indent_level=indent_level + 1)}"
                 if i != len(self.data) - 1:
                     elements += ",\n"
                 else:
                     elements += "\n"
-            return "{\n" + elements + f"{indent_text * indent_level}}}"
+            return "{\n" + elements + f"{indent * indent_level}}}"
 
-        elements = ", ".join([f"{k.comb_encode()}" for k in self.data.keys()])
+        elements = f",{separator}".join(
+            [f"{k.comb_encode()}" for k in self.data.keys()]
+        )
         return f"{{{elements}}}"
 
     def __contains__(self, item) -> bool:
@@ -829,7 +845,7 @@ class Reference(Value):
         return f"reference@{hex(id(self.data))}"
 
     def comb_encode(
-        self, indent_text: Optional[str] = None, indent_level: int = 0
+        self, indent: Optional[str] = None, separator: str = "", indent_level: int = 0
     ) -> str:
         raise ValueError(f"invalid comb value {self}")
 
@@ -872,7 +888,7 @@ class Function(Value):
         return name
 
     def comb_encode(
-        self, indent_text: Optional[str] = None, indent_level: int = 0
+        self, indent: Optional[str] = None, separator: str = "", indent_level: int = 0
     ) -> str:
         raise ValueError(f"invalid comb value {self}")
 
@@ -911,7 +927,7 @@ class Builtin(Value):
         return f"{self.name}@builtin"
 
     def comb_encode(
-        self, indent_text: Optional[str] = None, indent_level: int = 0
+        self, indent: Optional[str] = None, separator: str = "", indent_level: int = 0
     ) -> str:
         raise ValueError(f"invalid comb value {self}")
 
@@ -1034,7 +1050,7 @@ class External(Value):
         return f"external({repr(self.data)})"
 
     def comb_encode(
-        self, indent_text: Optional[str] = None, indent_level: int = 0
+        self, indent: Optional[str] = None, separator: str = "", indent_level: int = 0
     ) -> str:
         raise ValueError(f"invalid comb value {self}")
 
@@ -5727,6 +5743,7 @@ def builtin_comb_encode(value: Value) -> Union[Value, Error]:
 @builtin("comb::encode_ex", [Value, Map])
 def builtin_comb_encode_ex(value: Value, options: Map) -> Union[Value, Error]:
     indent: Optional[Union[int, str]] = None
+    separator = ""
     for k, v in options.data.items():
         if isinstance(k, String) and k.bytes == b"indent":
             if isinstance(v, Number) and float(v).is_integer() and int(v) >= 0:
@@ -5738,11 +5755,16 @@ def builtin_comb_encode_ex(value: Value, options: Map) -> Union[Value, Error]:
             return Error(
                 None, f"expected non-negative integer or string indent, received {v}"
             )
+        if isinstance(k, String) and k.bytes == b"separator":
+            if isinstance(v, String):
+                separator = v.runes
+                continue
+            return Error(None, f"expected string separator, received {v}")
         return Error(None, String.new(f"unknown option {k}"))
     if isinstance(indent, int):
         indent = " " * indent
 
-    return String.new(value.comb_encode(indent_text=indent, indent_level=0))
+    return String.new(value.comb_encode(indent=indent, separator=separator))
 
 
 @builtin("fs::read", [String])
@@ -6224,7 +6246,7 @@ def dump_tokens_source(source: str, loc: Optional[SourceLocation] = None):
     while token.kind != TokenKind.EOF:
         tokens.data.append(token.into_value())
         token = lexer.next_token()
-    print(tokens.comb_encode(indent_text=" " * 4))
+    print(tokens.comb_encode(indent=" " * 4, separator=" "))
 
 
 def dump_tokens_file(path: Union[str, os.PathLike]):
@@ -6237,7 +6259,7 @@ def dump_ast_source(source: str, loc: Optional[SourceLocation] = None):
     lexer = Lexer(source, loc)
     parser = Parser(lexer)
     program = parser.parse_program()
-    print(program.into_value().comb_encode(indent_text=" " * 4))
+    print(program.into_value().comb_encode(indent=" " * 4, separator=" "))
 
 
 def dump_ast_file(path: Union[str, os.PathLike]):

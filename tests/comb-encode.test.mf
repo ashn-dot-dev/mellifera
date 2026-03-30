@@ -57,14 +57,14 @@ try { dumpln(comb::encode(function(){})); } catch err { println($"error: {err}")
 # "foo\xffbar"
 #
 # []
-# ["foo", "bar", "baz"]
-# ["foo", ["bar"], {"baz": 123}]
+# ["foo","bar","baz"]
+# ["foo",["bar"],{"baz":123}]
 #
 # Map{}
-# {"foo": 123}
-# {"foo": 123, "bar": ["abc", "def"], "baz": {"blub": null}}
+# {"foo":123}
+# {"foo":123,"bar":["abc","def"],"baz":{"blub":null}}
 #
-# "{\"foo\", \"bar\"}"
+# "{\"foo\",\"bar\"}"
 #
 #
 # error: invalid comb value function@[comb-encode.test.mf, line 43]

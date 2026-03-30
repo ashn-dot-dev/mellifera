@@ -28,7 +28,9 @@ func dumpTokensSource(ctx *mellifera.Context, source string, location *mellifera
 	}
 
 	var sb strings.Builder
-	encoder := mellifera.NewCombEncoder(&sb, mellifera.Ptr("    "))
+	encoder := mellifera.NewCombEncoder(&sb)
+	encoder.Indent = mellifera.Ptr("    ")
+	encoder.Separator = " "
 	err = tokens.CombEncode(encoder)
 	if err != nil {
 		return err
@@ -57,7 +59,9 @@ func dumpAstSource(ctx *mellifera.Context, source string, location *mellifera.So
 	}
 
 	var sb strings.Builder
-	encoder := mellifera.NewCombEncoder(&sb, mellifera.Ptr("    "))
+	encoder := mellifera.NewCombEncoder(&sb)
+	encoder.Indent = mellifera.Ptr("    ")
+	encoder.Separator = " "
 	err = program.IntoValue(ctx).CombEncode(encoder)
 	if err != nil {
 		return err

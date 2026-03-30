@@ -140,18 +140,38 @@ func ValueAsInt64(value Value) (int64, error) {
 
 type CombEncoder struct {
 	w           io.Writer
-	indentText  *string // Optional: nil implies single-line default formatting.
-	indentLevel int     // Number of times the indent text is written before main text per line.
+	err         error // Internal sticky error.
+	indentLevel int   // Number of times the indent text is written before the main text per line.
 
-	err error // Internal sticky error.
+	// Indent before the first element on a new line.
+	// Optional: nil implies single-line default formatting.
+	// [
+	//     "foo",
+	//     "bar",
+	//     "baz"
+	// ]
+	// ^^^^
+	//  \\\\______ indent of "    "
+	Indent *string
+	// Space separator between elements.
+	//
+	// ["foo", "bar", "baz"]
+	//        ^      ^
+	//         \______\_________ separator of " "
+	// {"foo": 123, "bar": 456}
+	//        ^    ^      ^
+	//         \____\______\____ separator of " "
+	Separator string
 }
 
-func NewCombEncoder(w io.Writer, indent *string) *CombEncoder {
+func NewCombEncoder(w io.Writer) *CombEncoder {
 	return &CombEncoder{
 		w:           w,
-		indentText:  indent,
-		indentLevel: 0,
 		err:         nil,
+		indentLevel: 0,
+
+		Indent:    nil,
+		Separator: "",
 	}
 }
 
@@ -166,9 +186,9 @@ func (e *CombEncoder) writeString(s string) error {
 }
 
 func (e *CombEncoder) writeIndent(s string) error {
-	if e.indentText != nil {
+	if e.Indent != nil {
 		for range e.indentLevel {
-			e.writeString(*e.indentText)
+			e.writeString(*e.Indent)
 		}
 	}
 
@@ -178,10 +198,10 @@ func (e *CombEncoder) writeIndent(s string) error {
 }
 
 func (e *CombEncoder) writeEndOfLine() error {
-	if e.indentText != nil {
+	if e.Indent != nil {
 		e.writeString("\n")
 	} else {
-		e.writeString(" ")
+		e.writeString(e.Separator)
 	}
 
 	return e.err
@@ -891,7 +911,7 @@ func (self *Vector) CombEncode(e *CombEncoder) error {
 	}
 
 	e.writeString("[")
-	if e.indentText != nil {
+	if e.Indent != nil {
 		e.writeEndOfLine()
 	}
 	e.indentLevel += 1
@@ -903,7 +923,7 @@ func (self *Vector) CombEncode(e *CombEncoder) error {
 		if i != len(self.data.elements)-1 {
 			e.writeString(",")
 			e.writeEndOfLine()
-		} else if e.indentText != nil {
+		} else if e.Indent != nil {
 			e.writeEndOfLine()
 		}
 	}
@@ -1208,7 +1228,7 @@ func (self *Map) CombEncode(e *CombEncoder) error {
 	}
 
 	e.writeString("{")
-	if e.indentText != nil {
+	if e.Indent != nil {
 		e.writeEndOfLine()
 	}
 	e.indentLevel += 1
@@ -1217,13 +1237,14 @@ func (self *Map) CombEncode(e *CombEncoder) error {
 	for cur != nil {
 		e.writeIndent("")
 		cur.key.CombEncode(e)
-		e.writeString(": ")
+		e.writeString(":")
+		e.writeString(e.Separator)
 		cur.value.CombEncode(e)
 
 		if cur != self.data.tail {
 			e.writeString(",")
 			e.writeEndOfLine()
-		} else if e.indentText != nil {
+		} else if e.Indent != nil {
 			e.writeEndOfLine()
 		}
 
@@ -1512,7 +1533,7 @@ func (self *Set) CombEncode(e *CombEncoder) error {
 	}
 
 	e.writeString("{")
-	if e.indentText != nil {
+	if e.Indent != nil {
 		e.writeEndOfLine()
 	}
 	e.indentLevel += 1
@@ -1525,7 +1546,7 @@ func (self *Set) CombEncode(e *CombEncoder) error {
 		if cur != self.data.tail {
 			e.writeString(",")
 			e.writeEndOfLine()
-		} else if e.indentText != nil {
+		} else if e.Indent != nil {
 			e.writeEndOfLine()
 		}
 
@@ -8400,7 +8421,7 @@ func BuiltinCombDecode(ctx *Context) *Builtin {
 func BuiltinCombEncode(ctx *Context) *Builtin {
 	return ctx.NewBuiltin("comb::encode", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		var sb strings.Builder
-		encoder := NewCombEncoder(&sb, nil)
+		encoder := NewCombEncoder(&sb)
 		err := arguments[0].CombEncode(encoder)
 		if err != nil {
 			return nil, NewError(nil, ctx.NewString(err.Error()))
@@ -8414,6 +8435,7 @@ func BuiltinCombEncodeEx(ctx *Context) *Builtin {
 	return ctx.NewBuiltin("comb::encode_ex", []Type{TVal(ANY), TVal(MAP)}, func(ctx *Context, arguments []Value) (Value, error) {
 		options := arguments[1].(*Map)
 		var indent *string = nil // optional
+		var separator string = ""
 		for _, pair := range options.Pairs() {
 			if k, ok := pair.Key.(*String); ok && k.data == "indent" {
 				if v, ok := pair.Value.(*Number); ok {
@@ -8435,11 +8457,22 @@ func BuiltinCombEncodeEx(ctx *Context) *Builtin {
 				return nil, NewError(nil, ctx.NewStringf("expected non-negative integer or string indent, received %v", pair.Value))
 			}
 
+			if k, ok := pair.Key.(*String); ok && k.data == "separator" {
+				if v, ok := pair.Value.(*String); ok {
+					separator = v.data
+					continue
+				}
+
+				return nil, NewError(nil, ctx.NewStringf("expected string separator, received %v", pair.Value))
+			}
+
 			return nil, NewError(nil, ctx.NewStringf("unknown option %v", pair.Key))
 		}
 
 		var sb strings.Builder
-		encoder := NewCombEncoder(&sb, indent)
+		encoder := NewCombEncoder(&sb)
+		encoder.Indent = indent
+		encoder.Separator = separator
 		err := arguments[0].CombEncode(encoder)
 		if err != nil {
 			return nil, NewError(nil, ctx.NewString(err.Error()))

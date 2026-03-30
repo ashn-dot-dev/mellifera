@@ -8,6 +8,7 @@ import (
 
 // Asserts a == b
 func AssertEq[T comparable](t *testing.T, a T, b T) {
+	t.Helper()
 	if !(a == b) {
 		t.Fatalf("expected a == b, received...\na: %+v\nb: %+v", a, b)
 	}
@@ -15,6 +16,7 @@ func AssertEq[T comparable](t *testing.T, a T, b T) {
 
 // Asserts a != b
 func AssertNe[T comparable](t *testing.T, a T, b T) {
+	t.Helper()
 	if !(a != b) {
 		t.Fatalf("expected a != b, received...\na: %+v\nb: %+v", a, b)
 	}
@@ -43,14 +45,15 @@ func TestNullCombEncode(t *testing.T) {
 	null := ctx.NewNull()
 	{
 		var sb strings.Builder
-		e := NewCombEncoder(&sb, nil)
+		e := NewCombEncoder(&sb)
 		err := null.CombEncode(e)
 		AssertEq(t, err, nil)
 		AssertEq(t, "null", sb.String())
 	}
 	{
 		var sb strings.Builder
-		e := NewCombEncoder(&sb, Ptr("\t"))
+		e := NewCombEncoder(&sb)
+		e.Indent = Ptr("\t")
 		err := null.CombEncode(e)
 		AssertEq(t, err, nil)
 		AssertEq(t, "null", sb.String())
@@ -98,14 +101,15 @@ func TestBooleanCombEncode(t *testing.T) {
 	boolean := ctx.NewBoolean(true)
 	{
 		var sb strings.Builder
-		e := NewCombEncoder(&sb, nil)
+		e := NewCombEncoder(&sb)
 		err := boolean.CombEncode(e)
 		AssertEq(t, err, nil)
 		AssertEq(t, "true", sb.String())
 	}
 	{
 		var sb strings.Builder
-		e := NewCombEncoder(&sb, Ptr("\t"))
+		e := NewCombEncoder(&sb)
+		e.Indent = Ptr("\t")
 		err := boolean.CombEncode(e)
 		AssertEq(t, err, nil)
 		AssertEq(t, "true", sb.String())
@@ -169,14 +173,15 @@ func TestNumberCombEncode(t *testing.T) {
 	number := ctx.NewNumber(123.456)
 	{
 		var sb strings.Builder
-		e := NewCombEncoder(&sb, nil)
+		e := NewCombEncoder(&sb)
 		err := number.CombEncode(e)
 		AssertEq(t, err, nil)
 		AssertEq(t, "123.456", sb.String())
 	}
 	{
 		var sb strings.Builder
-		e := NewCombEncoder(&sb, Ptr("\t"))
+		e := NewCombEncoder(&sb)
+		e.Indent = Ptr("\t")
 		err := number.CombEncode(e)
 		AssertEq(t, err, nil)
 		AssertEq(t, "123.456", sb.String())
@@ -185,7 +190,8 @@ func TestNumberCombEncode(t *testing.T) {
 	{
 		nan := ctx.NewNumber(math.NaN())
 		var sb strings.Builder
-		e := NewCombEncoder(&sb, Ptr("\t"))
+		e := NewCombEncoder(&sb)
+		e.Indent = Ptr("\t")
 		err := nan.CombEncode(e)
 		AssertNe(t, err, nil)
 		AssertEq(t, "invalid comb value NaN", err.Error())
@@ -193,7 +199,8 @@ func TestNumberCombEncode(t *testing.T) {
 	{
 		positiveInf := ctx.NewNumber(math.Inf(+1))
 		var sb strings.Builder
-		e := NewCombEncoder(&sb, Ptr("\t"))
+		e := NewCombEncoder(&sb)
+		e.Indent = Ptr("\t")
 		err := positiveInf.CombEncode(e)
 		AssertNe(t, err, nil)
 		AssertEq(t, "invalid comb value Inf", err.Error())
@@ -201,7 +208,8 @@ func TestNumberCombEncode(t *testing.T) {
 	{
 		negativeInf := ctx.NewNumber(math.Inf(-1))
 		var sb strings.Builder
-		e := NewCombEncoder(&sb, Ptr("\t"))
+		e := NewCombEncoder(&sb)
+		e.Indent = Ptr("\t")
 		err := negativeInf.CombEncode(e)
 		AssertNe(t, err, nil)
 		AssertEq(t, "invalid comb value -Inf", err.Error())
@@ -231,14 +239,15 @@ func TestStringCombEncode(t *testing.T) {
 	string := ctx.NewString("foo\nbar")
 	{
 		var sb strings.Builder
-		e := NewCombEncoder(&sb, nil)
+		e := NewCombEncoder(&sb)
 		err := string.CombEncode(e)
 		AssertEq(t, err, nil)
 		AssertEq(t, `"foo\nbar"`, sb.String())
 	}
 	{
 		var sb strings.Builder
-		e := NewCombEncoder(&sb, Ptr("\t"))
+		e := NewCombEncoder(&sb)
+		e.Indent = Ptr("\t")
 		err := string.CombEncode(e)
 		AssertEq(t, err, nil)
 		AssertEq(t, `"foo\nbar"`, sb.String())
@@ -270,7 +279,7 @@ func TestRegexpCombEncode(t *testing.T) {
 	ctx := NewContext()
 	regexp, _ := ctx.NewRegexp("^.*$")
 	var sb strings.Builder
-	e := NewCombEncoder(&sb, nil)
+	e := NewCombEncoder(&sb)
 	err := regexp.CombEncode(e)
 	AssertNe(t, err, nil)
 	AssertEq(t, `invalid comb value r"^.*$"`, err.Error())
@@ -388,14 +397,15 @@ func TestVectorCombEncode(t *testing.T) {
 	empty := ctx.NewVector(nil)
 	{
 		var sb strings.Builder
-		e := NewCombEncoder(&sb, nil)
+		e := NewCombEncoder(&sb)
 		err := empty.CombEncode(e)
 		AssertEq(t, err, nil)
 		AssertEq(t, "[]", sb.String())
 	}
 	{
 		var sb strings.Builder
-		e := NewCombEncoder(&sb, Ptr("\t"))
+		e := NewCombEncoder(&sb)
+		e.Indent = Ptr("\t")
 		err := empty.CombEncode(e)
 		AssertEq(t, err, nil)
 		AssertEq(t, "[]", sb.String())
@@ -415,14 +425,23 @@ func TestVectorCombEncode(t *testing.T) {
 	})
 	{
 		var sb strings.Builder
-		e := NewCombEncoder(&sb, nil)
+		e := NewCombEncoder(&sb)
+		err := nonEmpty.CombEncode(e)
+		AssertEq(t, err, nil)
+		AssertEq(t, `[null,false,123.456,"foo",[],["foo","bar","baz"]]`, sb.String())
+	}
+	{
+		var sb strings.Builder
+		e := NewCombEncoder(&sb)
+		e.Separator = " "
 		err := nonEmpty.CombEncode(e)
 		AssertEq(t, err, nil)
 		AssertEq(t, `[null, false, 123.456, "foo", [], ["foo", "bar", "baz"]]`, sb.String())
 	}
 	{
 		var sb strings.Builder
-		e := NewCombEncoder(&sb, Ptr("\t"))
+		e := NewCombEncoder(&sb)
+		e.Indent = Ptr("\t")
 		err := nonEmpty.CombEncode(e)
 		AssertEq(t, err, nil)
 		AssertEq(t, `[
@@ -450,14 +469,15 @@ func TestVectorCombEncode(t *testing.T) {
 	})
 	{
 		var sb strings.Builder
-		e := NewCombEncoder(&sb, nil)
+		e := NewCombEncoder(&sb)
 		err := deeplyNested.CombEncode(e)
 		AssertEq(t, err, nil)
 		AssertEq(t, `[[[["foo"]]]]`, sb.String())
 	}
 	{
 		var sb strings.Builder
-		e := NewCombEncoder(&sb, Ptr("\t"))
+		e := NewCombEncoder(&sb)
+		e.Indent = Ptr("\t")
 		err := deeplyNested.CombEncode(e)
 		AssertEq(t, err, nil)
 		AssertEq(t, `[
@@ -607,14 +627,15 @@ func TestMapCombEncode(t *testing.T) {
 	empty := ctx.NewMap(nil)
 	{
 		var sb strings.Builder
-		e := NewCombEncoder(&sb, nil)
+		e := NewCombEncoder(&sb)
 		err := empty.CombEncode(e)
 		AssertEq(t, err, nil)
 		AssertEq(t, "Map{}", sb.String())
 	}
 	{
 		var sb strings.Builder
-		e := NewCombEncoder(&sb, Ptr("\t"))
+		e := NewCombEncoder(&sb)
+		e.Indent = Ptr("\t")
 		err := empty.CombEncode(e)
 		AssertEq(t, err, nil)
 		AssertEq(t, "Map{}", sb.String())
@@ -634,14 +655,24 @@ func TestMapCombEncode(t *testing.T) {
 	})
 	{
 		var sb strings.Builder
-		e := NewCombEncoder(&sb, nil)
+		e := NewCombEncoder(&sb)
+		err := nonEmpty.CombEncode(e)
+		AssertEq(t, err, nil)
+		AssertEq(t, `{null:null,false:false,123.456:123.456,"foo":"foo","empty":Map{},"non-empty":{"abc":"foo","def":"bar","hij":"baz"}}`, sb.String())
+	}
+	{
+		var sb strings.Builder
+		e := NewCombEncoder(&sb)
+		e.Separator = " "
 		err := nonEmpty.CombEncode(e)
 		AssertEq(t, err, nil)
 		AssertEq(t, `{null: null, false: false, 123.456: 123.456, "foo": "foo", "empty": Map{}, "non-empty": {"abc": "foo", "def": "bar", "hij": "baz"}}`, sb.String())
 	}
 	{
 		var sb strings.Builder
-		e := NewCombEncoder(&sb, Ptr("\t"))
+		e := NewCombEncoder(&sb)
+		e.Indent = Ptr("\t")
+		e.Separator = " "
 		err := nonEmpty.CombEncode(e)
 		AssertEq(t, err, nil)
 		AssertEq(t, `{
@@ -669,14 +700,16 @@ func TestMapCombEncode(t *testing.T) {
 	})
 	{
 		var sb strings.Builder
-		e := NewCombEncoder(&sb, nil)
+		e := NewCombEncoder(&sb)
 		err := deeplyNested.CombEncode(e)
 		AssertEq(t, err, nil)
-		AssertEq(t, `{"foo": {"bar": {"baz": {"qux": Map{}}}}}`, sb.String())
+		AssertEq(t, `{"foo":{"bar":{"baz":{"qux":Map{}}}}}`, sb.String())
 	}
 	{
 		var sb strings.Builder
-		e := NewCombEncoder(&sb, Ptr("\t"))
+		e := NewCombEncoder(&sb)
+		e.Indent = Ptr("\t")
+		e.Separator = " "
 		err := deeplyNested.CombEncode(e)
 		AssertEq(t, err, nil)
 		AssertEq(t, `{
@@ -873,14 +906,15 @@ func TestSetCombEncode(t *testing.T) {
 	empty := ctx.NewSet(nil)
 	{
 		var sb strings.Builder
-		e := NewCombEncoder(&sb, nil)
+		e := NewCombEncoder(&sb)
 		err := empty.CombEncode(e)
 		AssertEq(t, err, nil)
 		AssertEq(t, "Set{}", sb.String())
 	}
 	{
 		var sb strings.Builder
-		e := NewCombEncoder(&sb, Ptr("\t"))
+		e := NewCombEncoder(&sb)
+		e.Indent = Ptr("\t")
 		err := empty.CombEncode(e)
 		AssertEq(t, err, nil)
 		AssertEq(t, "Set{}", sb.String())
@@ -900,14 +934,23 @@ func TestSetCombEncode(t *testing.T) {
 	})
 	{
 		var sb strings.Builder
-		e := NewCombEncoder(&sb, nil)
+		e := NewCombEncoder(&sb)
+		err := nonEmpty.CombEncode(e)
+		AssertEq(t, err, nil)
+		AssertEq(t, `{null,false,123.456,"foo",Set{},{"foo","bar","baz"}}`, sb.String())
+	}
+	{
+		var sb strings.Builder
+		e := NewCombEncoder(&sb)
+		e.Separator = " "
 		err := nonEmpty.CombEncode(e)
 		AssertEq(t, err, nil)
 		AssertEq(t, `{null, false, 123.456, "foo", Set{}, {"foo", "bar", "baz"}}`, sb.String())
 	}
 	{
 		var sb strings.Builder
-		e := NewCombEncoder(&sb, Ptr("\t"))
+		e := NewCombEncoder(&sb)
+		e.Indent = Ptr("\t")
 		err := nonEmpty.CombEncode(e)
 		AssertEq(t, err, nil)
 		AssertEq(t, `{
@@ -935,14 +978,16 @@ func TestSetCombEncode(t *testing.T) {
 	})
 	{
 		var sb strings.Builder
-		e := NewCombEncoder(&sb, nil)
+		e := NewCombEncoder(&sb)
 		err := deeplyNested.CombEncode(e)
 		AssertEq(t, err, nil)
 		AssertEq(t, `{{{{"foo"}}}}`, sb.String())
 	}
 	{
 		var sb strings.Builder
-		e := NewCombEncoder(&sb, Ptr("\t"))
+		e := NewCombEncoder(&sb)
+		e.Indent = Ptr("\t")
+		e.Separator = " "
 		err := deeplyNested.CombEncode(e)
 		AssertEq(t, err, nil)
 		AssertEq(t, `{
@@ -979,7 +1024,7 @@ func TestReferenceCombEncode(t *testing.T) {
 	ctx := NewContext()
 	reference := ctx.NewReference(ctx.NewNumber(123.456))
 	var sb strings.Builder
-	e := NewCombEncoder(&sb, nil)
+	e := NewCombEncoder(&sb)
 	err := reference.CombEncode(e)
 	AssertNe(t, err, nil)
 	AssertEq(t, strings.HasPrefix(err.Error(), "invalid comb value reference@"), true)
@@ -1011,7 +1056,7 @@ func TestExternalCombEncode(t *testing.T) {
 	var x int32 = 42
 	external := ctx.NewExternal(x)
 	var sb strings.Builder
-	e := NewCombEncoder(&sb, nil)
+	e := NewCombEncoder(&sb)
 	err := external.CombEncode(e)
 	AssertNe(t, err, nil)
 	AssertEq(t, "invalid comb value external(42)", err.Error())

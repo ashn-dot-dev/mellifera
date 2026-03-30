@@ -19,23 +19,23 @@ let value = {
 };
 
 # Encode with integer indent.
-println(comb::encode_ex(value, {"indent": 2}));
-println(comb::encode_ex(value, {"indent": 4}));
+println(comb::encode_ex(value, {"indent": 2, "separator": " "}));
+println(comb::encode_ex(value, {"indent": 4, "separator": " "}));
 
 print("\n");
 
 # Encode with string indent.
-println(comb::encode_ex(value, {"indent": "  "}));
-println(comb::encode_ex(value, {"indent": "<indent>"}));
+println(comb::encode_ex(value, {"indent": "  ", "separator": " "}));
+println(comb::encode_ex(value, {"indent": "<indent>", "separator": "<separator>"}));
 
 print("\n");
 
 # Encode with empty collections.
-println(comb::encode_ex({"foo": [], "bar": Map{}, "baz": Set{}}, {"indent": 4}));
+println(comb::encode_ex({"foo": [], "bar": Map{}, "baz": Set{}}, {"indent": 4, "separator": " "}));
 
 print("\n");
 
-# Encode with no indent option.
+# Encode with no indent or separator options.
 println(comb::encode_ex([123, 456], Map{}));
 println(comb::encode_ex({"abc": 123, "def": 456}, Map{}));
 println(comb::encode_ex({123, 456}, Map{}));
@@ -48,6 +48,8 @@ try { println(comb::encode_ex(value, {"indent": -1})); } catch err { dumpln(err)
 try { println(comb::encode_ex(value, {"indent": 0.5})); } catch err { dumpln(err); }
 # Encode with non-number non-string indent.
 try { println(comb::encode_ex(value, {"indent": null})); } catch err { dumpln(err); }
+# Encode with non-string separator.
+try { println(comb::encode_ex(value, {"separator": null})); } catch err { dumpln(err); }
 ################################################################################
 # {
 #   "foo": null,
@@ -108,19 +110,19 @@ try { println(comb::encode_ex(value, {"indent": null})); } catch err { dumpln(er
 #   }
 # }
 # {
-# <indent>"foo": null,
-# <indent>"bar": 123,
-# <indent>"baz": "hello",
-# <indent>"qux": [
+# <indent>"foo":<separator>null,
+# <indent>"bar":<separator>123,
+# <indent>"baz":<separator>"hello",
+# <indent>"qux":<separator>[
 # <indent><indent>"abc",
 # <indent><indent>"def",
 # <indent><indent>"hij"
 # <indent>],
-# <indent>"quy": {
-# <indent><indent>"abc": 123,
-# <indent><indent>"def": 456
+# <indent>"quy":<separator>{
+# <indent><indent>"abc":<separator>123,
+# <indent><indent>"def":<separator>456
 # <indent>},
-# <indent>"quz": {
+# <indent>"quz":<separator>{
 # <indent><indent>"abc",
 # <indent><indent>"def",
 # <indent><indent>"hij"
@@ -133,10 +135,11 @@ try { println(comb::encode_ex(value, {"indent": null})); } catch err { dumpln(er
 #     "baz": Set{}
 # }
 #
-# [123, 456]
-# {"abc": 123, "def": 456}
-# {123, 456}
+# [123,456]
+# {"abc":123,"def":456}
+# {123,456}
 #
 # "expected non-negative integer or string indent, received -1"
 # "expected non-negative integer or string indent, received 0.5"
 # "expected non-negative integer or string indent, received null"
+# "expected string separator, received null"
