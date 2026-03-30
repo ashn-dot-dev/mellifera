@@ -333,8 +333,6 @@ respectively.
 ### General Development (Default Go Implementation)
 
 ```sh
-MELLIFERA_HOME=$(pwd)
-
 make build   # build standalone interpreter executable
 make check   # run unit tests and interpreter golden tests
 make format  # format sources
@@ -344,8 +342,6 @@ make install # install standalone Mellifera tooling
 ### Development on the Go Library & Interpreter
 
 ```sh
-MELLIFERA_HOME=$(pwd)
-
 make build-go  # build standalone interpreter executable
 make check-go  # run unit tests interpreter golden tests
 make format-go # format sources using go fmt
@@ -358,7 +354,6 @@ make install   # install standalone Mellifera tooling
 python3 -m venv .venv-mellifera
 . .venv-mellifera/bin/activate
 python3 -m pip install -r requirements.txt
-MELLIFERA_HOME=$(pwd)
 
 make check-py  # run interpreter golden tests
 make lint-py   # lint with mypy and flake8
