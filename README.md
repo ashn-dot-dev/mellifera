@@ -324,7 +324,7 @@ implementation, and an older reference interpreter written in Python (`mf.py`),
 which served as the original language implementation during prototyping. In
 order to ensure that Mellifera does not depend on a particular host language,
 both implementations are updated to support the same core set of language
-features and standard library builtins. Most users will want to use the Go
+features and built-in functions. Most users will want to use the Go
 implementation, and most `make` targets will default to the Go version of that
 target. However, specific `*-go` and `*-py` versions of targets should be used
 when hacking on either the Go implementation or Python implementation,
@@ -343,7 +343,7 @@ make install # install standalone Mellifera tooling
 
 ```sh
 make build-go  # build standalone interpreter executable
-make check-go  # run unit tests interpreter golden tests
+make check-go  # run unit tests and interpreter golden tests
 make format-go # format sources using go fmt
 make install   # install standalone Mellifera tooling
 ```
