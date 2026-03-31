@@ -5153,7 +5153,6 @@ func (self AstStatementAssignment) Eval(ctx *Context, env *Environment) (Control
 		}
 		field = lhsAccessScope.Field.Name
 	} else {
-		fmt.Printf("%s\n", reflect.TypeOf(self.Lhs).Name())
 		return nil, NewError(
 			self.Location,
 			ctx.NewString("attempted assignment to non-lvalue"),
