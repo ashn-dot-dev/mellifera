@@ -362,7 +362,7 @@ make format-py # format using black
 
 ## Contributing
 
-Contributions are welcomed and appreciated! 😊
+Contributions are welcomed and appreciated! 🐝
 
 One of the best ways to help Mellifera is to use the language for your own
 projects and let me know what works and what needs improvement. Is Mellifera
@@ -370,10 +370,19 @@ missing a critical built-in function? Is there a misleading error message that
 could use some attention? Did you find a bug in the interpreter? Let me know by
 creating a [new issue](https://github.com/ashn-dot-dev/mellifera/issues/new)!
 
-If you would like to assist the project through code or documentation
-contributions, take a look at open issues marked with the
+Want to assist the project through code or documentation contributions, take a
+look at open issues marked with the
 [help-wanted](https://github.com/ashn-dot-dev/mellifera/issues?q=state%3Aopen%20label%3A%22help-wanted%22)
-label for areas where extra assistance would be particularly helpful.
+label for areas where your help would be particularly appreciated.
+
+We aim for every commit in the Mellifera repository to be a complete,
+self-contained change. Before submitting a pull request, please rebase and
+squash your commits into logical units of change. For any non-trivial change,
+commit messages should contain information about *what* the commit does as well
+as *why* the commit was needed. Examples of good commit messages can be found
+[here](https://github.com/ashn-dot-dev/mellifera/commit/84dd674e2cad88c1b07ef8486b0b2cdb837b9c87)
+and
+[here](https://github.com/ashn-dot-dev/mellifera/commit/e2afcf9122d95ac62eca75ffd59d81e547e85020).
 
 ## License and Credits
 
