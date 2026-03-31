@@ -1010,22 +1010,22 @@ type MapPair struct {
 	Value Value
 }
 
-type MapElement struct {
-	prev  *MapElement
-	next  *MapElement
+type mapElement struct {
+	prev  *mapElement
+	next  *mapElement
 	key   Value
 	value Value
 }
 
-type MapData struct {
-	buckets map[uint64][]*MapElement
-	head    *MapElement
-	tail    *MapElement
+type mapData struct {
+	buckets map[uint64][]*mapElement
+	head    *mapElement
+	tail    *mapElement
 	count   int
 	uses    int
 }
 
-func (self *MapData) LookupWithHash(key Value, hash uint64) (*MapElement, bool) {
+func (self *mapData) LookupWithHash(key Value, hash uint64) (*mapElement, bool) {
 	bucket, ok := self.buckets[hash]
 	if !ok || len(bucket) == 0 {
 		return nil, false
@@ -1041,18 +1041,18 @@ func (self *MapData) LookupWithHash(key Value, hash uint64) (*MapElement, bool) 
 }
 
 // Returns nil on lookup failure.
-func (self *MapData) Lookup(key Value) (*MapElement, bool) {
+func (self *mapData) Lookup(key Value) (*mapElement, bool) {
 	return self.LookupWithHash(key, key.Hash())
 }
 
-func (self *MapData) Insert(key, value Value) {
+func (self *mapData) Insert(key, value Value) {
 	if self.buckets == nil {
-		self.buckets = make(map[uint64][]*MapElement)
+		self.buckets = make(map[uint64][]*mapElement)
 	}
 
 	hash := key.Hash()
 	if self.head == nil {
-		element := &MapElement{
+		element := &mapElement{
 			key:   key,
 			value: value,
 		}
@@ -1066,7 +1066,7 @@ func (self *MapData) Insert(key, value Value) {
 
 	lookup, ok := self.LookupWithHash(key, hash)
 	if !ok {
-		element := &MapElement{
+		element := &mapElement{
 			prev:  self.tail,
 			key:   key,
 			value: value,
@@ -1083,7 +1083,7 @@ func (self *MapData) Insert(key, value Value) {
 	lookup.value = value
 }
 
-func (self *MapData) Remove(key Value) {
+func (self *mapData) Remove(key Value) {
 	if self.head == nil {
 		return
 	}
@@ -1093,7 +1093,7 @@ func (self *MapData) Remove(key Value) {
 	if !ok || len(bucket) == 0 {
 		return
 	}
-	var lookup *MapElement
+	var lookup *mapElement
 	for i := 0; i < len(bucket); i += 1 {
 		if bucket[i].key.Equal(key) {
 			lookup = bucket[i]
@@ -1123,7 +1123,7 @@ func (self *MapData) Remove(key Value) {
 }
 
 type Map struct {
-	data *MapData
+	data *mapData
 	meta *Map    // Optional (non-nil implies that this is a mutable map)
 	name *string // Optional (non-nil implies that this is a frozen metamap)
 }
@@ -1172,7 +1172,7 @@ func (self *Map) Copy() Value {
 func (self *Map) CopyOnWrite() {
 	if self.data != nil && self.data.uses > 1 {
 		self.data.uses -= 1
-		data := &MapData{
+		data := &mapData{
 			uses: 1,
 		}
 
@@ -1309,7 +1309,7 @@ func (self *Map) Insert(key, value Value) error {
 
 	self.CopyOnWrite()
 	if self.data == nil {
-		self.data = &MapData{
+		self.data = &mapData{
 			uses: 1,
 		}
 	}
@@ -1333,22 +1333,22 @@ func (self *Map) Remove(key Value) error {
 	return nil
 }
 
-type SetElement struct {
-	prev *SetElement
-	next *SetElement
+type setElement struct {
+	prev *setElement
+	next *setElement
 	key  Value
 }
 
-type SetData struct {
-	buckets map[uint64][]*SetElement
-	head    *SetElement
-	tail    *SetElement
+type setData struct {
+	buckets map[uint64][]*setElement
+	head    *setElement
+	tail    *setElement
 	count   int
 	uses    int
 }
 
 // Returns nil on lookup failure.
-func (self *SetData) LookupWithHash(key Value, hash uint64) *SetElement {
+func (self *setData) LookupWithHash(key Value, hash uint64) *setElement {
 	bucket, ok := self.buckets[hash]
 	if !ok || len(bucket) == 0 {
 		return nil
@@ -1364,18 +1364,18 @@ func (self *SetData) LookupWithHash(key Value, hash uint64) *SetElement {
 }
 
 // Returns nil on lookup failure.
-func (self *SetData) Lookup(key Value) *SetElement {
+func (self *setData) Lookup(key Value) *setElement {
 	return self.LookupWithHash(key, key.Hash())
 }
 
-func (self *SetData) Insert(key Value) {
+func (self *setData) Insert(key Value) {
 	if self.buckets == nil {
-		self.buckets = make(map[uint64][]*SetElement)
+		self.buckets = make(map[uint64][]*setElement)
 	}
 
 	hash := key.Hash()
 	if self.head == nil {
-		element := &SetElement{
+		element := &setElement{
 			key: key,
 		}
 
@@ -1388,7 +1388,7 @@ func (self *SetData) Insert(key Value) {
 
 	lookup := self.LookupWithHash(key, hash)
 	if lookup == nil {
-		element := &SetElement{
+		element := &setElement{
 			prev: self.tail,
 			key:  key,
 		}
@@ -1403,7 +1403,7 @@ func (self *SetData) Insert(key Value) {
 	lookup.key = key
 }
 
-func (self *SetData) Remove(key Value) {
+func (self *setData) Remove(key Value) {
 	if self.head == nil {
 		return
 	}
@@ -1413,7 +1413,7 @@ func (self *SetData) Remove(key Value) {
 	if !ok || len(bucket) == 0 {
 		return
 	}
-	var lookup *SetElement
+	var lookup *setElement
 	for i := 0; i < len(bucket); i += 1 {
 		if bucket[i].key.Equal(key) {
 			lookup = bucket[i]
@@ -1443,7 +1443,7 @@ func (self *SetData) Remove(key Value) {
 }
 
 type Set struct {
-	data *SetData
+	data *setData
 }
 
 func (self *Set) Typename() string {
@@ -1480,7 +1480,7 @@ func (self *Set) Copy() Value {
 func (self *Set) CopyOnWrite() {
 	if self.data != nil && self.data.uses > 1 {
 		self.data.uses -= 1
-		data := &SetData{
+		data := &setData{
 			uses: 1,
 		}
 
@@ -1602,7 +1602,7 @@ func (self *Set) Lookup(value Value) (Value, bool) {
 func (self *Set) Insert(value Value) {
 	self.CopyOnWrite()
 	if self.data == nil {
-		self.data = &SetData{
+		self.data = &setData{
 			uses: 1,
 		}
 	}
