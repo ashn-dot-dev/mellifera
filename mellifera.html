@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Mellifera</title>
+</head>
+
+<body>
+<script src="wasm_exec.js"></script>
+<script>
+mellifera = {
+    eval: (source, stdoutId, stderrId) => { throw new Error("Mellifera Wasm module is not initialized!"); }
+};
+const go = new Go();
+WebAssembly.instantiateStreaming(fetch("mellifera.wasm"), go.importObject).then(async result => {
+    let module = result.module;
+    let instance = result.instance;
+    await go.run(instance);
+});
+</script>
+
+<style>
+body {
+    font-family: sans-serif;
+    margin: 1rem auto;
+    max-width: 80ch;
+}
+textarea {
+    display: block;
+    font-size: 16px;
+    font-family: monospace;
+    resize: none;
+    width: 100%;
+    padding-left: 0;
+    padding-right: 0;
+    margin-left: auto;
+    margin-right: auto;
+}
+button {
+    display: block;
+    margin: 0 auto;
+    width: 100%;
+}
+</style>
+
+<textarea rows="16" id="program" placeholder="Enter your Mellifera program here..." wrap="off">
+println("hello world");
+</textarea>
+<button onClick='mellifera.eval(document.getElementById("program").value, "stdout", "stderr");'>Run</button>
+
+<textarea rows="8" id="stdout" placeholder="Standard output..." readonly wrap="off"></textarea>
+<textarea rows="8" id="stderr" placeholder="Standard error..."  readonly wrap="off"></textarea>
+
+</body>
+</html>

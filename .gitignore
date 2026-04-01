@@ -1,6 +1,9 @@
+*.wasm
+*.tmp
+
 .mypy_cache/
 __pycache__/
-*.tmp
 .venv-mellifera/
 .mellifera-history
 bin/mf
+wasm_exec.js

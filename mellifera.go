@@ -208,6 +208,10 @@ func (e *CombEncoder) writeEndOfLine() error {
 }
 
 type Context struct {
+	Stdin io.Reader
+	Stdout io.Writer
+	Stderr io.Writer
+
 	// Builtin Type Metamaps
 	functionMeta  *Map
 	booleanMeta   *Map
@@ -246,6 +250,10 @@ type Context struct {
 
 func NewContext() Context {
 	ctx := Context{}
+
+	ctx.Stdin = os.Stdin
+	ctx.Stdout = os.Stdout
+	ctx.Stderr = os.Stderr
 
 	ctx.functionMeta = ctx.NewMetaMap("function", nil)
 	ctx.booleanMeta = ctx.NewMetaMap("boolean", []MapPair{
@@ -8029,7 +8037,7 @@ func BuiltinRepr(ctx *Context) *Builtin {
 
 func BuiltinInput(ctx *Context) *Builtin {
 	return ctx.NewBuiltin("input", []Type{}, func(ctx *Context, arguments []Value) (Value, error) {
-		data, err := io.ReadAll(os.Stdin)
+		data, err := io.ReadAll(ctx.Stdin)
 		if err != nil {
 			return nil, NewError(nil, ctx.NewString(err.Error()))
 		}
@@ -8039,7 +8047,7 @@ func BuiltinInput(ctx *Context) *Builtin {
 
 func BuiltinInputln(ctx *Context) *Builtin {
 	return ctx.NewBuiltin("inputln", []Type{}, func(ctx *Context, arguments []Value) (Value, error) {
-		reader := bufio.NewReader(os.Stdin)
+		reader := bufio.NewReader(ctx.Stdin)
 		data, err := reader.ReadString('\n')
 		if err != nil {
 			return nil, NewError(nil, ctx.NewString(err.Error()))
@@ -8050,14 +8058,14 @@ func BuiltinInputln(ctx *Context) *Builtin {
 
 func BuiltinDump(ctx *Context) *Builtin {
 	return ctx.NewBuiltin("dump", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
-		fmt.Printf("%v", arguments[0])
+		fmt.Fprintf(ctx.Stdout, "%v", arguments[0])
 		return ctx.NewNull(), nil
 	})
 }
 
 func BuiltinDumpln(ctx *Context) *Builtin {
 	return ctx.NewBuiltin("dumpln", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
-		fmt.Printf("%v\n", arguments[0])
+		fmt.Fprintf(ctx.Stdout, "%v\n", arguments[0])
 		return ctx.NewNull(), nil
 	})
 }
@@ -8076,16 +8084,16 @@ func BuiltinPrint(ctx *Context) *Builtin {
 					ctx.NewStringf("metafunction %s returned %v", quote(ctx.constStringIntoString.data), result),
 				)
 			}
-			fmt.Printf("%s", resultString.data)
+			fmt.Fprintf(ctx.Stdout, "%s", resultString.data)
 			return ctx.NewNull(), nil
 		}
 
 		if string, ok := arguments[0].(*String); ok {
-			fmt.Printf("%s", string.data)
+			fmt.Fprintf(ctx.Stdout, "%s", string.data)
 			return ctx.NewNull(), nil
 		}
 
-		fmt.Printf("%v", arguments[0])
+		fmt.Fprintf(ctx.Stdout, "%v", arguments[0])
 		return ctx.NewNull(), nil
 	})
 }
@@ -8104,16 +8112,16 @@ func BuiltinPrintln(ctx *Context) *Builtin {
 					ctx.NewStringf("metafunction %s returned %v", quote(ctx.constStringIntoString.data), result),
 				)
 			}
-			fmt.Printf("%s\n", resultString.data)
+			fmt.Fprintf(ctx.Stdout, "%s\n", resultString.data)
 			return ctx.NewNull(), nil
 		}
 
 		if string, ok := arguments[0].(*String); ok {
-			fmt.Printf("%s\n", string.data)
+			fmt.Fprintf(ctx.Stdout, "%s\n", string.data)
 			return ctx.NewNull(), nil
 		}
 
-		fmt.Printf("%v\n", arguments[0])
+		fmt.Fprintf(ctx.Stdout, "%v\n", arguments[0])
 		return ctx.NewNull(), nil
 	})
 }
@@ -8132,16 +8140,16 @@ func BuiltinEprint(ctx *Context) *Builtin {
 					ctx.NewStringf("metafunction %s returned %v", quote(ctx.constStringIntoString.data), result),
 				)
 			}
-			fmt.Fprintf(os.Stderr, "%s", resultString.data)
+			fmt.Fprintf(ctx.Stderr, "%s", resultString.data)
 			return ctx.NewNull(), nil
 		}
 
 		if string, ok := arguments[0].(*String); ok {
-			fmt.Fprintf(os.Stderr, "%s", string.data)
+			fmt.Fprintf(ctx.Stderr, "%s", string.data)
 			return ctx.NewNull(), nil
 		}
 
-		fmt.Fprintf(os.Stderr, "%v", arguments[0])
+		fmt.Fprintf(ctx.Stderr, "%v", arguments[0])
 		return ctx.NewNull(), nil
 	})
 }
@@ -8160,16 +8168,16 @@ func BuiltinEprintln(ctx *Context) *Builtin {
 					ctx.NewStringf("metafunction %s returned %v", quote(ctx.constStringIntoString.data), result),
 				)
 			}
-			fmt.Fprintf(os.Stderr, "%s\n", resultString.data)
+			fmt.Fprintf(ctx.Stderr, "%s\n", resultString.data)
 			return ctx.NewNull(), nil
 		}
 
 		if string, ok := arguments[0].(*String); ok {
-			fmt.Fprintf(os.Stderr, "%s\n", string.data)
+			fmt.Fprintf(ctx.Stderr, "%s\n", string.data)
 			return ctx.NewNull(), nil
 		}
 
-		fmt.Fprintf(os.Stderr, "%v\n", arguments[0])
+		fmt.Fprintf(ctx.Stderr, "%v\n", arguments[0])
 		return ctx.NewNull(), nil
 	})
 }

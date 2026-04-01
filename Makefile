@@ -2,6 +2,7 @@
 .PHONY: \
 	all all-go all-py
 	build build-go \
+	wasm wasm-go \
 	install \
 	check check-go check-py \
 	lint \
@@ -10,9 +11,9 @@
 
 MELLIFERA_HOME = $$HOME/.mellifera
 
-all: build format check
+all: all-go
 
-all-go: format-go check-go
+all-go: build-go wasm-go format-go check-go
 
 all-py: format-py lint-py check-py
 
@@ -22,6 +23,12 @@ build: build-go
 
 build-go:
 	go build -o=bin/ cmd/mf/mf.go
+
+wasm: wasm-go
+
+wasm-go:
+	GOARCH=wasm GOOS=js go build -o mellifera.wasm cmd/wasm/wasm.go
+	cp "$$(go env GOROOT)/lib/wasm/wasm_exec.js" .
 
 install:
 	mkdir -p "$(MELLIFERA_HOME)/bin"
@@ -54,12 +61,15 @@ format: format-go
 format-go:
 	go fmt
 	go fmt cmd/mf/*.go
+	go fmt cmd/wasm/*.go
 
 format-py:
 	python3 -m black mf.py
 
 clean:
-	rm -f .mellifera-history
-	rm -f bin/mf
 	rm -rf __pycache__
 	rm -rf .mypy_cache
+	rm -f .mellifera-history
+	rm -f bin/mf
+	rm -f mellifera.wasm
+	rm -f wasm_exec.js

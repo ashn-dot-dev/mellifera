@@ -343,10 +343,22 @@ make install # install standalone Mellifera tooling
 
 ```sh
 make build-go  # build standalone interpreter executable
+make wasm-go   # build Wasm module for embedding in the browser
 make check-go  # run unit tests and interpreter golden tests
 make format-go # format sources using go fmt
 make install   # install standalone Mellifera tooling
 ```
+
+The Go Mellifera implementation has experimental support for running Mellifera
+programs in the browser via [WebAssembly](https://webassembly.org/web). In a
+terminal run the following command:
+
+```sh
+make wasm-go && python3 -m http.server
+```
+
+Then, navigate to `http://localhost:8000/mellifera.html` in your web browser to
+interact with a minimal web build of the interpreter.
 
 ### Development on the Python Reference Interpreter
 
