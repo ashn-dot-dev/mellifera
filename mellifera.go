@@ -547,6 +547,17 @@ func (ctx *Context) NewMap(elements []MapPair) *Map {
 	return result
 }
 
+func (ctx *Context) NewMapWithType(meta *Map, elements []MapPair) *Map {
+	if meta.name == nil {
+		panic("meta argument is not a metamap")
+	}
+
+	result := ctx.NewMap(elements)
+	result.meta = meta.Copy().(*Map)
+
+	return result
+}
+
 func (ctx *Context) NewMetaMap(name string, elements []MapPair) *Map {
 	if elements == nil || len(elements) == 0 {
 		return &Map{
@@ -1153,6 +1164,10 @@ type Map struct {
 }
 
 func (self *Map) Typename() string {
+	if self.meta != nil && self.meta.name != nil {
+		// Instance of a custom type that that has its own name.
+		return *self.meta.name
+	}
 	return "map"
 }
 
@@ -2792,15 +2807,6 @@ func (self Continue) ControlFlowLocation() *SourceLocation {
 	return self.Location
 }
 
-func Typename(value Value) string {
-	if valueMap, ok := value.(*Map); ok && valueMap.meta != nil && valueMap.meta.name != nil {
-		// Instance of a custom type that that has its own name. Use this name
-		// instead of the default typename of the value.
-		return *valueMap.meta.name
-	}
-	return value.Typename()
-}
-
 // Update the name values of named functions that are children somewhere in
 // this map, either direct map-level values or a decendent of another map.
 func UpdateNamedFunctions(ctx *Context, ast *AstExpressionMap, prefix string) {
@@ -3295,7 +3301,7 @@ func (self AstExpressionType) Eval(ctx *Context, env *Environment) (Value, error
 	if !ok {
 		return nil, NewError(
 			self.Location,
-			ctx.NewStringf("expected map-like value, received %s", Typename(value)),
+			ctx.NewStringf("expected map-like value, received %s", value.Typename()),
 		)
 	}
 
@@ -3339,7 +3345,7 @@ func (self AstExpressionNew) Eval(ctx *Context, env *Environment) (Value, error)
 	if !ok {
 		return nil, NewError(
 			self.Location,
-			ctx.NewStringf("expected map-like value, received %s", Typename(meta)),
+			ctx.NewStringf("expected map-like value, received %s", meta.Typename()),
 		)
 	}
 
@@ -3347,7 +3353,7 @@ func (self AstExpressionNew) Eval(ctx *Context, env *Environment) (Value, error)
 	if !ok {
 		return nil, NewError(
 			self.Location,
-			ctx.NewStringf("expected map-like value, received %s", Typename(value)),
+			ctx.NewStringf("expected map-like value, received %s", value.Typename()),
 		)
 	}
 
@@ -3414,7 +3420,7 @@ func (self AstExpressionPositive) Eval(ctx *Context, env *Environment) (Value, e
 
 	return nil, NewError(
 		self.Location,
-		ctx.NewStringf("attempted unary + operation with type %s", quote(Typename(value))),
+		ctx.NewStringf("attempted unary + operation with type %s", quote(value.Typename())),
 	)
 }
 
@@ -3447,7 +3453,7 @@ func (self AstExpressionNegative) Eval(ctx *Context, env *Environment) (Value, e
 
 	return nil, NewError(
 		self.Location,
-		ctx.NewStringf("attempted unary - operation with type %s", quote(Typename(value))),
+		ctx.NewStringf("attempted unary - operation with type %s", quote(value.Typename())),
 	)
 }
 
@@ -3480,7 +3486,7 @@ func (self AstExpressionNot) Eval(ctx *Context, env *Environment) (Value, error)
 
 	return nil, NewError(
 		self.Location,
-		ctx.NewStringf("attempted unary not operation with type %s", quote(Typename(value))),
+		ctx.NewStringf("attempted unary not operation with type %s", quote(value.Typename())),
 	)
 }
 
@@ -3530,7 +3536,7 @@ func (self AstExpressionAnd) Eval(ctx *Context, env *Environment) (Value, error)
 
 	return nil, NewError(
 		self.Location,
-		ctx.NewStringf("attempted binary and operation with types %s and %s", quote(Typename(lhs)), quote(Typename(rhs))),
+		ctx.NewStringf("attempted binary and operation with types %s and %s", quote(lhs.Typename()), quote(rhs.Typename())),
 	)
 }
 
@@ -3580,7 +3586,7 @@ func (self AstExpressionOr) Eval(ctx *Context, env *Environment) (Value, error) 
 
 	return nil, NewError(
 		self.Location,
-		ctx.NewStringf("attempted binary or operation with types %s and %s", quote(Typename(lhs)), quote(Typename(rhs))),
+		ctx.NewStringf("attempted binary or operation with types %s and %s", quote(lhs.Typename()), quote(rhs.Typename())),
 	)
 }
 
@@ -3698,7 +3704,7 @@ func (self AstExpressionLe) Eval(ctx *Context, env *Environment) (Value, error) 
 
 	return nil, NewError(
 		self.Location,
-		ctx.NewStringf("attempted <= operation with types %s and %s", quote(Typename(lhs)), quote(Typename(rhs))),
+		ctx.NewStringf("attempted <= operation with types %s and %s", quote(lhs.Typename()), quote(rhs.Typename())),
 	)
 }
 
@@ -3750,7 +3756,7 @@ func (self AstExpressionGe) Eval(ctx *Context, env *Environment) (Value, error) 
 
 	return nil, NewError(
 		self.Location,
-		ctx.NewStringf("attempted >= operation with types %s and %s", quote(Typename(lhs)), quote(Typename(rhs))),
+		ctx.NewStringf("attempted >= operation with types %s and %s", quote(lhs.Typename()), quote(rhs.Typename())),
 	)
 }
 
@@ -3802,7 +3808,7 @@ func (self AstExpressionLt) Eval(ctx *Context, env *Environment) (Value, error) 
 
 	return nil, NewError(
 		self.Location,
-		ctx.NewStringf("attempted < operation with types %s and %s", quote(Typename(lhs)), quote(Typename(rhs))),
+		ctx.NewStringf("attempted < operation with types %s and %s", quote(lhs.Typename()), quote(rhs.Typename())),
 	)
 }
 
@@ -3854,7 +3860,7 @@ func (self AstExpressionGt) Eval(ctx *Context, env *Environment) (Value, error) 
 
 	return nil, NewError(
 		self.Location,
-		ctx.NewStringf("attempted > operation with types %s and %s", quote(Typename(lhs)), quote(Typename(rhs))),
+		ctx.NewStringf("attempted > operation with types %s and %s", quote(lhs.Typename()), quote(rhs.Typename())),
 	)
 }
 
@@ -3900,7 +3906,7 @@ func (self AstExpressionEqRe) Eval(ctx *Context, env *Environment) (Value, error
 
 	return nil, NewError(
 		self.Location,
-		ctx.NewStringf("attempted =~ operation with types %s and %s", quote(Typename(lhs)), quote(Typename(rhs))),
+		ctx.NewStringf("attempted =~ operation with types %s and %s", quote(lhs.Typename()), quote(rhs.Typename())),
 	)
 }
 
@@ -3946,7 +3952,7 @@ func (self AstExpressionNeRe) Eval(ctx *Context, env *Environment) (Value, error
 
 	return nil, NewError(
 		self.Location,
-		ctx.NewStringf("attempted !~ operation with types %s and %s", quote(Typename(lhs)), quote(Typename(rhs))),
+		ctx.NewStringf("attempted !~ operation with types %s and %s", quote(lhs.Typename()), quote(rhs.Typename())),
 	)
 }
 
@@ -4006,7 +4012,7 @@ func (self AstExpressionAdd) Eval(ctx *Context, env *Environment) (Value, error)
 
 	return nil, NewError(
 		self.Location,
-		ctx.NewStringf("attempted + operation with types %s and %s", quote(Typename(lhs)), quote(Typename(rhs))),
+		ctx.NewStringf("attempted + operation with types %s and %s", quote(lhs.Typename()), quote(rhs.Typename())),
 	)
 }
 
@@ -4050,7 +4056,7 @@ func (self AstExpressionSub) Eval(ctx *Context, env *Environment) (Value, error)
 
 	return nil, NewError(
 		self.Location,
-		ctx.NewStringf("attempted - operation with types %s and %s", quote(Typename(lhs)), quote(Typename(rhs))),
+		ctx.NewStringf("attempted - operation with types %s and %s", quote(lhs.Typename()), quote(rhs.Typename())),
 	)
 }
 
@@ -4094,7 +4100,7 @@ func (self AstExpressionMul) Eval(ctx *Context, env *Environment) (Value, error)
 
 	return nil, NewError(
 		self.Location,
-		ctx.NewStringf("attempted * operation with types %s and %s", quote(Typename(lhs)), quote(Typename(rhs))),
+		ctx.NewStringf("attempted * operation with types %s and %s", quote(lhs.Typename()), quote(rhs.Typename())),
 	)
 }
 
@@ -4138,7 +4144,7 @@ func (self AstExpressionDiv) Eval(ctx *Context, env *Environment) (Value, error)
 
 	return nil, NewError(
 		self.Location,
-		ctx.NewStringf("attempted / operation with types %s and %s", quote(Typename(lhs)), quote(Typename(rhs))),
+		ctx.NewStringf("attempted / operation with types %s and %s", quote(lhs.Typename()), quote(rhs.Typename())),
 	)
 }
 
@@ -4188,7 +4194,7 @@ func (self AstExpressionRem) Eval(ctx *Context, env *Environment) (Value, error)
 
 	return nil, NewError(
 		self.Location,
-		ctx.NewStringf("attempted %% operation with types %s and %s", quote(Typename(lhs)), quote(Typename(rhs))),
+		ctx.NewStringf("attempted %% operation with types %s and %s", quote(lhs.Typename()), quote(rhs.Typename())),
 	)
 }
 
@@ -4253,7 +4259,7 @@ func (self AstExpressionAccessIndex) Eval(ctx *Context, env *Environment) (Value
 
 	return nil, NewError(
 		self.Location,
-		ctx.NewStringf("attempted to access field of type %s with type %s", quote(Typename(store)), quote(Typename(field))),
+		ctx.NewStringf("attempted to access field of type %s with type %s", quote(store.Typename()), quote(field.Typename())),
 	)
 }
 
@@ -4291,7 +4297,7 @@ func (self AstExpressionAccessScope) Eval(ctx *Context, env *Environment) (Value
 	if !ok {
 		return nil, NewError(
 			self.Location,
-			ctx.NewStringf("attempted to access field of type %s", quote(Typename(store))),
+			ctx.NewStringf("attempted to access field of type %s", quote(store.Typename())),
 		)
 	}
 	lookup, ok := m.Lookup(field)
@@ -4443,7 +4449,7 @@ func (self AstExpressionDeref) Eval(ctx *Context, env *Environment) (Value, erro
 	if !ok {
 		return nil, NewError(
 			self.Location,
-			ctx.NewStringf("attempted dereference of non-reference type %s", quote(Typename(value))),
+			ctx.NewStringf("attempted dereference of non-reference type %s", quote(value.Typename())),
 		)
 	}
 
@@ -4597,7 +4603,7 @@ func (self AstConditional) exec(ctx *Context, env *Environment) (ControlFlow, bo
 	if !ok {
 		return nil, false, NewError(
 			self.Location,
-			ctx.NewStringf("conditional with non-boolean type %s", quote(Typename(value))),
+			ctx.NewStringf("conditional with non-boolean type %s", quote(value.Typename())),
 		)
 	}
 
@@ -4740,13 +4746,13 @@ func (self AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, e
 		if self.IdentifierV != nil {
 			return nil, NewError(
 				self.Location,
-				ctx.NewStringf("attempted key-value iteration over iterator %s", quote(Typename(collection))),
+				ctx.NewStringf("attempted key-value iteration over iterator %s", quote(collection.Typename())),
 			)
 		}
 		if self.KIsReference {
 			return nil, NewError(
 				self.Location,
-				ctx.NewStringf("cannot use a key-reference over iterator %s", quote(Typename(collection))),
+				ctx.NewStringf("cannot use a key-reference over iterator %s", quote(collection.Typename())),
 			)
 		}
 		reference := ctx.NewReference(collection)
@@ -4779,13 +4785,13 @@ func (self AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, e
 		if self.IdentifierV != nil {
 			return nil, NewError(
 				self.Location,
-				ctx.NewStringf("attempted key-value iteration over type %s", quote(Typename(collection))),
+				ctx.NewStringf("attempted key-value iteration over type %s", quote(collection.Typename())),
 			)
 		}
 		if self.KIsReference {
 			return nil, NewError(
 				self.Location,
-				ctx.NewStringf("cannot use a key-reference over type %s", quote(Typename(collection))),
+				ctx.NewStringf("cannot use a key-reference over type %s", quote(collection.Typename())),
 			)
 		}
 		collectionInt, err := ValueAsInt(collectionNumber)
@@ -4812,7 +4818,7 @@ func (self AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, e
 		if self.IdentifierV != nil {
 			return nil, NewError(
 				self.Location,
-				ctx.NewStringf("attempted key-value iteration over type %s", quote(Typename(collection))),
+				ctx.NewStringf("attempted key-value iteration over type %s", quote(collection.Typename())),
 			)
 		}
 		// Iterate over a shallow copy of the vector data in order to allow
@@ -4844,7 +4850,7 @@ func (self AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, e
 		if self.KIsReference {
 			return nil, NewError(
 				self.Location,
-				ctx.NewStringf("cannot use a key-reference over type %s", quote(Typename(collection))),
+				ctx.NewStringf("cannot use a key-reference over type %s", quote(collection.Typename())),
 			)
 		}
 		// Iterate over a shallow copy of the map data in order to allow map
@@ -4879,13 +4885,13 @@ func (self AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, e
 		if self.IdentifierV != nil {
 			return nil, NewError(
 				self.Location,
-				ctx.NewStringf("attempted key-value iteration over type %s", quote(Typename(collection))),
+				ctx.NewStringf("attempted key-value iteration over type %s", quote(collection.Typename())),
 			)
 		}
 		if self.KIsReference {
 			return nil, NewError(
 				self.Location,
-				ctx.NewStringf("cannot use a key-reference over type %s", quote(Typename(collection))),
+				ctx.NewStringf("cannot use a key-reference over type %s", quote(collection.Typename())),
 			)
 		}
 		for _, element := range collectionSet.Elements() {
@@ -4907,7 +4913,7 @@ func (self AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, e
 	} else {
 		return nil, NewError(
 			self.Location,
-			ctx.NewStringf("attempted iteration over type %s", quote(Typename(collection))),
+			ctx.NewStringf("attempted iteration over type %s", quote(collection.Typename())),
 		)
 	}
 
@@ -4944,7 +4950,7 @@ func (self AstStatementWhile) Eval(ctx *Context, env *Environment) (ControlFlow,
 		if !ok {
 			return nil, NewError(
 				self.Location,
-				ctx.NewStringf("conditional with non-boolean type %s", quote(Typename(expression))),
+				ctx.NewStringf("conditional with non-boolean type %s", quote(expression.Typename())),
 			)
 		}
 
@@ -5247,7 +5253,7 @@ func (self AstStatementAssignment) Eval(ctx *Context, env *Environment) (Control
 
 	return nil, NewError(
 		self.Location,
-		ctx.NewStringf("attempted access into type %s with type %s", quote(Typename(store)), quote(Typename(field))),
+		ctx.NewStringf("attempted access into type %s with type %s", quote(store.Typename()), quote(field.Typename())),
 	)
 }
 
@@ -6676,7 +6682,7 @@ func Call(ctx *Context, location *SourceLocation, callable Value, arguments []Va
 
 	return nil, NewError(
 		location,
-		ctx.NewStringf("attempted to call non-function type %s with value %s", quote(Typename(callable)), callable.String()),
+		ctx.NewStringf("attempted to call non-function type %s with value %s", quote(callable.Typename()), callable.String()),
 	)
 }
 
@@ -7224,7 +7230,7 @@ func BuiltinStringJoin(ctx *Context) *Builtin {
 			if !ok {
 				return nil, NewError(
 					nil,
-					ctx.NewStringf("expected string-like value for vector element at index %v, received %s", index, Typename(value)),
+					ctx.NewStringf("expected string-like value for vector element at index %v, received %s", index, value.Typename()),
 				)
 			}
 			if index != 0 {
@@ -7623,7 +7629,7 @@ let sort = function(x) {
 };
 return function(self) {
 	if not ty::is_reference(self) {
-		error $"expected reference to vector-like value for argument 0, received {typename(self)}";
+		error $"expected reference to vector-like value for argument 0, received {self.Typename()}";
 	}
 	if not ty::is_vector(self.*) {
 		error $"expected reference to vector-like value for argument 0, received reference to {typename(self.*)}";
@@ -7680,7 +7686,7 @@ let sort = function(x, compare) {
 };
 return function(self, compare) {
 	if not ty::is_reference(self) {
-		error $"expected reference to vector-like value for argument 0, received {typename(self)}";
+		error $"expected reference to vector-like value for argument 0, received {self.Typename()}";
 	}
 	if not ty::is_vector(self.*) {
 		error $"expected reference to vector-like value for argument 0, received reference to {typename(self.*)}";
@@ -8032,7 +8038,7 @@ func BuiltinTypeof(ctx *Context) *Builtin {
 
 func BuiltinTypename(ctx *Context) *Builtin {
 	return ctx.NewBuiltin("typename", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
-		return ctx.NewString(Typename(arguments[0])), nil
+		return ctx.NewString(arguments[0].Typename()), nil
 	})
 }
 
@@ -8277,7 +8283,7 @@ func BuiltinImport(ctx *Context) *Builtin {
 		}
 		moduleMap, ok := module.(*Map)
 		if !ok {
-			return nil, NewError(nil, ctx.NewStringf("expected map-like module value, received %v", quote(Typename(module))))
+			return nil, NewError(nil, ctx.NewStringf("expected map-like module value, received %v", quote(module.Typename())))
 		}
 		modulePath, modulePathOk := moduleMap.Lookup(ctx.NewString("path"))
 		moduleFile, moduleFileOk := moduleMap.Lookup(ctx.NewString("file"))
@@ -8718,7 +8724,7 @@ func jsonEncode(value Value) (any, error) {
 		return result, nil
 	}
 
-	return nil, fmt.Errorf("cannot JSON-encode value %v of type %s", value, Typename(value))
+	return nil, fmt.Errorf("cannot JSON-encode value %v of type %s", value, value.Typename())
 }
 
 func BuiltinJsonEncode(ctx *Context) *Builtin {

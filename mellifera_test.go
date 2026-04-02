@@ -555,9 +555,17 @@ func TestMapConstructorNonNilElements(t *testing.T) {
 }
 
 func TestMapTypename(t *testing.T) {
-	ctx := NewContext()
-	m := ctx.NewMap(nil)
-	AssertEq(t, "map", m.Typename())
+	{
+		ctx := NewContext()
+		m := ctx.NewMap(nil)
+		AssertEq(t, "map", m.Typename())
+	}
+	{
+		ctx := NewContext()
+		meta := ctx.NewMetaMap("meta", nil)
+		m := ctx.NewMapWithType(meta, nil)
+		AssertEq(t, "meta", m.Typename())
+	}
 }
 
 func TestMapString(t *testing.T) {
