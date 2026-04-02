@@ -60,6 +60,18 @@ func TestNullCombEncode(t *testing.T) {
 	}
 }
 
+func TestBooleanData(t *testing.T) {
+	ctx := NewContext()
+	{
+		boolean := ctx.NewBoolean(true)
+		AssertEq(t, boolean.Data(), true)
+	}
+	{
+		boolean := ctx.NewBoolean(false)
+		AssertEq(t, boolean.Data(), false)
+	}
+}
+
 func TestBooleanTypename(t *testing.T) {
 	ctx := NewContext()
 	{
@@ -114,6 +126,12 @@ func TestBooleanCombEncode(t *testing.T) {
 		AssertEq(t, err, nil)
 		AssertEq(t, "true", sb.String())
 	}
+}
+
+func TestNumberData(t *testing.T) {
+	ctx := NewContext()
+	number := ctx.NewNumber(123.456)
+	AssertEq(t, number.Data(), 123.456)
 }
 
 func TestNumberTypename(t *testing.T) {
@@ -216,6 +234,12 @@ func TestNumberCombEncode(t *testing.T) {
 	}
 }
 
+func TestStringData(t *testing.T) {
+	ctx := NewContext()
+	string := ctx.NewString("foo")
+	AssertEq(t, string.Data(), "foo")
+}
+
 func TestStringTypename(t *testing.T) {
 	ctx := NewContext()
 	string := ctx.NewString("foo")
@@ -252,6 +276,12 @@ func TestStringCombEncode(t *testing.T) {
 		AssertEq(t, err, nil)
 		AssertEq(t, `"foo\nbar"`, sb.String())
 	}
+}
+
+func TestRegexpData(t *testing.T) {
+	ctx := NewContext()
+	regexp, _ := ctx.NewRegexp(`^\w+$`)
+	AssertEq(t, regexp.Data().String(), `^\w+$`)
 }
 
 func TestRegexpTypename(t *testing.T) {
@@ -1028,6 +1058,13 @@ func TestReferenceCombEncode(t *testing.T) {
 	err := reference.CombEncode(e)
 	AssertNe(t, err, nil)
 	AssertEq(t, strings.HasPrefix(err.Error(), "invalid comb value reference@"), true)
+}
+
+func TestExternalData(t *testing.T) {
+	ctx := NewContext()
+	var x int32 = 42
+	external := ctx.NewExternal(x)
+	AssertEq(t, external.Data().(int32), 42)
 }
 
 func TestExternalTypename(t *testing.T) {

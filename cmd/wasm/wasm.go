@@ -1,4 +1,5 @@
 package main
+
 import (
 	"fmt"
 	"io"
@@ -19,8 +20,8 @@ func (self textarea) clear() {
 func (self textarea) Write(p []byte) (n int, err error) {
 	element := js.Global().Get("document").Call("getElementById", self.id)
 	value := element.Get("value").String()
-	element.Set("value", value + string(p))
-	element.Set("scrollTop", element.Get("scrollHeight")); // focus on bottom
+	element.Set("value", value+string(p))
+	element.Set("scrollTop", element.Get("scrollHeight")) // focus on bottom
 	return len(p), nil
 }
 

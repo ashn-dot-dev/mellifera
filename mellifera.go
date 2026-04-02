@@ -208,7 +208,7 @@ func (e *CombEncoder) writeEndOfLine() error {
 }
 
 type Context struct {
-	Stdin io.Reader
+	Stdin  io.Reader
 	Stdout io.Writer
 	Stderr io.Writer
 
@@ -659,6 +659,10 @@ type Boolean struct {
 	data bool
 }
 
+func (self *Boolean) Data() bool {
+	return self.data
+}
+
 func (self *Boolean) Typename() string {
 	return "boolean"
 }
@@ -703,6 +707,10 @@ func (self *Boolean) CombEncode(e *CombEncoder) error {
 
 type Number struct {
 	data float64
+}
+
+func (self *Number) Data() float64 {
+	return self.data
 }
 
 func (self *Number) Typename() string {
@@ -758,6 +766,10 @@ type String struct {
 	data string
 }
 
+func (self *String) Data() string {
+	return self.data
+}
+
 func (self *String) Typename() string {
 	return "string"
 }
@@ -796,6 +808,10 @@ func (self *String) CombEncode(e *CombEncoder) error {
 
 type Regexp struct {
 	data *regexp.Regexp
+}
+
+func (self *Regexp) Data() *regexp.Regexp {
+	return self.data
 }
 
 func (self *Regexp) Typename() string {
@@ -1774,6 +1790,10 @@ func (self *Builtin) CombEncode(e *CombEncoder) error {
 
 type External struct {
 	data any
+}
+
+func (self *External) Data() any {
+	return self.data
 }
 
 func (self *External) Typename() string {
