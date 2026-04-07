@@ -47,8 +47,8 @@ func eval(source string, stdout, stderr io.Writer) (mellifera.Value, error) {
 
 func main() {
 	fmt.Println("Initialized Mellifera Wasm module...")
-	object := js.Global().Get("mellifera")
-	object.Set("eval", js.FuncOf(func(this js.Value, args []js.Value) any {
+	mf := js.Global().Get("mellifera")
+	mf.Set("eval", js.FuncOf(func(this js.Value, args []js.Value) any {
 		stdout := textarea{args[1].String()}
 		stderr := textarea{args[2].String()}
 
