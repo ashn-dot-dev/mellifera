@@ -6688,7 +6688,7 @@ options:
   -c, --command     Execute the provided command.
   --dump-tokens     Dump a comb-encoded vector of lexed tokens to stdout.
   --dump-ast        Dump a comb-encoded abstract syntax tree to stdout.
-  -e, --env         Display the mellifera environment and exit.
+  -e, --env         Display the Mellifera environment and exit.
   -h, --help        Display this help text and exit.
     """.replace(
         "${PROGRAM}", sys.argv[0]
