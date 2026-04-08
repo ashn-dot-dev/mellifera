@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"os"
 	"syscall/js"
 
 	"ashn.dev/mellifera"
@@ -49,13 +50,47 @@ func main() {
 	fmt.Println("Initialized Mellifera Wasm module...")
 	mf := js.Global().Get("mellifera")
 	mf.Set("eval", js.FuncOf(func(this js.Value, args []js.Value) any {
-		stdout := textarea{args[1].String()}
-		stderr := textarea{args[2].String()}
+		if len(args) == 1 {
+			args = append(args, js.ValueOf(js.ValueOf(map[string]any{}))) // empty options
+		} else if len(args) > 2 {
+			fmt.Fprintf(os.Stderr, "error: expected one or two arguments for mellifera.eval(source, options), received %v arguments\n", len(args))
+			return nil
+		}
 
-		stdout.clear()
-		stderr.clear()
+		if args[0].Type() != js.TypeString {
+			fmt.Fprintf(os.Stderr, "error: expected source to be a string, received %v\n", args[0])
+			return nil
+		}
+		source := args[0].String()
 
-		_, err := eval(args[0].String(), stdout, stderr)
+		if args[1].Type() != js.TypeObject {
+			fmt.Fprintf(os.Stderr, "error: expected options to be an object, received %v\n", args[1])
+			return nil
+		}
+		options := args[1]
+
+		var stdout io.Writer = os.Stdout
+		if !options.Get("stdout").IsUndefined() {
+			if options.Get("stdout").Type() != js.TypeString {
+				fmt.Fprintf(os.Stderr, "error: expected options.stdout to be a string, received %v\n", options.Get("stdout"))
+				return nil
+			}
+			stdoutTextarea := textarea{options.Get("stdout").String()}
+			stdoutTextarea.clear()
+			stdout = stdoutTextarea
+		}
+		var stderr io.Writer = os.Stderr
+		if !options.Get("stderr").IsUndefined() {
+			if options.Get("stderr").Type() != js.TypeString {
+				fmt.Fprintf(os.Stderr, "error: expected options.stderr to be a string, received %v\n", options.Get("stderr"))
+				return nil
+			}
+			stderrTextarea := textarea{options.Get("stderr").String()}
+			stderrTextarea.clear()
+			stderr = stderrTextarea
+		}
+
+		_, err := eval(source, stdout, stderr)
 		if err != nil {
 			if e, ok := err.(mellifera.ParseError); ok && e.Location != nil {
 				fmt.Fprintf(stderr, "[%v, line %v] error: %v\n", e.Location.File, e.Location.Line, err)
