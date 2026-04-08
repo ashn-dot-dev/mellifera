@@ -50,8 +50,7 @@ Inf;
 
 # Mellifera has a string type consisting of a sequence of bytes which usually
 # represent UTF-8 encoded text.
-"hello world";
-"I could sure go for a 🍔 right about now!";
+"hello 🐝";
 
 # Strings enclosed in double quotes may contain the following escape sequences:
 #
@@ -62,7 +61,7 @@ Inf;
 #   \xMN => hexadecimal byte 0xMN
 println("hello\tworld"); # "hello	world"
 println("hello\x5Fworld"); # "hello_world"
-println("hello\xf0\x9f\x8d\x94world"); # "hello🍔world"
+println("hello\xf0\x9f\x8d\x94world"); # "hello🐝world"
 
 # Strings enclosed in backticks, called raw strings, interpret their contents
 # verbatim without escaping.

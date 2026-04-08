@@ -189,14 +189,14 @@ func main() {
 
 		// -c, -command
 		if m := reCommand.FindStringSubmatch(arg); m != nil {
-			// -c='println("hello world");'
+			// -c='println("hello 🐝");'
 			if m[1] != "" {
 				cmds = &m[1]
 				argv = append([]string{os.Args[0]}, os.Args[argi+1:]...)
 				break
 			}
 
-			// -c 'println("hello world");'
+			// -c 'println("hello 🐝");'
 			if argi+1 < len(os.Args) {
 				cmds = &os.Args[argi+1]
 				argv = append([]string{os.Args[0]}, os.Args[argi+2:]...)

@@ -6,12 +6,12 @@ typing, explicit references, and a lightweight nominal type system with
 structural protocols.
 
 ```mellifera
-println("Hello, world!");
+println("hello 🐝");
 ```
 
 ```sh
-$ mf examples/hello-world.mf
-Hello, world!
+$ mf examples/hello.mf
+hello 🐝
 ```
 
 Mellifera aims to be an enjoyable language for writing small scripts and CLI
