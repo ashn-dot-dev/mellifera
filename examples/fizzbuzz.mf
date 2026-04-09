@@ -13,5 +13,5 @@ for i in N {
         println("buzz");
         continue;
     }
-    println(string::init(n));
+    println(n);
 }
