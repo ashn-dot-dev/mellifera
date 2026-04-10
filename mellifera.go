@@ -2721,15 +2721,30 @@ type RegexpMatch struct {
 }
 
 type Environment struct {
-	outer *Environment // Optional
-	store map[string]Value
-	match *RegexpMatch // Optional
+	function *Function    // Optional (nil implies this is a top-level environment)
+	outer    *Environment // Optional (nil implies this is a top-level environment)
+	store    map[string]Value
+	match    *RegexpMatch // Optional
 }
 
 func NewEnvironment(outer *Environment) Environment {
+	var function *Function = nil
+	if outer != nil {
+		function = outer.function
+	}
+
 	return Environment{
-		outer: outer,
-		store: map[string]Value{},
+		function: function,
+		outer:    outer,
+		store:    map[string]Value{},
+	}
+}
+
+func NewEnvironmentWithinFunction(function *Function) Environment {
+	return Environment{
+		function: function,
+		outer:    function.Env,
+		store:    map[string]Value{},
 	}
 }
 
@@ -2742,6 +2757,9 @@ func (self *Environment) Set(name string, value Value) error {
 	for env != nil {
 		_, ok := env.store[name]
 		if ok {
+			if self.function != env.function {
+				return fmt.Errorf("attempted to set variable %s defined outside of the current function", quote(name))
+			}
 			env.store[name] = value
 			return nil
 		}
@@ -6626,7 +6644,7 @@ func Call(ctx *Context, location *SourceLocation, callable Value, arguments []Va
 			)
 		}
 
-		env := NewEnvironment(function.Env)
+		env := NewEnvironmentWithinFunction(function)
 		for i, parameter := range function.Ast.Parameters {
 			env.Let(parameter.Name.data, arguments[i])
 		}

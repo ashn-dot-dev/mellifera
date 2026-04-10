@@ -1,0 +1,37 @@
+let x = "foo";
+dumpln(x);
+x = "bar"; # allowed - setting a variable defined within the same top-level scope
+dumpln(x);
+
+function() {
+    let y = "foo";
+    dumpln(y);
+    y = "bar"; # allowed - setting a variable defined within the same function
+    dumpln(y);
+}();
+
+function() {
+    try {
+        x = "baz"; # not allowed - setting a variable defined outside of this function
+    }
+    catch err {
+        dumpln(err);
+    }
+
+    let z = "foo";
+    function() {
+        try {
+            z = "baz"; # not allowed - setting a variable defined outside of this function
+        }
+        catch err {
+            dumpln(err);
+        }
+    }();
+}();
+################################################################################
+# "foo"
+# "bar"
+# "foo"
+# "bar"
+# "attempted to set variable `x` defined outside of the current function"
+# "attempted to set variable `z` defined outside of the current function"
