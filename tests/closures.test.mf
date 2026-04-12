@@ -1,11 +1,16 @@
 let x = 123;
 let y = {"foo": "bar"};
 let f = function() {
-    dumpln(x); # x is closed over
-    dumpln(y.foo); # y is closed over
+    x = 456;
+    y.foo = "baz";
 };
 
+dumpln(x);
+dumpln(y);
 f();
+dumpln(x);
+dumpln(y);
+
 print("\n");
 
 let adder = function(x) {
@@ -17,6 +22,8 @@ let add1 = adder(1);
 dumpln(add1(2));
 ################################################################################
 # 123
-# "bar"
+# {"foo": "bar"}
+# 456
+# {"foo": "baz"}
 #
 # 3

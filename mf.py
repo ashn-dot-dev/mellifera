@@ -1735,10 +1735,7 @@ class ParseError(Exception):
 
 
 class Environment:
-    def __init__(self, outer: Optional["Environment"] = None, function=None):
-        self.function: Optional[Function] = function
-        if function is None and outer is not None:
-            self.function = outer.function
+    def __init__(self, outer: Optional["Environment"] = None):
         self.outer: Optional["Environment"] = outer
         self.store: dict[String, Value] = dict()
         self.match = None
@@ -1750,10 +1747,6 @@ class Environment:
         env: Optional[Environment] = self
         while env is not None:
             if name in env.store:
-                if self.function != env.function:
-                    raise Exception(
-                        f"attempted to set variable {quote(name.runes)} defined outside of the current function"
-                    )
                 env.store[name] = value
                 return
             env = env.outer
@@ -4601,7 +4594,7 @@ def call(
                 location,
                 f"invalid function argument count (expected {len(callable.ast.parameters)}, received {len(arguments)})",
             )
-        env = Environment(callable.env, callable)
+        env = Environment(callable.env)
         for i in range(len(callable.ast.parameters)):
             env.let(callable.ast.parameters[i].name, arguments[i])
         result = callable.ast.body.eval(env)
