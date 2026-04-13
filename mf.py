@@ -211,6 +211,14 @@ class Value(ABC):
         # view on meta operations, and therefore do not need to be COWed.
         pass
 
+    @abstractmethod
+    def freeze(self) -> "Value":
+        raise NotImplementedError()
+
+    @abstractmethod
+    def is_immutable(self) -> bool:
+        raise NotImplementedError()
+
     def metavalue(self, name: "Value") -> Optional["Value"]:
         if self.meta is None:
             return None
@@ -259,6 +267,12 @@ class Null(Value):
     def __copy__(self) -> "Null":
         return self  # immutable value
 
+    def freeze(self) -> "Null":
+        return self  # immutable value
+
+    def is_immutable(self) -> bool:
+        return True
+
 
 @final
 @dataclass
@@ -290,6 +304,12 @@ class Boolean(Value):
 
     def __copy__(self) -> "Boolean":
         return self  # immutable value
+
+    def freeze(self) -> "Boolean":
+        return self  # immutable value
+
+    def is_immutable(self) -> bool:
+        return True
 
 
 @final
@@ -353,6 +373,12 @@ class Number(Value):
     def __copy__(self) -> "Number":
         return self  # immutable value
 
+    def freeze(self) -> "Number":
+        return self  # immutable value
+
+    def is_immutable(self) -> bool:
+        return True
+
 
 @final
 class String(Value):
@@ -400,6 +426,12 @@ class String(Value):
 
     def __copy__(self) -> "String":
         return self  # immutable value
+
+    def freeze(self) -> "String":
+        return self  # immutable value
+
+    def is_immutable(self) -> bool:
+        return True
 
     @property
     def bytes(self) -> bytes:
@@ -457,12 +489,19 @@ class Regexp(Value):
     def __copy__(self) -> "Regexp":
         return self  # immutable value
 
+    def freeze(self) -> "Regexp":
+        return self  # immutable value
+
+    def is_immutable(self) -> bool:
+        return True
+
 
 @final
 @dataclass
 class Vector(Value):
     data: SharedVectorData
     meta: Optional["Map"]
+    frozen: bool = False
 
     @staticmethod
     def typename() -> str:
@@ -532,6 +571,8 @@ class Vector(Value):
         return item in self.data
 
     def __setitem__(self, key: Value, value: Value) -> None:
+        if self.is_immutable():
+            raise Exception(f"attempted to modify immutable vector {self}")
         if not isinstance(key, Number):
             raise KeyError(f"attempted vector access using non-number key {key}")
         index = float(key.data)
@@ -558,6 +599,8 @@ class Vector(Value):
         return self.data.__getitem__(index)
 
     def __delitem__(self, key: Value) -> None:
+        if self.is_immutable():
+            raise Exception(f"attempted to modify immutable vector {self}")
         if self.data.uses > 1:
             self.data.uses -= 1
             self.data = copy(self.data)  # copy-on-write
@@ -565,6 +608,8 @@ class Vector(Value):
         super().__delitem__(key)
 
     def __copy__(self) -> "Vector":
+        if self.is_immutable():
+            return self  # immutable value
         return Vector(self.data, self.meta)
 
     def cow(self) -> None:
@@ -573,13 +618,24 @@ class Vector(Value):
             self.data = copy(self.data)  # copy-on-write
             self.data.uses += 1
 
+    def freeze(self) -> "Vector":
+        value = copy(self)
+        value.cow()
+        value.data = SharedVectorData([x.freeze() for x in value.data])
+        value.data.uses = 1
+        value.frozen = True
+        return value
+
+    def is_immutable(self) -> bool:
+        return self.frozen
+
 
 @dataclass
 class Map(Value):
     data: SharedMapData
     meta: Optional["Map"]
-    # A non-None name implies that this is a frozen metamap.
     name: Optional[String]
+    frozen: bool = False
 
     @staticmethod
     def typename() -> str:
@@ -597,7 +653,19 @@ class Map(Value):
         data: Optional[Union[SharedMapData, dict[Value, Value]]] = None,
     ) -> "Map":
         # Metamaps may not have metamaps themselves.
-        return Map(data=data, meta=None, name=name)
+        result = Map(
+            data=SharedMapData(
+                {
+                    k.freeze(): v.freeze()
+                    for k, v in (data if data is not None else {}).items()
+                }
+            ),
+            meta=None,
+            name=name,
+        )
+        result.data.uses = 1
+        result.frozen = True
+        return result
 
     def __init__(
         self,
@@ -669,14 +737,13 @@ class Map(Value):
         )
         return f"{{{elements}}}"
 
-    def is_frozen(self) -> bool:
-        return self.name is not None
-
     def __contains__(self, item) -> bool:
         return item in self.data
 
     def __setitem__(self, key: Value, value: Value) -> None:
-        if self.is_frozen():
+        if self.is_immutable():
+            raise Exception(f"attempted to modify immutable map {self}")
+        if self.is_immutable():
             raise Exception(f"attempted to modify immutable map {self}")
         if self.data.uses > 1:
             self.data.uses -= 1
@@ -694,7 +761,7 @@ class Map(Value):
             raise InvalidFieldAccess(self, key)
 
     def __delitem__(self, key: Value) -> None:
-        if self.is_frozen():
+        if self.is_immutable():
             raise Exception(f"attempted to modify immutable map {self}")
         if self.data.uses > 1:
             self.data.uses -= 1
@@ -706,7 +773,7 @@ class Map(Value):
             raise InvalidFieldAccess(self, key)
 
     def __copy__(self) -> "Map":
-        if self.is_frozen():
+        if self.is_immutable():
             return self  # immutable value
         return Map(self.data, self.meta)
 
@@ -716,12 +783,26 @@ class Map(Value):
             self.data = copy(self.data)  # copy-on-write
             self.data.uses += 1
 
+    def freeze(self) -> "Map":
+        value = copy(self)
+        value.cow()
+        value.data = SharedMapData(
+            {k.freeze(): v.freeze() for k, v in value.data.items()}
+        )
+        value.data.uses = 1
+        value.frozen = True
+        return value
+
+    def is_immutable(self) -> bool:
+        return self.frozen
+
 
 @final
 @dataclass
 class Set(Value):
     data: SharedSetData
     meta: Optional["Map"]
+    frozen: bool = False
 
     @staticmethod
     def typename() -> str:
@@ -793,6 +874,8 @@ class Set(Value):
         return item in self.data
 
     def insert(self, element: "Value") -> None:
+        if self.is_immutable():
+            raise Exception(f"attempted to modify immutable set {self}")
         if self.data.uses > 1:
             self.data.uses -= 1
             self.data = copy(self.data)  # copy-on-write
@@ -800,6 +883,8 @@ class Set(Value):
         self.data.insert(element)
 
     def remove(self, element: "Value") -> None:
+        if self.is_immutable():
+            raise Exception(f"attempted to modify immutable set {self}")
         if self.data.uses > 1:
             self.data.uses -= 1
             self.data = copy(self.data)  # copy-on-write
@@ -807,6 +892,8 @@ class Set(Value):
         self.data.remove(element)
 
     def __copy__(self) -> "Set":
+        if self.is_immutable():
+            return self  # immutable value
         return Set(self.data, self.meta)
 
     def cow(self) -> None:
@@ -814,6 +901,17 @@ class Set(Value):
             self.data.uses -= 1
             self.data = copy(self.data)  # copy-on-write
             self.data.uses += 1
+
+    def freeze(self) -> "Set":
+        value = copy(self)
+        value.cow()
+        value.data = SharedSetData([x.freeze() for x in value.data])
+        value.data.uses = 1
+        value.frozen = True
+        return value
+
+    def is_immutable(self) -> bool:
+        return self.frozen
 
 
 @final
@@ -846,6 +944,12 @@ class Reference(Value):
 
     def __copy__(self) -> "Reference":
         return self  # immutable value
+
+    def freeze(self) -> "Reference":
+        return self  # immutable value
+
+    def is_immutable(self) -> bool:
+        return True
 
     def cow(self) -> None:
         # We explicitly do *not* copy `self.data` as the copied data should
@@ -890,6 +994,12 @@ class Function(Value):
     def __copy__(self) -> "Function":
         return self  # immutable value
 
+    def freeze(self) -> "Function":
+        return self  # immutable value
+
+    def is_immutable(self) -> bool:
+        return True
+
 
 @dataclass
 class Builtin(Value):
@@ -928,6 +1038,12 @@ class Builtin(Value):
 
     def __copy__(self) -> "Builtin":
         return self  # immutable value
+
+    def freeze(self) -> "Builtin":
+        return self  # immutable value
+
+    def is_immutable(self) -> bool:
+        return True
 
     @staticmethod
     def expect_argument_count(arguments: list[Value], count: int) -> None:
@@ -1052,6 +1168,12 @@ class External(Value):
     def __copy__(self) -> "External":
         return self  # immutable value
 
+    def freeze(self) -> "External":
+        return self  # immutable value
+
+    def is_immutable(self) -> bool:
+        return True
+
     def cow(self) -> None:
         # We explicitly do *not* copy self.data as the copied data should still
         # point to the original external Python object.
@@ -1145,6 +1267,7 @@ class TokenKind(enum.Enum):
     CATCH = "catch"
     ERROR = "error"
     RETURN = "return"
+    FREEZE = "freeze"
 
     def __str__(self):
         return self.value
@@ -1178,6 +1301,7 @@ class Token:
         str(TokenKind.CATCH):    TokenKind.CATCH,
         str(TokenKind.ERROR):    TokenKind.ERROR,
         str(TokenKind.RETURN):   TokenKind.RETURN,
+        str(TokenKind.FREEZE):   TokenKind.FREEZE,
         # fmt: on
     }
 
@@ -2263,6 +2387,30 @@ class AstExpressionFunction(AstExpression):
 
 @final
 @dataclass
+class AstExpressionFreeze(AstExpression):
+    location: Optional[SourceLocation]
+    expression: AstExpression
+
+    def into_value(self) -> Value:
+        return Map.new(
+            {
+                String.new("kind"): String.new(self.__class__.__name__),
+                String.new("location"): SourceLocation.optional_into_value(
+                    self.location
+                ),
+                String.new("expression"): self.expression.into_value(),
+            }
+        )
+
+    def eval(self, env: Environment) -> Union[Value, Error]:
+        result = self.expression.eval(env)
+        if isinstance(result, Error):
+            return result
+        return result.freeze()
+
+
+@final
+@dataclass
 class AstExpressionType(AstExpression):
     location: Optional[SourceLocation]
     name: String
@@ -2328,7 +2476,7 @@ class AstExpressionNew(AstExpression):
                 self.meta.location,
                 f"expected map-like value, received {typename(value)}",
             )
-        if not meta.name:
+        if meta.name is None:
             return Error(
                 self.meta.location,
                 f"expected map-like value created with the {quote(TokenKind.TYPE)} expression, received regular map value {meta}",
@@ -3958,6 +4106,7 @@ class Parser:
         self._register_nud(TokenKind.SET, Parser.parse_expression_map_or_set)
         self._register_nud(TokenKind.LBRACE, Parser.parse_expression_map_or_set)
         self._register_nud(TokenKind.FUNCTION, Parser.parse_expression_function)
+        self._register_nud(TokenKind.FREEZE, Parser.parse_expression_freeze)
         self._register_nud(TokenKind.TYPE, Parser.parse_expression_type)
         self._register_nud(TokenKind.NEW, Parser.parse_expression_new)
         self._register_nud(TokenKind.LPAREN, Parser.parse_expression_grouped)
@@ -4223,6 +4372,11 @@ class Parser:
         expression = self.parse_expression()
         self._expect_current(TokenKind.RPAREN)
         return AstExpressionGrouped(location, expression)
+
+    def parse_expression_freeze(self) -> AstExpressionFreeze:
+        location = self._expect_current(TokenKind.FREEZE).location
+        expression = self.parse_expression()
+        return AstExpressionFreeze(location, expression)
 
     def parse_expression_type(self) -> AstExpressionType:
         location = self._expect_current(TokenKind.TYPE).location
@@ -5074,6 +5228,8 @@ def builtin_vector_rfind(
 def builtin_vector_push(
     self: Reference, vector: Vector, value: Value
 ) -> Union[Value, Error]:
+    if vector.is_immutable():
+        raise Exception(f"attempted to modify immutable vector {vector}")
     if vector.data.uses > 1:
         vector.cow()  # copy-on-write
     vector.data.append(value)
@@ -5082,6 +5238,8 @@ def builtin_vector_push(
 
 @builtin("vector::pop", [ReferenceTo(Vector)])
 def builtin_vector_pop(self: Reference, vector: Vector) -> Union[Value, Error]:
+    if vector.is_immutable():
+        raise Exception(f"attempted to modify immutable vector {vector}")
     if vector.data.uses > 1:
         vector.cow()  # copy-on-write
     try:
@@ -5094,6 +5252,8 @@ def builtin_vector_pop(self: Reference, vector: Vector) -> Union[Value, Error]:
 def builtin_vector_insert(
     self: Reference, vector: Vector, index: Number, value: Value
 ) -> Union[Value, Error]:
+    if vector.is_immutable():
+        raise Exception(f"attempted to modify immutable vector {vector}")
     if not float(index.data).is_integer():
         return Error(None, f"expected integer index, received {index}")
     idx = int(float(index.data))
@@ -5112,6 +5272,8 @@ def builtin_vector_insert(
 def builtin_vector_remove(
     self: Reference, vector: Vector, index: Number
 ) -> Union[Value, Error]:
+    if vector.is_immutable():
+        raise Exception(f"attempted to modify immutable vector {vector}")
     if not float(index.data).is_integer():
         return Error(None, f"expected integer index, received {index}")
     if vector.data.uses > 1:
@@ -6151,7 +6313,7 @@ def builtin_re_replace():
 def builtin_ty_is(value: Value, type: Value) -> Union[Value, Error]:
     if isinstance(type, Null):
         return Boolean.new(value.meta is None)
-    if isinstance(type, Map) and type.is_frozen():
+    if isinstance(type, Map) and type.name is not None:
         return Boolean.new(value.meta is type)
     raise Exception(
         f"expected null or map value created with the `type` keyword, received {type}"

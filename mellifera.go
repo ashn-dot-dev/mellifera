@@ -86,6 +86,8 @@ type Value interface {
 	Meta(ctx *Context) *Map
 	Copy() Value
 	CopyOnWrite()
+	Freeze() Value
+	IsImmutable() bool
 	Hash() uint64
 	Equal(Value) bool
 	CombEncode(e *CombEncoder) error
@@ -309,9 +311,9 @@ func NewContext() Context {
 		{ctx.NewString("remove"), BuiltinVectorRemove(&ctx)},
 		{ctx.NewString("slice"), BuiltinVectorSlice(&ctx)},
 		{ctx.NewString("reversed"), BuiltinVectorReversed(&ctx)},
-		{ctx.NewString("sorted"), nil},        // deferred instantiation
-		{ctx.NewString("sorted_by"), nil},     // deferred instantiation
-		{ctx.NewString("into_iterator"), nil}, // deferred instantiation
+		{ctx.NewString("sorted"), ctx.NewNull()},        // deferred instantiation
+		{ctx.NewString("sorted_by"), ctx.NewNull()},     // deferred instantiation
+		{ctx.NewString("into_iterator"), ctx.NewNull()}, // deferred instantiation
 	})
 	ctx.mapMeta = ctx.NewMetaMap("map", []MapPair{
 		{ctx.NewString("count"), BuiltinMapCount(&ctx)},
@@ -322,7 +324,7 @@ func NewContext() Context {
 		{ctx.NewString("keys"), BuiltinMapKeys(&ctx)},
 		{ctx.NewString("values"), BuiltinMapValues(&ctx)},
 		{ctx.NewString("pairs"), BuiltinMapPairs(&ctx)},
-		{ctx.NewString("union"), nil}, // deferred instantiation
+		{ctx.NewString("union"), ctx.NewNull()}, // deferred instantiation
 	})
 	ctx.setMeta = ctx.NewMetaMap("set", []MapPair{
 		{ctx.NewString("count"), BuiltinSetCount(&ctx)},
@@ -330,9 +332,9 @@ func NewContext() Context {
 		{ctx.NewString("contains"), BuiltinSetContains(&ctx)},
 		{ctx.NewString("insert"), BuiltinSetInsert(&ctx)},
 		{ctx.NewString("remove"), BuiltinSetRemove(&ctx)},
-		{ctx.NewString("union"), nil},        // deferred instantiation
-		{ctx.NewString("intersection"), nil}, // deferred instantiation
-		{ctx.NewString("difference"), nil},   // deferred instantiation
+		{ctx.NewString("union"), ctx.NewNull()},        // deferred instantiation
+		{ctx.NewString("intersection"), ctx.NewNull()}, // deferred instantiation
+		{ctx.NewString("difference"), ctx.NewNull()},   // deferred instantiation
 	})
 	ctx.referenceMeta = ctx.NewMetaMap("reference", nil)
 
@@ -387,7 +389,7 @@ func NewContext() Context {
 	ctx.BaseEnvironment.Let("println", BuiltinPrintln(&ctx))
 	ctx.BaseEnvironment.Let("eprint", BuiltinEprint(&ctx))
 	ctx.BaseEnvironment.Let("eprintln", BuiltinEprintln(&ctx))
-	ctx.BaseEnvironment.Let("range", nil) // deferred instantiation
+	ctx.BaseEnvironment.Let("range", ctx.NewNull()) // deferred instantiation
 	ctx.BaseEnvironment.Let("min", BuiltinMin(&ctx))
 	ctx.BaseEnvironment.Let("max", BuiltinMax(&ctx))
 	ctx.BaseEnvironment.Let("import", BuiltinImport(&ctx))
@@ -559,20 +561,9 @@ func (ctx *Context) NewMapWithType(meta *Map, elements []MapPair) *Map {
 }
 
 func (ctx *Context) NewMetaMap(name string, elements []MapPair) *Map {
-	if elements == nil || len(elements) == 0 {
-		return &Map{
-			data: nil,
-			meta: nil,
-			name: &name,
-		}
-	}
-
-	result := &Map{}
-	for _, element := range elements {
-		result.Insert(element.Key, element.Value)
-	}
-	result.name = &name // freeze
-	return result
+	result := ctx.NewMap(elements)
+	result.name = &name
+	return result.Freeze().(*Map)
 }
 
 func (ctx *Context) NewSet(elements []Value) *Set {
@@ -653,6 +644,14 @@ func (self *Null) CopyOnWrite() {
 	// immutable value
 }
 
+func (self *Null) Freeze() Value {
+	return self // immutable value
+}
+
+func (self *Null) IsImmutable() bool {
+	return true
+}
+
 func (self *Null) Hash() uint64 {
 	return 0
 }
@@ -695,6 +694,14 @@ func (self *Boolean) Copy() Value {
 
 func (self *Boolean) CopyOnWrite() {
 	// immutable value
+}
+
+func (self *Boolean) Freeze() Value {
+	return self // immutable value
+}
+
+func (self *Boolean) IsImmutable() bool {
+	return true
 }
 
 func (self *Boolean) Hash() uint64 {
@@ -753,6 +760,14 @@ func (self *Number) CopyOnWrite() {
 	// immutable value
 }
 
+func (self *Number) Freeze() Value {
+	return self // immutable value
+}
+
+func (self *Number) IsImmutable() bool {
+	return true
+}
+
 func (self *Number) Hash() uint64 {
 	return math.Float64bits(self.data)
 }
@@ -801,6 +816,14 @@ func (self *String) CopyOnWrite() {
 	// immutable value
 }
 
+func (self *String) Freeze() Value {
+	return self // immutable value
+}
+
+func (self *String) IsImmutable() bool {
+	return true
+}
+
 func (self *String) Hash() uint64 {
 	return fnv1a(self.data)
 }
@@ -845,6 +868,14 @@ func (self *Regexp) CopyOnWrite() {
 	// immutable value
 }
 
+func (self *Regexp) Freeze() Value {
+	return self // immutable value
+}
+
+func (self *Regexp) IsImmutable() bool {
+	return true
+}
+
 func (self *Regexp) Hash() uint64 {
 	return fnv1a(self.data.String())
 }
@@ -870,7 +901,8 @@ type VectorData struct {
 }
 
 type Vector struct {
-	data *VectorData
+	data   *VectorData
+	frozen bool
 }
 
 func (self *Vector) Typename() string {
@@ -894,6 +926,10 @@ func (self *Vector) Meta(ctx *Context) *Map {
 }
 
 func (self *Vector) Copy() Value {
+	if self.IsImmutable() {
+		return self // immutable value
+	}
+
 	if self.data == nil {
 		return &Vector{data: nil}
 	}
@@ -914,6 +950,22 @@ func (self *Vector) CopyOnWrite() {
 			uses:     1,
 		}
 	}
+}
+
+func (self *Vector) Freeze() Value {
+	value := self.Copy().(*Vector)
+	value.CopyOnWrite()
+	if value.data != nil {
+		for i := range value.data.elements {
+			value.data.elements[i] = value.data.elements[i].Freeze()
+		}
+	}
+	value.frozen = true
+	return value
+}
+
+func (self *Vector) IsImmutable() bool {
+	return self.frozen
 }
 
 func (self *Vector) Hash() uint64 {
@@ -987,12 +1039,21 @@ func (self *Vector) Get(index int) Value {
 	return self.data.elements[index]
 }
 
-func (self *Vector) Set(index int, value Value) {
+func (self *Vector) Set(index int, value Value) error {
+	if self.IsImmutable() {
+		return fmt.Errorf("attempted to modify immutable vector %v", self)
+	}
+
 	self.CopyOnWrite()
 	self.data.elements[index] = value
+	return nil
 }
 
-func (self *Vector) Insert(index int, value Value) {
+func (self *Vector) Insert(index int, value Value) error {
+	if self.IsImmutable() {
+		return fmt.Errorf("attempted to modify immutable vector %v", self)
+	}
+
 	self.CopyOnWrite()
 
 	if self.data == nil {
@@ -1003,21 +1064,30 @@ func (self *Vector) Insert(index int, value Value) {
 	}
 
 	self.data.elements = slices.Insert(self.data.elements, index, value)
+	return nil
 }
 
 // Returns nil when removing from an empty vector.
-func (self *Vector) Remove(index int) Value {
+func (self *Vector) Remove(index int) (Value, error) {
+	if self.IsImmutable() {
+		return nil, fmt.Errorf("attempted to modify immutable vector %v", self)
+	}
+
 	self.CopyOnWrite()
 	if self.data == nil || len(self.data.elements) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	element := self.data.elements[index]
 	self.data.elements = slices.Delete(self.data.elements, index, index+1)
-	return element
+	return element, nil
 }
 
-func (self *Vector) Push(value Value) {
+func (self *Vector) Push(value Value) error {
+	if self.IsImmutable() {
+		return fmt.Errorf("attempted to modify immutable vector %v", self)
+	}
+
 	self.CopyOnWrite()
 	if self.data == nil {
 		self.data = &VectorData{
@@ -1026,18 +1096,23 @@ func (self *Vector) Push(value Value) {
 		}
 	}
 	self.data.elements = append(self.data.elements, value)
+	return nil
 }
 
 // Returns nil when popping from an empty vector.
-func (self *Vector) Pop(value Value) Value {
+func (self *Vector) Pop(value Value) (Value, error) {
+	if self.IsImmutable() {
+		return nil, fmt.Errorf("attempted to modify immutable vector %v", self)
+	}
+
 	self.CopyOnWrite()
 	if self.data == nil || len(self.data.elements) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	element := self.data.elements[len(self.data.elements)-1]
 	self.data.elements = self.data.elements[:len(self.data.elements)-1]
-	return element
+	return element, nil
 }
 
 type MapPair struct {
@@ -1158,9 +1233,10 @@ func (self *mapData) Remove(key Value) {
 }
 
 type Map struct {
-	data *mapData
-	meta *Map    // Optional (non-nil implies that this is a mutable map)
-	name *string // Optional (non-nil implies that this is a frozen metamap)
+	data   *mapData
+	meta   *Map    // Optional (non-nil implies that this is a mutable map)
+	name   *string // Optional (non-nil implies that this is a frozen metamap)
+	frozen bool    // Primary source of truth on whether this map is frozen.
 }
 
 func (self *Map) Typename() string {
@@ -1190,7 +1266,7 @@ func (self *Map) Meta(ctx *Context) *Map {
 }
 
 func (self *Map) Copy() Value {
-	if self.IsFrozen() {
+	if self.IsImmutable() {
 		return self // immutable value
 	}
 
@@ -1198,6 +1274,7 @@ func (self *Map) Copy() Value {
 		return &Map{
 			data: nil,
 			meta: self.meta,
+			name: self.name,
 		}
 	}
 
@@ -1205,6 +1282,7 @@ func (self *Map) Copy() Value {
 	return &Map{
 		data: self.data,
 		meta: self.meta,
+		name: self.name,
 	}
 }
 
@@ -1222,6 +1300,23 @@ func (self *Map) CopyOnWrite() {
 		}
 		self.data = data
 	}
+}
+
+func (self *Map) Freeze() Value {
+	value := self.Copy().(*Map)
+	value.CopyOnWrite()
+	if value.data != nil {
+		pairs := value.Pairs()
+		for _, pair := range pairs {
+			value.Insert(pair.Key.Freeze(), pair.Value.Freeze())
+		}
+	}
+	value.frozen = true
+	return value
+}
+
+func (self *Map) IsImmutable() bool {
+	return self.frozen
 }
 
 func (self *Map) Hash() uint64 {
@@ -1317,10 +1412,6 @@ func (self *Map) Pairs() []MapPair {
 	return pairs
 }
 
-func (self *Map) IsFrozen() bool {
-	return self.name != nil
-}
-
 // Returns nil on lookup failure.
 func (self *Map) Get(key Value) Value {
 	lookup, _ := self.Lookup(key)
@@ -1342,7 +1433,7 @@ func (self *Map) Lookup(key Value) (Value, bool) {
 
 // Returns an error when attempting to insert into a frozen map.
 func (self *Map) Insert(key, value Value) error {
-	if self.IsFrozen() {
+	if self.IsImmutable() {
 		return fmt.Errorf("attempted to modify immutable map %v", self)
 	}
 
@@ -1357,9 +1448,8 @@ func (self *Map) Insert(key, value Value) error {
 	return nil
 }
 
-// Returns an error when attempting to remove from a frozen map.
 func (self *Map) Remove(key Value) error {
-	if self.IsFrozen() {
+	if self.IsImmutable() {
 		return fmt.Errorf("attempted to modify immutable map %v", self)
 	}
 
@@ -1482,7 +1572,8 @@ func (self *setData) Remove(key Value) {
 }
 
 type Set struct {
-	data *setData
+	data   *setData
+	frozen bool
 }
 
 func (self *Set) Typename() string {
@@ -1508,6 +1599,10 @@ func (self *Set) Meta(ctx *Context) *Map {
 }
 
 func (self *Set) Copy() Value {
+	if self.IsImmutable() {
+		return self // immutable value
+	}
+
 	if self.data == nil {
 		return &Set{data: nil}
 	}
@@ -1530,6 +1625,22 @@ func (self *Set) CopyOnWrite() {
 		}
 		self.data = data
 	}
+}
+
+func (self *Set) Freeze() Value {
+	value := self.Copy().(*Set)
+	value.CopyOnWrite()
+	if value.data != nil {
+		for _, element := range value.Elements() {
+			value.Insert(element.Freeze())
+		}
+	}
+	value.frozen = true
+	return value
+}
+
+func (self *Set) IsImmutable() bool {
+	return self.frozen
 }
 
 func (self *Set) Hash() uint64 {
@@ -1638,7 +1749,11 @@ func (self *Set) Lookup(value Value) (Value, bool) {
 	return element.key, true
 }
 
-func (self *Set) Insert(value Value) {
+func (self *Set) Insert(value Value) error {
+	if self.IsImmutable() {
+		return fmt.Errorf("attempted to modify immutable set %v", self)
+	}
+
 	self.CopyOnWrite()
 	if self.data == nil {
 		self.data = &setData{
@@ -1647,15 +1762,21 @@ func (self *Set) Insert(value Value) {
 	}
 
 	self.data.Insert(value)
+	return nil
 }
 
-func (self *Set) Remove(value Value) {
+func (self *Set) Remove(value Value) error {
+	if self.IsImmutable() {
+		return fmt.Errorf("attempted to modify immutable set %v", self)
+	}
+
 	if self.data == nil {
-		return
+		return nil
 	}
 
 	self.CopyOnWrite()
 	self.data.Remove(value)
+	return nil
 }
 
 type Reference struct {
@@ -1680,6 +1801,14 @@ func (self *Reference) Copy() Value {
 
 func (self *Reference) CopyOnWrite() {
 	// immutable value
+}
+
+func (self *Reference) Freeze() Value {
+	return self // immutable value
+}
+
+func (self *Reference) IsImmutable() bool {
+	return true
 }
 
 func (self *Reference) Hash() uint64 {
@@ -1739,6 +1868,14 @@ func (self *Function) CopyOnWrite() {
 	// immutable value
 }
 
+func (self *Function) Freeze() Value {
+	return self // immutable value
+}
+
+func (self *Function) IsImmutable() bool {
+	return true
+}
+
 func (self *Function) Hash() uint64 {
 	return uint64(reflect.ValueOf(self.Ast).Pointer() + reflect.ValueOf(self.Env).Pointer())
 }
@@ -1782,6 +1919,14 @@ func (self *Builtin) Copy() Value {
 
 func (self *Builtin) CopyOnWrite() {
 	// immutable value
+}
+
+func (self *Builtin) Freeze() Value {
+	return self // immutable value
+}
+
+func (self *Builtin) IsImmutable() bool {
+	return true
 }
 
 func (self *Builtin) Hash() uint64 {
@@ -1829,6 +1974,14 @@ func (self *External) Copy() Value {
 
 func (self *External) CopyOnWrite() {
 	// immutable value
+}
+
+func (self *External) Freeze() Value {
+	return self // immutable value
+}
+
+func (self *External) IsImmutable() bool {
+	return true
 }
 
 func (self *External) Hash() uint64 {
@@ -1939,6 +2092,7 @@ const (
 	TOKEN_CATCH    = "catch"
 	TOKEN_ERROR    = "error"
 	TOKEN_RETURN   = "return"
+	TOKEN_FREEZE   = "freeze"
 )
 
 type Token struct {
@@ -1997,6 +2151,7 @@ func NewLexer(ctx *Context, source string, location *SourceLocation) Lexer {
 		TOKEN_CATCH:    TOKEN_CATCH,
 		TOKEN_ERROR:    TOKEN_ERROR,
 		TOKEN_RETURN:   TOKEN_RETURN,
+		TOKEN_FREEZE:   TOKEN_FREEZE,
 	}
 
 	return Lexer{
@@ -3272,6 +3427,32 @@ func (self *AstExpressionFunction) Eval(ctx *Context, env *Environment) (Value, 
 	return ctx.NewFunction(self, env), nil
 }
 
+type AstExpressionFreeze struct {
+	Location   *SourceLocation // Optional
+	Expression AstExpression
+}
+
+func (self AstExpressionFreeze) ExpressionLocation() *SourceLocation {
+	return self.Location
+}
+
+func (self AstExpressionFreeze) IntoValue(ctx *Context) Value {
+	return ctx.NewMap([]MapPair{
+		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
+		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
+		{ctx.NewString("expression"), self.Expression.IntoValue(ctx)},
+	})
+}
+
+func (self AstExpressionFreeze) Eval(ctx *Context, env *Environment) (Value, error) {
+	value, err := self.Expression.Eval(ctx, env)
+	if err != nil {
+		return nil, err
+	}
+
+	return value.Freeze(), nil
+}
+
 type AstExpressionType struct {
 	Location   *SourceLocation // Optional
 	Name       string
@@ -3305,10 +3486,9 @@ func (self AstExpressionType) Eval(ctx *Context, env *Environment) (Value, error
 		)
 	}
 
-	meta := m.Copy().(*Map)
-	meta.CopyOnWrite()
-	meta.name = &self.Name
-	return meta, nil
+	result := m.Freeze().(*Map)
+	result.name = &self.Name
+	return result, nil
 }
 
 type AstExpressionNew struct {
@@ -5216,7 +5396,13 @@ func (self AstStatementAssignment) Eval(ctx *Context, env *Environment) (Control
 			)
 		}
 
-		storeVector.Set(index, rhs.Copy())
+		err = storeVector.Set(index, rhs.Copy())
+		if err != nil {
+			return NewError(
+				self.Location,
+				ctx.NewString(err.Error()),
+			)
+		}
 		return nil
 	}
 
@@ -5346,6 +5532,7 @@ func NewParser(lexer *Lexer) (Parser, error) {
 			TOKEN_SET:          (*Parser).ParseExpressionMapOrSet,
 			TOKEN_LBRACE:       (*Parser).ParseExpressionMapOrSet,
 			TOKEN_FUNCTION:     (*Parser).ParseExpressionFunction,
+			TOKEN_FREEZE:       (*Parser).ParseExpressionFreeze,
 			TOKEN_TYPE:         (*Parser).ParseExpressionType,
 			TOKEN_NEW:          (*Parser).ParseExpressionNew,
 			TOKEN_LPAREN:       (*Parser).ParseExpressionGrouped,
@@ -5789,6 +5976,21 @@ func (self *Parser) ParseExpressionFunction() (AstExpression, error) {
 	}
 
 	return &AstExpressionFunction{location, parameters, body, nil}, nil
+}
+
+func (self *Parser) ParseExpressionFreeze() (AstExpression, error) {
+	token, err := self.expectCurrent(TOKEN_FREEZE)
+	if err != nil {
+		return nil, err
+	}
+	location := token.Location
+
+	expression, err := self.parseExpression(PRECEDENCE_PREFIX)
+	if err != nil {
+		return nil, err
+	}
+
+	return AstExpressionFreeze{location, expression}, nil
 }
 
 func (self *Parser) ParseExpressionType() (AstExpression, error) {
@@ -7473,7 +7675,10 @@ func BuiltinVectorPush(ctx *Context) *Builtin {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Vector)
 
-		delf.Push(arguments[1].Copy())
+		err := delf.Push(arguments[1].Copy())
+		if err != nil {
+			return nil, NewError(nil, ctx.NewString(err.Error()))
+		}
 
 		return ctx.NewNull(), nil
 	})
@@ -7488,7 +7693,12 @@ func BuiltinVectorPop(ctx *Context) *Builtin {
 			return nil, NewError(nil, ctx.NewString("attempted vector::pop on an empty vector"))
 		}
 
-		return delf.Pop(arguments[0]).Copy(), nil
+		value, err := delf.Pop(arguments[0])
+		if err != nil {
+			return nil, NewError(nil, ctx.NewString(err.Error()))
+		}
+
+		return value.Copy(), nil
 	})
 }
 
@@ -7506,7 +7716,10 @@ func BuiltinVectorInsert(ctx *Context) *Builtin {
 			return nil, NewError(nil, ctx.NewStringf("attempted insert into vector of length %v with index %v", delf.Count(), index))
 		}
 
-		delf.Insert(index, arguments[2].Copy())
+		err = delf.Insert(index, arguments[2].Copy())
+		if err != nil {
+			return nil, NewError(nil, ctx.NewString(err.Error()))
+		}
 
 		return ctx.NewNull(), nil
 	})
@@ -7526,7 +7739,12 @@ func BuiltinVectorRemove(ctx *Context) *Builtin {
 			return nil, NewError(nil, ctx.NewStringf("attempted vector::remove with invalid index %v", index))
 		}
 
-		return delf.Remove(index).Copy(), nil
+		value, err := delf.Remove(index)
+		if err != nil {
+			return nil, NewError(nil, ctx.NewString(err.Error()))
+		}
+
+		return value.Copy(), nil
 	})
 }
 
@@ -7904,7 +8122,10 @@ func BuiltinSetInsert(ctx *Context) *Builtin {
 
 		k := arguments[1]
 
-		delf.Insert(k)
+		err := delf.Insert(k)
+		if err != nil {
+			return nil, NewError(nil, ctx.NewString(err.Error()))
+		}
 
 		return ctx.NewNull(), nil
 	})
@@ -7922,7 +8143,10 @@ func BuiltinSetRemove(ctx *Context) *Builtin {
 			return nil, NewError(nil, ctx.NewStringf("attempted set::remove on a set without element %v", k))
 		}
 
-		delf.Remove(k)
+		err := delf.Remove(k)
+		if err != nil {
+			return nil, NewError(nil, ctx.NewString(err.Error()))
+		}
 
 		return lookup.Copy(), nil
 	})
@@ -9004,7 +9228,7 @@ func BuiltinTyIs(ctx *Context) *Builtin {
 			return ctx.NewBoolean(value.Meta(ctx) == nil), nil
 		}
 
-		if tyMap, ok := ty.(*Map); ok && tyMap.IsFrozen() {
+		if tyMap, ok := ty.(*Map); ok && tyMap.IsImmutable() {
 			return ctx.NewBoolean(value.Meta(ctx) == tyMap), nil
 		}
 
