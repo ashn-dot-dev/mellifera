@@ -251,7 +251,7 @@ func main() {
 		for _, arg := range argv {
 			result.Push(ctx.NewString(arg))
 		}
-		return result
+		return result.Freeze()
 	}
 	ctx.BaseEnvironment.Let("argv", argvIntoValue())
 
@@ -269,14 +269,15 @@ func main() {
 			os.Exit(1)
 		}
 	}
-	module, err := ctx.BaseEnvironment.Get("module")
-	if err != nil {
+	module := ctx.NewMap([]mellifera.MapPair{
+		{ctx.NewString("path"), ctx.NewString(path)},
+		{ctx.NewString("file"), ctx.NewString(filepath.Base(path))},
+		{ctx.NewString("directory"), ctx.NewString(filepath.Dir(path))},
+	}).Freeze()
+	if err = ctx.BaseEnvironment.Set("module", module); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %s\n", err.Error())
 		os.Exit(1)
 	}
-	module.(*mellifera.Map).Insert(ctx.NewString("path"), ctx.NewString(path))
-	module.(*mellifera.Map).Insert(ctx.NewString("file"), ctx.NewString(filepath.Base(path)))
-	module.(*mellifera.Map).Insert(ctx.NewString("directory"), ctx.NewString(filepath.Dir(path)))
 
 	if dumpTokens && dumpAst {
 		fmt.Fprintf(os.Stderr, "error: requested token dump and AST dump which are mutually exclusive\n")

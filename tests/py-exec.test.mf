@@ -2,23 +2,23 @@ try {
     py::exec(```
 import sys
 
-@builtin("py::version::major", [])
+@builtin("pyversion::major", [])
 def builtin_py_version_major() -> Union[Value, Error]:
     return Number.new(sys.version_info.major)
 
-@builtin("py::version::minor", [])
+@builtin("pyversion::minor", [])
 def builtin_py_version_minor() -> Union[Value, Error]:
     return Number.new(sys.version_info.minor)
 
 
-BASE_ENVIRONMENT.store[String.new("py")][String.new("version")] = Map.new({
+BASE_ENVIRONMENT.store[String.new("pyversion")] = Map.new({
     String.new("major"): builtin_py_version_major(),
     String.new("minor"): builtin_py_version_minor(),
 })
     ```);
 
-    assert(repr(py) == `{"exec": py::exec@builtin, "version": {"major": py::version::major@builtin, "minor": py::version::minor@builtin}}`);
-    assert(py::version::major() == 3);
+    assert(repr(pyversion) == `{"major": pyversion::major@builtin, "minor": pyversion::minor@builtin}`);
+    assert(pyversion::major() == 3);
 } catch err {
     assert(err == "identifier `py` is not defined");
 }

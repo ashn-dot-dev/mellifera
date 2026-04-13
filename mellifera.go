@@ -397,19 +397,19 @@ func NewContext() Context {
 		{ctx.NewString("decode"), BuiltinCombDecode(&ctx)},
 		{ctx.NewString("encode"), BuiltinCombEncode(&ctx)},
 		{ctx.NewString("encode_ex"), BuiltinCombEncodeEx(&ctx)},
-	}))
+	}).Freeze())
 	ctx.BaseEnvironment.Let("fs", ctx.NewMap([]MapPair{
 		{ctx.NewString("read"), BuiltinFsRead(&ctx)},
 		{ctx.NewString("write"), BuiltinFsWrite(&ctx)},
 		{ctx.NewString("append"), BuiltinFsAppend(&ctx)},
-	}))
+	}).Freeze())
 	ctx.BaseEnvironment.Let("html", ctx.NewMap([]MapPair{
 		{ctx.NewString("escape"), BuiltinHtmlEscape(&ctx)},
-	}))
+	}).Freeze())
 	ctx.BaseEnvironment.Let("json", ctx.NewMap([]MapPair{
 		{ctx.NewString("decode"), BuiltinJsonDecode(&ctx)},
 		{ctx.NewString("encode"), BuiltinJsonEncode(&ctx)},
-	}))
+	}).Freeze())
 	ctx.BaseEnvironment.Let("math", ctx.NewMap([]MapPair{
 		{ctx.NewString("e"), ctx.NewNumber(math.E)},
 		{ctx.NewString("pi"), ctx.NewNumber(math.Pi)},
@@ -444,20 +444,20 @@ func NewContext() Context {
 		{ctx.NewString("asinh"), BuiltinMathAsinh(&ctx)},
 		{ctx.NewString("acosh"), BuiltinMathAcosh(&ctx)},
 		{ctx.NewString("atanh"), BuiltinMathAtanh(&ctx)},
-	}))
+	}).Freeze())
 	ctx.BaseEnvironment.Let("module", ctx.NewMap([]MapPair{
 		{ctx.NewString("path"), ctx.NewNull()},
 		{ctx.NewString("file"), ctx.NewNull()},
 		{ctx.NewString("directory"), cwdValue},
-	}))
+	}).Freeze())
 	ctx.BaseEnvironment.Let("random", ctx.NewMap([]MapPair{
 		{ctx.NewString("seed"), BuiltinRandomSeed(&ctx)},
 		{ctx.NewString("integer"), BuiltinRandomInteger(&ctx)},
-	}))
+	}).Freeze())
 	ctx.BaseEnvironment.Let("re", ctx.NewMap([]MapPair{
 		{ctx.NewString("split"), BuiltinReSplit(&ctx)},
 		{ctx.NewString("replace"), BuiltinReReplace(&ctx)},
-	}))
+	}).Freeze())
 	ctx.BaseEnvironment.Let("ty", ctx.NewMap([]MapPair{
 		{ctx.NewString("is"), BuiltinTyIs(&ctx)},
 		{ctx.NewString("is_null"), BuiltinTyIsNull(&ctx)},
@@ -470,7 +470,7 @@ func NewContext() Context {
 		{ctx.NewString("is_set"), BuiltinTyIsSet(&ctx)},
 		{ctx.NewString("is_reference"), BuiltinTyIsReference(&ctx)},
 		{ctx.NewString("is_function"), BuiltinTyIsFunction(&ctx)},
-	}))
+	}).Freeze())
 
 	// Initialize builtins from source with deferred instantiation.
 	ctx.vectorMeta.data.Insert(ctx.NewString("sorted"), BuiltinVectorSorted(&ctx))
@@ -8509,8 +8509,8 @@ func BuiltinImport(ctx *Context) *Builtin {
 		if !ok {
 			return nil, NewError(nil, ctx.NewStringf("expected map-like module value, received %v", quote(module.Typename())))
 		}
-		modulePath, modulePathOk := moduleMap.Lookup(ctx.NewString("path"))
-		moduleFile, moduleFileOk := moduleMap.Lookup(ctx.NewString("file"))
+		_, modulePathOk := moduleMap.Lookup(ctx.NewString("path"))
+		_, moduleFileOk := moduleMap.Lookup(ctx.NewString("file"))
 		moduleDirectory, moduleDirectoryOk := moduleMap.Lookup(ctx.NewString("directory"))
 		if !modulePathOk || !moduleFileOk || !moduleDirectoryOk {
 			return nil, NewError(nil, ctx.NewStringf("expected module map to contain `path`, `file` and `directory` values, received %v", module))
@@ -8543,9 +8543,15 @@ func BuiltinImport(ctx *Context) *Builtin {
 			if err != nil {
 				return nil, NewError(nil, ctx.NewString(err.Error()))
 			}
-			moduleMap.Insert(ctx.NewString("path"), ctx.NewString(absolute))
-			moduleMap.Insert(ctx.NewString("file"), ctx.NewString(filepath.Base(absolute)))
-			moduleMap.Insert(ctx.NewString("directory"), ctx.NewString(filepath.Dir(absolute)))
+
+			importModuleMap := ctx.NewMap([]MapPair{
+				{ctx.NewString("path"), ctx.NewString(absolute)},
+				{ctx.NewString("file"), ctx.NewString(filepath.Base(absolute))},
+				{ctx.NewString("directory"), ctx.NewString(filepath.Dir(absolute))},
+			}).Freeze()
+			if err := ctx.BaseEnvironment.Set("module", importModuleMap); err != nil {
+				return nil, NewError(nil, ctx.NewString(err.Error()))
+			}
 
 			bytes, err := os.ReadFile(absolute)
 			if err != nil {
@@ -8576,9 +8582,9 @@ func BuiltinImport(ctx *Context) *Builtin {
 		}
 
 		// Always restore module fields.
-		moduleMap.Insert(ctx.NewString("path"), modulePath)
-		moduleMap.Insert(ctx.NewString("file"), moduleFile)
-		moduleMap.Insert(ctx.NewString("directory"), moduleDirectory)
+		if err := ctx.BaseEnvironment.Set("module", moduleMap); err != nil {
+			return nil, NewError(nil, ctx.NewString(err.Error()))
+		}
 		return result, nil
 	})
 }

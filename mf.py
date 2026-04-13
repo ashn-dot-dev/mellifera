@@ -5846,8 +5846,6 @@ def builtin_max():
 def builtin_import(target: String) -> Union[Value, Error]:
     env = Environment(BASE_ENVIRONMENT)
     module = env.get(CONST_STRING_MODULE)
-    module_path = module[CONST_STRING_PATH]
-    module_file = module[CONST_STRING_FILE]
     module_directory = module[CONST_STRING_DIRECTORY]
     assert isinstance(module_directory, String)
     # Always search the current module directory first
@@ -5863,9 +5861,16 @@ def builtin_import(target: String) -> Union[Value, Error]:
             # the name `<directory>/lib.mf` by convention.
             path = path / "lib.mf"
         absolute = str(path.absolute())
-        module[String.new("path")] = String.new(absolute)
-        module[String.new("file")] = String.new(os.path.basename(absolute))
-        module[String.new("directory")] = String.new(os.path.dirname(absolute))
+        env.set(
+            CONST_STRING_MODULE,
+            Map.new(
+                {
+                    CONST_STRING_PATH: String.new(absolute),
+                    CONST_STRING_FILE: String.new(os.path.basename(absolute)),
+                    CONST_STRING_DIRECTORY: String.new(os.path.dirname(absolute)),
+                }
+            ).freeze(),
+        )
         try:
             result = eval_file(path, env)
             break
@@ -5874,9 +5879,7 @@ def builtin_import(target: String) -> Union[Value, Error]:
     else:
         result = Error(None, f"module {target} not found")
     # Always restore module fields.
-    module[CONST_STRING_PATH] = module_path
-    module[CONST_STRING_FILE] = module_file
-    module[CONST_STRING_DIRECTORY] = module_directory
+    env.set(CONST_STRING_MODULE, module)
     if isinstance(result, Error):
         return result
     if result is None:
@@ -6664,7 +6667,7 @@ BASE_ENVIRONMENT.let(
             String.new("encode"): builtin_comb_encode(),
             String.new("encode_ex"): builtin_comb_encode_ex(),
         }
-    ),
+    ).freeze(),
 )
 BASE_ENVIRONMENT.let(
     String.new("fs"),
@@ -6674,7 +6677,7 @@ BASE_ENVIRONMENT.let(
             String.new("write"): builtin_fs_write(),
             String.new("append"): builtin_fs_append(),
         }
-    ),
+    ).freeze(),
 )
 BASE_ENVIRONMENT.let(
     String.new("html"),
@@ -6682,7 +6685,7 @@ BASE_ENVIRONMENT.let(
         {
             String.new("escape"): builtin_html_escape(),
         }
-    ),
+    ).freeze(),
 )
 BASE_ENVIRONMENT.let(
     String.new("json"),
@@ -6691,7 +6694,7 @@ BASE_ENVIRONMENT.let(
             String.new("decode"): builtin_json_decode(),
             String.new("encode"): builtin_json_encode(),
         }
-    ),
+    ).freeze(),
 )
 BASE_ENVIRONMENT.let(
     String.new("math"),
@@ -6731,7 +6734,7 @@ BASE_ENVIRONMENT.let(
             String.new("acosh"): builtin_math_acosh(),
             String.new("atanh"): builtin_math_atanh(),
         }
-    ),
+    ).freeze(),
 )
 BASE_ENVIRONMENT.let(
     String.new("py"),
@@ -6739,7 +6742,7 @@ BASE_ENVIRONMENT.let(
         {
             String.new("exec"): builtin_py_exec(),
         }
-    ),
+    ).freeze(),
 )
 BASE_ENVIRONMENT.let(
     String.new("module"),
@@ -6749,7 +6752,7 @@ BASE_ENVIRONMENT.let(
             String.new("file"): null,
             String.new("directory"): String.new(os.getcwd()),
         }
-    ),
+    ).freeze(),
 )
 BASE_ENVIRONMENT.let(
     String.new("random"),
@@ -6758,7 +6761,7 @@ BASE_ENVIRONMENT.let(
             String.new("seed"): builtin_random_seed(),
             String.new("integer"): builtin_random_integer(),
         }
-    ),
+    ).freeze(),
 )
 BASE_ENVIRONMENT.let(
     String.new("re"),
@@ -6767,7 +6770,7 @@ BASE_ENVIRONMENT.let(
             String.new("split"): builtin_re_split(),
             String.new("replace"): builtin_re_replace(),
         }
-    ),
+    ).freeze(),
 )
 BASE_ENVIRONMENT.let(
     String.new("ty"),
@@ -6785,7 +6788,7 @@ BASE_ENVIRONMENT.let(
             String.new("is_reference"): builtin_ty_is_reference(),
             String.new("is_function"): builtin_ty_is_function(),
         }
-    ),
+    ).freeze(),
 )
 
 
@@ -6948,14 +6951,20 @@ def main() -> None:
         positional()
 
     env = Environment(BASE_ENVIRONMENT)
-    module = env.get(CONST_STRING_MODULE)
     path = os.path.realpath(file) if file is not None else os.path.abspath(__file__)
-    module[String.new("path")] = String.new(path)
-    module[String.new("file")] = String.new(os.path.basename(path))
-    module[String.new("directory")] = String.new(os.path.dirname(path))
+    env.set(
+        CONST_STRING_MODULE,
+        Map.new(
+            {
+                String.new("path"): String.new(path),
+                String.new("file"): String.new(os.path.basename(path)),
+                String.new("directory"): String.new(os.path.dirname(path)),
+            }
+        ).freeze(),
+    )
     env.let(
         String.new("argv"),
-        Vector.new([String.new(x) for x in argv]),
+        Vector.new([String.new(x) for x in argv]).freeze(),
     )
 
     if dump_tokens and dump_ast:
