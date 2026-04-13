@@ -1,0 +1,75 @@
+# Freezing immutable types shold do nothing (i.e. not crash the interpreter)
+freeze null;
+freeze true;
+freeze 123;
+freeze "foo";
+freeze r`foo`;
+freeze 123.&;
+freeze function(){};
+freeze println;
+
+# Freezing collections should prevent mutation.
+
+let x = freeze [123, 456, 789];
+try { x[0] = "boom";       error "unreachable"; } catch err { dumpln(err); }
+try { x.push("boom");      error "unreachable"; } catch err { dumpln(err); }
+try { x.pop();             error "unreachable"; } catch err { dumpln(err); }
+try { x.insert(0, "boom"); error "unreachable"; } catch err { dumpln(err); }
+try { x.remove(0);         error "unreachable"; } catch err { dumpln(err); }
+
+print("\n");
+
+let x = freeze {"foo": 123, "bar": 457};
+try { x["foo"] = "boom";       error "unreachable"; } catch err { dumpln(err); }
+try { x["baz"] = "boom";       error "unreachable"; } catch err { dumpln(err); }
+try { x.foo = "boom";          error "unreachable"; } catch err { dumpln(err); }
+try { x.baz = "boom";          error "unreachable"; } catch err { dumpln(err); }
+try { x.insert("foo", "boom"); error "unreachable"; } catch err { dumpln(err); }
+try { x.remove("foo");         error "unreachable"; } catch err { dumpln(err); }
+
+print("\n");
+
+let x = freeze {123, 456, 789};
+try { x.insert("boom"); error "unreachable"; } catch err { dumpln(err); }
+try { x.remove(123);    error "unreachable"; } catch err { dumpln(err); }
+
+print("\n");
+
+# Ensure that freezing a collection is recursive, so that all sub-elements and
+# all of the sub-elements of the sub-elements, and so on, are all immutable.
+
+let x = freeze [ [ [ null ] ] ];
+try { x[0]       = "boom"; error "unreachable"; } catch err { dumpln(err); }
+try { x[0][0]    = "boom"; error "unreachable"; } catch err { dumpln(err); }
+try { x[0][0][0] = "boom"; error "unreachable"; } catch err { dumpln(err); }
+
+print("\n");
+
+let x = freeze {"a": {"b": {"c": null} } };
+try { x["a"]           = "boom"; error "unreachable"; } catch err { dumpln(err); }
+try { x["a"]["b"]      = "boom"; error "unreachable"; } catch err { dumpln(err); }
+try { x["a"]["b"]["c"] = "boom"; error "unreachable"; } catch err { dumpln(err); }
+################################################################################
+# "attempted to modify immutable vector [123, 456, 789]"
+# "attempted to modify immutable vector [123, 456, 789]"
+# "attempted to modify immutable vector [123, 456, 789]"
+# "attempted to modify immutable vector [123, 456, 789]"
+# "attempted to modify immutable vector [123, 456, 789]"
+#
+# "attempted to modify immutable map {\"foo\": 123, \"bar\": 457}"
+# "attempted to modify immutable map {\"foo\": 123, \"bar\": 457}"
+# "attempted to modify immutable map {\"foo\": 123, \"bar\": 457}"
+# "attempted to modify immutable map {\"foo\": 123, \"bar\": 457}"
+# "attempted to modify immutable map {\"foo\": 123, \"bar\": 457}"
+# "attempted to modify immutable map {\"foo\": 123, \"bar\": 457}"
+#
+# "attempted to modify immutable set {123, 456, 789}"
+# "attempted to modify immutable set {123, 456, 789}"
+#
+# "attempted to modify immutable vector [[[null]]]"
+# "attempted to modify immutable vector [[null]]"
+# "attempted to modify immutable vector [null]"
+#
+# "attempted to modify immutable map {\"a\": {\"b\": {\"c\": null}}}"
+# "attempted to modify immutable map {\"b\": {\"c\": null}}"
+# "attempted to modify immutable map {\"c\": null}"
