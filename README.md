@@ -199,11 +199,11 @@ vb.fixed(3) is {"x": 2.718, "y": -3.142}
 ```
 
 ```mellifera
-let fizzbuzzer = type extends(iterator, {
-    "init": function(n, max) {
+let fizzbuzzer = type extends iterator {
+    .init = function(n, max) {
         return new fizzbuzzer {"n": n, "max": max};
     },
-    "next": function(self) {
+    .next = function(self) {
         let n = self.n;
         if n > self.max {
             error null; # error null signals end-of-iteration

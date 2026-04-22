@@ -1243,13 +1243,14 @@ class TokenKind(enum.Enum):
     LBRACKET = "["
     RBRACKET = "]"
     # Keywords
+    TYPE = "type"
+    EXTENDS = "extends"
     NULL = "null"
     TRUE = "true"
     FALSE = "false"
     MAP = "Map"
     SET = "Set"
     FUNCTION = "function"
-    TYPE = "type"
     NEW = "new"
     NOT = "not"
     AND = "and"
@@ -1277,13 +1278,14 @@ class TokenKind(enum.Enum):
 class Token:
     KEYWORDS = {
         # fmt: off
+        str(TokenKind.TYPE):     TokenKind.TYPE,
+        str(TokenKind.EXTENDS):  TokenKind.EXTENDS,
         str(TokenKind.NULL):     TokenKind.NULL,
         str(TokenKind.TRUE):     TokenKind.TRUE,
         str(TokenKind.FALSE):    TokenKind.FALSE,
         str(TokenKind.MAP):      TokenKind.MAP,
         str(TokenKind.SET):      TokenKind.SET,
         str(TokenKind.FUNCTION): TokenKind.FUNCTION,
-        str(TokenKind.TYPE):     TokenKind.TYPE,
         str(TokenKind.NEW):      TokenKind.NEW,
         str(TokenKind.NOT):      TokenKind.NOT,
         str(TokenKind.AND):      TokenKind.AND,
@@ -2414,6 +2416,7 @@ class AstExpressionFreeze(AstExpression):
 class AstExpressionType(AstExpression):
     location: Optional[SourceLocation]
     name: String
+    extends: Optional[AstExpression]
     expression: AstExpression
 
     def into_value(self) -> Value:
@@ -2424,11 +2427,29 @@ class AstExpressionType(AstExpression):
                     self.location
                 ),
                 String.new("name"): copy(self.name),
+                String.new("extends"): (
+                    self.extends.into_value() if self.extends is not None else null
+                ),
                 String.new("expression"): self.expression.into_value(),
             }
         )
 
     def eval(self, env: Environment) -> Union[Value, Error]:
+        extends: Optional[Union[Value, Error]] = None
+        if self.extends is not None:
+            extends = self.extends.eval(env)
+            if isinstance(extends, Error):
+                return extends
+            if not (
+                isinstance(extends, Map)
+                and extends.is_immutable()
+                and extends.name is not None
+            ):
+                return Error(
+                    self.expression.location,
+                    f"expected map value created with the {quote(TokenKind.TYPE)} keyword, received {extends}",
+                )
+
         type = self.expression.eval(env)
         if isinstance(type, Error):
             return type
@@ -2437,6 +2458,22 @@ class AstExpressionType(AstExpression):
                 self.expression.location,
                 f"expected map-like value, received {typename(type)}",
             )
+
+        if extends is not None:
+            # A new map is created so that all of the key-value pairs from the
+            # super-type, then all of the key-value pairs from the sub-type,
+            # can be added to the resulting type in that order, preserving the
+            # order of key-value pairs to make it seems as if the sub-type is
+            # layered on top of the super-type with map::union.
+            #
+            # The super-type map is immutable, so we can directly use pairs
+            # from the super-type map to construct the extended map.
+            assert isinstance(extends, Map)
+            extended = Map.new({k: v for k, v in extends.data.items()})
+            for k, v in type.data.items():
+                extended[copy(k)] = copy(v)
+            type = extended
+
         return Map.new_meta(name=self.name, data=type.data)
 
 
@@ -4380,13 +4417,19 @@ class Parser:
 
     def parse_expression_type(self) -> AstExpressionType:
         location = self._expect_current(TokenKind.TYPE).location
+
+        extends = None
+        if self._check_current(TokenKind.EXTENDS):
+            self._advance_token()
+            extends = self.parse_expression()
+
         expression = self.parse_expression()
         name = (
             f"type@[{location.file}, line {location.line}]"
             if location is not None
             else "anonymous type"
         )
-        return AstExpressionType(location, String.new(name), expression)
+        return AstExpressionType(location, String.new(name), extends, expression)
 
     def parse_expression_new(self) -> AstExpressionNew:
         location = self._expect_current(TokenKind.NEW).location
@@ -5434,7 +5477,7 @@ def builtin_vector_sorted_by():
 def builtin_vector_into_iterator():
     return """
     return function(self) {
-        let vector_iterator = type extends(iterator, {
+        let vector_iterator = type extends iterator {
             .next = function(self) {
                 if self.index >= self.vector.*.count() {
                     return iterator::eoi();
@@ -5443,7 +5486,7 @@ def builtin_vector_into_iterator():
                 self.index = self.index + 1;
                 return current;
             },
-        });
+        };
         return new vector_iterator {
             .vector = self,
             .index = 0,
@@ -5667,16 +5710,6 @@ def builtin_typename(value: Value) -> Union[Value, Error]:
     return String.new(typename(value))
 
 
-@builtin_from_source("extends")
-def builtin_extends():
-    return """
-    let extends = function(super, t) {
-        return map::union(super, t);
-    };
-    return extends;
-    """
-
-
 @builtin("repr", [Value])
 def builtin_repr(value: Value) -> Union[Value, Error]:
     return String.new(str(value))
@@ -5790,7 +5823,7 @@ def builtin_eprintln(value: Value) -> Union[Value, Error]:
 @builtin_from_source("range")
 def builtin_range():
     return """
-    let range_iterator = type extends(iterator, {
+    let range_iterator = type extends iterator {
         "init": function(bgn, end) {
             if end < bgn {
                 error $"end-of-range {repr(end)} is less than beginning-of-range {repr(bgn)}";
@@ -5808,7 +5841,7 @@ def builtin_range():
             self.cur = self.cur + 1;
             return result;
         },
-    });
+    };
     let range = function(bgn, end) {
         return range_iterator::init(bgn, end);
     };
@@ -6316,10 +6349,10 @@ def builtin_re_replace():
 def builtin_ty_is(value: Value, type: Value) -> Union[Value, Error]:
     if isinstance(type, Null):
         return Boolean.new(value.meta is None)
-    if isinstance(type, Map) and type.name is not None:
+    if isinstance(type, Map) and type.is_immutable() and type.name is not None:
         return Boolean.new(value.meta is type)
     raise Exception(
-        f"expected null or map value created with the `type` keyword, received {type}"
+        f"expected null or map value created with the {quote(TokenKind.TYPE)} keyword, received {type}"
     )
 
 
@@ -6585,17 +6618,17 @@ let iterator = type {
         return true;
     },
     .map = function(self, func) {
-        let map_iterator = type extends(iterator, {
+        let map_iterator = type extends iterator {
             .next = function(self) {
                 return func(self.base.next());
             },
-        });
+        };
         return new map_iterator {
             .base = self,
         };
     },
     .filter = function(self, func) {
-        let filter_iterator = type extends(iterator, {
+        let filter_iterator = type extends iterator {
             .next = function(self) {
                 let current = self.base.next();
                 while not func(current) {
@@ -6603,7 +6636,7 @@ let iterator = type {
                 }
                 return current;
             },
-        });
+        };
         return new filter_iterator {
             .base = self,
         };
@@ -6642,7 +6675,6 @@ BASE_ENVIRONMENT.let(String.new("exit"), builtin_exit())
 BASE_ENVIRONMENT.let(String.new("assert"), builtin_assert())
 BASE_ENVIRONMENT.let(String.new("typeof"), builtin_typeof())
 BASE_ENVIRONMENT.let(String.new("typename"), builtin_typename())
-BASE_ENVIRONMENT.let(String.new("extends"), builtin_extends())
 BASE_ENVIRONMENT.let(String.new("repr"), builtin_repr())
 BASE_ENVIRONMENT.let(String.new("input"), builtin_input())
 BASE_ENVIRONMENT.let(String.new("inputln"), builtin_inputln())

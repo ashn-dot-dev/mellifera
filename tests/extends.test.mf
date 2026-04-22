@@ -7,13 +7,21 @@ let event = type {
     },
 };
 
-let birthday = type extends(event, {
+let birthday = type extends event {
     .name = "birthday",
     .party = function(self) {
         println("🥳 woo birthday party 🎂");
     },
-});
+};
 
 dumpln(birthday);
+
+print("\n");
+
+try { type extends null Map{}; } catch err { dumpln(err); }
+try { type extends Map{} Map{}; } catch err { dumpln(err); }
 ################################################################################
-# {"party": party@[extends.test.mf, line 12], "cleanup": event::cleanup@[extends.test.mf, line 5], "name": "birthday"}
+# {"party": birthday::party@[extends.test.mf, line 12], "cleanup": event::cleanup@[extends.test.mf, line 5], "name": "birthday"}
+#
+# "expected map value created with the `type` keyword, received null"
+# "expected map value created with the `type` keyword, received Map{}"

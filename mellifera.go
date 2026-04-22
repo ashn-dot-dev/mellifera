@@ -379,7 +379,6 @@ func NewContext() Context {
 	ctx.BaseEnvironment.Let("assert", BuiltinAssert(&ctx))
 	ctx.BaseEnvironment.Let("typeof", BuiltinTypeof(&ctx))
 	ctx.BaseEnvironment.Let("typename", BuiltinTypename(&ctx))
-	ctx.BaseEnvironment.Let("extends", BuiltinExtends(&ctx))
 	ctx.BaseEnvironment.Let("repr", BuiltinRepr(&ctx))
 	ctx.BaseEnvironment.Let("input", BuiltinInput(&ctx))
 	ctx.BaseEnvironment.Let("inputln", BuiltinInputln(&ctx))
@@ -2069,6 +2068,7 @@ const (
 	TOKEN_RBRACKET  = "]"
 	// Keywords
 	TOKEN_TYPE     = "type"
+	TOKEN_EXTENDS  = "extends"
 	TOKEN_NULL     = "null"
 	TOKEN_TRUE     = "true"
 	TOKEN_FALSE    = "false"
@@ -2134,6 +2134,7 @@ func NewLexer(ctx *Context, source string, location *SourceLocation) Lexer {
 		TOKEN_SET:      TOKEN_SET,
 		TOKEN_FUNCTION: TOKEN_FUNCTION,
 		TOKEN_TYPE:     TOKEN_TYPE,
+		TOKEN_EXTENDS:  TOKEN_EXTENDS,
 		TOKEN_NEW:      TOKEN_NEW,
 		TOKEN_NOT:      TOKEN_NOT,
 		TOKEN_AND:      TOKEN_AND,
@@ -3456,6 +3457,7 @@ func (self AstExpressionFreeze) Eval(ctx *Context, env *Environment) (Value, err
 type AstExpressionType struct {
 	Location   *SourceLocation // Optional
 	Name       string
+	Extends    AstExpression // Optional
 	Expression AstExpression
 }
 
@@ -3464,21 +3466,43 @@ func (self AstExpressionType) ExpressionLocation() *SourceLocation {
 }
 
 func (self AstExpressionType) IntoValue(ctx *Context) Value {
+	var extends Value = ctx.NewNull()
+	if self.Extends != nil {
+		extends = self.Extends.IntoValue(ctx)
+	}
 	return ctx.NewMap([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("name"), ctx.NewString(self.Name)},
+		{ctx.NewString("extends"), extends},
 		{ctx.NewString("expression"), self.Expression.IntoValue(ctx)},
 	})
 }
 
 func (self AstExpressionType) Eval(ctx *Context, env *Environment) (Value, error) {
+	var extendsMap *Map = nil
+	if self.Extends != nil {
+		extends, err := self.Extends.Eval(ctx, env)
+		if err != nil {
+			return nil, err
+		}
+
+		var ok bool
+		extendsMap, ok = extends.(*Map)
+		if !(ok && extendsMap.IsImmutable() && extendsMap.name != nil) {
+			return nil, NewError(
+				nil,
+				ctx.NewStringf("expected map value created with the %s keyword, received %v", quote(TOKEN_TYPE), extends),
+			)
+		}
+	}
+
 	value, err := self.Expression.Eval(ctx, env)
 	if err != nil {
 		return nil, err
 	}
 
-	m, ok := value.(*Map)
+	valueMap, ok := value.(*Map)
 	if !ok {
 		return nil, NewError(
 			self.Location,
@@ -3486,7 +3510,26 @@ func (self AstExpressionType) Eval(ctx *Context, env *Environment) (Value, error
 		)
 	}
 
-	result := m.Freeze().(*Map)
+	if extendsMap != nil {
+		// A new map is created so that all of the key-value pairs from the
+		// super-type, then all of the key-value pairs from the sub-type, can
+		// be added to the resulting type in that order, preserving the order
+		// of key-value pairs to make it seems as if the sub-type is layered on
+		// top of the super-type with map::union.
+		//
+		// The super-type map is immutable, so we can directly use pairs from
+		// the super-type map to construct the extended map.
+		extended := ctx.NewMap(extendsMap.Pairs())
+		for _, pair := range valueMap.Pairs() {
+			err := extended.Insert(pair.Key.Copy(), pair.Value.Copy())
+			if err != nil {
+				return nil, err
+			}
+		}
+		valueMap = extended
+	}
+
+	result := valueMap.Freeze().(*Map)
 	result.name = &self.Name
 	return result, nil
 }
@@ -6000,6 +6043,18 @@ func (self *Parser) ParseExpressionType() (AstExpression, error) {
 	}
 	location := token.Location
 
+	var extends AstExpression = nil
+	if self.checkCurrent(TOKEN_EXTENDS) {
+		_, err := self.advanceToken()
+		if err != nil {
+			return nil, err
+		}
+		extends, err = self.ParseExpression()
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	expression, err := self.ParseExpression()
 	if err != nil {
 		return nil, err
@@ -6010,7 +6065,7 @@ func (self *Parser) ParseExpressionType() (AstExpression, error) {
 		name = fmt.Sprintf("type@[%s, line %v]", location.File, location.Line)
 	}
 
-	return AstExpressionType{location, name, expression}, nil
+	return AstExpressionType{location, name, extends, expression}, nil
 }
 
 func (self *Parser) ParseExpressionNew() (AstExpression, error) {
@@ -7041,17 +7096,17 @@ let iterator = type {
         return true;
     },
     .map = function(self, func) {
-        let map_iterator = type extends(iterator, {
+        let map_iterator = type extends iterator {
             .next = function(self) {
                 return func(self.base.next());
             },
-        });
+        };
         return new map_iterator {
             .base = self,
         };
     },
     .filter = function(self, func) {
-        let filter_iterator = type extends(iterator, {
+        let filter_iterator = type extends iterator {
             .next = function(self) {
                 let current = self.base.next();
                 while not func(current) {
@@ -7059,7 +7114,7 @@ let iterator = type {
                 }
                 return current;
             },
-        });
+        };
         return new filter_iterator {
             .base = self,
         };
@@ -7921,7 +7976,7 @@ return function(self, compare) {
 func BuiltinVectorIntoIterator(ctx *Context) Value {
 	function := ctx.NewValueFromSourceOrPanic("vector::into_iterator", `
 return function(self) {
-	let vector_iterator = type extends(iterator, {
+	let vector_iterator = type extends iterator {
 		.next = function(self) {
 			if self.index >= self.vector.*.count() {
 				return iterator::eoi();
@@ -7930,7 +7985,7 @@ return function(self) {
 			self.index = self.index + 1;
 			return current;
 		},
-	});
+	};
 	return new vector_iterator {
 		.vector = self,
 		.index = 0,
@@ -8266,19 +8321,6 @@ func BuiltinTypename(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinExtends(ctx *Context) *Builtin {
-	function := ctx.NewValueFromSourceOrPanic("extends", `
-let extends = function(super, t) {
-	return map::union(super, t);
-};
-return extends;
-	`)
-
-	return ctx.NewBuiltin("extends", []Type{TVal(MAP), TVal(MAP)}, func(ctx *Context, arguments []Value) (Value, error) {
-		return Call(ctx, nil, function, arguments)
-	})
-}
-
 func BuiltinRepr(ctx *Context) *Builtin {
 	return ctx.NewBuiltin("repr", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewStringf("%v", arguments[0]), nil
@@ -8434,7 +8476,7 @@ func BuiltinEprintln(ctx *Context) *Builtin {
 
 func BuiltinRange(ctx *Context) Value {
 	function := ctx.NewValueFromSourceOrPanic("range", `
-let range_iterator = type extends(iterator, {
+let range_iterator = type extends iterator {
 	"init": function(bgn, end) {
 		if end < bgn {
 			error $"end-of-range {repr(end)} is less than beginning-of-range {repr(bgn)}";
@@ -8452,7 +8494,7 @@ let range_iterator = type extends(iterator, {
 		self.cur = self.cur + 1;
 		return result;
 	},
-});
+};
 let range = function(bgn, end) {
 	return range_iterator::init(bgn, end);
 };
@@ -9234,11 +9276,11 @@ func BuiltinTyIs(ctx *Context) *Builtin {
 			return ctx.NewBoolean(value.Meta(ctx) == nil), nil
 		}
 
-		if tyMap, ok := ty.(*Map); ok && tyMap.IsImmutable() {
+		if tyMap, ok := ty.(*Map); ok && tyMap.IsImmutable() && tyMap.name != nil {
 			return ctx.NewBoolean(value.Meta(ctx) == tyMap), nil
 		}
 
-		return nil, NewError(nil, ctx.NewStringf("expected null or map value created with the `type` keyword, received %v", ty))
+		return nil, NewError(nil, ctx.NewStringf("expected null or map value created with the %s keyword, received %v", quote(TOKEN_TYPE), ty))
 	})
 }
 

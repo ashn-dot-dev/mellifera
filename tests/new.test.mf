@@ -15,11 +15,11 @@ print("\n");
 
 # Declaration of a type extending a base type and instantiation of that type
 # with `new`.
-let birthday = type extends(event, {
+let birthday = type extends event {
     .party = function(self) {
         println("🥳 woo birthday party 🎂");
     },
-});
+};
 let b = new birthday Map{};
 b.party();
 b.cleanup();

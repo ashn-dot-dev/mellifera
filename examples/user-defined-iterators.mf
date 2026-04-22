@@ -1,4 +1,4 @@
-let fizzbuzzer = type extends(iterator, {
+let fizzbuzzer = type extends iterator {
     .init = function(n, max) {
         return new fizzbuzzer {"n": n, "max": max};
     },
