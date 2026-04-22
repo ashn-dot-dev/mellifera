@@ -396,6 +396,11 @@ messages should contain information about *what* the commit does as well as
 and
 [here](https://github.com/ashn-dot-dev/mellifera/commit/e2afcf9122d95ac62eca75ffd59d81e547e85020).
 
+### Strict No LLM / No AI Policy
+
+Mellifera is a language developed by humans, for humans.
+Use of LLMs for issues, comments, and pull requests is not permitted.
+
 ## License and Credits
 
 All content in this repository, unless otherwise noted, is licensed under the
