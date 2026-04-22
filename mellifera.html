@@ -47,10 +47,8 @@ button {
 <textarea rows="16" id="program" placeholder="Enter your Mellifera program here..." wrap="off">
 println("hello 🐝");
 </textarea>
-<button onClick='mellifera.eval(document.getElementById("program").value, {stdout: "stdout", stderr: "stderr"});'>Run</button>
-
-<textarea rows="8" id="stdout" placeholder="Standard output..." readonly wrap="off"></textarea>
-<textarea rows="8" id="stderr" placeholder="Standard error..."  readonly wrap="off"></textarea>
+<button onClick='mellifera.eval(document.getElementById("program").value, {stdout: "output", stderr: "output"});'>Run</button>
+<textarea rows="16" id="output" placeholder="Output..." readonly wrap="off"></textarea>
 
 </body>
 </html>
