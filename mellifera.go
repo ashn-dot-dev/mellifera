@@ -6955,6 +6955,7 @@ const (
 	SET       = "set"
 	REFERENCE = "reference"
 	FUNCTION  = "function"
+	EXTERNAL  = "external"
 )
 
 type Type struct {
@@ -7030,6 +7031,10 @@ func TypeCheckArgument(index int, expected Type, received Value) error {
 			return nil
 		}
 		if _, ok := received.(*Builtin); ok {
+			return nil
+		}
+	case EXTERNAL:
+		if _, ok := received.(*External); ok {
 			return nil
 		}
 	}
