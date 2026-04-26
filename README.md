@@ -394,7 +394,7 @@ messages should contain information about *what* the commit does as well as
 *why* the commit was needed. Examples of good commit messages can be found
 [here](https://github.com/ashn-dot-dev/mellifera/commit/84dd674e2cad88c1b07ef8486b0b2cdb837b9c87)
 and
-[here](https://github.com/ashn-dot-dev/mellifera/commit/e2afcf9122d95ac62eca75ffd59d81e547e85020).
+[here](https://github.com/ashn-dot-dev/mellifera/commit/d89231eeabc867cdf2be3f102614255fe217e093).
 
 ### Strict No LLM / No AI Policy
 
