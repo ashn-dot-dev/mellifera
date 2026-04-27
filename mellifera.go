@@ -590,7 +590,15 @@ func (ctx *Context) NewBuiltin(name string, types []Type, impl func(*Context, []
 }
 
 func (ctx *Context) NewExternal(data any) *External {
-	return &External{data}
+	return &External{data, nil}
+}
+
+func (ctx *Context) NewExternalWithType(meta *Map, data any) *External {
+	if meta.name == nil {
+		panic("meta argument is not a metamap")
+	}
+
+	return &External{data, meta}
 }
 
 func (ctx *Context) NewValueFromSource(name string, source string) (Value, error) {
@@ -1782,6 +1790,10 @@ type Reference struct {
 	data Value
 }
 
+func (self *Reference) Data() any {
+	return self.data
+}
+
 func (self *Reference) Typename() string {
 	return "reference"
 }
@@ -1949,6 +1961,7 @@ func (self *Builtin) CombEncode(e *CombEncoder) error {
 
 type External struct {
 	data any
+	meta *Map // Optional
 }
 
 func (self *External) Data() any {
@@ -1956,6 +1969,10 @@ func (self *External) Data() any {
 }
 
 func (self *External) Typename() string {
+	if self.meta != nil && self.meta.name != nil {
+		// Instance of a custom type that that has its own name.
+		return *self.meta.name
+	}
 	return "external"
 }
 
@@ -1964,7 +1981,7 @@ func (self *External) String() string {
 }
 
 func (self *External) Meta(ctx *Context) *Map {
-	return nil
+	return self.meta
 }
 
 func (self *External) Copy() Value {
