@@ -7,8 +7,42 @@
 </head>
 
 <body>
+<script>
+/* Set up initial test data used by the example Mellifera program. */
+"use strict";
+
+const init = () => {
+    console.log("Initializing test data...");
+    function TestObject() {
+        this["undefined"] = undefined;
+        this["null"] = null;
+        this["boolean"] = false;
+        this["number"] = 123;
+        this["string"] = "JavaScript string";
+        this["array"] = [
+            "array element 0",
+            "array element 1",
+            "array element 2"
+        ];
+        this["object"] = {
+            foo: "object foo value",
+            bar: "object bar value",
+            baz: "object baz value",
+        };
+        this["function"] = (msg) => {
+            console.log(`console.log-ed "${msg}" with the value of this being...`, this);
+            return "function return value";
+        };
+    }
+    window.test = new TestObject();
+    console.log("window.test is:", window.test);
+};
+
+init();
+</script>
 <script src="wasm_exec.js"></script>
 <script>
+console.log("Initializing Mellifera Wasm module...");
 mellifera = {
     eval: (source, options) => { throw new Error("Mellifera Wasm module is not initialized!"); }
 };
@@ -46,6 +80,33 @@ button {
 
 <textarea rows="16" id="program" placeholder="Enter your Mellifera program here..." wrap="off">
 println("hello 🐝");
+
+# the test data object, window.test, was initialized on page load
+println($`the built-in js library is {js}`);
+println($`js::global().get("test") is {js::global().get("test")}`);
+println($`js::global().get("test").get("undefined") is {js::global().get("test").get("undefined")}`);
+println($`js::global().get("test").get("undefined") is {js::global().get("test").get("undefined")}`);
+println($`js::global().get("test").get("null") is {js::global().get("test").get("null")}`);
+println($`js::global().get("test").get("boolean") is {js::global().get("test").get("boolean")}`);
+println($`js::global().get("test").get("number") is {js::global().get("test").get("number")}`);
+println($`js::global().get("test").get("string") is {js::global().get("test").get("string")}`);
+println($`js::global().get("test").get("array") is {js::global().get("test").get("array")}`);
+println($`js::global().get("test").get("array").get_index(0) is {js::global().get("test").get("array").get_index(0)}`);
+println($`js::global().get("test").get("array").get_index(1) is {js::global().get("test").get("array").get_index(1)}`);
+println($`js::global().get("test").get("array").get_index(2) is {js::global().get("test").get("array").get_index(2)}`);
+println($`js::global().get("test").get("object") is {js::global().get("test").get("object")}`);
+println($`js::global().get("test").get("object").get("foo") is {js::global().get("test").get("object").get("foo")}`);
+println($`js::global().get("test").get("object").get("bar") is {js::global().get("test").get("object").get("bar")}`);
+println($`js::global().get("test").get("object").get("baz") is {js::global().get("test").get("object").get("baz")}`);
+println($`js::global().get("test").get("function") is {js::global().get("test").get("function")}`);
+println($`js::global().get("test").call("function", [js::from_mellifera("some string")]) is {js::global().get("test").call("function", [js::from_mellifera("some string")])}`);
+
+# call document.getElementById("program") to get the current <textarea>
+let program = js::global().get("document").call("getElementById", [js::from_mellifera("program")]);
+# update the <textarea> contents with a 🐝
+let program_text = js::into_mellifera(program.get("value"));
+let updated_text = program_text + "# 🐝 💬Hello there!\n";
+program.set("value", js::from_mellifera(updated_text));
 </textarea>
 <button onClick='mellifera.eval(document.getElementById("program").value, {stdout: "output", stderr: "output"});'>Run</button>
 <textarea rows="16" id="output" placeholder="Output..." readonly wrap="off"></textarea>
