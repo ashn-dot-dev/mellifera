@@ -215,6 +215,15 @@ func BuiltinJsValueCall(ctx *mellifera.Context) *mellifera.Builtin {
 			return nil, mellifera.NewError(nil, ctx.NewStringf("external value %v is not a JavaScript value", delf))
 		}
 
+		if delfJsValue.Type() != js.TypeObject {
+			return nil, mellifera.NewError(nil, ctx.NewStringf("external value %v is not a JavaScript object", delf))
+		}
+
+		methodJsValue := delfJsValue.Get(method.Data())
+		if methodJsValue.Type() != js.TypeFunction {
+			return nil, mellifera.NewError(nil, ctx.NewStringf("external value %v is does not have method %s (found %v)", delf, method.Data(), ctx.NewExternalWithType(JsValueType, methodJsValue)))
+		}
+
 		argsSlice := []any{}
 		for i, arg := range args.Elements() {
 			argExternal, ok := arg.(*mellifera.External)
