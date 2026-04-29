@@ -29,8 +29,8 @@ const init = () => {
             bar: "object bar value",
             baz: "object baz value",
         };
-        this["function"] = (msg) => {
-            console.log(`console.log-ed "${msg}" with the value of this being...`, this);
+        this["function"] = (value) => {
+            console.log(`console.log-ing JavaScript value...`, value);
             return "function return value";
         };
     }
@@ -100,6 +100,21 @@ println($`js::global().get("test").get("object").get("bar") is {js::global().get
 println($`js::global().get("test").get("object").get("baz") is {js::global().get("test").get("object").get("baz")}`);
 println($`js::global().get("test").get("function") is {js::global().get("test").get("function")}`);
 println($`js::global().get("test").call("function", [js::from_mellifera("some string")]) is {js::global().get("test").call("function", [js::from_mellifera("some string")])}`);
+
+print("\n");
+
+let roundtrip = function(value) {
+    println($`setting window.tmp using js::from_mellifera({value})`);
+    js::global().set("tmp", js::from_mellifera(value));
+    println($`reading window.tmp using js::into_mellifera(js::global().get("tmp"))`);
+    dumpln(js::into_mellifera(js::global().get("tmp")));
+};
+try { roundtrip(null);                               } catch err { println(err); }
+try { roundtrip(true);                               } catch err { println(err); }
+try { roundtrip(123);                                } catch err { println(err); }
+try { roundtrip("foo");                              } catch err { println(err); }
+try { roundtrip(["abc", 123, [null]]);               } catch err { println(err); }
+try { roundtrip({"abc": 123, "def": {"foo": null}}); } catch err { println(err); }
 
 # call document.getElementById("program") to get the current <textarea>
 let program = js::global().get("document").call("getElementById", [js::from_mellifera("program")]);

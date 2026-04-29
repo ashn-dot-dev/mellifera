@@ -37,6 +37,30 @@ func JsValueFromMelliferaValue(ctx *mellifera.Context, mfValue mellifera.Value) 
 		return js.ValueOf(v.Data()), nil
 	case *mellifera.String:
 		return js.ValueOf(v.Data()), nil
+	case *mellifera.Vector:
+		result := js.Global().Get("Array").New(v.Count())
+		for i, element := range v.Elements() {
+			elementJsValue, err := JsValueFromMelliferaValue(ctx, element)
+			if err != nil {
+				return js.Null(), mellifera.NewError(nil, ctx.NewStringf("unable to represent Mellifera vector element %v at index %v in JavaScript", element, i))
+			}
+			result.SetIndex(i, elementJsValue)
+		}
+		return result, nil
+	case *mellifera.Map:
+		result := js.Global().Get("Object").New()
+		for _, pair := range v.Pairs() {
+			keyString, ok := pair.Key.(*mellifera.String)
+			if !ok {
+				return js.Null(), mellifera.NewError(nil, ctx.NewStringf("unable to represent Mellifera map key %v as JavaScript string key", pair.Key))
+			}
+			valueJsValue, err := JsValueFromMelliferaValue(ctx, pair.Value)
+			if err != nil {
+				return js.Null(), mellifera.NewError(nil, ctx.NewStringf("unable to represent Mellifera map value %v in JavaScript", pair.Value))
+			}
+			result.Set(keyString.Data(), valueJsValue)
+		}
+		return result, nil
 	default:
 		return js.Null(), mellifera.NewError(nil, ctx.NewStringf("unable to represent Mellifera value %v in JavaScript", mfValue))
 	}
@@ -52,6 +76,35 @@ func JsValueIntoMelliferaValue(ctx *mellifera.Context, jsValue js.Value) (mellif
 		return ctx.NewNumber(jsValue.Float()), nil
 	case js.TypeString:
 		return ctx.NewString(jsValue.String()), nil
+	case js.TypeObject:
+		isArray := js.Global().Get("Array").Call("isArray", jsValue).Bool()
+		if isArray {
+			elements := []mellifera.Value{}
+			for i := range jsValue.Length() {
+				element, err := JsValueIntoMelliferaValue(ctx, jsValue.Index(i))
+				if err != nil {
+					return nil, mellifera.NewError(nil, ctx.NewStringf("unable to represent JavaScript array element %v at index %v in Mellifera", jsValue.Index(i), i))
+				}
+				elements = append(elements, element)
+			}
+			return ctx.NewVector(elements), nil
+		}
+		pairs := []mellifera.MapPair{}
+		entries := js.Global().Get("Object").Call("entries", jsValue)
+		for i := range entries.Length() {
+			keyJsValue := entries.Index(i).Index(0)
+			keyMfValue, err := JsValueIntoMelliferaValue(ctx, keyJsValue)
+			if err != nil {
+				return nil, mellifera.NewError(nil, ctx.NewStringf("unable to represent JavaScript object key %v in Mellifera", keyJsValue))
+			}
+			valueJsValue := entries.Index(i).Index(1)
+			valueMfValue, err := JsValueIntoMelliferaValue(ctx, valueJsValue)
+			if err != nil {
+				return nil, mellifera.NewError(nil, ctx.NewStringf("unable to represent JavaScript object value %v in Mellifera", valueJsValue))
+			}
+			pairs = append(pairs, mellifera.MapPair{keyMfValue, valueMfValue})
+		}
+		return ctx.NewMap(pairs), nil
 	default:
 		return nil, mellifera.NewError(nil, ctx.NewStringf("unable to represent JavaScript value %v in Mellifera", jsValue))
 	}
