@@ -109,12 +109,28 @@ let roundtrip = function(value) {
     println($`reading window.tmp using js::into_mellifera(js::global().get("tmp"))`);
     dumpln(js::into_mellifera(js::global().get("tmp")));
 };
-try { roundtrip(null);                               } catch err { println(err); }
-try { roundtrip(true);                               } catch err { println(err); }
-try { roundtrip(123);                                } catch err { println(err); }
-try { roundtrip("foo");                              } catch err { println(err); }
-try { roundtrip(["abc", 123, [null]]);               } catch err { println(err); }
-try { roundtrip({"abc": 123, "def": {"foo": null}}); } catch err { println(err); }
+roundtrip(null);
+roundtrip(true);
+roundtrip(123);
+roundtrip("foo");
+roundtrip(["abc", 123, [null]]);
+roundtrip({"abc": 123, "def": {"foo": null}});
+
+print("\n");
+
+let showtype = function(value) {
+    println($`setting window.tmp to js::from_mellifera({value})`);
+    js::global().set("tmp", js::from_mellifera(value));
+    println($`repr(js::typeof(js::global().get("tmp"))) is {repr(js::typeof(js::global().get("tmp")))}`);
+};
+showtype(null);
+showtype(true);
+showtype(123);
+showtype("foo");
+showtype(["abc", 123, [null]]);
+showtype({"abc": 123, "def": {"foo": null}});
+println($`repr(js::typeof(js::global().get("undefined"))) is {repr(js::typeof(js::global().get("undefined")))}`);
+println($`repr(js::typeof(js::global().get("document").get("getElementById"))) is {repr(js::typeof(js::global().get("document").get("getElementById")))}`);
 
 # call document.getElementById("program") to get the current <textarea>
 let program = js::global().get("document").call("getElementById", [js::from_mellifera("program")]);

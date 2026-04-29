@@ -128,7 +128,7 @@ func BuiltinJsIntoMellifera(ctx *mellifera.Context) *mellifera.Builtin {
 	}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
 		jsValue, ok := arguments[0].(*mellifera.External).Data().(js.Value)
 		if !ok {
-			return nil, mellifera.NewError(nil, ctx.NewStringf("invalid JavaScript value: %v", arguments[0]))
+			return nil, mellifera.NewError(nil, ctx.NewStringf("invalid JavaScript value %v", arguments[0]))
 		}
 		return JsValueIntoMelliferaValue(ctx, jsValue)
 	})
@@ -301,6 +301,63 @@ func BuiltinJsGlobal(ctx *mellifera.Context) *mellifera.Builtin {
 	})
 }
 
+func BuiltinJsTypeof(ctx *mellifera.Context) *mellifera.Builtin {
+	return ctx.NewBuiltin("js::typeof", []mellifera.Type{
+		mellifera.TVal(mellifera.EXTERNAL),
+	}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
+		jsValue, ok := arguments[0].(*mellifera.External).Data().(js.Value)
+		if !ok {
+			return nil, mellifera.NewError(nil, ctx.NewStringf("invalid JavaScript value %v", arguments[0]))
+		}
+
+		// XXX: At the time of writing (Go version 1.26.2) attempting to call
+		// js.Value.Type() on a BigInt instance will cause a runtime panic[1],
+		// so switching on jsValue.Type() below has the potential to blow up
+		// the current goroutine. It is basically impossible to work around
+		// this issue at the moment, as preemptively checking the instance's
+		// .constructor property with:
+		//
+		//	constructor := jsValue.Get("constructor")
+		//	if constructor.Equal(js.Global().Get("BigInt")) {
+		//		return ctx.NewString("bigint"), nil
+		//	}
+		//
+		// will blow up if a non-object type is passed in, and attempting to
+		// manually check if jsValue instanceof BigInt with:
+		//
+		//	jsValue.InstanceOf(js.Global().Get("BigInt")
+		//
+		// will fail with the Go runtime erronously returning false for this
+		// expression.
+		//
+		// [1]: https://github.com/golang/go/issues/72050#issuecomment-4346819262
+
+		// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/typeof#description
+		switch jsValue.Type() {
+		case js.TypeUndefined:
+			return ctx.NewString("undefined"), nil
+		case js.TypeNull:
+			// https://developer.mozilla.org/en-US/docs/Glossary/Null
+			// Due to historical reasons, typeof null is "object".
+			return ctx.NewString("object"), nil
+		case js.TypeBoolean:
+			return ctx.NewString("boolean"), nil
+		case js.TypeNumber:
+			return ctx.NewString("number"), nil
+		case js.TypeString:
+			return ctx.NewString("string"), nil
+		case js.TypeSymbol:
+			return ctx.NewString("symbol"), nil
+		case js.TypeFunction:
+			return ctx.NewString("function"), nil
+		case js.TypeObject:
+			return ctx.NewString("object"), nil
+		default:
+			panic("unknown JavaScript type")
+		}
+	})
+}
+
 func eval(source string, stdout, stderr io.Writer) (mellifera.Value, error) {
 	fmt.Printf("[mellifera.eval] stdout=%+v, stderr=%+v\n", stdout, stderr)
 	defer func() {
@@ -326,6 +383,7 @@ func eval(source string, stdout, stderr io.Writer) (mellifera.Value, error) {
 		{ctx.NewString("from_mellifera"), BuiltinJsFromMellifera(&ctx)},
 		{ctx.NewString("into_mellifera"), BuiltinJsIntoMellifera(&ctx)},
 		{ctx.NewString("global"), BuiltinJsGlobal(&ctx)},
+		{ctx.NewString("typeof"), BuiltinJsTypeof(&ctx)},
 	}).Freeze())
 
 	lexer := mellifera.NewLexer(&ctx, source, &mellifera.SourceLocation{"<program>", 1})
