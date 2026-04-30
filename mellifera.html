@@ -102,10 +102,6 @@ println($`js::global().get("test").call("function", [js::from_mellifera("some st
 
 print("\n");
 
-println($`js::call_new(js::global().get("Uint8Array"), [js::from_mellifera(8)]) is {js::call_new(js::global().get("Uint8Array"), [js::from_mellifera(8)])}`);
-
-print("\n");
-
 println($`setting window.test.object.qux to js::from_mellifera("object qux value")`);
 js::global().get("test").get("object").set("qux", js::from_mellifera("object qux value"));
 println($`js::global().get("test").get("object").get("foo") is {js::global().get("test").get("object").get("foo")}`);
@@ -118,6 +114,11 @@ println($`js::global().get("test").get("object").get("foo") is {js::global().get
 println($`js::global().get("test").get("object").get("bar") is {js::global().get("test").get("object").get("bar")}`);
 println($`js::global().get("test").get("object").get("baz") is {js::global().get("test").get("object").get("baz")}`);
 println($`js::global().get("test").get("object").get("qux") is {js::global().get("test").get("object").get("qux")}`);
+
+print("\n");
+
+println($`js::call(js::global().get("isNaN"), [js::from_mellifera(NaN)]) is {js::call(js::global().get("isNaN"), [js::from_mellifera(NaN)])}`);
+println($`js::call_new(js::global().get("Uint8Array"), [js::from_mellifera(8)]) is {js::call_new(js::global().get("Uint8Array"), [js::from_mellifera(8)])}`);
 
 print("\n");
 
