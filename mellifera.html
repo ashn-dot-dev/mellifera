@@ -81,6 +81,8 @@ button {
 <textarea rows="16" id="program" placeholder="Enter your Mellifera program here..." wrap="off">
 println("hello 🐝");
 
+print("\n");
+
 # the test data object, window.test, was initialized on page load
 println($`the built-in js library is {js}`);
 println($`js::global().get("test") is {js::global().get("test")}`);
@@ -114,6 +116,20 @@ println($`js::global().get("test").get("object").get("foo") is {js::global().get
 println($`js::global().get("test").get("object").get("bar") is {js::global().get("test").get("object").get("bar")}`);
 println($`js::global().get("test").get("object").get("baz") is {js::global().get("test").get("object").get("baz")}`);
 println($`js::global().get("test").get("object").get("qux") is {js::global().get("test").get("object").get("qux")}`);
+
+print("\n");
+
+println($`js::is_undefined(js::global().get("undefined")) is {js::is_undefined(js::global().get("undefined"))}`);
+println($`js::is_null(js::from_mellifera(null)) is {js::is_null(js::from_mellifera(null))}`);
+println($`js::is_boolean(js::from_mellifera(true)) is {js::is_boolean(js::from_mellifera(true))}`);
+println($`js::is_number(js::from_mellifera(123)) is {js::is_number(js::from_mellifera(123))}`);
+println($`js::is_string(js::from_mellifera("foo")) is {js::is_string(js::from_mellifera("foo"))}`);
+println($`js::is_symbol(js::global().call("Symbol", [])) is {js::is_symbol(js::global().call("Symbol", []))}`);
+println($`js::is_array(js::from_mellifera([123])) is {js::is_array(js::from_mellifera([123]))}`);
+println($`js::is_array(js::from_mellifera({{"abc": 123}})) is {js::is_array(js::from_mellifera({"abc": 123}))}`);
+println($`js::is_object(js::from_mellifera([123])) is {js::is_object(js::from_mellifera([123]))}`);
+println($`js::is_object(js::from_mellifera({{"abc": 123}})) is {js::is_object(js::from_mellifera({"abc": 123}))}`);
+println($`js::is_function(js::global().get("isNaN")) is {js::is_function(js::global().get("isNaN"))}`);
 
 print("\n");
 

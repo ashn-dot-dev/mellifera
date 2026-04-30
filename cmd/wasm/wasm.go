@@ -134,6 +134,114 @@ func BuiltinJsIntoMellifera(ctx *mellifera.Context) *mellifera.Builtin {
 	})
 }
 
+func BuiltinJsIsUndefined(ctx *mellifera.Context) *mellifera.Builtin {
+	return ctx.NewBuiltin("js::is_undefined", []mellifera.Type{
+		mellifera.TVal(mellifera.EXTERNAL),
+	}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
+		jsValue, ok := arguments[0].(*mellifera.External).Data().(js.Value)
+		if !ok {
+			return nil, mellifera.NewError(nil, ctx.NewStringf("invalid JavaScript value %v", arguments[0]))
+		}
+		return ctx.NewBoolean(jsValue.Type() == js.TypeUndefined), nil
+	})
+}
+
+func BuiltinJsIsNull(ctx *mellifera.Context) *mellifera.Builtin {
+	return ctx.NewBuiltin("js::is_null", []mellifera.Type{
+		mellifera.TVal(mellifera.EXTERNAL),
+	}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
+		jsValue, ok := arguments[0].(*mellifera.External).Data().(js.Value)
+		if !ok {
+			return nil, mellifera.NewError(nil, ctx.NewStringf("invalid JavaScript value %v", arguments[0]))
+		}
+		return ctx.NewBoolean(jsValue.Type() == js.TypeNull), nil
+	})
+}
+
+func BuiltinJsIsBoolean(ctx *mellifera.Context) *mellifera.Builtin {
+	return ctx.NewBuiltin("js::is_boolean", []mellifera.Type{
+		mellifera.TVal(mellifera.EXTERNAL),
+	}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
+		jsValue, ok := arguments[0].(*mellifera.External).Data().(js.Value)
+		if !ok {
+			return nil, mellifera.NewError(nil, ctx.NewStringf("invalid JavaScript value %v", arguments[0]))
+		}
+		return ctx.NewBoolean(jsValue.Type() == js.TypeBoolean), nil
+	})
+}
+
+func BuiltinJsIsNumber(ctx *mellifera.Context) *mellifera.Builtin {
+	return ctx.NewBuiltin("js::is_number", []mellifera.Type{
+		mellifera.TVal(mellifera.EXTERNAL),
+	}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
+		jsValue, ok := arguments[0].(*mellifera.External).Data().(js.Value)
+		if !ok {
+			return nil, mellifera.NewError(nil, ctx.NewStringf("invalid JavaScript value %v", arguments[0]))
+		}
+		return ctx.NewBoolean(jsValue.Type() == js.TypeNumber), nil
+	})
+}
+
+func BuiltinJsIsString(ctx *mellifera.Context) *mellifera.Builtin {
+	return ctx.NewBuiltin("js::is_string", []mellifera.Type{
+		mellifera.TVal(mellifera.EXTERNAL),
+	}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
+		jsValue, ok := arguments[0].(*mellifera.External).Data().(js.Value)
+		if !ok {
+			return nil, mellifera.NewError(nil, ctx.NewStringf("invalid JavaScript value %v", arguments[0]))
+		}
+		return ctx.NewBoolean(jsValue.Type() == js.TypeString), nil
+	})
+}
+
+func BuiltinJsIsSymbol(ctx *mellifera.Context) *mellifera.Builtin {
+	return ctx.NewBuiltin("js::is_symbol", []mellifera.Type{
+		mellifera.TVal(mellifera.EXTERNAL),
+	}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
+		jsValue, ok := arguments[0].(*mellifera.External).Data().(js.Value)
+		if !ok {
+			return nil, mellifera.NewError(nil, ctx.NewStringf("invalid JavaScript value %v", arguments[0]))
+		}
+		return ctx.NewBoolean(jsValue.Type() == js.TypeSymbol), nil
+	})
+}
+
+func BuiltinJsIsArray(ctx *mellifera.Context) *mellifera.Builtin {
+	return ctx.NewBuiltin("js::is_array", []mellifera.Type{
+		mellifera.TVal(mellifera.EXTERNAL),
+	}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
+		jsValue, ok := arguments[0].(*mellifera.External).Data().(js.Value)
+		if !ok {
+			return nil, mellifera.NewError(nil, ctx.NewStringf("invalid JavaScript value %v", arguments[0]))
+		}
+		return ctx.NewBoolean(js.Global().Get("Array").Call("isArray", jsValue).Bool()), nil
+	})
+}
+
+func BuiltinJsIsObject(ctx *mellifera.Context) *mellifera.Builtin {
+	return ctx.NewBuiltin("js::is_object", []mellifera.Type{
+		mellifera.TVal(mellifera.EXTERNAL),
+	}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
+		jsValue, ok := arguments[0].(*mellifera.External).Data().(js.Value)
+		if !ok {
+			return nil, mellifera.NewError(nil, ctx.NewStringf("invalid JavaScript value %v", arguments[0]))
+		}
+		return ctx.NewBoolean(jsValue.Type() == js.TypeObject), nil
+	})
+}
+
+func BuiltinJsIsFunction(ctx *mellifera.Context) *mellifera.Builtin {
+	return ctx.NewBuiltin("js::is_function", []mellifera.Type{
+		mellifera.TVal(mellifera.EXTERNAL),
+	}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
+		jsValue, ok := arguments[0].(*mellifera.External).Data().(js.Value)
+		if !ok {
+			return nil, mellifera.NewError(nil, ctx.NewStringf("invalid JavaScript value %v", arguments[0]))
+		}
+		return ctx.NewBoolean(jsValue.Type() == js.TypeFunction), nil
+	})
+}
+
 var JsValueType *mellifera.Map = nil // js::value
 
 func BuiltinJsValueGet(ctx *mellifera.Context) *mellifera.Builtin {
@@ -476,6 +584,15 @@ func eval(source string, stdout, stderr io.Writer) (mellifera.Value, error) {
 		{ctx.NewString("value"), JsValueType},
 		{ctx.NewString("from_mellifera"), BuiltinJsFromMellifera(&ctx)},
 		{ctx.NewString("into_mellifera"), BuiltinJsIntoMellifera(&ctx)},
+		{ctx.NewString("is_undefined"), BuiltinJsIsUndefined(&ctx)},
+		{ctx.NewString("is_null"), BuiltinJsIsNull(&ctx)},
+		{ctx.NewString("is_boolean"), BuiltinJsIsBoolean(&ctx)},
+		{ctx.NewString("is_number"), BuiltinJsIsNumber(&ctx)},
+		{ctx.NewString("is_string"), BuiltinJsIsString(&ctx)},
+		{ctx.NewString("is_symbol"), BuiltinJsIsSymbol(&ctx)},
+		{ctx.NewString("is_array"), BuiltinJsIsArray(&ctx)},
+		{ctx.NewString("is_object"), BuiltinJsIsObject(&ctx)},
+		{ctx.NewString("is_function"), BuiltinJsIsFunction(&ctx)},
 		{ctx.NewString("call"), BuiltinJsCall(&ctx)},
 		{ctx.NewString("call_new"), BuiltinJsCallNew(&ctx)},
 		{ctx.NewString("global"), BuiltinJsGlobal(&ctx)},
