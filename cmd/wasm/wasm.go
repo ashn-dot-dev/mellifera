@@ -318,6 +318,41 @@ func BuiltinJsValueCall(ctx *mellifera.Context) *mellifera.Builtin {
 	})
 }
 
+func BuiltinJsCallNew(ctx *mellifera.Context) *mellifera.Builtin {
+	return ctx.NewBuiltin("js::call_new", []mellifera.Type{
+		mellifera.TVal(mellifera.EXTERNAL),
+		mellifera.TVal(mellifera.VECTOR),
+	}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
+		function := arguments[0].(*mellifera.External)
+		args := arguments[1].(*mellifera.Vector)
+
+		functionJsValue, ok := function.Data().(js.Value)
+		if !ok {
+			return nil, mellifera.NewError(nil, ctx.NewStringf("external value %v is not a JavaScript value", functionJsValue))
+		}
+
+		if functionJsValue.Type() != js.TypeFunction {
+			return nil, mellifera.NewError(nil, ctx.NewStringf("external value %v is not a JavaScript function", functionJsValue))
+		}
+
+		argsSlice := []any{}
+		for i, arg := range args.Elements() {
+			argExternal, ok := arg.(*mellifera.External)
+			if !ok {
+				return nil, mellifera.NewError(nil, ctx.NewStringf("argument %v with value %v is not an external JavaScript value", i, arg))
+			}
+			argJsValue, ok := argExternal.Data().(js.Value)
+			if !ok {
+				return nil, mellifera.NewError(nil, ctx.NewStringf("argument %v with value %v is not an external JavaScript value", i, arg))
+			}
+			argsSlice = append(argsSlice, argJsValue)
+		}
+
+		result := functionJsValue.New(argsSlice...)
+		return ctx.NewExternalWithType(JsValueType, result), nil
+	})
+}
+
 func BuiltinJsGlobal(ctx *mellifera.Context) *mellifera.Builtin {
 	return ctx.NewBuiltin("js::global", []mellifera.Type{}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
 		return ctx.NewExternalWithType(JsValueType, js.Global()), nil
@@ -406,6 +441,7 @@ func eval(source string, stdout, stderr io.Writer) (mellifera.Value, error) {
 		{ctx.NewString("value"), JsValueType},
 		{ctx.NewString("from_mellifera"), BuiltinJsFromMellifera(&ctx)},
 		{ctx.NewString("into_mellifera"), BuiltinJsIntoMellifera(&ctx)},
+		{ctx.NewString("call_new"), BuiltinJsCallNew(&ctx)},
 		{ctx.NewString("global"), BuiltinJsGlobal(&ctx)},
 		{ctx.NewString("typeof"), BuiltinJsTypeof(&ctx)},
 	}).Freeze())
