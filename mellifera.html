@@ -85,7 +85,6 @@ println("hello 🐝");
 println($`the built-in js library is {js}`);
 println($`js::global().get("test") is {js::global().get("test")}`);
 println($`js::global().get("test").get("undefined") is {js::global().get("test").get("undefined")}`);
-println($`js::global().get("test").get("undefined") is {js::global().get("test").get("undefined")}`);
 println($`js::global().get("test").get("null") is {js::global().get("test").get("null")}`);
 println($`js::global().get("test").get("boolean") is {js::global().get("test").get("boolean")}`);
 println($`js::global().get("test").get("number") is {js::global().get("test").get("number")}`);
@@ -100,6 +99,21 @@ println($`js::global().get("test").get("object").get("bar") is {js::global().get
 println($`js::global().get("test").get("object").get("baz") is {js::global().get("test").get("object").get("baz")}`);
 println($`js::global().get("test").get("function") is {js::global().get("test").get("function")}`);
 println($`js::global().get("test").call("function", [js::from_mellifera("some string")]) is {js::global().get("test").call("function", [js::from_mellifera("some string")])}`);
+
+print("\n");
+
+println($`setting window.test.object.qux to js::from_mellifera("object qux value")`);
+js::global().get("test").get("object").set("qux", js::from_mellifera("object qux value"));
+println($`js::global().get("test").get("object").get("foo") is {js::global().get("test").get("object").get("foo")}`);
+println($`js::global().get("test").get("object").get("bar") is {js::global().get("test").get("object").get("bar")}`);
+println($`js::global().get("test").get("object").get("baz") is {js::global().get("test").get("object").get("baz")}`);
+println($`js::global().get("test").get("object").get("qux") is {js::global().get("test").get("object").get("qux")}`);
+println($`deleting window.test.object.qux`);
+js::global().get("test").get("object").delete("qux");
+println($`js::global().get("test").get("object").get("foo") is {js::global().get("test").get("object").get("foo")}`);
+println($`js::global().get("test").get("object").get("bar") is {js::global().get("test").get("object").get("bar")}`);
+println($`js::global().get("test").get("object").get("baz") is {js::global().get("test").get("object").get("baz")}`);
+println($`js::global().get("test").get("object").get("qux") is {js::global().get("test").get("object").get("qux")}`);
 
 print("\n");
 

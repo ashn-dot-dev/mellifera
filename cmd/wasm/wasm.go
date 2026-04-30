@@ -189,6 +189,29 @@ func BuiltinJsValueSet(ctx *mellifera.Context) *mellifera.Builtin {
 	})
 }
 
+func BuiltinJsValueDelete(ctx *mellifera.Context) *mellifera.Builtin {
+	return ctx.NewBuiltin("js::value::delete", []mellifera.Type{
+		mellifera.TRef(mellifera.TVal(mellifera.EXTERNAL)),
+		mellifera.TVal(mellifera.STRING),
+	}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
+		self := arguments[0].(*mellifera.Reference)
+		delf := self.Data().(*mellifera.External)
+		property := arguments[1].(*mellifera.String)
+
+		delfJsValue, ok := delf.Data().(js.Value)
+		if !ok {
+			return nil, mellifera.NewError(nil, ctx.NewStringf("external value %v is not a JavaScript value", delf))
+		}
+
+		if delfJsValue.Type() != js.TypeObject {
+			return nil, mellifera.NewError(nil, ctx.NewStringf("external value %v is not a JavaScript object", delf))
+		}
+
+		delfJsValue.Delete(property.Data())
+		return ctx.NewNull(), nil
+	})
+}
+
 func BuiltinJsValueGetIndex(ctx *mellifera.Context) *mellifera.Builtin {
 	return ctx.NewBuiltin("js::value::get_index", []mellifera.Type{
 		mellifera.TRef(mellifera.TVal(mellifera.EXTERNAL)),
@@ -374,6 +397,7 @@ func eval(source string, stdout, stderr io.Writer) (mellifera.Value, error) {
 	JsValueType = ctx.NewMetaMap("js::value", []mellifera.MapPair{
 		{ctx.NewString("get"), BuiltinJsValueGet(&ctx)},
 		{ctx.NewString("set"), BuiltinJsValueSet(&ctx)},
+		{ctx.NewString("delete"), BuiltinJsValueDelete(&ctx)},
 		{ctx.NewString("get_index"), BuiltinJsValueGetIndex(&ctx)},
 		{ctx.NewString("set_index"), BuiltinJsValueSetIndex(&ctx)},
 		{ctx.NewString("call"), BuiltinJsValueCall(&ctx)},
