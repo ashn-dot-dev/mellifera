@@ -220,7 +220,7 @@ let fizzbuzzer = type extends iterator {
         }
         return n;
     },
-});
+};
 
 let fb = fizzbuzzer::init(1, 15);
 for x in fb {
