@@ -527,7 +527,7 @@ for z in {"a", "b", "c"} {
 # an end-of-iteration condition is reached. Defining a custom iterator this way
 # uses several concepts that have not yet been touched on in this overview, so
 # for now just know that Mellifera supports custom user-defined iterators.
-let fizzbuzzer = type extends(iterator, {
+let fizzbuzzer = type extends iterator {
     .init = function(n, max) {
         return new fizzbuzzer {"n": n, "max": max};
     },
@@ -548,7 +548,7 @@ let fizzbuzzer = type extends(iterator, {
         }
         return n;
     },
-});
+};
 let fb = fizzbuzzer::init(1, 15);
 println($`Executing fizzbuzz with custom iterator type {typename(fb)}...`);
 for x in fb {
@@ -908,13 +908,12 @@ v2.magnitude(); # v2 is an instance of type vec2 => use .
 # Previously in this overview, it was mentioned that it is possible to create
 # custom types that act as iterators by defining a type with a `next` method.
 # The easiest way to define one of these types is by extending the built-in
-# iterator type with the `extends` function. Note that Mellifera uses
-# structural typing, so the `extends` function is *not* creating an is-a
-# relationship that one would find in a language with inheritance. Rather, the
-# `extends` function is a convenient way of saying "take all of the methods
-# from this existing type and override some of them with any additional methods
-# I define here".
-let count_by_threes = type extends(iterator, {
+# iterator type with an `extends` type definition. Note that Mellifera uses
+# structural typing, so `extends` is *not* creating an is-a relationship that
+# one would find in a language with inheritance. Rather, the `extends` keyword
+# is a convenient way of saying "take all of the methods from this existing
+# type and override some of them with any additional methods I define here".
+let count_by_threes = type extends iterator {
     .init = function(begin, end) {
         return new count_by_threes {
             .cur = begin,
@@ -928,7 +927,7 @@ let count_by_threes = type extends(iterator, {
         self.cur = self.cur + 3;
         return self.cur - 3;
     },
-});
+};
 
 # Since our count_by_threes instance acts as an iterator, we can iterate over
 # that instance with a for-loop.
