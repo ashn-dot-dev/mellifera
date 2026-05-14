@@ -19,6 +19,11 @@ import (
 	"unicode/utf8"
 )
 
+const (
+	MAX_SAFE_INTEGER = +9007199254740991 // +(2**53 - 1)
+	MIN_SAFE_INTEGER = -9007199254740991 // -(2**53 - 1)
+)
+
 // Utility function used to get the address of literals.
 func Ptr[T any](v T) *T {
 	return &v
@@ -2297,7 +2302,19 @@ func (self *Lexer) lexNumber() (Token, error) {
 		self.position += len(hex)
 		parsed, err := strconv.ParseInt(hex, 0, 64)
 		if err != nil {
+			if errors.Is(err, strconv.ErrRange) {
+				return Token{}, ParseError{
+					Location: self.currentLocation(),
+					why:      fmt.Sprintf("hexadecimal integer %s is outside the safe integer range", hex),
+				}
+			}
 			return Token{}, err
+		}
+		if parsed < MIN_SAFE_INTEGER || parsed > MAX_SAFE_INTEGER {
+			return Token{}, ParseError{
+				Location: self.currentLocation(),
+				why:      fmt.Sprintf("hexadecimal integer %s is outside the safe integer range", hex),
+			}
 		}
 		return Token{
 			Kind:     TOKEN_NUMBER,
@@ -7199,7 +7216,20 @@ func BuiltinNumberInit(ctx *Context) *Builtin {
 				return ctx.NewNumber(math.NaN()), nil
 			}
 
-			if ctx.reNumberHexFullmatch.MatchString(data) || ctx.reNumberDecFullmatch.MatchString(data) {
+			if ctx.reNumberHexFullmatch.MatchString(data) {
+				parsed, err := strconv.ParseInt(data, 0, 64)
+				if err != nil {
+					if errors.Is(err, strconv.ErrRange) {
+						return nil, NewError(nil, ctx.NewStringf("hexadecimal integer %s is outside the safe integer range", data))
+					}
+					return nil, NewError(nil, ctx.NewString(err.Error()))
+				}
+				if parsed < MIN_SAFE_INTEGER || parsed > MAX_SAFE_INTEGER {
+					return nil, NewError(nil, ctx.NewStringf("hexadecimal integer %s is outside the safe integer range", data))
+				}
+				return ctx.NewNumber(float64(sign) * float64(parsed)), nil
+			}
+			if ctx.reNumberDecFullmatch.MatchString(data) {
 				parsed, err := strconv.ParseFloat(data, 64)
 				if err != nil {
 					return nil, NewError(nil, ctx.NewString(err.Error()))

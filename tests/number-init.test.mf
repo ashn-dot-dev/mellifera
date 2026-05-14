@@ -22,6 +22,7 @@ try { number::init("++123"); } catch err { println($`number::init("++123") produ
 try { number::init("--123"); } catch err { println($`number::init("--123") produces the error {repr(err)}`); }
 try { number::init(" 123"); } catch err { println($`number::init(" 123") produces the error {repr(err)}`); }
 try { number::init("123 "); } catch err { println($`number::init("123 ") produces the error {repr(err)}`); }
+try { number::init("0x20000000000000"); } catch err { println($`number::init("0x20000000000000") produces the error {repr(err)}`); }
 ################################################################################
 # number::init(true) is 1
 # number::init(false) is 0
@@ -45,3 +46,4 @@ try { number::init("123 "); } catch err { println($`number::init("123 ") produce
 # number::init("--123") produces the error "cannot convert value \"--123\" to number"
 # number::init(" 123") produces the error "cannot convert value \" 123\" to number"
 # number::init("123 ") produces the error "cannot convert value \"123 \" to number"
+# number::init("0x20000000000000") produces the error "hexadecimal integer 0x20000000000000 is outside the safe integer range"

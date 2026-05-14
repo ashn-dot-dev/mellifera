@@ -46,6 +46,9 @@ except ImportError:
 
 rng = random.Random()
 
+MAX_SAFE_INTEGER = +9007199254740991  # +(2**53 - 1)
+MIN_SAFE_INTEGER = -9007199254740991  # -(2**53 - 1)
+
 
 def copy(value):
     """
@@ -1441,8 +1444,12 @@ class Lexer:
         if match is not None:
             text = match[0]
             self.position += len(text)
-            # TODO: Handle the case where the hexadecimal integer does not fit
-            # into in IEEE-754 double precision floating point number.
+            integer = int(text, 16)
+            if integer < MIN_SAFE_INTEGER or integer > MAX_SAFE_INTEGER:
+                raise ParseError(
+                    self.location,
+                    f"hexadecimal integer {text} is outside the safe integer range",
+                )
             return self._new_token(
                 TokenKind.NUMBER, text, value=Number.new(float(int(text, 16)))
             )
@@ -4951,10 +4958,15 @@ def builtin_number_init(value: Value) -> Union[Value, Error]:
             if data == "NaN":
                 return Number.new(sign * math.nan)
 
-            if (
-                Lexer.RE_NUMBER_HEX.fullmatch(data) is not None
-                or Lexer.RE_NUMBER_DEC.fullmatch(data) is not None
-            ):
+            if Lexer.RE_NUMBER_HEX.fullmatch(data) is not None:
+                integer = int(data, 16)
+                if integer < MIN_SAFE_INTEGER or integer > MAX_SAFE_INTEGER:
+                    return Error(
+                        None,
+                        f"hexadecimal integer {data} is outside the safe integer range",
+                    )
+                return Number.new(sign * float(integer))
+            if Lexer.RE_NUMBER_DEC.fullmatch(data) is not None:
                 return Number.new(sign * float(data))
         except ValueError:
             # Fallthrough to end-of-function error case.

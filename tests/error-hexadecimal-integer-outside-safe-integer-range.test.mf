@@ -1,0 +1,4 @@
+0x1FFFFFFFFFFFFF; # MAX_SAFE_INTEGER
+0x20000000000000; # MAX_SAFE_INTEGER + 1
+################################################################################
+# [error-hexadecimal-integer-outside-safe-integer-range.test.mf, line 2] error: hexadecimal integer 0x20000000000000 is outside the safe integer range
