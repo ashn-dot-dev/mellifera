@@ -372,6 +372,24 @@ make lint-py   # lint with mypy and flake8
 make format-py # format using black
 ```
 
+### Development on Both Interpreters
+
+There is a script, `tools/validate-compatibility.sh`, that will validate that
+the token stream and abstract syntax tree representations produced by both
+intereters are identical for a large set of programs in the Mellifera
+repository, including all example and test programs:
+
+```sh
+sh tools/validate-compatibility.sh
+```
+
+To build, format, lint, run tests, and validate compatibility between both
+implementations, use the following one-liner:
+
+```sh
+make clean format-go format-py lint-py build-go wasm-go check-go check-py && sh tools/validate-compatibility.sh
+```
+
 ## Contributing
 
 Contributions are welcomed and appreciated! 🐝
