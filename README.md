@@ -22,10 +22,10 @@ syntax and semantics of the language.
 ```mellifera
 #!/usr/bin/env mf
 # usage: cat FILE | word-count-simple.mf
-let words = re::split(input(), r`\b+`)
+let words = re::split(input(), r`\s+`)
     .into_iterator()
     .map(function(word) {
-        return re::replace(word.to_lower(), r`[^\w]`, "");
+        return re::replace(word.to_lower(), r`[^\w']`, "");
     })
     .filter(function(word) {
         return word.count() != 0;
@@ -49,11 +49,11 @@ for pair in ordered {
 
 ```sh
 curl -s https://www.gutenberg.org/files/71/71-0.txt | mf examples/word-count-simple.mf | head -n 5
-the 700
-to 441
-and 421
+the 692
+to 440
+and 418
 of 391
-a 295
+a 293
 ```
 
 Mellifera features value semantics, meaning assignment operations copy the
