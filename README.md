@@ -416,7 +416,8 @@ and
 
 ### Strict No LLM / No AI Policy
 
-Mellifera is a language developed by humans, for humans.
+Mellifera is a language developed by humans, for humans. 🐝❤️
+
 Use of LLMs for issues, comments, and pull requests is not permitted.
 
 ## License and Credits

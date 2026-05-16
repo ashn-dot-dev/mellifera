@@ -377,7 +377,7 @@ func NewContext() Context {
 	ctx.BaseEnvironment.Let("map", ctx.mapMeta)
 	ctx.BaseEnvironment.Let("set", ctx.setMeta)
 	ctx.BaseEnvironment.Let("reference", ctx.referenceMeta)
-	ctx.BaseEnvironment.Let("iterator", ctx.NewValueFromSourceOrPanic("", ITERATOR_SOURCE))
+	ctx.BaseEnvironment.Let("iterator", ctx.NewValueFromSourceOrPanic("", _ITERATOR_SOURCE))
 	ctx.BaseEnvironment.Let("NaN", ctx.NewNumber(math.NaN()))
 	ctx.BaseEnvironment.Let("Inf", ctx.NewNumber(math.Inf(+1)))
 	ctx.BaseEnvironment.Let("exit", BuiltinExit(&ctx))
@@ -7095,7 +7095,7 @@ func BuiltinExplicitUninitialized(ctx *Context) *Builtin {
 	})
 }
 
-const ITERATOR_SOURCE = `
+const _ITERATOR_SOURCE = `
 let iterator = type {
     .eoi = function() {
         error null; # end-of-iteration
