@@ -308,6 +308,10 @@ func NewContext() Context {
 		{ctx.NewString("count"), BuiltinVectorCount(&ctx)},
 		{ctx.NewString("is_empty"), BuiltinVectorIsEmpty(&ctx)},
 		{ctx.NewString("contains"), BuiltinVectorContains(&ctx)},
+		{ctx.NewString("any"), BuiltinVectorAny(&ctx)},
+		{ctx.NewString("all"), BuiltinVectorAll(&ctx)},
+		{ctx.NewString("map"), BuiltinVectorMap(&ctx)},
+		{ctx.NewString("filter"), BuiltinVectorFilter(&ctx)},
 		{ctx.NewString("find"), BuiltinVectorFind(&ctx)},
 		{ctx.NewString("rfind"), BuiltinVectorRfind(&ctx)},
 		{ctx.NewString("push"), BuiltinVectorPush(&ctx)},
@@ -7120,7 +7124,11 @@ let iterator = type {
     },
     .any = function(self, func) {
         for x in self.* {
-            if func(x) {
+            let result = func(x);
+            if not ty::is_boolean(result) {
+                error $"expected function {func} to return a boolean (received {typename(result)} {repr(result)})";
+            }
+            if result {
                 return true;
             }
         }
@@ -7128,7 +7136,11 @@ let iterator = type {
     },
     .all = function(self, func) {
         for x in self.* {
-            if not func(x) {
+            let result = func(x);
+            if not ty::is_boolean(result) {
+                error $"expected function {func} to return a boolean (received {typename(result)} {repr(result)})";
+            }
+            if not result {
                 return false;
             }
         }
@@ -7147,11 +7159,16 @@ let iterator = type {
     .filter = function(self, func) {
         let filter_iterator = type extends iterator {
             .next = function(self) {
-                let current = self.base.next();
-                while not func(current) {
-                    current = self.base.next();
+                while true {
+                    let current = self.base.next();
+                    let result = func(current);
+                    if not ty::is_boolean(result) {
+                        error $"expected function {func} to return a boolean (received {typename(result)} {repr(result)})";
+                    }
+                    if result {
+                        return current;
+                    }
                 }
-                return current;
             },
         };
         return new filter_iterator {
@@ -7737,6 +7754,109 @@ func BuiltinVectorContains(ctx *Context) *Builtin {
 		}
 
 		return ctx.NewBoolean(false), nil
+	})
+}
+
+func BuiltinVectorAny(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("vector::any", []Type{TRef(TVal(VECTOR)), TVal(FUNCTION)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*Vector)
+
+		function := arguments[1].(*Function)
+
+		for _, element := range delf.Elements() {
+			result, err := Call(ctx, nil, function, []Value{element})
+			if err != nil {
+				return nil, err
+			}
+
+			resultBoolean, ok := result.(*Boolean)
+			if !ok {
+				return nil, NewError(nil, ctx.NewStringf("expected function %s to return a boolean (received %s %s)", function, result.Typename(), result))
+			}
+
+			if resultBoolean.data {
+				return ctx.NewBoolean(true), nil
+			}
+		}
+
+		return ctx.NewBoolean(false), nil
+	})
+}
+
+func BuiltinVectorAll(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("vector::all", []Type{TRef(TVal(VECTOR)), TVal(FUNCTION)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*Vector)
+
+		function := arguments[1].(*Function)
+
+		for _, element := range delf.Elements() {
+			result, err := Call(ctx, nil, function, []Value{element})
+			if err != nil {
+				return nil, err
+			}
+
+			resultBoolean, ok := result.(*Boolean)
+			if !ok {
+				return nil, NewError(nil, ctx.NewStringf("expected function %s to return a boolean (received %s %s)", function, result.Typename(), result))
+			}
+
+			if !resultBoolean.data {
+				return ctx.NewBoolean(false), nil
+			}
+		}
+
+		return ctx.NewBoolean(true), nil
+	})
+}
+
+func BuiltinVectorMap(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("vector::map", []Type{TRef(TVal(VECTOR)), TVal(FUNCTION)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*Vector)
+
+		function := arguments[1].(*Function)
+
+		mapped := []Value{}
+		for _, element := range delf.Elements() {
+			result, err := Call(ctx, nil, function, []Value{element})
+			if err != nil {
+				return nil, err
+			}
+
+			mapped = append(mapped, result.Copy())
+		}
+
+		return ctx.NewVector(mapped), nil
+	})
+}
+
+func BuiltinVectorFilter(ctx *Context) *Builtin {
+	return ctx.NewBuiltin("vector::filter", []Type{TRef(TVal(VECTOR)), TVal(FUNCTION)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*Vector)
+
+		function := arguments[1].(*Function)
+
+		filtered := []Value{}
+		for _, element := range delf.Elements() {
+			result, err := Call(ctx, nil, function, []Value{element})
+			if err != nil {
+				return nil, err
+			}
+
+			resultBoolean, ok := result.(*Boolean)
+			if !ok {
+				return nil, NewError(nil, ctx.NewStringf("expected function %s to return a boolean (received %s %s)", function, result.Typename(), result))
+			}
+
+			if resultBoolean.data {
+				filtered = append(filtered, element.Copy())
+			}
+		}
+
+		return ctx.NewVector(filtered), nil
 	})
 }
 

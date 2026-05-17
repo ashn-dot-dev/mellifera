@@ -23,7 +23,6 @@ syntax and semantics of the language.
 #!/usr/bin/env mf
 # usage: cat FILE | word-count-simple.mf
 let words = re::split(input(), r`\s+`)
-    .into_iterator()
     .map(function(word) {
         return re::replace(word.to_lower(), r`[^\w']`, "");
     })

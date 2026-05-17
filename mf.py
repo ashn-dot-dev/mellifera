@@ -5259,6 +5259,74 @@ def builtin_vector_contains(
     return Boolean.new(target in vector)
 
 
+@builtin("vector::any", [ReferenceTo(Vector), Function])
+def builtin_vector_any(
+    self: Reference, vector: Vector, function: Function
+) -> Union[Value, Error]:
+    for element in vector.data:
+        result = call(None, function, [element])
+        if isinstance(result, Error):
+            return result
+        if not isinstance(result, Boolean):
+            return Error(
+                None,
+                f"expected function {function} to return a boolean (received {result.typename()} {result})",
+            )
+        if result.data:
+            return Boolean.new(True)
+    return Boolean.new(False)
+
+
+@builtin("vector::all", [ReferenceTo(Vector), Function])
+def builtin_vector_all(
+    self: Reference, vector: Vector, function: Function
+) -> Union[Value, Error]:
+    for element in vector.data:
+        result = call(None, function, [element])
+        if isinstance(result, Error):
+            return result
+        if not isinstance(result, Boolean):
+            return Error(
+                None,
+                f"expected function {function} to return a boolean (received {result.typename()} {result})",
+            )
+        if not result.data:
+            return Boolean.new(False)
+    return Boolean.new(True)
+
+
+@builtin("vector::map", [ReferenceTo(Vector), Function])
+def builtin_vector_map(
+    self: Reference, vector: Vector, function: Function
+) -> Union[Value, Error]:
+    mapped = []
+    for element in vector.data:
+        result = call(None, function, [element])
+        if isinstance(result, Error):
+            return result
+        mapped.append(copy(result))
+    return Vector.new(mapped)
+
+
+@builtin("vector::filter", [ReferenceTo(Vector), Function])
+def builtin_vector_filter(
+    self: Reference, vector: Vector, function: Function
+) -> Union[Value, Error]:
+    filtered = []
+    for element in vector.data:
+        result = call(None, function, [element])
+        if isinstance(result, Error):
+            return result
+        if not isinstance(result, Boolean):
+            return Error(
+                None,
+                f"expected function {function} to return a boolean (received {result.typename()} {result})",
+            )
+        if result.data:
+            filtered.append(copy(element))
+    return Vector.new(filtered)
+
+
 @builtin("vector::find", [ReferenceTo(Vector), Value])
 def builtin_vector_find(
     self: Reference, vector: Vector, target: Value
@@ -6538,6 +6606,10 @@ _VECTOR_META = Map.new_meta(
         String("count"): builtin_vector_count(),
         String("is_empty"): builtin_vector_is_empty(),
         String("contains"): builtin_vector_contains(),
+        String("any"): builtin_vector_any(),
+        String("all"): builtin_vector_all(),
+        String("map"): builtin_vector_map(),
+        String("filter"): builtin_vector_filter(),
         String("find"): builtin_vector_find(),
         String("rfind"): builtin_vector_rfind(),
         String("push"): builtin_vector_push(),
@@ -6615,7 +6687,11 @@ let iterator = type {
     },
     .any = function(self, func) {
         for x in self.* {
-            if func(x) {
+            let result = func(x);
+            if not ty::is_boolean(result) {
+                error $"expected function {func} to return a boolean (received {typename(result)} {repr(result)})";
+            }
+            if result {
                 return true;
             }
         }
@@ -6623,7 +6699,11 @@ let iterator = type {
     },
     .all = function(self, func) {
         for x in self.* {
-            if not func(x) {
+            let result = func(x);
+            if not ty::is_boolean(result) {
+                error $"expected function {func} to return a boolean (received {typename(result)} {repr(result)})";
+            }
+            if not result {
                 return false;
             }
         }
@@ -6642,11 +6722,16 @@ let iterator = type {
     .filter = function(self, func) {
         let filter_iterator = type extends iterator {
             .next = function(self) {
-                let current = self.base.next();
-                while not func(current) {
-                    current = self.base.next();
+                while true {
+                    let current = self.base.next();
+                    let result = func(current);
+                    if not ty::is_boolean(result) {
+                        error $"expected function {func} to return a boolean (received {typename(result)} {repr(result)})";
+                    }
+                    if result {
+                        return current;
+                    }
                 }
-                return current;
             },
         };
         return new filter_iterator {

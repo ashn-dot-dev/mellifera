@@ -1,6 +1,13 @@
 for x in range(1, 4).filter(function(x) { return x % 2 != 0; }) {
     dumpln(x);
 }
+
+print("\n");
+
+let boom = function(x) { return "boom"; };
+try { range(0, 1).filter(boom).into_vector(); } catch err { dumpln(err); }
 ################################################################################
 # 1
 # 3
+#
+# "expected function boom@[iterator-filter.test.mf, line 7] to return a boolean (received string \"boom\")"

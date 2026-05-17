@@ -1,0 +1,16 @@
+dumpln([].any(function(x) { return x == 4; }));
+dumpln([1, 2, 3].any(function(x) { return x == 4; }));
+dumpln([1, 2, 3, 4].any(function(x) { return x == 4; }));
+dumpln([1, 2, 3, 4, 5].any(function(x) { return x == 4; }));
+
+print("\n");
+
+let boom = function(x) { return "boom"; };
+try { [1, 2, 3].any(boom); } catch err { dumpln(err); }
+################################################################################
+# false
+# false
+# true
+# true
+#
+# "expected function boom@[vector-any.test.mf, line 8] to return a boolean (received string \"boom\")"

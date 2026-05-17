@@ -1,7 +1,16 @@
+dumpln(range(0, 0).all(function(x) { return x < 5; }));
 dumpln(range(1, 4).all(function(x) { return x < 5; }));
 dumpln(range(1, 5).all(function(x) { return x < 5; }));
 dumpln(range(1, 6).all(function(x) { return x < 5; }));
+
+print("\n");
+
+let boom = function(x) { return "boom"; };
+try { range(0, 1).all(boom); } catch err { dumpln(err); }
 ################################################################################
 # true
 # true
+# true
 # false
+#
+# "expected function boom@[iterator-all.test.mf, line 8] to return a boolean (received string \"boom\")"

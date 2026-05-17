@@ -1,7 +1,16 @@
+dumpln(range(0, 0).any(function(x) { return x == 4; }));
 dumpln(range(1, 4).any(function(x) { return x == 4; }));
 dumpln(range(1, 5).any(function(x) { return x == 4; }));
 dumpln(range(1, 6).any(function(x) { return x == 4; }));
+
+print("\n");
+
+let boom = function(x) { return "boom"; };
+try { range(0, 1).any(boom); } catch err { dumpln(err); }
 ################################################################################
+# false
 # false
 # true
 # true
+#
+# "expected function boom@[iterator-any.test.mf, line 8] to return a boolean (received string \"boom\")"
