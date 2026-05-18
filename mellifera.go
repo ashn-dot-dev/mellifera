@@ -117,17 +117,6 @@ func MetaFunction(ctx *Context, value Value, name Value) (Value, bool) {
 }
 
 func ValueAsInt(value Value) (int, error) {
-	integer, err := ValueAsInt64(value)
-	if err != nil {
-		return 0, err
-	}
-	if int64(int(integer)) != integer {
-		return 0, fmt.Errorf("cannot convert %v into an int without truncation", value)
-	}
-	return int(integer), nil
-}
-
-func ValueAsInt64(value Value) (int64, error) {
 	number, ok := value.(*Number)
 	if !ok {
 		return 0, fmt.Errorf("cannot convert %s-like value into an integer", value.Typename())
@@ -140,9 +129,9 @@ func ValueAsInt64(value Value) (int64, error) {
 	}
 	truncated := math.Trunc(number.data)
 	if truncated != number.data {
-		return 0, fmt.Errorf("cannot convert %v into an int64 without truncation", value)
+		return 0, fmt.Errorf("cannot convert %v into an int without truncation", value)
 	}
-	return int64(truncated), nil
+	return int(truncated), nil
 }
 
 type CombEncoder struct {
