@@ -5,6 +5,7 @@ dumpln(math::is_integer(+123));
 dumpln(math::is_integer(-123));
 dumpln(math::is_integer(+123.456));
 dumpln(math::is_integer(-123.456));
+dumpln(math::is_integer(math::pow(2, 100)));
 ################################################################################
 # false
 # false
@@ -13,3 +14,4 @@ dumpln(math::is_integer(-123.456));
 # true
 # false
 # false
+# true

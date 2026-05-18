@@ -7278,8 +7278,14 @@ func BuiltinNumberIsInf(ctx *Context) *Builtin {
 
 func BuiltinNumberIsInteger(ctx *Context) *Builtin {
 	return ctx.NewBuiltin("number::is_integer", []Type{TRef(TVal(NUMBER))}, func(ctx *Context, arguments []Value) (Value, error) {
-		_, err := ValueAsInt64(arguments[0].(*Reference).data)
-		return ctx.NewBoolean(err == nil), nil
+		self := arguments[0].(*Reference)
+		delf := self.data.(*Number)
+
+		if math.IsInf(delf.data, 0) || math.IsNaN(delf.data) {
+			return ctx.NewBoolean(false), nil
+		}
+
+		return ctx.NewBoolean(math.Trunc(delf.data) == delf.data), nil
 	})
 }
 
@@ -9201,8 +9207,13 @@ func BuiltinMathIsInf(ctx *Context) *Builtin {
 
 func BuiltinMathIsInteger(ctx *Context) *Builtin {
 	return ctx.NewBuiltin("math::is_integer", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
-		_, err := ValueAsInt64(arguments[0])
-		return ctx.NewBoolean(err == nil), nil
+		value := arguments[0].(*Number)
+
+		if math.IsInf(value.data, 0) || math.IsNaN(value.data) {
+			return ctx.NewBoolean(false), nil
+		}
+
+		return ctx.NewBoolean(math.Trunc(value.data) == value.data), nil
 	})
 }
 
