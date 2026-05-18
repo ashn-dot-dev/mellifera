@@ -1,6 +1,6 @@
 .POSIX:
 .PHONY: \
-	all all-go all-py
+	default all-go all-py \
 	build build-go \
 	wasm wasm-go \
 	install \
@@ -11,7 +11,7 @@
 
 MELLIFERA_HOME = $$HOME/.mellifera
 
-all: all-go
+default: build-go
 
 all-go: build-go wasm-go format-go check-go
 
