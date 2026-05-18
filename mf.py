@@ -6556,6 +6556,8 @@ _BOOLEAN_META = Map.new_meta(
 _NUMBER_META = Map.new_meta(
     name=String(Number.typename()),
     data={
+        String("MAX_SAFE_INTEGER"): Number(MAX_SAFE_INTEGER),
+        String("MIN_SAFE_INTEGER"): Number(MIN_SAFE_INTEGER),
         String("init"): builtin_number_init(),
         String("is_nan"): builtin_number_is_nan(),
         String("is_inf"): builtin_number_is_inf(),
@@ -6567,6 +6569,8 @@ _NUMBER_META = Map.new_meta(
         String("ceil"): builtin_number_ceil(),
     },
 )
+_NUMBER_META[String("MAX_SAFE_INTEGER")].meta = _NUMBER_META
+_NUMBER_META[String("MIN_SAFE_INTEGER")].meta = _NUMBER_META
 _STRING_META = Map.new_meta(
     name=String(String.typename()),
     data={

@@ -267,6 +267,8 @@ func NewContext() Context {
 		{ctx.NewString("init"), BuiltinBooleanInit(&ctx)},
 	})
 	ctx.numberMeta = ctx.NewMetaMap("number", []MapPair{
+		{ctx.NewString("MAX_SAFE_INTEGER"), ctx.NewNumber(MAX_SAFE_INTEGER)},
+		{ctx.NewString("MIN_SAFE_INTEGER"), ctx.NewNumber(MIN_SAFE_INTEGER)},
 		{ctx.NewString("init"), BuiltinNumberInit(&ctx)},
 		{ctx.NewString("is_nan"), BuiltinNumberIsNan(&ctx)},
 		{ctx.NewString("is_inf"), BuiltinNumberIsInf(&ctx)},
