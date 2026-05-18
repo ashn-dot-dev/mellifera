@@ -763,6 +763,9 @@ func (self *Number) String() string {
 	if self.data == math.Inf(-1) {
 		return "-Inf"
 	}
+	if math.Trunc(self.data) == self.data {
+		return strconv.FormatFloat(self.data, 'f', 0, 64)
+	}
 	return strconv.FormatFloat(self.data, 'f', -1, 64)
 }
 
@@ -9409,20 +9412,26 @@ func BuiltinRandomSeed(ctx *Context) *Builtin {
 func BuiltinRandomInteger(ctx *Context) *Builtin {
 	return ctx.NewBuiltin("random::integer", []Type{TVal(NUMBER), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		min := arguments[0].(*Number)
-		minInteger, err := ValueAsInt64(min)
-		if err != nil {
+		if math.IsInf(min.data, 0) || math.IsNaN(min.data) || math.Trunc(min.data) != min.data {
 			return nil, NewError(nil, ctx.NewStringf("expected integer lower bound, received %v", min))
 		}
 
 		max := arguments[1].(*Number)
-		maxInteger, err := ValueAsInt64(max)
-		if err != nil {
+		if math.IsInf(max.data, 0) || math.IsNaN(max.data) || math.Trunc(max.data) != max.data {
 			return nil, NewError(nil, ctx.NewStringf("expected integer upper bound, received %v", max))
 		}
 
-		if minInteger > maxInteger {
-			minInteger, maxInteger = maxInteger, minInteger
+		if min.data > max.data {
+			min, max = max, min
 		}
+		if min.data < float64(MIN_SAFE_INTEGER) || min.data > float64(MAX_SAFE_INTEGER) {
+			return nil, NewError(nil, ctx.NewStringf("integer %v is outside the safe integer range", min))
+		}
+		if max.data < float64(MIN_SAFE_INTEGER) || max.data > float64(MAX_SAFE_INTEGER) {
+			return nil, NewError(nil, ctx.NewStringf("integer %v is outside the safe integer range", max))
+		}
+		minInteger := int64(min.data)
+		maxInteger := int64(max.data)
 
 		return ctx.NewNumber(float64(ctx.rng.Int64N(maxInteger-minInteger+1) + minInteger)), nil
 	})

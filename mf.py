@@ -357,7 +357,10 @@ class Number(Value):
             return "Inf"
         if self.data == -math.inf:
             return "-Inf"
-        string = str(self.data)
+        if math.trunc(float(self.data)) == float(self.data):
+            string = f"{self.data:f}"
+        else:
+            string = str(self.data)
         dot = string.find(".")
         end = len(string)
         while string[end - 1] == "0":
@@ -6403,6 +6406,10 @@ def builtin_random_integer(min: Number, max: Number) -> Union[Value, Error]:
 
     if min_integer > max_integer:
         min_integer, max_integer = max_integer, min_integer
+    if min_integer < MIN_SAFE_INTEGER or min_integer > MAX_SAFE_INTEGER:
+        return Error(None, f"integer {min} is outside the safe integer range")
+    if max_integer < MIN_SAFE_INTEGER or max_integer > MAX_SAFE_INTEGER:
+        return Error(None, f"integer {max} is outside the safe integer range")
 
     return Number.new(rng.randint(min_integer, max_integer))
 
