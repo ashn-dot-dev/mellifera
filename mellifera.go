@@ -7121,12 +7121,6 @@ func TypeCheckArguments(types []Type, arguments []Value) error {
 	return nil
 }
 
-func BuiltinExplicitUninitialized(ctx *Context) *Builtin {
-	return ctx.NewBuiltin("dumpln", []Type{}, func(ctx *Context, arguments []Value) (Value, error) {
-		return nil, NewError(nil, ctx.NewString("EXPLICIT-UNINITIALIZED"))
-	})
-}
-
 const _ITERATOR_SOURCE = `
 let iterator = type {
     .eoi = function() {
