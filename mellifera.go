@@ -5512,7 +5512,7 @@ func (self AstStatementAssignment) Eval(ctx *Context, env *Environment) (Control
 	}
 
 	assignMap := func(storeMap *Map, rhs Value) error {
-		err := storeMap.Insert(field, rhs.Copy())
+		err := storeMap.Insert(field.Copy(), rhs.Copy())
 		if err != nil {
 			return NewError(
 				self.Location,

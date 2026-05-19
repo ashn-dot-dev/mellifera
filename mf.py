@@ -4075,7 +4075,7 @@ class AstStatementAssignment(AstStatement):
 
         if isinstance(store, (Vector, Map)):
             try:
-                store[field] = copy(rhs)
+                store[copy(field)] = copy(rhs)
                 return None
             except Exception as e:
                 return Error(
@@ -4089,7 +4089,7 @@ class AstStatementAssignment(AstStatement):
             store_deref = store.data
             if isinstance(store_deref, (Vector, Map)):
                 try:
-                    store_deref[field] = copy(rhs)
+                    store_deref[copy(field)] = copy(rhs)
                     return None
                 except (NotImplementedError, IndexError, KeyError):
                     pass  # Handled by generic error just below
