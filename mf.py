@@ -1114,7 +1114,7 @@ class Builtin(Value):
         argument = arguments[index]
         if not isinstance(argument, ty):
             raise Exception(
-                f"expected {ty.typename()}-like value for argument {index}, received {typename(argument)}"
+                f"expected {ty.typename()} value for argument {index}, received {typename(argument)}"
             )
         return argument
 
@@ -1125,7 +1125,7 @@ class Builtin(Value):
         argument = arguments[index]
         if not (isinstance(argument, Reference) and isinstance(argument.data, ty)):
             raise Exception(
-                f"expected reference to {ty.typename()}-like value for argument {index}, received {typename(argument)}"
+                f"expected reference to {ty.typename()} value for argument {index}, received {typename(argument)}"
             )
         return (argument, argument.data)
 
@@ -5220,7 +5220,7 @@ def builtin_string_join(
         if not isinstance(value, String):
             return Error(
                 None,
-                f"expected string-like value for vector element at index {index}, received {typename(value)}",
+                f"expected string value for vector element at index {index}, received {typename(value)}",
             )
         if index != 0:
             data += string.bytes
@@ -5569,10 +5569,10 @@ def builtin_vector_sorted():
     };
     return function(self) {
         if not ty::is_reference(self) {
-            error $"expected reference to vector-like value for argument 0, received {typename(self)}";
+            error $"expected reference to vector value for argument 0, received {typename(self)}";
         }
         if not ty::is_vector(self.*) {
-            error $"expected reference to vector-like value for argument 0, received reference to {typename(self.*)}";
+            error $"expected reference to vector value for argument 0, received reference to {typename(self.*)}";
         }
         try { return sort(self.*); } catch err { error err; }
     };
@@ -5623,10 +5623,10 @@ def builtin_vector_sorted_by():
     };
     return function(self, compare) {
         if not ty::is_reference(self) {
-            error $"expected reference to vector-like value for argument 0, received {typename(self)}";
+            error $"expected reference to vector value for argument 0, received {typename(self)}";
         }
         if not ty::is_vector(self.*) {
-            error $"expected reference to vector-like value for argument 0, received reference to {typename(self.*)}";
+            error $"expected reference to vector value for argument 0, received reference to {typename(self.*)}";
         }
         try { return sort(self.*, compare); } catch err { error err; }
     };

@@ -8,4 +8,4 @@ try { "".join(["foo", 456, "baz"]); } catch err { println($"error: {err}"); }
 # ", ".join([]) is ""
 # "".join(["foo", "bar", "baz"]) is "foobarbaz"
 # "".join([]) is ""
-# error: expected string-like value for vector element at index 1, received number
+# error: expected string value for vector element at index 1, received number

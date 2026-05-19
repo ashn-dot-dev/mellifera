@@ -120,7 +120,7 @@ func MetaFunction(ctx *Context, value Value, name Value) (Value, bool) {
 func ValueAsSafeInteger(value Value) (int64, error) {
 	number, ok := value.(*Number)
 	if !ok {
-		return 0, fmt.Errorf("cannot convert %s-like value into an integer", value.Typename())
+		return 0, fmt.Errorf("cannot convert %s into an integer", value.Typename())
 	}
 	if math.IsInf(number.data, 0) || math.IsNaN(number.data) {
 		return 0, fmt.Errorf("cannot convert %v into an integer", value)
@@ -138,7 +138,7 @@ func ValueAsSafeInteger(value Value) (int64, error) {
 func ValueAsIndex(value Value) (int, error) {
 	number, ok := value.(*Number)
 	if !ok {
-		return 0, fmt.Errorf("cannot convert %s-like value into an integer", value.Typename())
+		return 0, fmt.Errorf("cannot convert %s into an integer", value.Typename())
 	}
 	if math.IsInf(number.data, 0) || math.IsNaN(number.data) {
 		return 0, fmt.Errorf("cannot convert %v into an integer", value)
@@ -7075,7 +7075,7 @@ func TypeCheckArgument(index int, expected Type, received Value) error {
 			return nil // No required base type.
 		}
 		if err := TypeCheckArgument(index, *expected.Base, reference.data); err != nil {
-			return fmt.Errorf("expected reference to %s-like value for argument %v, received reference to %s", expected.Base, index, reference.data.Typename())
+			return fmt.Errorf("expected reference to %s value for argument %v, received reference to %s", expected.Base, index, reference.data.Typename())
 		}
 		return nil
 	case FUNCTION:
@@ -7090,7 +7090,7 @@ func TypeCheckArgument(index int, expected Type, received Value) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("expected %s-like value for argument %v, received %s", expected, index, received.Typename())
+	return fmt.Errorf("expected %s value for argument %v, received %s", expected, index, received.Typename())
 }
 
 func TypeCheckArguments(types []Type, arguments []Value) error {
@@ -7569,7 +7569,7 @@ func BuiltinStringJoin(ctx *Context) *Builtin {
 			if !ok {
 				return nil, NewError(
 					nil,
-					ctx.NewStringf("expected string-like value for vector element at index %v, received %s", index, value.Typename()),
+					ctx.NewStringf("expected string value for vector element at index %v, received %s", index, value.Typename()),
 				)
 			}
 			if index != 0 {
@@ -8080,10 +8080,10 @@ let sort = function(x) {
 };
 return function(self) {
 	if not ty::is_reference(self) {
-		error $"expected reference to vector-like value for argument 0, received {self.Typename()}";
+		error $"expected reference to vector value for argument 0, received {self.Typename()}";
 	}
 	if not ty::is_vector(self.*) {
-		error $"expected reference to vector-like value for argument 0, received reference to {typename(self.*)}";
+		error $"expected reference to vector value for argument 0, received reference to {typename(self.*)}";
 	}
 	try { return sort(self.*); } catch err { error err; }
 };
@@ -8137,10 +8137,10 @@ let sort = function(x, compare) {
 };
 return function(self, compare) {
 	if not ty::is_reference(self) {
-		error $"expected reference to vector-like value for argument 0, received {self.Typename()}";
+		error $"expected reference to vector value for argument 0, received {self.Typename()}";
 	}
 	if not ty::is_vector(self.*) {
-		error $"expected reference to vector-like value for argument 0, received reference to {typename(self.*)}";
+		error $"expected reference to vector value for argument 0, received reference to {typename(self.*)}";
 	}
 	try { return sort(self.*, compare); } catch err { error err; }
 };
@@ -8727,7 +8727,7 @@ func BuiltinImport(ctx *Context) *Builtin {
 		}
 		moduleMap, ok := module.(*Map)
 		if !ok {
-			return nil, NewError(nil, ctx.NewStringf("expected map-like module value, received %v", quote(module.Typename())))
+			return nil, NewError(nil, ctx.NewStringf("expected map module value, received %v", quote(module.Typename())))
 		}
 		_, modulePathOk := moduleMap.Lookup(ctx.NewString("path"))
 		_, moduleFileOk := moduleMap.Lookup(ctx.NewString("file"))
@@ -8737,7 +8737,7 @@ func BuiltinImport(ctx *Context) *Builtin {
 		}
 		moduleDirectoryString, ok := moduleDirectory.(*String)
 		if !ok {
-			return nil, NewError(nil, ctx.NewStringf("expected string-like module directory value, received %v", moduleDirectory))
+			return nil, NewError(nil, ctx.NewStringf("expected string module directory value, received %v", moduleDirectory))
 		}
 
 		var result Value = nil

@@ -31,7 +31,7 @@ try { println($`["foo", 123, "baz"].sorted_by(compare_nominal) is {["foo", 123, 
 # ["foo", "bar", "baz"].sorted_by(compare_nominal) is ["bar", "baz", "foo"]
 # ["foo", "bar", "baz"].sorted_by(compare_reverse) is ["foo", "baz", "bar"]
 #
-# "expected reference to vector-like value for argument 0, received map"
-# "expected reference to vector-like value for argument 0, received reference to map"
+# "expected reference to vector value for argument 0, received map"
+# "expected reference to vector value for argument 0, received reference to map"
 #
 # "attempted < operation with types `number` and `string`"
