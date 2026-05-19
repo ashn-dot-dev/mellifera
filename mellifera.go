@@ -8997,11 +8997,11 @@ func BuiltinFsWrite(ctx *Context) *Builtin {
 
 		f, err := os.OpenFile(path.data, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0644)
 		if err != nil {
-			return nil, NewError(nil, ctx.NewStringf("failed to read file %v (%s)", path, err.Error()))
+			return nil, NewError(nil, ctx.NewStringf("failed to write file %v (%s)", path, err.Error()))
 		}
 		defer f.Close()
 		if _, err := f.Write([]byte(data.data)); err != nil {
-			return nil, NewError(nil, ctx.NewStringf("failed to read file %v (%s)", path, err.Error()))
+			return nil, NewError(nil, ctx.NewStringf("failed to write file %v (%s)", path, err.Error()))
 		}
 		return ctx.NewNull(), nil
 	})
@@ -9014,11 +9014,11 @@ func BuiltinFsAppend(ctx *Context) *Builtin {
 
 		f, err := os.OpenFile(path.data, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
 		if err != nil {
-			return nil, NewError(nil, ctx.NewStringf("failed to read file %v (%s)", path, err.Error()))
+			return nil, NewError(nil, ctx.NewStringf("failed to append file %v (%s)", path, err.Error()))
 		}
 		defer f.Close()
 		if _, err := f.Write([]byte(data.data)); err != nil {
-			return nil, NewError(nil, ctx.NewStringf("failed to read file %v (%s)", path, err.Error()))
+			return nil, NewError(nil, ctx.NewStringf("failed to append file %v (%s)", path, err.Error()))
 		}
 		return ctx.NewNull(), nil
 	})
