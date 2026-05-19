@@ -2380,7 +2380,7 @@ func (self *Lexer) lexEscStringPart() ([]byte, error) {
 	if !unicode.IsPrint(self.currentRune()) {
 		return nil, ParseError{
 			Location: self.currentLocation(),
-			why:      fmt.Sprintf("expected prinable character, found %#x", self.currentRune()),
+			why:      fmt.Sprintf("expected printable character, found %#x", self.currentRune()),
 		}
 	}
 
@@ -2795,7 +2795,7 @@ func (self *Lexer) lexRegexpGroup() (Token, error) {
 
 	return Token{}, ParseError{
 		Location: location,
-		why:      fmt.Sprintf("invalid regexp catpure group"),
+		why:      fmt.Sprintf("invalid regexp capture group"),
 	}
 }
 
