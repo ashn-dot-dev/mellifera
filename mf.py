@@ -6988,7 +6988,7 @@ BASE_ENVIRONMENT.let(
         {
             String.new("path"): null,
             String.new("file"): null,
-            String.new("directory"): String.new(os.getcwd()),
+            String.new("directory"): null,
         }
     ).freeze(),
 )

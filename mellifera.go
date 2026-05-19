@@ -377,12 +377,6 @@ func NewContext() Context {
 	ctx.constStringIntoString = ctx.NewString("into_string")
 	ctx.constStringNext = ctx.NewString("next")
 
-	cwd, err := os.Getwd()
-	var cwdValue Value = ctx.NewNull()
-	if err != nil {
-		cwdValue = ctx.NewString(cwd)
-	}
-
 	ctx.BaseEnvironment.Let("boolean", ctx.booleanMeta)
 	ctx.BaseEnvironment.Let("number", ctx.numberMeta)
 	ctx.BaseEnvironment.Let("string", ctx.stringMeta)
@@ -466,7 +460,7 @@ func NewContext() Context {
 	ctx.BaseEnvironment.Let("module", ctx.NewMap([]MapPair{
 		{ctx.NewString("path"), ctx.NewNull()},
 		{ctx.NewString("file"), ctx.NewNull()},
-		{ctx.NewString("directory"), cwdValue},
+		{ctx.NewString("directory"), ctx.NewNull()},
 	}).Freeze())
 	ctx.BaseEnvironment.Let("random", ctx.NewMap([]MapPair{
 		{ctx.NewString("seed"), BuiltinRandomSeed(&ctx)},
