@@ -3472,7 +3472,7 @@ func (self AstExpressionFunction) IntoValue(ctx *Context) Value {
 	return ctx.NewMap([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
-		{ctx.NewString("paramters"), parameters},
+		{ctx.NewString("parameters"), parameters},
 		{ctx.NewString("body"), self.Body.IntoValue(ctx)},
 		{ctx.NewString("name"), name},
 	})

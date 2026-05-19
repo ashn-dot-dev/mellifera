@@ -2438,7 +2438,7 @@ class AstExpressionFunction(AstExpression):
                 String.new("location"): SourceLocation.optional_into_value(
                     self.location
                 ),
-                String.new("paramters"): Vector.new(
+                String.new("parameters"): Vector.new(
                     [parameter.into_value() for parameter in self.parameters]
                 ),
                 String.new("body"): self.body.into_value(),
