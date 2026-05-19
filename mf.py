@@ -6153,8 +6153,8 @@ def builtin_fs_write(path: String, data: String) -> Union[Value, Error]:
         with open(path.runes, "wb") as f:
             f.write(data.bytes)
         return null
-    except Exception:
-        return Error(None, f"failed write to file {path}")
+    except Exception as e:
+        return Error(None, f"failed write to file {path} ({str(e)})")
 
 
 @builtin("fs::append", [String, String])
@@ -6163,8 +6163,8 @@ def builtin_fs_append(path: String, data: String) -> Union[Value, Error]:
         with open(path.runes, "ab") as f:
             f.write(data.bytes)
         return null
-    except Exception:
-        return Error(None, f"failed append to file {path}")
+    except Exception as e:
+        return Error(None, f"failed append to file {path} ({str(e)})")
 
 
 @builtin("html::escape", [String])
