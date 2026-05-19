@@ -370,6 +370,18 @@ class Number(Value):
             end -= 1  # Remove trailing dot.
         return string[0:end]
 
+    def as_safe_integer(self) -> int:
+        if math.isinf(self.data) or math.isnan(self.data):
+            raise Exception(f"cannot convert {self} into an integer")
+        truncated = math.trunc(float(self.data))
+        if truncated != float(self.data):
+            raise Exception(
+                f"cannot convert {self.data} into an integer without truncation"
+            )
+        if truncated < MIN_SAFE_INTEGER or truncated > MAX_SAFE_INTEGER:
+            raise Exception(f"integer {self} is outside the safe integer range")
+        return int(truncated)
+
     def as_index(self) -> int:
         if math.isinf(self.data) or math.isnan(self.data):
             raise Exception("cannot convert {self} into an integer")
@@ -5031,9 +5043,13 @@ def builtin_number_is_integer(self: Reference, number: Number) -> Union[Value, E
 def builtin_number_fixed(
     self: Reference, number: Number, precision: Number
 ) -> Union[Value, Error]:
-    if not float(precision.data).is_integer() or int(float(precision.data)) < 0:
+    try:
+        precision_integer = precision.as_safe_integer()
+    except Exception as e:
+        return Error(None, str(e))
+    if precision_integer < 0:
         return Error(None, f"expected non-negative integer, received {precision}")
-    return Number.new(round(float(number.data), ndigits=int(float(precision.data))))
+    return Number.new(round(float(number.data), ndigits=precision_integer))
 
 
 @builtin("number::trunc", [ReferenceTo(Number)])

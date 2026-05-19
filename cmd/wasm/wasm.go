@@ -338,7 +338,7 @@ func BuiltinJsValueGetIndex(ctx *mellifera.Context) *mellifera.Builtin {
 			return nil, mellifera.NewError(nil, ctx.NewStringf("external value %v is not a JavaScript object", delf))
 		}
 
-		indexInt, err := mellifera.ValueAsInt(index)
+		indexInt, err := mellifera.ValueAsIndex(index)
 		if err != nil {
 			return nil, mellifera.NewError(nil, ctx.NewString(err.Error()))
 		}
@@ -373,7 +373,7 @@ func BuiltinJsValueSetIndex(ctx *mellifera.Context) *mellifera.Builtin {
 			return nil, mellifera.NewError(nil, ctx.NewStringf("external value %v is not a JavaScript object", delf))
 		}
 
-		indexInt, err := mellifera.ValueAsInt(index)
+		indexInt, err := mellifera.ValueAsIndex(index)
 		if err != nil {
 			return nil, mellifera.NewError(nil, ctx.NewString(err.Error()))
 		}

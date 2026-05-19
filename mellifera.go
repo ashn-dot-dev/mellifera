@@ -117,22 +117,22 @@ func MetaFunction(ctx *Context, value Value, name Value) (Value, bool) {
 	return nil, false
 }
 
-func ValueAsInt(value Value) (int, error) {
+func ValueAsSafeInteger(value Value) (int64, error) {
 	number, ok := value.(*Number)
 	if !ok {
 		return 0, fmt.Errorf("cannot convert %s-like value into an integer", value.Typename())
 	}
-	if math.IsNaN(number.data) {
-		return 0, fmt.Errorf("cannot convert NaN into an integer")
-	}
-	if math.IsInf(number.data, 0) {
-		return 0, fmt.Errorf("cannot convert ±Inf into an integer")
+	if math.IsInf(number.data, 0) || math.IsNaN(number.data) {
+		return 0, fmt.Errorf("cannot convert %v into an integer", value)
 	}
 	truncated := math.Trunc(number.data)
 	if truncated != number.data {
-		return 0, fmt.Errorf("cannot convert %v into an int without truncation", value)
+		return 0, fmt.Errorf("cannot convert %v into an integer without truncation", value)
 	}
-	return int(truncated), nil
+	if truncated < MIN_SAFE_INTEGER || truncated > MAX_SAFE_INTEGER {
+		return 0, fmt.Errorf("integer %v is outside the safe integer range", value)
+	}
+	return int64(truncated), nil
 }
 
 func ValueAsIndex(value Value) (int, error) {
@@ -7306,19 +7306,19 @@ func BuiltinNumberFixed(ctx *Context) *Builtin {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Number)
 
-		precision, err := ValueAsInt(arguments[1])
-		if err != nil || precision < 0 {
-			return nil, NewError(
-				nil,
-				ctx.NewStringf("expected non-negative integer, received %v", arguments[1]),
-			)
+		precision, err := ValueAsSafeInteger(arguments[1])
+		if err != nil {
+			return nil, NewError(nil, ctx.NewString(err.Error()))
+		}
+		if precision < 0 {
+			return nil, NewError(nil, ctx.NewStringf("expected non-negative integer, received %v", arguments[1]))
 		}
 
 		if math.IsNaN(delf.data) || math.IsInf(delf.data, 0) {
 			return delf, nil
 		}
 
-		factor := math.Pow10(precision)
+		factor := math.Pow(10.0, float64(precision))
 		fixed := math.Round(delf.data*float64(factor)) / float64(factor)
 		return ctx.NewNumber(fixed), nil
 	})
@@ -8457,11 +8457,11 @@ return function(a, b) {
 
 func BuiltinExit(ctx *Context) *Builtin {
 	return ctx.NewBuiltin("exit", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
-		integer, err := ValueAsInt(arguments[0])
+		integer, err := ValueAsSafeInteger(arguments[0])
 		if err != nil {
 			return nil, NewError(nil, ctx.NewStringf("expected integer exit code, received %v", arguments[0]))
 		}
-		os.Exit(integer)
+		os.Exit(int(integer))
 		return ctx.NewNull(), nil
 	})
 }
@@ -8921,7 +8921,7 @@ func BuiltinCombEncodeEx(ctx *Context) *Builtin {
 		for _, pair := range options.Pairs() {
 			if k, ok := pair.Key.(*String); ok && k.data == "indent" {
 				if v, ok := pair.Value.(*Number); ok {
-					vInt, err := ValueAsInt(v)
+					vInt, err := ValueAsSafeInteger(v)
 					if err == nil && vInt >= 0 {
 						indent = Ptr("")
 						for _ = range vInt {
