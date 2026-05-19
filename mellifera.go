@@ -1132,7 +1132,7 @@ func (self *Vector) Push(value Value) error {
 }
 
 // Returns nil when popping from an empty vector.
-func (self *Vector) Pop(value Value) (Value, error) {
+func (self *Vector) Pop() (Value, error) {
 	if self.IsImmutable() {
 		return nil, fmt.Errorf("attempted to modify immutable vector %v", self)
 	}
@@ -7947,7 +7947,7 @@ func BuiltinVectorPop(ctx *Context) *Builtin {
 			return nil, NewError(nil, ctx.NewString("attempted vector::pop on an empty vector"))
 		}
 
-		value, err := delf.Pop(arguments[0])
+		value, err := delf.Pop()
 		if err != nil {
 			return nil, NewError(nil, ctx.NewStringf("invalid vector::pop operation (%s)", err.Error()))
 		}
