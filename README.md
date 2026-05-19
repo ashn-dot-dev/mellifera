@@ -375,7 +375,7 @@ make format-py # format using black
 
 There is a script, `tools/validate-compatibility.sh`, that will validate that
 the token stream and abstract syntax tree representations produced by both
-intereters are identical for a large set of programs in the Mellifera
+interpreters are identical for a large set of programs in the Mellifera
 repository, including all example and test programs:
 
 ```sh
