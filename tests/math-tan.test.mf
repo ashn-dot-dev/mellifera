@@ -12,4 +12,4 @@ dumpln(math::tan(4 * math::pi / 4).fixed(1));
 # 0
 # 1
 # -1
-# -0
+# 0

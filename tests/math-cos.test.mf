@@ -13,5 +13,5 @@ dumpln(math::cos(2 * math::pi).fixed(1));
 # 1
 # 0
 # -1
-# -0
+# 0
 # 1

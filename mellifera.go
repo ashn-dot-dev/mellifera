@@ -771,6 +771,11 @@ func (self *Number) String() string {
 	if self.data == math.Inf(-1) {
 		return "-Inf"
 	}
+	if self.data == 0 {
+		// Special case for IEEE-754 +0 and -0, which are distinct in their bit
+		// representation, but should always be stringified as "0".
+		return "0"
+	}
 	if math.Trunc(self.data) == self.data {
 		return strconv.FormatFloat(self.data, 'f', 0, 64)
 	}
@@ -798,6 +803,11 @@ func (self *Number) IsImmutable() bool {
 }
 
 func (self *Number) Hash() uint64 {
+	if self.data == 0 {
+		// Special case for IEEE-754 +0 and -0, which are distinct in their bit
+		// representation, but should still compare equal as map keys.
+		return 0
+	}
 	return math.Float64bits(self.data)
 }
 

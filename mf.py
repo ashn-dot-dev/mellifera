@@ -358,6 +358,10 @@ class Number(Value):
             return "Inf"
         if self.data == -math.inf:
             return "-Inf"
+        if self.data == 0:
+            # Special case for IEEE-754 +0 and -0, which are distinct in their
+            # bit representation, but should always be stringified as "0".
+            return "0"
         if math.trunc(float(self.data)) == float(self.data):
             string = f"{self.data:f}"
         else:

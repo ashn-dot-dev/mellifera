@@ -52,6 +52,7 @@ dumpln( Map{"foo": 123, "bar": 456, "baz": 789}  );
 dumpln( Map{"foo": 123, "bar": 456, "baz": 789,} );
 dumpln( {"foo": 123, "bar": 456, "baz": 789}     );
 dumpln( {"foo": 123, "bar": 456, "baz": 789,}    );
+dumpln( {+0: "foo", -0: "bar"}                   ); # IEEE-754 +0 and -0 are considered equal as map keys.
 
 print("\n");
 
@@ -60,6 +61,7 @@ dumpln( Set{"foo", "bar", "baz"}  );
 dumpln( Set{"foo", "bar", "baz",} );
 dumpln( {"foo", "bar", "baz"}     );
 dumpln( {"foo", "bar", "baz",}    );
+dumpln( {+0, -0}                  ); # IEEE-754 +0 and -0 are considered equal as set elements.
 
 print("\n");
 
@@ -112,17 +114,19 @@ dumpln( println );
 # {"foo": 123, "bar": 456, "baz": 789}
 # {"foo": 123, "bar": 456, "baz": 789}
 # {"foo": 123, "bar": 456, "baz": 789}
+# {0: "bar"}
 #
 # Set{}
 # {"foo", "bar", "baz"}
 # {"foo", "bar", "baz"}
 # {"foo", "bar", "baz"}
 # {"foo", "bar", "baz"}
+# {0}
 #
 #
-# named_function@[values.test.mf, line 71]
-# function@[values.test.mf, line 73]
-# function@[values.test.mf, line 74]
+# named_function@[values.test.mf, line 73]
+# function@[values.test.mf, line 75]
+# function@[values.test.mf, line 76]
 #
 # dumpln@builtin
 # println@builtin
