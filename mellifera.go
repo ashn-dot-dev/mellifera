@@ -8054,7 +8054,7 @@ func BuiltinVectorReversed(ctx *Context) *Builtin {
 }
 
 func BuiltinVectorSorted(ctx *Context) Value {
-	source := `
+	function := ctx.NewValueFromSourceOrPanic("vector::sorted", `
 let sort = function(x) {
 	if x.count() <= 1 {
 		return x;
@@ -8101,15 +8101,15 @@ return function(self) {
 	}
 	try { return sort(self.*); } catch err { error err; }
 };
-`
+`)
 
 	return ctx.NewBuiltin("vector::sorted", []Type{TRef(TVal(VECTOR))}, func(ctx *Context, arguments []Value) (Value, error) {
-		return Call(ctx, nil, ctx.NewValueFromSourceOrPanic("vector::sorted", source), arguments)
+		return Call(ctx, nil, function, arguments)
 	})
 }
 
 func BuiltinVectorSortedBy(ctx *Context) Value {
-	source := `
+	function := ctx.NewValueFromSourceOrPanic("vector::sorted_by", `
 let sort = function(x, compare) {
 	if x.count() <= 1 {
 		return x;
@@ -8158,10 +8158,10 @@ return function(self, compare) {
 	}
 	try { return sort(self.*, compare); } catch err { error err; }
 };
-`
+`)
 
 	return ctx.NewBuiltin("vector::sorted_by", []Type{TRef(TVal(VECTOR)), TVal(FUNCTION)}, func(ctx *Context, arguments []Value) (Value, error) {
-		return Call(ctx, nil, ctx.NewValueFromSourceOrPanic("vector::sorted_by", source), arguments)
+		return Call(ctx, nil, function, arguments)
 	})
 }
 
