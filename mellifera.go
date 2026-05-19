@@ -8973,7 +8973,13 @@ func BuiltinFsRead(ctx *Context) *Builtin {
 
 		data, err := os.ReadFile(path.data)
 		if err != nil {
-			return nil, NewError(nil, ctx.NewStringf("failed to read file %v", path))
+			var pathErr *os.PathError
+			if errors.As(err, &pathErr) {
+				if errors.Is(pathErr.Err, os.ErrNotExist) {
+					return nil, NewError(nil, ctx.NewStringf("failed to read file %v (file not found)", path))
+				}
+			}
+			return nil, NewError(nil, ctx.NewStringf("failed to read file %v (%s)", path, err.Error()))
 		}
 		return ctx.NewString(string(data)), nil
 	})

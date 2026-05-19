@@ -6141,8 +6141,10 @@ def builtin_fs_read(path: String) -> Union[Value, Error]:
         with open(path.runes, "rb") as f:
             data = f.read()
         return String.new(data)
-    except Exception:
-        return Error(None, f"failed to read file {path}")
+    except FileNotFoundError:
+        return Error(None, f"failed to read file {path} (file not found)")
+    except Exception as e:
+        return Error(None, f"failed to read file {path} ({str(e)})")
 
 
 @builtin("fs::write", [String, String])
