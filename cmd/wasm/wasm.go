@@ -610,7 +610,7 @@ func eval(source string, stdout, stderr io.Writer) (mellifera.Value, error) {
 		return nil, err
 	}
 
-	return program.Eval(ctx, &ctx.BaseEnvironment)
+	return program.Eval(ctx, ctx.BaseEnvironment)
 }
 
 func main() {

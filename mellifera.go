@@ -246,7 +246,7 @@ type Context struct {
 	False *Boolean
 
 	// Base Environment
-	BaseEnvironment Environment
+	BaseEnvironment *Environment
 
 	// Context-Specific Random Number Generation State
 	rng *rand.Rand
@@ -629,8 +629,8 @@ func (ctx *Context) NewValueFromSource(name string, source string) (Value, error
 	if err != nil {
 		return nil, err
 	}
-	env := NewEnvironment(&ctx.BaseEnvironment)
-	return program.Eval(ctx, &env)
+	env := NewEnvironment(ctx.BaseEnvironment)
+	return program.Eval(ctx, env)
 }
 
 func (ctx *Context) NewValueFromSourceOrPanic(name string, source string) Value {
@@ -2936,8 +2936,8 @@ type Environment struct {
 	match *RegexpMatch // Optional
 }
 
-func NewEnvironment(outer *Environment) Environment {
-	return Environment{
+func NewEnvironment(outer *Environment) *Environment {
+	return &Environment{
 		outer: outer,
 		store: map[string]Value{},
 	}
@@ -4893,7 +4893,7 @@ func (self AstConditional) exec(ctx *Context, env *Environment) (ControlFlow, bo
 
 	if valueBoolean.data {
 		env := NewEnvironment(env)
-		result, err := self.Body.Eval(ctx, &env)
+		result, err := self.Body.Eval(ctx, env)
 		return result, true, err
 	}
 
@@ -5051,7 +5051,7 @@ func (self AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, e
 				return nil, err
 			}
 			loopEnv.Let(self.IdentifierK.Name.data, iterated.Copy())
-			result, err := self.Block.Eval(ctx, &loopEnv)
+			result, err := self.Block.Eval(ctx, loopEnv)
 			if err != nil {
 				return nil, err
 			}
@@ -5087,7 +5087,7 @@ func (self AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, e
 		}
 		for i := range collectionInteger {
 			loopEnv.Let(self.IdentifierK.Name.data, ctx.NewNumber(float64(i)))
-			result, err := self.Block.Eval(ctx, &loopEnv)
+			result, err := self.Block.Eval(ctx, loopEnv)
 			if err != nil {
 				return nil, err
 			}
@@ -5119,7 +5119,7 @@ func (self AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, e
 				k = x.Copy()
 			}
 			loopEnv.Let(self.IdentifierK.Name.data, k)
-			result, err := self.Block.Eval(ctx, &loopEnv)
+			result, err := self.Block.Eval(ctx, loopEnv)
 			if err != nil {
 				return nil, err
 			}
@@ -5154,7 +5154,7 @@ func (self AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, e
 				}
 				loopEnv.Let(self.IdentifierV.Name.data, v)
 			}
-			result, err := self.Block.Eval(ctx, &loopEnv)
+			result, err := self.Block.Eval(ctx, loopEnv)
 			if err != nil {
 				return nil, err
 			}
@@ -5183,7 +5183,7 @@ func (self AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, e
 		}
 		for _, element := range collectionSet.Elements() {
 			loopEnv.Let(self.IdentifierK.Name.data, element.Copy())
-			result, err := self.Block.Eval(ctx, &loopEnv)
+			result, err := self.Block.Eval(ctx, loopEnv)
 			if err != nil {
 				return nil, err
 			}
@@ -5246,7 +5246,7 @@ func (self AstStatementWhile) Eval(ctx *Context, env *Environment) (ControlFlow,
 		}
 
 		loopEnv := NewEnvironment(env)
-		result, err := self.Block.Eval(ctx, &loopEnv)
+		result, err := self.Block.Eval(ctx, loopEnv)
 		if err != nil {
 			return nil, err
 		}
@@ -5339,7 +5339,7 @@ func (self AstStatementTry) Eval(ctx *Context, env *Environment) (ControlFlow, e
 		if self.CatchIdentifier != nil {
 			env.Let(self.CatchIdentifier.Name.data, error.Value)
 		}
-		return self.CatchBlock.Eval(ctx, &env)
+		return self.CatchBlock.Eval(ctx, env)
 	}
 	if _, ok := result.(Return); ok {
 		return result, nil
@@ -6954,7 +6954,7 @@ func Call(ctx *Context, location *SourceLocation, callable Value, arguments []Va
 			env.Let(parameter.Name.data, arguments[i])
 		}
 
-		result, err := function.Ast.Body.Eval(ctx, &env)
+		result, err := function.Ast.Body.Eval(ctx, env)
 		if err != nil {
 			if e, ok := err.(Error); ok {
 				e.Trace = append(e.Trace, TraceElement{location, function.String()})
@@ -8734,7 +8734,7 @@ func BuiltinImport(ctx *Context) *Builtin {
 	return ctx.NewBuiltin("import", []Type{TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
 		target := arguments[0].(*String)
 
-		env := NewEnvironment(&ctx.BaseEnvironment)
+		env := NewEnvironment(ctx.BaseEnvironment)
 		module, err := ctx.BaseEnvironment.Get("module")
 		if err != nil {
 			return nil, NewError(nil, ctx.NewString(err.Error()))
@@ -8802,7 +8802,7 @@ func BuiltinImport(ctx *Context) *Builtin {
 			if err != nil {
 				return nil, NewError(nil, ctx.NewString(err.Error()))
 			}
-			result, err = program.Eval(ctx, &env)
+			result, err = program.Eval(ctx, env)
 			if err != nil {
 				if e, ok := err.(Error); ok {
 					return nil, e
@@ -8910,7 +8910,7 @@ func BuiltinCombDecode(ctx *Context) *Builtin {
 			return nil, err
 		}
 		env := NewEnvironment(nil)
-		return expr.Eval(ctx, &env)
+		return expr.Eval(ctx, env)
 	})
 }
 
