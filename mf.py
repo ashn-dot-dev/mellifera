@@ -3738,7 +3738,11 @@ class AstStatementFor(AstStatement):
                     self.location,
                     f"attempted iteration over non-integer number {quote(collection)}",
                 )
-            for i in range(int(float(collection.data))):
+            try:
+                collection_integer = collection.as_index()
+            except Exception as e:
+                return Error(self.location, str(e))
+            for i in range(collection_integer):
                 loop_env.let(self.identifier_k.name, Number.new(i))
                 result = self.block.eval(loop_env)
                 if isinstance(result, Return):

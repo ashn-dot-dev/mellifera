@@ -5,6 +5,18 @@ for x in 3 {
 print("\n");
 
 try {
+    for x in -3 { }
+} catch err {
+    dumpln(err);
+}
+
+try {
+    for x in math::pow(2, 32) { }
+} catch err {
+    dumpln(err);
+}
+
+try {
     for x.& in 3 { }
 } catch err {
     dumpln(err);
@@ -135,6 +147,8 @@ try {
 # x is 1
 # x is 2
 #
+# "integer -3 is outside the indexable integer range"
+# "integer 4294967296 is outside the indexable integer range"
 # "cannot use a key-reference over type `number`"
 # "attempted key-value iteration over type `number`"
 #

@@ -5067,11 +5067,14 @@ func (self AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, e
 				ctx.NewStringf("cannot use a key-reference over type %s", quote(collection.Typename())),
 			)
 		}
-		collectionInt, err := ValueAsIndex(collectionNumber)
+		collectionInteger, err := ValueAsIndex(collectionNumber)
 		if err != nil {
-			return nil, err
+			return nil, NewError(
+				self.Location,
+				ctx.NewString(err.Error()),
+			)
 		}
-		for i := range collectionInt {
+		for i := range collectionInteger {
 			loopEnv.Let(self.IdentifierK.Name.data, ctx.NewNumber(float64(i)))
 			result, err := self.Block.Eval(ctx, &loopEnv)
 			if err != nil {
