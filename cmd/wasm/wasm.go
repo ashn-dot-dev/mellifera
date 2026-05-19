@@ -573,33 +573,33 @@ func eval(source string, stdout, stderr io.Writer) (mellifera.Value, error) {
 	ctx.Stderr = stderr
 
 	JsValueType = ctx.NewMetaMap("js::value", []mellifera.MapPair{
-		{ctx.NewString("get"), BuiltinJsValueGet(&ctx)},
-		{ctx.NewString("set"), BuiltinJsValueSet(&ctx)},
-		{ctx.NewString("delete"), BuiltinJsValueDelete(&ctx)},
-		{ctx.NewString("get_index"), BuiltinJsValueGetIndex(&ctx)},
-		{ctx.NewString("set_index"), BuiltinJsValueSetIndex(&ctx)},
-		{ctx.NewString("call"), BuiltinJsValueCall(&ctx)},
+		{ctx.NewString("get"), BuiltinJsValueGet(ctx)},
+		{ctx.NewString("set"), BuiltinJsValueSet(ctx)},
+		{ctx.NewString("delete"), BuiltinJsValueDelete(ctx)},
+		{ctx.NewString("get_index"), BuiltinJsValueGetIndex(ctx)},
+		{ctx.NewString("set_index"), BuiltinJsValueSetIndex(ctx)},
+		{ctx.NewString("call"), BuiltinJsValueCall(ctx)},
 	}).Freeze().(*mellifera.Map)
 	ctx.BaseEnvironment.Let("js", ctx.NewMap([]mellifera.MapPair{
 		{ctx.NewString("value"), JsValueType},
-		{ctx.NewString("from_mellifera"), BuiltinJsFromMellifera(&ctx)},
-		{ctx.NewString("into_mellifera"), BuiltinJsIntoMellifera(&ctx)},
-		{ctx.NewString("is_undefined"), BuiltinJsIsUndefined(&ctx)},
-		{ctx.NewString("is_null"), BuiltinJsIsNull(&ctx)},
-		{ctx.NewString("is_boolean"), BuiltinJsIsBoolean(&ctx)},
-		{ctx.NewString("is_number"), BuiltinJsIsNumber(&ctx)},
-		{ctx.NewString("is_string"), BuiltinJsIsString(&ctx)},
-		{ctx.NewString("is_symbol"), BuiltinJsIsSymbol(&ctx)},
-		{ctx.NewString("is_array"), BuiltinJsIsArray(&ctx)},
-		{ctx.NewString("is_object"), BuiltinJsIsObject(&ctx)},
-		{ctx.NewString("is_function"), BuiltinJsIsFunction(&ctx)},
-		{ctx.NewString("call"), BuiltinJsCall(&ctx)},
-		{ctx.NewString("call_new"), BuiltinJsCallNew(&ctx)},
-		{ctx.NewString("global"), BuiltinJsGlobal(&ctx)},
-		{ctx.NewString("typeof"), BuiltinJsTypeof(&ctx)},
+		{ctx.NewString("from_mellifera"), BuiltinJsFromMellifera(ctx)},
+		{ctx.NewString("into_mellifera"), BuiltinJsIntoMellifera(ctx)},
+		{ctx.NewString("is_undefined"), BuiltinJsIsUndefined(ctx)},
+		{ctx.NewString("is_null"), BuiltinJsIsNull(ctx)},
+		{ctx.NewString("is_boolean"), BuiltinJsIsBoolean(ctx)},
+		{ctx.NewString("is_number"), BuiltinJsIsNumber(ctx)},
+		{ctx.NewString("is_string"), BuiltinJsIsString(ctx)},
+		{ctx.NewString("is_symbol"), BuiltinJsIsSymbol(ctx)},
+		{ctx.NewString("is_array"), BuiltinJsIsArray(ctx)},
+		{ctx.NewString("is_object"), BuiltinJsIsObject(ctx)},
+		{ctx.NewString("is_function"), BuiltinJsIsFunction(ctx)},
+		{ctx.NewString("call"), BuiltinJsCall(ctx)},
+		{ctx.NewString("call_new"), BuiltinJsCallNew(ctx)},
+		{ctx.NewString("global"), BuiltinJsGlobal(ctx)},
+		{ctx.NewString("typeof"), BuiltinJsTypeof(ctx)},
 	}).Freeze())
 
-	lexer := mellifera.NewLexer(&ctx, source, &mellifera.SourceLocation{"<program>", 1})
+	lexer := mellifera.NewLexer(ctx, source, &mellifera.SourceLocation{"<program>", 1})
 	parser, err := mellifera.NewParser(&lexer)
 	if err != nil {
 		return nil, err
@@ -610,7 +610,7 @@ func eval(source string, stdout, stderr io.Writer) (mellifera.Value, error) {
 		return nil, err
 	}
 
-	return program.Eval(&ctx, &ctx.BaseEnvironment)
+	return program.Eval(ctx, &ctx.BaseEnvironment)
 }
 
 func main() {

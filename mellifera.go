@@ -263,8 +263,8 @@ type Context struct {
 	constStringNext       *String
 }
 
-func NewContext() Context {
-	ctx := Context{}
+func NewContext() *Context {
+	ctx := &Context{}
 
 	ctx.Stdin = os.Stdin
 	ctx.Stdout = os.Stdout
@@ -272,85 +272,85 @@ func NewContext() Context {
 
 	ctx.functionMeta = ctx.NewMetaMap("function", nil)
 	ctx.booleanMeta = ctx.NewMetaMap("boolean", []MapPair{
-		{ctx.NewString("init"), BuiltinBooleanInit(&ctx)},
+		{ctx.NewString("init"), BuiltinBooleanInit(ctx)},
 	})
 	ctx.numberMeta = ctx.NewMetaMap("number", []MapPair{
 		{ctx.NewString("MAX_SAFE_INTEGER"), ctx.NewNumber(MAX_SAFE_INTEGER)},
 		{ctx.NewString("MIN_SAFE_INTEGER"), ctx.NewNumber(MIN_SAFE_INTEGER)},
-		{ctx.NewString("init"), BuiltinNumberInit(&ctx)},
-		{ctx.NewString("is_nan"), BuiltinNumberIsNan(&ctx)},
-		{ctx.NewString("is_inf"), BuiltinNumberIsInf(&ctx)},
-		{ctx.NewString("is_integer"), BuiltinNumberIsInteger(&ctx)},
-		{ctx.NewString("fixed"), BuiltinNumberFixed(&ctx)},
-		{ctx.NewString("trunc"), BuiltinNumberTrunc(&ctx)},
-		{ctx.NewString("round"), BuiltinNumberRound(&ctx)},
-		{ctx.NewString("floor"), BuiltinNumberFloor(&ctx)},
-		{ctx.NewString("ceil"), BuiltinNumberCeil(&ctx)},
+		{ctx.NewString("init"), BuiltinNumberInit(ctx)},
+		{ctx.NewString("is_nan"), BuiltinNumberIsNan(ctx)},
+		{ctx.NewString("is_inf"), BuiltinNumberIsInf(ctx)},
+		{ctx.NewString("is_integer"), BuiltinNumberIsInteger(ctx)},
+		{ctx.NewString("fixed"), BuiltinNumberFixed(ctx)},
+		{ctx.NewString("trunc"), BuiltinNumberTrunc(ctx)},
+		{ctx.NewString("round"), BuiltinNumberRound(ctx)},
+		{ctx.NewString("floor"), BuiltinNumberFloor(ctx)},
+		{ctx.NewString("ceil"), BuiltinNumberCeil(ctx)},
 	})
 	ctx.stringMeta = ctx.NewMetaMap("string", []MapPair{
-		{ctx.NewString("init"), BuiltinStringInit(&ctx)},
-		{ctx.NewString("bytes"), BuiltinStringBytes(&ctx)},
-		{ctx.NewString("runes"), BuiltinStringRunes(&ctx)},
-		{ctx.NewString("count"), BuiltinStringCount(&ctx)},
-		{ctx.NewString("is_empty"), BuiltinStringIsEmpty(&ctx)},
-		{ctx.NewString("contains"), BuiltinStringContains(&ctx)},
-		{ctx.NewString("starts_with"), BuiltinStringStartsWith(&ctx)},
-		{ctx.NewString("ends_with"), BuiltinStringEndsWith(&ctx)},
-		{ctx.NewString("trim"), BuiltinStringTrim(&ctx)},
-		{ctx.NewString("find"), BuiltinStringFind(&ctx)},
-		{ctx.NewString("rfind"), BuiltinStringRfind(&ctx)},
-		{ctx.NewString("slice"), BuiltinStringSlice(&ctx)},
-		{ctx.NewString("split"), BuiltinStringSplit(&ctx)},
-		{ctx.NewString("join"), BuiltinStringJoin(&ctx)},
-		{ctx.NewString("cut"), BuiltinStringCut(&ctx)},
-		{ctx.NewString("replace"), BuiltinStringReplace(&ctx)},
-		{ctx.NewString("to_title"), BuiltinStringToTitle(&ctx)},
-		{ctx.NewString("to_upper"), BuiltinStringToUpper(&ctx)},
-		{ctx.NewString("to_lower"), BuiltinStringToLower(&ctx)},
+		{ctx.NewString("init"), BuiltinStringInit(ctx)},
+		{ctx.NewString("bytes"), BuiltinStringBytes(ctx)},
+		{ctx.NewString("runes"), BuiltinStringRunes(ctx)},
+		{ctx.NewString("count"), BuiltinStringCount(ctx)},
+		{ctx.NewString("is_empty"), BuiltinStringIsEmpty(ctx)},
+		{ctx.NewString("contains"), BuiltinStringContains(ctx)},
+		{ctx.NewString("starts_with"), BuiltinStringStartsWith(ctx)},
+		{ctx.NewString("ends_with"), BuiltinStringEndsWith(ctx)},
+		{ctx.NewString("trim"), BuiltinStringTrim(ctx)},
+		{ctx.NewString("find"), BuiltinStringFind(ctx)},
+		{ctx.NewString("rfind"), BuiltinStringRfind(ctx)},
+		{ctx.NewString("slice"), BuiltinStringSlice(ctx)},
+		{ctx.NewString("split"), BuiltinStringSplit(ctx)},
+		{ctx.NewString("join"), BuiltinStringJoin(ctx)},
+		{ctx.NewString("cut"), BuiltinStringCut(ctx)},
+		{ctx.NewString("replace"), BuiltinStringReplace(ctx)},
+		{ctx.NewString("to_title"), BuiltinStringToTitle(ctx)},
+		{ctx.NewString("to_upper"), BuiltinStringToUpper(ctx)},
+		{ctx.NewString("to_lower"), BuiltinStringToLower(ctx)},
 	})
 	ctx.regexpMeta = ctx.NewMetaMap("regexp", []MapPair{
-		{ctx.NewString("init"), BuiltinRegexpInit(&ctx)},
-		{ctx.NewString("split"), BuiltinRegexpSplit(&ctx)},
-		{ctx.NewString("replace"), BuiltinRegexpReplace(&ctx)},
+		{ctx.NewString("init"), BuiltinRegexpInit(ctx)},
+		{ctx.NewString("split"), BuiltinRegexpSplit(ctx)},
+		{ctx.NewString("replace"), BuiltinRegexpReplace(ctx)},
 	})
 	ctx.vectorMeta = ctx.NewMetaMap("vector", []MapPair{
-		{ctx.NewString("init"), BuiltinVectorInit(&ctx)},
-		{ctx.NewString("count"), BuiltinVectorCount(&ctx)},
-		{ctx.NewString("is_empty"), BuiltinVectorIsEmpty(&ctx)},
-		{ctx.NewString("contains"), BuiltinVectorContains(&ctx)},
-		{ctx.NewString("any"), BuiltinVectorAny(&ctx)},
-		{ctx.NewString("all"), BuiltinVectorAll(&ctx)},
-		{ctx.NewString("map"), BuiltinVectorMap(&ctx)},
-		{ctx.NewString("filter"), BuiltinVectorFilter(&ctx)},
-		{ctx.NewString("find"), BuiltinVectorFind(&ctx)},
-		{ctx.NewString("rfind"), BuiltinVectorRfind(&ctx)},
-		{ctx.NewString("push"), BuiltinVectorPush(&ctx)},
-		{ctx.NewString("pop"), BuiltinVectorPop(&ctx)},
-		{ctx.NewString("insert"), BuiltinVectorInsert(&ctx)},
-		{ctx.NewString("remove"), BuiltinVectorRemove(&ctx)},
-		{ctx.NewString("slice"), BuiltinVectorSlice(&ctx)},
-		{ctx.NewString("reversed"), BuiltinVectorReversed(&ctx)},
+		{ctx.NewString("init"), BuiltinVectorInit(ctx)},
+		{ctx.NewString("count"), BuiltinVectorCount(ctx)},
+		{ctx.NewString("is_empty"), BuiltinVectorIsEmpty(ctx)},
+		{ctx.NewString("contains"), BuiltinVectorContains(ctx)},
+		{ctx.NewString("any"), BuiltinVectorAny(ctx)},
+		{ctx.NewString("all"), BuiltinVectorAll(ctx)},
+		{ctx.NewString("map"), BuiltinVectorMap(ctx)},
+		{ctx.NewString("filter"), BuiltinVectorFilter(ctx)},
+		{ctx.NewString("find"), BuiltinVectorFind(ctx)},
+		{ctx.NewString("rfind"), BuiltinVectorRfind(ctx)},
+		{ctx.NewString("push"), BuiltinVectorPush(ctx)},
+		{ctx.NewString("pop"), BuiltinVectorPop(ctx)},
+		{ctx.NewString("insert"), BuiltinVectorInsert(ctx)},
+		{ctx.NewString("remove"), BuiltinVectorRemove(ctx)},
+		{ctx.NewString("slice"), BuiltinVectorSlice(ctx)},
+		{ctx.NewString("reversed"), BuiltinVectorReversed(ctx)},
 		{ctx.NewString("sorted"), ctx.NewNull()},        // deferred instantiation
 		{ctx.NewString("sorted_by"), ctx.NewNull()},     // deferred instantiation
 		{ctx.NewString("into_iterator"), ctx.NewNull()}, // deferred instantiation
 	})
 	ctx.mapMeta = ctx.NewMetaMap("map", []MapPair{
-		{ctx.NewString("count"), BuiltinMapCount(&ctx)},
-		{ctx.NewString("is_empty"), BuiltinMapIsEmpty(&ctx)},
-		{ctx.NewString("contains"), BuiltinMapContains(&ctx)},
-		{ctx.NewString("insert"), BuiltinMapInsert(&ctx)},
-		{ctx.NewString("remove"), BuiltinMapRemove(&ctx)},
-		{ctx.NewString("keys"), BuiltinMapKeys(&ctx)},
-		{ctx.NewString("values"), BuiltinMapValues(&ctx)},
-		{ctx.NewString("pairs"), BuiltinMapPairs(&ctx)},
+		{ctx.NewString("count"), BuiltinMapCount(ctx)},
+		{ctx.NewString("is_empty"), BuiltinMapIsEmpty(ctx)},
+		{ctx.NewString("contains"), BuiltinMapContains(ctx)},
+		{ctx.NewString("insert"), BuiltinMapInsert(ctx)},
+		{ctx.NewString("remove"), BuiltinMapRemove(ctx)},
+		{ctx.NewString("keys"), BuiltinMapKeys(ctx)},
+		{ctx.NewString("values"), BuiltinMapValues(ctx)},
+		{ctx.NewString("pairs"), BuiltinMapPairs(ctx)},
 		{ctx.NewString("union"), ctx.NewNull()}, // deferred instantiation
 	})
 	ctx.setMeta = ctx.NewMetaMap("set", []MapPair{
-		{ctx.NewString("count"), BuiltinSetCount(&ctx)},
-		{ctx.NewString("is_empty"), BuiltinSetIsEmpty(&ctx)},
-		{ctx.NewString("contains"), BuiltinSetContains(&ctx)},
-		{ctx.NewString("insert"), BuiltinSetInsert(&ctx)},
-		{ctx.NewString("remove"), BuiltinSetRemove(&ctx)},
+		{ctx.NewString("count"), BuiltinSetCount(ctx)},
+		{ctx.NewString("is_empty"), BuiltinSetIsEmpty(ctx)},
+		{ctx.NewString("contains"), BuiltinSetContains(ctx)},
+		{ctx.NewString("insert"), BuiltinSetInsert(ctx)},
+		{ctx.NewString("remove"), BuiltinSetRemove(ctx)},
 		{ctx.NewString("union"), ctx.NewNull()},        // deferred instantiation
 		{ctx.NewString("intersection"), ctx.NewNull()}, // deferred instantiation
 		{ctx.NewString("difference"), ctx.NewNull()},   // deferred instantiation
@@ -388,74 +388,74 @@ func NewContext() Context {
 	ctx.BaseEnvironment.Let("iterator", ctx.NewValueFromSourceOrPanic("", _ITERATOR_SOURCE))
 	ctx.BaseEnvironment.Let("NaN", ctx.NewNumber(math.NaN()))
 	ctx.BaseEnvironment.Let("Inf", ctx.NewNumber(math.Inf(+1)))
-	ctx.BaseEnvironment.Let("exit", BuiltinExit(&ctx))
-	ctx.BaseEnvironment.Let("assert", BuiltinAssert(&ctx))
-	ctx.BaseEnvironment.Let("typeof", BuiltinTypeof(&ctx))
-	ctx.BaseEnvironment.Let("typename", BuiltinTypename(&ctx))
-	ctx.BaseEnvironment.Let("repr", BuiltinRepr(&ctx))
-	ctx.BaseEnvironment.Let("input", BuiltinInput(&ctx))
-	ctx.BaseEnvironment.Let("inputln", BuiltinInputln(&ctx))
-	ctx.BaseEnvironment.Let("dump", BuiltinDump(&ctx))
-	ctx.BaseEnvironment.Let("dumpln", BuiltinDumpln(&ctx))
-	ctx.BaseEnvironment.Let("print", BuiltinPrint(&ctx))
-	ctx.BaseEnvironment.Let("println", BuiltinPrintln(&ctx))
-	ctx.BaseEnvironment.Let("eprint", BuiltinEprint(&ctx))
-	ctx.BaseEnvironment.Let("eprintln", BuiltinEprintln(&ctx))
+	ctx.BaseEnvironment.Let("exit", BuiltinExit(ctx))
+	ctx.BaseEnvironment.Let("assert", BuiltinAssert(ctx))
+	ctx.BaseEnvironment.Let("typeof", BuiltinTypeof(ctx))
+	ctx.BaseEnvironment.Let("typename", BuiltinTypename(ctx))
+	ctx.BaseEnvironment.Let("repr", BuiltinRepr(ctx))
+	ctx.BaseEnvironment.Let("input", BuiltinInput(ctx))
+	ctx.BaseEnvironment.Let("inputln", BuiltinInputln(ctx))
+	ctx.BaseEnvironment.Let("dump", BuiltinDump(ctx))
+	ctx.BaseEnvironment.Let("dumpln", BuiltinDumpln(ctx))
+	ctx.BaseEnvironment.Let("print", BuiltinPrint(ctx))
+	ctx.BaseEnvironment.Let("println", BuiltinPrintln(ctx))
+	ctx.BaseEnvironment.Let("eprint", BuiltinEprint(ctx))
+	ctx.BaseEnvironment.Let("eprintln", BuiltinEprintln(ctx))
 	ctx.BaseEnvironment.Let("range", ctx.NewNull()) // deferred instantiation
-	ctx.BaseEnvironment.Let("min", BuiltinMin(&ctx))
-	ctx.BaseEnvironment.Let("max", BuiltinMax(&ctx))
-	ctx.BaseEnvironment.Let("import", BuiltinImport(&ctx))
+	ctx.BaseEnvironment.Let("min", BuiltinMin(ctx))
+	ctx.BaseEnvironment.Let("max", BuiltinMax(ctx))
+	ctx.BaseEnvironment.Let("import", BuiltinImport(ctx))
 	ctx.BaseEnvironment.Let("comb", ctx.NewMap([]MapPair{
-		{ctx.NewString("decode"), BuiltinCombDecode(&ctx)},
-		{ctx.NewString("encode"), BuiltinCombEncode(&ctx)},
-		{ctx.NewString("encode_ex"), BuiltinCombEncodeEx(&ctx)},
+		{ctx.NewString("decode"), BuiltinCombDecode(ctx)},
+		{ctx.NewString("encode"), BuiltinCombEncode(ctx)},
+		{ctx.NewString("encode_ex"), BuiltinCombEncodeEx(ctx)},
 	}).Freeze())
 	ctx.BaseEnvironment.Let("fs", ctx.NewMap([]MapPair{
-		{ctx.NewString("read"), BuiltinFsRead(&ctx)},
-		{ctx.NewString("write"), BuiltinFsWrite(&ctx)},
-		{ctx.NewString("append"), BuiltinFsAppend(&ctx)},
+		{ctx.NewString("read"), BuiltinFsRead(ctx)},
+		{ctx.NewString("write"), BuiltinFsWrite(ctx)},
+		{ctx.NewString("append"), BuiltinFsAppend(ctx)},
 	}).Freeze())
 	ctx.BaseEnvironment.Let("html", ctx.NewMap([]MapPair{
-		{ctx.NewString("escape"), BuiltinHtmlEscape(&ctx)},
+		{ctx.NewString("escape"), BuiltinHtmlEscape(ctx)},
 	}).Freeze())
 	ctx.BaseEnvironment.Let("json", ctx.NewMap([]MapPair{
-		{ctx.NewString("decode"), BuiltinJsonDecode(&ctx)},
-		{ctx.NewString("encode"), BuiltinJsonEncode(&ctx)},
+		{ctx.NewString("decode"), BuiltinJsonDecode(ctx)},
+		{ctx.NewString("encode"), BuiltinJsonEncode(ctx)},
 	}).Freeze())
 	ctx.BaseEnvironment.Let("math", ctx.NewMap([]MapPair{
 		{ctx.NewString("e"), ctx.NewNumber(math.E)},
 		{ctx.NewString("pi"), ctx.NewNumber(math.Pi)},
-		{ctx.NewString("is_nan"), BuiltinMathIsNaN(&ctx)},
-		{ctx.NewString("is_inf"), BuiltinMathIsInf(&ctx)},
-		{ctx.NewString("is_integer"), BuiltinMathIsInteger(&ctx)},
-		{ctx.NewString("trunc"), BuiltinMathTrunc(&ctx)},
-		{ctx.NewString("round"), BuiltinMathRound(&ctx)},
-		{ctx.NewString("floor"), BuiltinMathFloor(&ctx)},
-		{ctx.NewString("ceil"), BuiltinMathCeil(&ctx)},
-		{ctx.NewString("abs"), BuiltinMathAbs(&ctx)},
-		{ctx.NewString("exp"), BuiltinMathExp(&ctx)},
-		{ctx.NewString("exp2"), BuiltinMathExp2(&ctx)},
-		{ctx.NewString("exp10"), BuiltinMathExp10(&ctx)},
-		{ctx.NewString("log"), BuiltinMathLog(&ctx)},
-		{ctx.NewString("log2"), BuiltinMathLog2(&ctx)},
-		{ctx.NewString("log10"), BuiltinMathLog10(&ctx)},
-		{ctx.NewString("pow"), BuiltinMathPow(&ctx)},
-		{ctx.NewString("sqrt"), BuiltinMathSqrt(&ctx)},
-		{ctx.NewString("cbrt"), BuiltinMathCbrt(&ctx)},
-		{ctx.NewString("clamp"), BuiltinMathClamp(&ctx)},
-		{ctx.NewString("sin"), BuiltinMathSin(&ctx)},
-		{ctx.NewString("cos"), BuiltinMathCos(&ctx)},
-		{ctx.NewString("tan"), BuiltinMathTan(&ctx)},
-		{ctx.NewString("asin"), BuiltinMathAsin(&ctx)},
-		{ctx.NewString("acos"), BuiltinMathAcos(&ctx)},
-		{ctx.NewString("atan"), BuiltinMathAtan(&ctx)},
-		{ctx.NewString("atan2"), BuiltinMathAtan2(&ctx)},
-		{ctx.NewString("sinh"), BuiltinMathSinh(&ctx)},
-		{ctx.NewString("cosh"), BuiltinMathCosh(&ctx)},
-		{ctx.NewString("tanh"), BuiltinMathTanh(&ctx)},
-		{ctx.NewString("asinh"), BuiltinMathAsinh(&ctx)},
-		{ctx.NewString("acosh"), BuiltinMathAcosh(&ctx)},
-		{ctx.NewString("atanh"), BuiltinMathAtanh(&ctx)},
+		{ctx.NewString("is_nan"), BuiltinMathIsNaN(ctx)},
+		{ctx.NewString("is_inf"), BuiltinMathIsInf(ctx)},
+		{ctx.NewString("is_integer"), BuiltinMathIsInteger(ctx)},
+		{ctx.NewString("trunc"), BuiltinMathTrunc(ctx)},
+		{ctx.NewString("round"), BuiltinMathRound(ctx)},
+		{ctx.NewString("floor"), BuiltinMathFloor(ctx)},
+		{ctx.NewString("ceil"), BuiltinMathCeil(ctx)},
+		{ctx.NewString("abs"), BuiltinMathAbs(ctx)},
+		{ctx.NewString("exp"), BuiltinMathExp(ctx)},
+		{ctx.NewString("exp2"), BuiltinMathExp2(ctx)},
+		{ctx.NewString("exp10"), BuiltinMathExp10(ctx)},
+		{ctx.NewString("log"), BuiltinMathLog(ctx)},
+		{ctx.NewString("log2"), BuiltinMathLog2(ctx)},
+		{ctx.NewString("log10"), BuiltinMathLog10(ctx)},
+		{ctx.NewString("pow"), BuiltinMathPow(ctx)},
+		{ctx.NewString("sqrt"), BuiltinMathSqrt(ctx)},
+		{ctx.NewString("cbrt"), BuiltinMathCbrt(ctx)},
+		{ctx.NewString("clamp"), BuiltinMathClamp(ctx)},
+		{ctx.NewString("sin"), BuiltinMathSin(ctx)},
+		{ctx.NewString("cos"), BuiltinMathCos(ctx)},
+		{ctx.NewString("tan"), BuiltinMathTan(ctx)},
+		{ctx.NewString("asin"), BuiltinMathAsin(ctx)},
+		{ctx.NewString("acos"), BuiltinMathAcos(ctx)},
+		{ctx.NewString("atan"), BuiltinMathAtan(ctx)},
+		{ctx.NewString("atan2"), BuiltinMathAtan2(ctx)},
+		{ctx.NewString("sinh"), BuiltinMathSinh(ctx)},
+		{ctx.NewString("cosh"), BuiltinMathCosh(ctx)},
+		{ctx.NewString("tanh"), BuiltinMathTanh(ctx)},
+		{ctx.NewString("asinh"), BuiltinMathAsinh(ctx)},
+		{ctx.NewString("acosh"), BuiltinMathAcosh(ctx)},
+		{ctx.NewString("atanh"), BuiltinMathAtanh(ctx)},
 	}).Freeze())
 	ctx.BaseEnvironment.Let("module", ctx.NewMap([]MapPair{
 		{ctx.NewString("path"), ctx.NewNull()},
@@ -463,36 +463,36 @@ func NewContext() Context {
 		{ctx.NewString("directory"), ctx.NewNull()},
 	}).Freeze())
 	ctx.BaseEnvironment.Let("random", ctx.NewMap([]MapPair{
-		{ctx.NewString("seed"), BuiltinRandomSeed(&ctx)},
-		{ctx.NewString("integer"), BuiltinRandomInteger(&ctx)},
+		{ctx.NewString("seed"), BuiltinRandomSeed(ctx)},
+		{ctx.NewString("integer"), BuiltinRandomInteger(ctx)},
 	}).Freeze())
 	ctx.BaseEnvironment.Let("re", ctx.NewMap([]MapPair{
-		{ctx.NewString("split"), BuiltinReSplit(&ctx)},
-		{ctx.NewString("replace"), BuiltinReReplace(&ctx)},
+		{ctx.NewString("split"), BuiltinReSplit(ctx)},
+		{ctx.NewString("replace"), BuiltinReReplace(ctx)},
 	}).Freeze())
 	ctx.BaseEnvironment.Let("ty", ctx.NewMap([]MapPair{
-		{ctx.NewString("is"), BuiltinTyIs(&ctx)},
-		{ctx.NewString("is_null"), BuiltinTyIsNull(&ctx)},
-		{ctx.NewString("is_boolean"), BuiltinTyIsBoolean(&ctx)},
-		{ctx.NewString("is_number"), BuiltinTyIsNumber(&ctx)},
-		{ctx.NewString("is_string"), BuiltinTyIsString(&ctx)},
-		{ctx.NewString("is_regexp"), BuiltinTyIsRegexp(&ctx)},
-		{ctx.NewString("is_vector"), BuiltinTyIsVector(&ctx)},
-		{ctx.NewString("is_map"), BuiltinTyIsMap(&ctx)},
-		{ctx.NewString("is_set"), BuiltinTyIsSet(&ctx)},
-		{ctx.NewString("is_reference"), BuiltinTyIsReference(&ctx)},
-		{ctx.NewString("is_function"), BuiltinTyIsFunction(&ctx)},
+		{ctx.NewString("is"), BuiltinTyIs(ctx)},
+		{ctx.NewString("is_null"), BuiltinTyIsNull(ctx)},
+		{ctx.NewString("is_boolean"), BuiltinTyIsBoolean(ctx)},
+		{ctx.NewString("is_number"), BuiltinTyIsNumber(ctx)},
+		{ctx.NewString("is_string"), BuiltinTyIsString(ctx)},
+		{ctx.NewString("is_regexp"), BuiltinTyIsRegexp(ctx)},
+		{ctx.NewString("is_vector"), BuiltinTyIsVector(ctx)},
+		{ctx.NewString("is_map"), BuiltinTyIsMap(ctx)},
+		{ctx.NewString("is_set"), BuiltinTyIsSet(ctx)},
+		{ctx.NewString("is_reference"), BuiltinTyIsReference(ctx)},
+		{ctx.NewString("is_function"), BuiltinTyIsFunction(ctx)},
 	}).Freeze())
 
 	// Initialize builtins from source with deferred instantiation.
-	ctx.vectorMeta.data.Insert(ctx.NewString("sorted"), BuiltinVectorSorted(&ctx))
-	ctx.vectorMeta.data.Insert(ctx.NewString("sorted_by"), BuiltinVectorSortedBy(&ctx))
-	ctx.vectorMeta.data.Insert(ctx.NewString("into_iterator"), BuiltinVectorIntoIterator(&ctx))
-	ctx.mapMeta.data.Insert(ctx.NewString("union"), BuiltinMapUnion(&ctx))
-	ctx.setMeta.data.Insert(ctx.NewString("union"), BuiltinSetUnion(&ctx))
-	ctx.setMeta.data.Insert(ctx.NewString("intersection"), BuiltinSetIntersection(&ctx))
-	ctx.setMeta.data.Insert(ctx.NewString("difference"), BuiltinSetDifference(&ctx))
-	ctx.BaseEnvironment.Set("range", BuiltinRange(&ctx))
+	ctx.vectorMeta.data.Insert(ctx.NewString("sorted"), BuiltinVectorSorted(ctx))
+	ctx.vectorMeta.data.Insert(ctx.NewString("sorted_by"), BuiltinVectorSortedBy(ctx))
+	ctx.vectorMeta.data.Insert(ctx.NewString("into_iterator"), BuiltinVectorIntoIterator(ctx))
+	ctx.mapMeta.data.Insert(ctx.NewString("union"), BuiltinMapUnion(ctx))
+	ctx.setMeta.data.Insert(ctx.NewString("union"), BuiltinSetUnion(ctx))
+	ctx.setMeta.data.Insert(ctx.NewString("intersection"), BuiltinSetIntersection(ctx))
+	ctx.setMeta.data.Insert(ctx.NewString("difference"), BuiltinSetDifference(ctx))
+	ctx.BaseEnvironment.Set("range", BuiltinRange(ctx))
 
 	return ctx
 }

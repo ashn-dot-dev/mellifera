@@ -284,17 +284,17 @@ func main() {
 		os.Exit(1)
 	} else if cmds != nil || file != nil {
 		if cmds != nil && dumpTokens {
-			err = dumpTokensSource(&ctx, *cmds, &mellifera.SourceLocation{"<command>", 1})
+			err = dumpTokensSource(ctx, *cmds, &mellifera.SourceLocation{"<command>", 1})
 		} else if cmds != nil && dumpAst {
-			err = dumpAstSource(&ctx, *cmds, &mellifera.SourceLocation{"<command>", 1})
+			err = dumpAstSource(ctx, *cmds, &mellifera.SourceLocation{"<command>", 1})
 		} else if cmds != nil {
-			_, err = evalSource(&ctx, *cmds, &mellifera.SourceLocation{"<command>", 1})
+			_, err = evalSource(ctx, *cmds, &mellifera.SourceLocation{"<command>", 1})
 		} else if file != nil && dumpTokens {
-			err = dumpTokensFile(&ctx, *file)
+			err = dumpTokensFile(ctx, *file)
 		} else if file != nil && dumpAst {
-			err = dumpAstFile(&ctx, *file)
+			err = dumpAstFile(ctx, *file)
 		} else if file != nil {
-			_, err = evalFile(&ctx, *file)
+			_, err = evalFile(ctx, *file)
 		} else {
 			err = fmt.Errorf("unreachable\n")
 		}
