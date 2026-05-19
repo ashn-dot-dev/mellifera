@@ -8,6 +8,45 @@ try { dumpln( Set{}        + Set{}        ); } catch err { dumpln(err); }
 try { dumpln( 123.&        + 123.&        ); } catch err { dumpln(err); }
 try { dumpln( function(){} + function(){} ); } catch err { dumpln(err); }
 try { dumpln( println      + println      ); } catch err { dumpln(err); }
+
+print("\n");
+
+# Adding two vectors should create a new vector with deep-copied elements.
+let a = [[123, 456, 789]];
+let b = [["abc", "def", "hij"]];
+println($`a is {a}`);
+println($`b is {b}`);
+let c = a + b;
+println($`c is {c}`);
+
+a.push("foo");
+println($`after a.push("foo") a is {a}`);
+a[0].push("bar");
+println($`after a[0].push("bar") a is {a}`);
+b.push("qux");
+println($`after b.push("qux") b is {b}`);
+b[0].push("quz");
+println($`after b[0].push("quz") b is {b}`);
+println($`after these updates c is {c}`);
+
+print("\n");
+
+# Adding two vectors should create a new vector with deep-copied elements.
+let a = [[123, 456, 789]];
+let b = [["abc", "def", "hij"]];
+println($`a is {a}`);
+println($`b is {b}`);
+let c = a + b;
+println($`c is {c}`);
+
+c[0].push("foo");
+println($`after c[0].push("foo") a is {a}`);
+println($`after c[0].push("foo") b is {b}`);
+println($`after c[0].push("foo") c is {c}`);
+c[1].push("bar");
+println($`after c[1].push("bar") a is {a}`);
+println($`after c[1].push("bar") b is {b}`);
+println($`after c[1].push("bar") c is {c}`);
 ################################################################################
 # "attempted + operation with types `null` and `null`"
 # "attempted + operation with types `boolean` and `boolean`"
@@ -19,3 +58,22 @@ try { dumpln( println      + println      ); } catch err { dumpln(err); }
 # "attempted + operation with types `reference` and `reference`"
 # "attempted + operation with types `function` and `function`"
 # "attempted + operation with types `function` and `function`"
+#
+# a is [[123, 456, 789]]
+# b is [["abc", "def", "hij"]]
+# c is [[123, 456, 789], ["abc", "def", "hij"]]
+# after a.push("foo") a is [[123, 456, 789], "foo"]
+# after a[0].push("bar") a is [[123, 456, 789, "bar"], "foo"]
+# after b.push("qux") b is [["abc", "def", "hij"], "qux"]
+# after b[0].push("quz") b is [["abc", "def", "hij", "quz"], "qux"]
+# after these updates c is [[123, 456, 789], ["abc", "def", "hij"]]
+#
+# a is [[123, 456, 789]]
+# b is [["abc", "def", "hij"]]
+# c is [[123, 456, 789], ["abc", "def", "hij"]]
+# after c[0].push("foo") a is [[123, 456, 789]]
+# after c[0].push("foo") b is [["abc", "def", "hij"]]
+# after c[0].push("foo") c is [[123, 456, 789, "foo"], ["abc", "def", "hij"]]
+# after c[1].push("bar") a is [[123, 456, 789]]
+# after c[1].push("bar") b is [["abc", "def", "hij"]]
+# after c[1].push("bar") c is [[123, 456, 789, "foo"], ["abc", "def", "hij", "bar"]]

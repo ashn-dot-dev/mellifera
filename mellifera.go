@@ -4279,7 +4279,14 @@ func (self AstExpressionAdd) Eval(ctx *Context, env *Environment) (Value, error)
 	if lhsIsVector {
 		rhsVector, rhsIsVector := rhs.(*Vector)
 		if rhsIsVector {
-			return ctx.NewVector(append(append([]Value{}, lhsVector.Elements()...), rhsVector.Elements()...)), nil
+			elements := []Value{}
+			for _, element := range lhsVector.Elements() {
+				elements = append(elements, element.Copy())
+			}
+			for _, element := range rhsVector.Elements() {
+				elements = append(elements, element.Copy())
+			}
+			return ctx.NewVector(elements), nil
 		}
 	}
 
