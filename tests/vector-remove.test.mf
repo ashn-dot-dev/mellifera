@@ -4,16 +4,14 @@ dumpln(x);
 dumpln(y);
 
 try { x.remove(10); } catch err { dumpln(err); } # index out of bounds
+try { x.remove(-1); } catch err { dumpln(err); } # index out of bounds
 
 x.remove(0);
 x.remove(0);
 try { x.remove(0); } catch err { dumpln(err); } # index out of bounds
-
-let x = [123];
-try { x.remove(-1); } catch err { dumpln(err); } # index out of bounds
 ################################################################################
 # [123, 789]
 # 456
-# "attempted vector::remove with invalid index 10"
-# "attempted vector::remove with invalid index 0"
-# "attempted vector::remove with invalid index -1"
+# "attempted vector::remove with invalid index 10 (vector has a count of 2)"
+# "attempted vector::remove with invalid index -1 (integer -1 is outside the indexable integer range)"
+# "attempted vector::remove with invalid index 0 (vector has a count of 0)"

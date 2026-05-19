@@ -20,8 +20,9 @@ import (
 )
 
 const (
-	MAX_SAFE_INTEGER = +9007199254740991 // +(2**53 - 1)
-	MIN_SAFE_INTEGER = -9007199254740991 // -(2**53 - 1)
+	MAX_INDEX_INTEGER = 4294967295        // 2**32 - 1
+	MAX_SAFE_INTEGER  = +9007199254740991 // +(2**53 - 1)
+	MIN_SAFE_INTEGER  = -9007199254740991 // -(2**53 - 1)
 )
 
 // Utility function used to get the address of literals.
@@ -130,6 +131,24 @@ func ValueAsInt(value Value) (int, error) {
 	truncated := math.Trunc(number.data)
 	if truncated != number.data {
 		return 0, fmt.Errorf("cannot convert %v into an int without truncation", value)
+	}
+	return int(truncated), nil
+}
+
+func ValueAsIndex(value Value) (int, error) {
+	number, ok := value.(*Number)
+	if !ok {
+		return 0, fmt.Errorf("cannot convert %s-like value into an integer", value.Typename())
+	}
+	if math.IsInf(number.data, 0) || math.IsNaN(number.data) {
+		return 0, fmt.Errorf("cannot convert %v into an integer", value)
+	}
+	truncated := math.Trunc(number.data)
+	if truncated != number.data {
+		return 0, fmt.Errorf("cannot convert %v into an integer without truncation", value)
+	}
+	if truncated < 0 || truncated > MAX_INDEX_INTEGER {
+		return 0, fmt.Errorf("integer %v is outside the indexable integer range", value)
 	}
 	return int(truncated), nil
 }
@@ -1077,7 +1096,6 @@ func (self *Vector) Insert(index int, value Value) error {
 	return nil
 }
 
-// Returns nil when removing from an empty vector.
 func (self *Vector) Remove(index int) (Value, error) {
 	if self.IsImmutable() {
 		return nil, fmt.Errorf("attempted to modify immutable vector %v", self)
@@ -1085,7 +1103,7 @@ func (self *Vector) Remove(index int) (Value, error) {
 
 	self.CopyOnWrite()
 	if self.data == nil || len(self.data.elements) == 0 {
-		return nil, nil
+		return nil, fmt.Errorf("attempted to remove from an empty vector")
 	}
 
 	element := self.data.elements[index]
@@ -4484,11 +4502,11 @@ func (self AstExpressionAccessIndex) Eval(ctx *Context, env *Environment) (Value
 	}
 
 	if v, ok := store.(*Vector); ok {
-		index, err := ValueAsInt(field)
+		index, err := ValueAsIndex(field)
 		if err != nil {
 			return nil, NewError(
 				self.Location,
-				ctx.NewStringf("invalid vector access with index %v", index),
+				ctx.NewStringf("invalid vector access with index %v (%s)", index, err.Error()),
 			)
 		}
 
@@ -5049,7 +5067,7 @@ func (self AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, e
 				ctx.NewStringf("cannot use a key-reference over type %s", quote(collection.Typename())),
 			)
 		}
-		collectionInt, err := ValueAsInt(collectionNumber)
+		collectionInt, err := ValueAsIndex(collectionNumber)
 		if err != nil {
 			return nil, err
 		}
@@ -5453,21 +5471,19 @@ func (self AstStatementAssignment) Eval(ctx *Context, env *Environment) (Control
 		return nil, err
 	}
 
-	assignVector := func(storeVector *Vector, rhs Value, autoDeref bool) error {
-		index, err := ValueAsInt(field)
+	assignVector := func(storeVector *Vector, rhs Value) error {
+		index, err := ValueAsIndex(field)
 		if err != nil {
-			if autoDeref {
-				return NewError(
-					self.Location,
-					ctx.NewStringf("invalid reference to vector access with field %v", field),
-				)
-			}
-		}
-
-		if index < 0 || index >= storeVector.Count() {
 			return NewError(
 				self.Location,
-				ctx.NewStringf("invalid vector access with index %v", index),
+				ctx.NewStringf("invalid vector access with index %v (%s)", field, err.Error()),
+			)
+		}
+
+		if index >= storeVector.Count() {
+			return NewError(
+				self.Location,
+				ctx.NewStringf("invalid vector access with index %v (vector has a count of %v)", index, storeVector.Count()),
 			)
 		}
 
@@ -5475,7 +5491,7 @@ func (self AstStatementAssignment) Eval(ctx *Context, env *Environment) (Control
 		if err != nil {
 			return NewError(
 				self.Location,
-				ctx.NewString(err.Error()),
+				ctx.NewStringf("invalid vector assignment (%s)", err.Error()),
 			)
 		}
 		return nil
@@ -5486,14 +5502,16 @@ func (self AstStatementAssignment) Eval(ctx *Context, env *Environment) (Control
 		if err != nil {
 			return NewError(
 				self.Location,
-				ctx.NewString(err.Error()),
+				ctx.NewStringf("invalid map assignment (%s)", err.Error()),
 			)
 		}
 		return nil
 	}
 
 	if storeVector, ok := store.(*Vector); ok {
-		return nil, assignVector(storeVector, rhs, false)
+		if _, lhsIsAccessIndex := self.Lhs.(AstExpressionAccessIndex); lhsIsAccessIndex {
+			return nil, assignVector(storeVector, rhs)
+		}
 	}
 	if storeMap, ok := store.(*Map); ok {
 		return nil, assignMap(storeMap, rhs)
@@ -5501,7 +5519,9 @@ func (self AstStatementAssignment) Eval(ctx *Context, env *Environment) (Control
 	if storeReference, ok := store.(*Reference); ok {
 		storeDeref := storeReference.data
 		if storeDerefVector, ok := storeDeref.(*Vector); ok {
-			return nil, assignVector(storeDerefVector, rhs, true)
+			if _, lhsIsAccessIndex := self.Lhs.(AstExpressionAccessIndex); lhsIsAccessIndex {
+				return nil, assignVector(storeDerefVector, rhs)
+			}
 		}
 		if storeDerefMap, ok := storeDeref.(*Map); ok {
 			return nil, assignMap(storeDerefMap, rhs)
@@ -7488,32 +7508,25 @@ func BuiltinStringSlice(ctx *Context) *Builtin {
 		delf := self.data.(*String)
 
 		bgn := arguments[1].(*Number)
-		bgn_index, err := ValueAsInt(bgn)
+		bgn_index, err := ValueAsIndex(bgn)
 		if err != nil {
-			return nil, NewError(nil, ctx.NewStringf("expected integer index, received %v", arguments[1]))
+			return nil, NewError(nil, ctx.NewStringf("attempted string::slice with invalid begin index %v (%s)", bgn, err.Error()))
+		}
+		if bgn_index > len(delf.data) {
+			return nil, NewError(nil, ctx.NewStringf("attempted string::slice with invalid begin index %v (string has a count of %v)", bgn, len(delf.data)))
 		}
 
 		end := arguments[2].(*Number)
-		end_index, err := ValueAsInt(end)
+		end_index, err := ValueAsIndex(end)
 		if err != nil {
-			return nil, NewError(nil, ctx.NewStringf("expected integer index, received %v", arguments[2]))
-		}
-
-		if bgn_index < 0 {
-			return nil, NewError(nil, ctx.NewString("slice begin is less than zero"))
-		}
-		if bgn_index > len(delf.data) {
-			return nil, NewError(nil, ctx.NewString("slice begin is greater than the string length"))
-		}
-
-		if end_index < 0 {
-			return nil, NewError(nil, ctx.NewString("slice end is less than zero"))
+			return nil, NewError(nil, ctx.NewStringf("attempted string::slice with invalid end index %v (%s)", end, err.Error()))
 		}
 		if end_index > len(delf.data) {
-			return nil, NewError(nil, ctx.NewString("slice end is greater than the string length"))
+			return nil, NewError(nil, ctx.NewStringf("attempted string::slice with invalid end index %v (string has a count of %v)", end, len(delf.data)))
 		}
+
 		if end_index < bgn_index {
-			return nil, NewError(nil, ctx.NewString("slice end is less than slice begin"))
+			return nil, NewError(nil, ctx.NewString("attempted string::slice with invalid indices (slice end is less than slice begin)"))
 		}
 
 		return ctx.NewString(delf.data[bgn_index:end_index]), nil
@@ -7904,7 +7917,7 @@ func BuiltinVectorPush(ctx *Context) *Builtin {
 
 		err := delf.Push(arguments[1].Copy())
 		if err != nil {
-			return nil, NewError(nil, ctx.NewString(err.Error()))
+			return nil, NewError(nil, ctx.NewStringf("invalid vector::push operation (%s)", err.Error()))
 		}
 
 		return ctx.NewNull(), nil
@@ -7922,7 +7935,7 @@ func BuiltinVectorPop(ctx *Context) *Builtin {
 
 		value, err := delf.Pop(arguments[0])
 		if err != nil {
-			return nil, NewError(nil, ctx.NewString(err.Error()))
+			return nil, NewError(nil, ctx.NewStringf("invalid vector::pop operation (%s)", err.Error()))
 		}
 
 		return value.Copy(), nil
@@ -7934,18 +7947,18 @@ func BuiltinVectorInsert(ctx *Context) *Builtin {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Vector)
 
-		index, err := ValueAsInt(arguments[1])
+		index, err := ValueAsIndex(arguments[1])
 		if err != nil {
-			return nil, NewError(nil, ctx.NewStringf("expected integer index, received %v", arguments[1]))
+			return nil, NewError(nil, ctx.NewStringf("attempted vector::insert with invalid index %v (%s)", arguments[1], err.Error()))
 		}
 
 		if index > delf.Count() {
-			return nil, NewError(nil, ctx.NewStringf("attempted insert into vector of length %v with index %v", delf.Count(), index))
+			return nil, NewError(nil, ctx.NewStringf("attempted vector::insert with invalid index %v (vector has a count of %v)", index, delf.Count()))
 		}
 
 		err = delf.Insert(index, arguments[2].Copy())
 		if err != nil {
-			return nil, NewError(nil, ctx.NewString(err.Error()))
+			return nil, NewError(nil, ctx.NewStringf("invalid vector::insert operation (%s)", err.Error()))
 		}
 
 		return ctx.NewNull(), nil
@@ -7957,18 +7970,18 @@ func BuiltinVectorRemove(ctx *Context) *Builtin {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Vector)
 
-		index, err := ValueAsInt(arguments[1])
+		index, err := ValueAsIndex(arguments[1])
 		if err != nil {
-			return nil, NewError(nil, ctx.NewStringf("expected integer index, received %v", arguments[1]))
+			return nil, NewError(nil, ctx.NewStringf("attempted vector::remove with invalid index %v (%s)", arguments[1], err.Error()))
 		}
 
-		if index < 0 || index >= delf.Count() {
-			return nil, NewError(nil, ctx.NewStringf("attempted vector::remove with invalid index %v", index))
+		if index >= delf.Count() {
+			return nil, NewError(nil, ctx.NewStringf("attempted vector::remove with invalid index %v (vector has a count of %v)", index, delf.Count()))
 		}
 
 		value, err := delf.Remove(index)
 		if err != nil {
-			return nil, NewError(nil, ctx.NewString(err.Error()))
+			return nil, NewError(nil, ctx.NewStringf("invalid vector::remove operation (%s)", err.Error()))
 		}
 
 		return value.Copy(), nil
@@ -7981,32 +7994,25 @@ func BuiltinVectorSlice(ctx *Context) *Builtin {
 		delf := self.data.(*Vector)
 
 		bgn := arguments[1].(*Number)
-		bgn_index, err := ValueAsInt(bgn)
+		bgn_index, err := ValueAsIndex(bgn)
 		if err != nil {
-			return nil, NewError(nil, ctx.NewStringf("expected integer index, received %v", arguments[1]))
+			return nil, NewError(nil, ctx.NewStringf("attempted vector::slice with invalid begin index %v (%s)", bgn, err.Error()))
+		}
+		if bgn_index > delf.Count() {
+			return nil, NewError(nil, ctx.NewStringf("attempted vector::slice with invalid begin index %v (vector has a count of %v)", bgn, delf.Count()))
 		}
 
 		end := arguments[2].(*Number)
-		end_index, err := ValueAsInt(end)
+		end_index, err := ValueAsIndex(end)
 		if err != nil {
-			return nil, NewError(nil, ctx.NewStringf("expected integer index, received %v", arguments[2]))
-		}
-
-		if bgn_index < 0 {
-			return nil, NewError(nil, ctx.NewString("slice begin is less than zero"))
-		}
-		if bgn_index > delf.Count() {
-			return nil, NewError(nil, ctx.NewString("slice begin is greater than the vector length"))
-		}
-
-		if end_index < 0 {
-			return nil, NewError(nil, ctx.NewString("slice end is less than zero"))
+			return nil, NewError(nil, ctx.NewStringf("attempted vector::slice with invalid end index %v (%s)", end, err.Error()))
 		}
 		if end_index > delf.Count() {
-			return nil, NewError(nil, ctx.NewString("slice end is greater than the vector length"))
+			return nil, NewError(nil, ctx.NewStringf("attempted vector::slice with invalid end index %v (vector has a count of %v)", end, delf.Count()))
 		}
+
 		if end_index < bgn_index {
-			return nil, NewError(nil, ctx.NewString("slice end is less than slice begin"))
+			return nil, NewError(nil, ctx.NewString("attempted vector::slice with invalid indices (slice end is less than slice begin)"))
 		}
 
 		result := ctx.NewVector(nil)
@@ -8211,7 +8217,7 @@ func BuiltinMapInsert(ctx *Context) *Builtin {
 
 		err := delf.Insert(k, v)
 		if err != nil {
-			return nil, NewError(nil, ctx.NewString(err.Error()))
+			return nil, NewError(nil, ctx.NewStringf("invalid map::insert operation (%s)", err.Error()))
 		}
 
 		return ctx.NewNull(), nil
@@ -8232,7 +8238,7 @@ func BuiltinMapRemove(ctx *Context) *Builtin {
 
 		err := delf.Remove(k)
 		if err != nil {
-			return nil, NewError(nil, ctx.NewString(err.Error()))
+			return nil, NewError(nil, ctx.NewStringf("invalid map::remove operation (%s)", err.Error()))
 		}
 
 		return lookup.Copy(), nil
@@ -8351,7 +8357,7 @@ func BuiltinSetInsert(ctx *Context) *Builtin {
 
 		err := delf.Insert(k)
 		if err != nil {
-			return nil, NewError(nil, ctx.NewString(err.Error()))
+			return nil, NewError(nil, ctx.NewStringf("invalid set::insert operation (%s)", err.Error()))
 		}
 
 		return ctx.NewNull(), nil
@@ -8372,7 +8378,7 @@ func BuiltinSetRemove(ctx *Context) *Builtin {
 
 		err := delf.Remove(k)
 		if err != nil {
-			return nil, NewError(nil, ctx.NewString(err.Error()))
+			return nil, NewError(nil, ctx.NewStringf("invalid set::remove operation (%s)", err.Error()))
 		}
 
 		return lookup.Copy(), nil

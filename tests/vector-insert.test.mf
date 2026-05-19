@@ -11,4 +11,4 @@ try { x.insert(42, "foo"); } catch err { dumpln(err); }
 ################################################################################
 # ["foo"]
 # [123, "foo", 456, 789]
-# "attempted insert into vector of length 0 with index 42"
+# "attempted vector::insert with invalid index 42 (vector has a count of 0)"

@@ -46,6 +46,7 @@ except ImportError:
 
 rng = random.Random()
 
+MAX_INDEX_INTEGER = 4294967295  # 2**32 - 1
 MAX_SAFE_INTEGER = +9007199254740991  # +(2**53 - 1)
 MIN_SAFE_INTEGER = -9007199254740991  # -(2**53 - 1)
 
@@ -369,6 +370,18 @@ class Number(Value):
             end -= 1  # Remove trailing dot.
         return string[0:end]
 
+    def as_index(self) -> int:
+        if math.isinf(self.data) or math.isnan(self.data):
+            raise Exception("cannot convert {self} into an integer")
+        truncated = math.trunc(float(self.data))
+        if truncated != float(self.data):
+            raise Exception(
+                f"cannot convert {self.data} into an integer without truncation"
+            )
+        if truncated < 0 or truncated > MAX_INDEX_INTEGER:
+            raise Exception(f"integer {self} is outside the indexable integer range")
+        return int(truncated)
+
     def comb_encode(
         self, indent: Optional[str] = None, separator: str = "", indent_level: int = 0
     ) -> str:
@@ -612,6 +625,30 @@ class Vector(Value):
             self.data = copy(self.data)  # copy-on-write
             self.data.uses += 1
         super().__delitem__(key)
+
+    def insert(self, index: int, value: Value) -> None:
+        if self.is_immutable():
+            raise Exception(f"attempted to modify immutable vector {self}")
+        self.cow()  # copy-on-write
+        self.data.insert(index, value)
+
+    def remove(self, index: int) -> Value:
+        if self.is_immutable():
+            raise Exception(f"attempted to modify immutable vector {self}")
+        self.cow()  # copy-on-write
+        return self.data.pop(index)
+
+    def push(self, value: Value) -> None:
+        if self.is_immutable():
+            raise Exception(f"attempted to modify immutable vector {self}")
+        self.cow()  # copy-on-write
+        self.data.append(value)
+
+    def pop(self) -> Value:
+        if self.is_immutable():
+            raise Exception(f"attempted to modify immutable vector {self}")
+        self.cow()  # copy-on-write
+        return self.data.pop()
 
     def __copy__(self) -> "Vector":
         if self.is_immutable():
@@ -4020,13 +4057,11 @@ class AstStatementAssignment(AstStatement):
             try:
                 store[field] = copy(rhs)
                 return None
-            except IndexError:
+            except Exception as e:
                 return Error(
                     self.location,
-                    f"invalid {store.typename()} access with index {field}",
+                    f"invalid {store.typename()} assignment ({str(e)})",
                 )
-            except Exception as e:
-                return Error(self.location, str(e))
 
         # Special case where a reference value is implicitly dereferenced when
         # accessing the target field.
@@ -5117,22 +5152,36 @@ def builtin_string_rfind(
 def builtin_string_slice(
     self: Reference, string: String, bgn: Number, end: Number
 ) -> Union[Value, Error]:
-    if not float(bgn.data).is_integer():
-        return Error(None, f"expected integer index, received {bgn}")
-    if not float(end.data).is_integer():
-        return Error(None, f"expected integer index, received {end}")
-    bgn_index = int(float(bgn.data))
-    end_index = int(float(end.data))
-    if bgn_index < 0:
-        return Error(None, "slice begin is less than zero")
+    try:
+        bgn_index = bgn.as_index()
+    except Exception as e:
+        return Error(
+            None, f"attempted string::slice with invalid begin index {bgn} ({str(e)})"
+        )
     if bgn_index > len(string.bytes):
-        return Error(None, "slice begin is greater than the string length")
-    if end_index < 0:
-        return Error(None, "slice end is less than zero")
+        return Error(
+            None,
+            f"attempted string::slice with invalid begin index {bgn} (string has a count of {len(string.bytes)})",
+        )
+
+    try:
+        end_index = end.as_index()
+    except Exception as e:
+        return Error(
+            None, f"attempted string::slice with invalid end index {end} ({str(e)})"
+        )
     if end_index > len(string.bytes):
-        return Error(None, "slice end is greater than the string length")
+        return Error(
+            None,
+            f"attempted string::slice with invalid begin index {end} (string has a count of {len(string.bytes)})",
+        )
+
     if end_index < bgn_index:
-        return Error(None, "slice end is less than slice begin")
+        return Error(
+            None,
+            "attempted string::slice with invalid indices (slice end is less than slice begin)",
+        )
+
     return String.new(string.bytes[bgn_index:end_index])
 
 
@@ -5354,43 +5403,42 @@ def builtin_vector_rfind(
 def builtin_vector_push(
     self: Reference, vector: Vector, value: Value
 ) -> Union[Value, Error]:
-    if vector.is_immutable():
-        raise Exception(f"attempted to modify immutable vector {vector}")
-    if vector.data.uses > 1:
-        vector.cow()  # copy-on-write
-    vector.data.append(value)
+    try:
+        vector.push(value)
+    except Exception as e:
+        return Error(None, f"invalid vector::push operation ({e})")
     return null
 
 
 @builtin("vector::pop", [ReferenceTo(Vector)])
 def builtin_vector_pop(self: Reference, vector: Vector) -> Union[Value, Error]:
-    if vector.is_immutable():
-        raise Exception(f"attempted to modify immutable vector {vector}")
-    if vector.data.uses > 1:
-        vector.cow()  # copy-on-write
-    try:
-        return copy(vector.data.pop())
-    except IndexError:
+    if len(vector.data) == 0:
         return Error(None, "attempted vector::pop on an empty vector")
+    try:
+        return copy(vector.pop())
+    except Exception as e:
+        return Error(None, f"invalid vector::pop operation ({e})")
 
 
 @builtin("vector::insert", [ReferenceTo(Vector), Number, Value])
 def builtin_vector_insert(
     self: Reference, vector: Vector, index: Number, value: Value
 ) -> Union[Value, Error]:
-    if vector.is_immutable():
-        raise Exception(f"attempted to modify immutable vector {vector}")
-    if not float(index.data).is_integer():
-        return Error(None, f"expected integer index, received {index}")
-    idx = int(float(index.data))
+    try:
+        idx = index.as_index()
+    except Exception as e:
+        return Error(
+            None, f"attempted vector::insert with invalid index {index} ({str(e)})"
+        )
     if idx > len(vector.data):
         return Error(
             None,
-            f"attempted insert into vector of length {len(vector.data)} with index {index}",
+            f"attempted vector::insert with invalid index {index} (vector has a count of {len(vector.data)})",
         )
-    if vector.data.uses > 1:
-        vector.cow()  # copy-on-write
-    vector.data.insert(idx, value)
+    try:
+        vector.insert(idx, value)
+    except Exception as e:
+        return Error(None, f"invalid vector::insert operation ({str(e)})")
     return null
 
 
@@ -5398,44 +5446,57 @@ def builtin_vector_insert(
 def builtin_vector_remove(
     self: Reference, vector: Vector, index: Number
 ) -> Union[Value, Error]:
-    if vector.is_immutable():
-        raise Exception(f"attempted to modify immutable vector {vector}")
-    if not float(index.data).is_integer():
-        return Error(None, f"expected integer index, received {index}")
-    if vector.data.uses > 1:
-        vector.cow()  # copy-on-write
-    idx = int(float(index.data))
     try:
-        if idx < 0 or idx > len(vector.data):
-            raise IndexError()
-        return copy(vector.data.pop(idx))
-    except IndexError:
+        idx = index.as_index()
+    except Exception as e:
+        return Error(
+            None, f"attempted vector::remove with invalid index {index} ({str(e)})"
+        )
+    if idx >= len(vector.data):
         return Error(
             None,
-            f"attempted vector::remove with invalid index {index}",
+            f"attempted vector::remove with invalid index {index} (vector has a count of {len(vector.data)})",
         )
+    try:
+        return copy(vector.remove(idx))
+    except Exception as e:
+        return Error(None, f"invalid vector::remove operation ({str(e)})")
 
 
 @builtin("vector::slice", [ReferenceTo(Vector), Number, Number])
 def builtin_vector_slice(
     self: Reference, vector: Vector, bgn: Number, end: Number
 ) -> Union[Value, Error]:
-    if not float(bgn.data).is_integer():
-        return Error(None, f"expected integer index, received {bgn}")
-    if not float(end.data).is_integer():
-        return Error(None, f"expected integer index, received {end}")
-    bgn_index = int(float(bgn.data))
-    end_index = int(float(end.data))
-    if bgn_index < 0:
-        return Error(None, "slice begin is less than zero")
+    try:
+        bgn_index = bgn.as_index()
+    except Exception as e:
+        return Error(
+            None, f"attempted vector::slice with invalid begin index {bgn} ({str(e)})"
+        )
     if bgn_index > len(vector.data):
-        return Error(None, "slice begin is greater than the vector length")
-    if end_index < 0:
-        return Error(None, "slice end is less than zero")
+        return Error(
+            None,
+            f"attempted vector::slice with invalid begin index {bgn} (vector has a count of {len(vector.data)})",
+        )
+
+    try:
+        end_index = end.as_index()
+    except Exception as e:
+        return Error(
+            None, f"attempted vector::slice with invalid end index {end} ({str(e)})"
+        )
     if end_index > len(vector.data):
-        return Error(None, "slice end is greater than the vector length")
+        return Error(
+            None,
+            f"attempted vector::slice with invalid begin index {end} (vector has a count of {len(vector.data)})",
+        )
+
     if end_index < bgn_index:
-        return Error(None, "slice end is less than slice begin")
+        return Error(
+            None,
+            "attempted vector::slice with invalid indices (slice end is less than slice begin)",
+        )
+
     # Copy underlying data as the update will alter all Python objects
     # holding references to the underlying `SharedVectorData` object.
     underlying = copy(vector.data)
@@ -5599,7 +5660,11 @@ def builtin_map_contains(
 def builtin_map_insert(
     self: Reference, map: Map, k: Value, v: Value
 ) -> Union[Value, Error]:
-    map[k] = v
+    try:
+        map[k] = v
+    except Exception as e:
+        return Error(None, f"invalid map::insert operation ({str(e)})")
+
     return null
 
 
@@ -5614,6 +5679,8 @@ def builtin_map_remove(self: Reference, map: Map, k: Value) -> Union[Value, Erro
             None,
             f"attempted map::remove on a map without key {k}",
         )
+    except Exception as e:
+        return Error(None, f"invalid map::remove operation ({str(e)})")
 
 
 @builtin("map::keys", [ReferenceTo(Map)])
@@ -5683,7 +5750,10 @@ def builtin_set_contains(
 def builtin_set_insert(
     self: Reference, set: Set, element: Value
 ) -> Union[Value, Error]:
-    set.insert(element)
+    try:
+        set.insert(element)
+    except Exception as e:
+        return Error(None, f"invalid set::insert operation ({str(e)})")
     return null
 
 
@@ -5699,6 +5769,8 @@ def builtin_set_remove(
             None,
             f"attempted set::remove on a set without element {element}",
         )
+    except Exception as e:
+        return Error(None, f"invalid set::remove operation ({str(e)})")
 
 
 @builtin_from_source("set::union")

@@ -5,10 +5,12 @@ println($`"foo=bar".slice(4, 7) is {repr("foo=bar".slice(4, 7))}`);
 println($`"abc😀def".slice(3, 7) is {repr("abc😀def".slice(3, 7))}`);
 println($`"abc😀def".slice(4, 7) is {repr("abc😀def".slice(4, 7))}`); # The three invalid UTF-8 bytes are written to stdout as "���".
 try { "abc😀def".slice(4, 7); } catch err { println($`"abc😀def".slice(4, 7) produces the error {repr(err)}`); }
-try { "foo=bar".slice(0.5, 1); } catch err { println($`"foo=bar".slice(0.5, 1) produces the error {repr(err)}`); }
+try { "foo=bar".slice(0.5, 0); } catch err { println($`"foo=bar".slice(0.5, 0) produces the error {repr(err)}`); }
 try { "foo=bar".slice(0, 1.5); } catch err { println($`"foo=bar".slice(0, 1.5) produces the error {repr(err)}`); }
-try { "foo=bar".slice(-1, 7); } catch err { println($`"foo=bar".slice(-1, 7) produces the error {repr(err)}`); }
+try { "foo=bar".slice(-1, 0); } catch err { println($`"foo=bar".slice(-1, 0) produces the error {repr(err)}`); }
 try { "foo=bar".slice(0, -1); } catch err { println($`"foo=bar".slice(0, -1) produces the error {repr(err)}`); }
+try { "foo=bar".slice(math::pow(2, 100), 0); } catch err { println($`"foo=bar".slice(math::pow(2, 100), 0), 0) produces the error {repr(err)}`); }
+try { "foo=bar".slice(0, math::pow(2, 100)); } catch err { println($`"foo=bar".slice(0, math::pow(2, 100)), 0) produces the error {repr(err)}`); }
 try { "foo=bar".slice(4, 3); } catch err { println($`"foo=bar".slice(4, 3) produces the error {repr(err)}`); }
 ################################################################################
 # "foo=bar".slice(0, 0) is ""
@@ -17,8 +19,10 @@ try { "foo=bar".slice(4, 3); } catch err { println($`"foo=bar".slice(4, 3) produ
 # "foo=bar".slice(4, 7) is "bar"
 # "abc😀def".slice(3, 7) is "😀"
 # "abc😀def".slice(4, 7) is "\x9f\x98\x80"
-# "foo=bar".slice(0.5, 1) produces the error "expected integer index, received 0.5"
-# "foo=bar".slice(0, 1.5) produces the error "expected integer index, received 1.5"
-# "foo=bar".slice(-1, 7) produces the error "slice begin is less than zero"
-# "foo=bar".slice(0, -1) produces the error "slice end is less than zero"
-# "foo=bar".slice(4, 3) produces the error "slice end is less than slice begin"
+# "foo=bar".slice(0.5, 0) produces the error "attempted string::slice with invalid begin index 0.5 (cannot convert 0.5 into an integer without truncation)"
+# "foo=bar".slice(0, 1.5) produces the error "attempted string::slice with invalid end index 1.5 (cannot convert 1.5 into an integer without truncation)"
+# "foo=bar".slice(-1, 0) produces the error "attempted string::slice with invalid begin index -1 (integer -1 is outside the indexable integer range)"
+# "foo=bar".slice(0, -1) produces the error "attempted string::slice with invalid end index -1 (integer -1 is outside the indexable integer range)"
+# "foo=bar".slice(math::pow(2, 100), 0), 0) produces the error "attempted string::slice with invalid begin index 1267650600228229401496703205376 (integer 1267650600228229401496703205376 is outside the indexable integer range)"
+# "foo=bar".slice(0, math::pow(2, 100)), 0) produces the error "attempted string::slice with invalid end index 1267650600228229401496703205376 (integer 1267650600228229401496703205376 is outside the indexable integer range)"
+# "foo=bar".slice(4, 3) produces the error "attempted string::slice with invalid indices (slice end is less than slice begin)"
