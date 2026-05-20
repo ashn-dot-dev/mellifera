@@ -4573,9 +4573,6 @@ func (self AstExpressionAccessScope) Eval(ctx *Context, env *Environment) (Value
 	}
 
 	field := self.Field.Name
-	if err != nil {
-		return nil, err
-	}
 
 	m, ok := store.(*Map)
 	if !ok {
@@ -4621,9 +4618,6 @@ func (self AstExpressionAccessDot) Eval(ctx *Context, env *Environment) (Value, 
 	}
 
 	field := self.Field.Name
-	if err != nil {
-		return nil, err
-	}
 
 	// When directly reading property via dot access, prioritize the fields
 	// of value itself *before* looking at the fields of the value's
