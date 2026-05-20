@@ -8019,7 +8019,7 @@ func BuiltinVectorSlice(ctx *Context) *Builtin {
 
 		result := ctx.NewVector(nil)
 		for i := bgn_index; i < end_index; i++ {
-			result.Push(delf.Get(i))
+			result.Push(delf.Get(i).Copy())
 		}
 
 		return result, nil
