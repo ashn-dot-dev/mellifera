@@ -241,6 +241,18 @@ class Value(ABC):
         return function
 
 
+def value_as_safe_integer(value: Value) -> int:
+    if not isinstance(value, Number):
+        raise Exception(f"cannot convert {value.typename()} into an integer")
+    return value.as_safe_integer()
+
+
+def value_as_index(value: Value) -> int:
+    if not isinstance(value, Number):
+        raise Exception(f"cannot convert {value.typename()} into an integer")
+    return value.as_index()
+
+
 @final
 @dataclass
 class Null(Value):
@@ -388,7 +400,7 @@ class Number(Value):
 
     def as_index(self) -> int:
         if math.isinf(self.data) or math.isnan(self.data):
-            raise Exception("cannot convert {self} into an integer")
+            raise Exception(f"cannot convert {self} into an integer")
         truncated = math.trunc(float(self.data))
         if truncated != float(self.data):
             raise Exception(
@@ -3391,9 +3403,18 @@ class AstExpressionAccessIndex(AstExpression):
             return field
         if isinstance(store, Vector):
             try:
+                index = value_as_index(field)
+                if index >= len(store.data):
+                    return Error(
+                        self.location,
+                        f"invalid vector access with index {field} (vector has a count of {len(store.data)})",
+                    )
                 return store[field]
-            except (NotImplementedError, IndexError, KeyError):
-                return Error(self.location, f"invalid vector access with index {field}")
+            except Exception as e:
+                return Error(
+                    self.location,
+                    f"invalid vector access with index {field} ({str(e)})",
+                )
         if isinstance(store, Map):
             try:
                 return store[field]

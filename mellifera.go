@@ -4549,14 +4549,14 @@ func (self AstExpressionAccessIndex) Eval(ctx *Context, env *Environment) (Value
 		if err != nil {
 			return nil, NewError(
 				self.Location,
-				ctx.NewStringf("invalid vector access with index %v (%s)", index, err.Error()),
+				ctx.NewStringf("invalid vector access with index %v (%s)", field, err.Error()),
 			)
 		}
 
-		if index < 0 || index >= v.Count() {
+		if index >= v.Count() {
 			return nil, NewError(
 				self.Location,
-				ctx.NewStringf("invalid vector access with index %v", index),
+				ctx.NewStringf("invalid vector access with index %v (vector has a count of %v)", field, v.Count()),
 			)
 		}
 		return v.Get(index), nil
@@ -5523,7 +5523,7 @@ func (self AstStatementAssignment) Eval(ctx *Context, env *Environment) (Control
 		if index >= storeVector.Count() {
 			return NewError(
 				self.Location,
-				ctx.NewStringf("invalid vector access with index %v (vector has a count of %v)", index, storeVector.Count()),
+				ctx.NewStringf("invalid vector access with index %v (vector has a count of %v)", field, storeVector.Count()),
 			)
 		}
 
