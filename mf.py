@@ -1044,7 +1044,11 @@ class Function(Value):
         return hash(id(self.ast)) + hash(id(self.env))
 
     def __eq__(self, other):
-        return isinstance(other, Function) and id(self.ast) == id(other.ast)
+        return (
+            isinstance(other, Function)
+            and id(self.ast) == id(other.ast)
+            and id(self.env) == id(other.env)
+        )
 
     def __str__(self):
         name = self.ast.name.runes if self.ast.name is not None else "function"

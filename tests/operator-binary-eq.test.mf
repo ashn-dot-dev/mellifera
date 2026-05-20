@@ -33,12 +33,26 @@ println($`x is {x}`);
 println($`y is {y}`);
 println($`x == y is {x == y}`);
 
+print("\n");
+
 # Order of elements in a set should not matter for structural equality.
 let x = {"foo", "bar"};
 let y = {"bar", "foo"};
 println($`x is {x}`);
 println($`y is {y}`);
 println($`x == y is {x == y}`);
+
+print("\n");
+
+# Functions closing over different environments are not considered equal.
+let f = function(x) {
+    return function() { dumpln(x); };
+};
+let fx = f(123);
+let fy = f(456);
+println($`fx is {fx}`);
+println($`fy is {fy}`);
+println($`fx == fy is {fx == fy}`);
 ################################################################################
 # true
 # true
@@ -65,6 +79,11 @@ println($`x == y is {x == y}`);
 # x is {"foo": 123, "bar": 456}
 # y is {"bar": 456, "foo": 123}
 # x == y is true
+#
 # x is {"foo", "bar"}
 # y is {"bar", "foo"}
 # x == y is true
+#
+# fx is function@[operator-binary-eq.test.mf, line 49]
+# fy is function@[operator-binary-eq.test.mf, line 49]
+# fx == fy is false
