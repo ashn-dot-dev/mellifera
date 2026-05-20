@@ -8742,6 +8742,11 @@ func BuiltinImport(ctx *Context) *Builtin {
 			return nil, NewError(nil, ctx.NewStringf("expected string module directory value, received %v", moduleDirectory))
 		}
 
+		// Always restore module fields.
+		defer (func() {
+			_ = ctx.BaseEnvironment.Set("module", moduleMap)
+		})()
+
 		var result Value = nil
 		paths := []string{moduleDirectoryString.data}
 		if search, ok := os.LookupEnv("MELLIFERA_SEARCH_PATH"); ok {
@@ -8803,10 +8808,6 @@ func BuiltinImport(ctx *Context) *Builtin {
 			return nil, NewError(nil, ctx.NewStringf("module %v not found", target))
 		}
 
-		// Always restore module fields.
-		if err := ctx.BaseEnvironment.Set("module", moduleMap); err != nil {
-			return nil, NewError(nil, ctx.NewString(err.Error()))
-		}
 		return result, nil
 	})
 }

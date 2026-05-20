@@ -29,6 +29,34 @@ try {
 catch err {
     println(err);
 }
+
+# Ensure that the module field is properly restored after successful import.
+try {
+    assert(module::path.ends_with("import.test.mf"));
+    assert(module::file == "import.test.mf");
+    assert(module::directory.ends_with("/tests"));
+    let lib = import("../lib/zen");
+    assert(module::path.ends_with("import.test.mf"));
+    assert(module::file == "import.test.mf");
+    assert(module::directory.ends_with("/tests"));
+}
+catch err {
+    println(err);
+}
+
+# Ensure that the module field is properly restored after a failed import.
+try {
+    assert(module::path.ends_with("import.test.mf"));
+    assert(module::file == "import.test.mf");
+    assert(module::directory.ends_with("/tests"));
+    let lib = import("nope.mf");
+    error "unreachable";
+}
+catch err {
+    assert(module::path.ends_with("import.test.mf"));
+    assert(module::file == "import.test.mf");
+    assert(module::directory.ends_with("/tests"));
+}
 ################################################################################
 # module "nope.mf" not found
 # module "../lib" not found

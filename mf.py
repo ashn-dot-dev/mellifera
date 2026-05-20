@@ -6060,38 +6060,40 @@ def builtin_import(target: String) -> Union[Value, Error]:
     module = env.get(CONST_STRING_MODULE)
     module_directory = module[CONST_STRING_DIRECTORY]
     assert isinstance(module_directory, String)
-    # Always search the current module directory first
-    paths: list[str] = [module_directory.runes]
-    MELLIFERA_SEARCH_PATH = os.environ.get("MELLIFERA_SEARCH_PATH")
-    if MELLIFERA_SEARCH_PATH is not None:
-        paths += MELLIFERA_SEARCH_PATH.split(":")
-    for p in paths:
-        path = Path(p) / target.runes
-        if path.is_dir():
-            # If the path is a directory, such as in the case of a library,
-            # load the entry point to the library and/or group of files, using
-            # the name `<directory>/lib.mf` by convention.
-            path = path / "lib.mf"
-        absolute = str(path.absolute())
-        env.set(
-            CONST_STRING_MODULE,
-            Map.new(
-                {
-                    CONST_STRING_PATH: String.new(absolute),
-                    CONST_STRING_FILE: String.new(os.path.basename(absolute)),
-                    CONST_STRING_DIRECTORY: String.new(os.path.dirname(absolute)),
-                }
-            ).freeze(),
-        )
-        try:
-            result = eval_file(path, env)
-            break
-        except FileNotFoundError:
-            pass
-    else:
-        result = Error(None, f"module {target} not found")
-    # Always restore module fields.
-    env.set(CONST_STRING_MODULE, module)
+    try:
+        # Always search the current module directory first
+        paths: list[str] = [module_directory.runes]
+        MELLIFERA_SEARCH_PATH = os.environ.get("MELLIFERA_SEARCH_PATH")
+        if MELLIFERA_SEARCH_PATH is not None:
+            paths += MELLIFERA_SEARCH_PATH.split(":")
+        for p in paths:
+            path = Path(p) / target.runes
+            if path.is_dir():
+                # If the path is a directory, such as in the case of a library,
+                # load the entry point to the library and/or group of files, using
+                # the name `<directory>/lib.mf` by convention.
+                path = path / "lib.mf"
+            absolute = str(path.absolute())
+            env.set(
+                CONST_STRING_MODULE,
+                Map.new(
+                    {
+                        CONST_STRING_PATH: String.new(absolute),
+                        CONST_STRING_FILE: String.new(os.path.basename(absolute)),
+                        CONST_STRING_DIRECTORY: String.new(os.path.dirname(absolute)),
+                    }
+                ).freeze(),
+            )
+            try:
+                result = eval_file(path, env)
+                break
+            except FileNotFoundError:
+                pass
+        else:
+            result = Error(None, f"module {target} not found")
+    finally:
+        # Always restore module fields.
+        env.set(CONST_STRING_MODULE, module)
     if isinstance(result, Error):
         return result
     if result is None:
