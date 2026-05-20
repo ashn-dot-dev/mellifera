@@ -986,6 +986,10 @@ func (self *Vector) CopyOnWrite() {
 }
 
 func (self *Vector) Freeze() Value {
+	if self.IsImmutable() {
+		return self
+	}
+
 	value := self.Copy().(*Vector)
 	value.CopyOnWrite()
 	if value.data != nil {
@@ -1335,6 +1339,10 @@ func (self *Map) CopyOnWrite() {
 }
 
 func (self *Map) Freeze() Value {
+	if self.IsImmutable() {
+		return self
+	}
+
 	value := self.Copy().(*Map)
 	value.CopyOnWrite()
 	if value.data != nil {
@@ -1660,6 +1668,10 @@ func (self *Set) CopyOnWrite() {
 }
 
 func (self *Set) Freeze() Value {
+	if self.IsImmutable() {
+		return self
+	}
+
 	value := self.Copy().(*Set)
 	value.CopyOnWrite()
 	if value.data != nil {

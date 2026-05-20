@@ -678,6 +678,9 @@ class Vector(Value):
             self.data.uses += 1
 
     def freeze(self) -> "Vector":
+        if self.is_immutable():
+            return self
+
         value = copy(self)
         value.cow()
         value.data = SharedVectorData([x.freeze() for x in value.data])
@@ -843,6 +846,9 @@ class Map(Value):
             self.data.uses += 1
 
     def freeze(self) -> "Map":
+        if self.is_immutable():
+            return self
+
         value = copy(self)
         value.cow()
         value.data = SharedMapData(
@@ -962,6 +968,9 @@ class Set(Value):
             self.data.uses += 1
 
     def freeze(self) -> "Set":
+        if self.is_immutable():
+            return self
+
         value = copy(self)
         value.cow()
         value.data = SharedSetData([x.freeze() for x in value.data])
