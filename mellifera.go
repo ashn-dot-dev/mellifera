@@ -3576,6 +3576,7 @@ func (self AstExpressionType) Eval(ctx *Context, env *Environment) (Value, error
 		)
 	}
 
+	var result *Map = nil
 	if extendsMap != nil {
 		// A new map is created so that all of the key-value pairs from the
 		// super-type, then all of the key-value pairs from the sub-type, can
@@ -3585,17 +3586,28 @@ func (self AstExpressionType) Eval(ctx *Context, env *Environment) (Value, error
 		//
 		// The super-type map is immutable, so we can directly use pairs from
 		// the super-type map to construct the extended map.
-		extended := ctx.NewMap(extendsMap.Pairs())
+		result = ctx.NewMap(extendsMap.Pairs())
 		for _, pair := range valueMap.Pairs() {
-			err := extended.Insert(pair.Key.Copy(), pair.Value.Copy())
+			err := result.Insert(pair.Key.Copy(), pair.Value.Copy())
 			if err != nil {
 				return nil, err
 			}
 		}
-		valueMap = extended
+	} else {
+		// A new map is created and filled with copies of each key-value pair
+		// from the evaluated map expression. Creation of a new map ensures
+		// that assigning a name to the result of a type expression will not
+		// overwrite the name of an already frozen map.
+		result = ctx.NewMap(nil)
+		for _, pair := range valueMap.Pairs() {
+			err := result.Insert(pair.Key.Copy(), pair.Value.Copy())
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 
-	result := valueMap.Freeze().(*Map)
+	result = result.Freeze().(*Map)
 	result.name = &self.Name
 	return result, nil
 }
@@ -3653,10 +3665,19 @@ func (self AstExpressionNew) Eval(ctx *Context, env *Environment) (Value, error)
 		)
 	}
 
-	valueMap = valueMap.Copy().(*Map)
-	valueMap.CopyOnWrite()
-	valueMap.meta = metaMap.Copy().(*Map)
-	return valueMap, nil
+	// A new map is created and filled with copies of each key-value pair from
+	// the evaluated map expression. Creation of a new map ensures that a new
+	// expression applied to a frozen map does not silently change the existing
+	// metamap of that frozen map.
+	result := ctx.NewMap(nil)
+	for _, pair := range valueMap.Pairs() {
+		err := result.Insert(pair.Key.Copy(), pair.Value.Copy())
+		if err != nil {
+			return nil, err
+		}
+	}
+	result.meta = metaMap.Copy().(*Map)
+	return result, nil
 }
 
 type AstExpressionGrouped struct {

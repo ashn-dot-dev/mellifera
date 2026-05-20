@@ -2555,12 +2555,19 @@ class AstExpressionType(AstExpression):
             # The super-type map is immutable, so we can directly use pairs
             # from the super-type map to construct the extended map.
             assert isinstance(extends, Map)
-            extended = Map.new({k: v for k, v in extends.data.items()})
+            result = Map.new({k: v for k, v in extends.data.items()})
             for k, v in type.data.items():
-                extended[copy(k)] = copy(v)
-            type = extended
+                result[copy(k)] = copy(v)
+        else:
+            # A new map is created and filled with copies of each key-value
+            # pair from the evaluated map expression. Creation of a new map
+            # ensures that assigning a name to the result of a type expression
+            # will not overwrite the name of an already frozen map.
+            result = Map.new()
+            for k, v in type.data.items():
+                result[copy(k)] = copy(v)
 
-        return Map.new_meta(name=self.name, data=type.data)
+        return Map.new_meta(name=self.name, data=result.data)
 
 
 @final
@@ -2604,10 +2611,16 @@ class AstExpressionNew(AstExpression):
                 self.meta.location,
                 f"expected map-like value created with the {quote(TokenKind.TYPE)} expression, received regular map value {meta}",
             )
-        value = copy(value)
-        value.cow()
-        value.meta = copy(meta)
-        return value
+
+        # A new map is created and filled with copies of each key-value pair
+        # from the evaluated map expression. Creation of a new map ensures that
+        # a new expression applied to a frozen map does not silently change the
+        # existing metamap of that frozen map.
+        result = Map.new()
+        for k, v in value.data.items():
+            result[copy(k)] = copy(v)
+        result.meta = copy(meta)
+        return result
 
 
 @final
