@@ -4134,14 +4134,29 @@ class AstStatementAssignment(AstStatement):
         if isinstance(rhs, Error):
             return rhs
 
-        if isinstance(store, (Vector, Map)):
+        if isinstance(store, Vector):
+            try:
+                index = value_as_index(field)
+                if index >= len(store.data):
+                    return Error(
+                        self.location,
+                        f"invalid vector assignment with index {field} (vector has a count of {len(store.data)})",
+                    )
+                store[copy(field)] = copy(rhs)
+                return None
+            except Exception as e:
+                return Error(
+                    self.location,
+                    f"invalid vector assignment with index {field} ({str(e)})",
+                )
+        if isinstance(store, Map):
             try:
                 store[copy(field)] = copy(rhs)
                 return None
             except Exception as e:
                 return Error(
                     self.location,
-                    f"invalid {store.typename()} assignment ({str(e)})",
+                    f"invalid map assignment with key {field} ({str(e)})",
                 )
 
         # Special case where a reference value is implicitly dereferenced when

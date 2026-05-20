@@ -5516,14 +5516,14 @@ func (self AstStatementAssignment) Eval(ctx *Context, env *Environment) (Control
 		if err != nil {
 			return NewError(
 				self.Location,
-				ctx.NewStringf("invalid vector access with index %v (%s)", field, err.Error()),
+				ctx.NewStringf("invalid vector assignment with index %v (%s)", field, err.Error()),
 			)
 		}
 
 		if index >= storeVector.Count() {
 			return NewError(
 				self.Location,
-				ctx.NewStringf("invalid vector access with index %v (vector has a count of %v)", field, storeVector.Count()),
+				ctx.NewStringf("invalid vector assignment with index %v (vector has a count of %v)", field, storeVector.Count()),
 			)
 		}
 
@@ -5531,7 +5531,7 @@ func (self AstStatementAssignment) Eval(ctx *Context, env *Environment) (Control
 		if err != nil {
 			return NewError(
 				self.Location,
-				ctx.NewStringf("invalid vector assignment (%s)", err.Error()),
+				ctx.NewStringf("invalid vector assignment with index %v (%s)", field, err.Error()),
 			)
 		}
 		return nil
@@ -5542,7 +5542,7 @@ func (self AstStatementAssignment) Eval(ctx *Context, env *Environment) (Control
 		if err != nil {
 			return NewError(
 				self.Location,
-				ctx.NewStringf("invalid map assignment (%s)", err.Error()),
+				ctx.NewStringf("invalid map assignment with key %v (%s)", field, err.Error()),
 			)
 		}
 		return nil

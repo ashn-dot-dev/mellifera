@@ -18,6 +18,9 @@ dumpln(x);
 try { dumpln(x[3]); } catch err { dumpln(err); }
 try { dumpln(x[-1]); } catch err { dumpln(err); }
 try { dumpln(x["foo"]); } catch err { dumpln(err); }
+try { x[3] = "xyz"; } catch err { dumpln(err); }
+try { x[-1] = "xyz"; } catch err { dumpln(err); }
+try { x["foo"] = "xyz"; } catch err { dumpln(err); }
 
 print("\n");
 
@@ -43,6 +46,9 @@ try { dumpln(x["baz"]); } catch err { dumpln(err); }
 # "invalid vector access with index 3 (vector has a count of 3)"
 # "invalid vector access with index -1 (integer -1 is outside the indexable integer range)"
 # "invalid vector access with index \"foo\" (cannot convert string into an integer)"
+# "invalid vector assignment with index 3 (vector has a count of 3)"
+# "invalid vector assignment with index -1 (integer -1 is outside the indexable integer range)"
+# "invalid vector assignment with index \"foo\" (cannot convert string into an integer)"
 #
 # {"foo": 123, "bar": 456}
 # {"foo": "xyz", "bar": 456}
