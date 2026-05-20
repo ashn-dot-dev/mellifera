@@ -8817,6 +8817,14 @@ func BuiltinImport(ctx *Context) *Builtin {
 // is unclear what the best architecture for breaking out comb encoding would be
 // (separate parse mode? separate parser type?).
 func combValidate(ctx *Context, expr AstExpression) error {
+	validationError := func() error {
+		found := reflect.TypeOf(expr).Name()
+		if x, ok := expr.(AstExpressionIdentifier); ok {
+			found = x.Name.data
+		}
+		return NewError(expr.ExpressionLocation(), ctx.NewStringf("expected comb value, found %s", found))
+	}
+
 	if _, ok := expr.(AstExpressionNull); ok {
 		return nil
 	}
@@ -8864,18 +8872,26 @@ func combValidate(ctx *Context, expr AstExpression) error {
 	}
 
 	if x, ok := expr.(AstExpressionPositive); ok {
-		return combValidate(ctx, x.Expression)
+		if err := combValidate(ctx, x.Expression); err != nil {
+			return err
+		}
+		if _, isNumber := x.Expression.(AstExpressionNumber); !isNumber {
+			return validationError()
+		}
+		return nil
 	}
 
 	if x, ok := expr.(AstExpressionNegative); ok {
-		return combValidate(ctx, x.Expression)
+		if err := combValidate(ctx, x.Expression); err != nil {
+			return err
+		}
+		if _, isNumber := x.Expression.(AstExpressionNumber); !isNumber {
+			return validationError()
+		}
+		return nil
 	}
 
-	found := reflect.TypeOf(expr).Name()
-	if x, ok := expr.(AstExpressionIdentifier); ok {
-		found = x.Name.data
-	}
-	return NewError(expr.ExpressionLocation(), ctx.NewStringf("expected comb value, found %s", found))
+	return validationError()
 }
 
 func BuiltinCombDecode(ctx *Context) *Builtin {
