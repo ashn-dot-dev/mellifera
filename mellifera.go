@@ -7321,7 +7321,7 @@ func BuiltinNumberFixed(ctx *Context) *Builtin {
 		}
 
 		factor := math.Pow(10.0, float64(precision))
-		fixed := math.Round(delf.data*float64(factor)) / float64(factor)
+		fixed := math.Round(delf.data*factor) / float64(factor)
 		return ctx.NewNumber(fixed), nil
 	})
 }
