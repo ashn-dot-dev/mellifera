@@ -2,8 +2,18 @@ println($`[].reversed() is {repr([].reversed())}`);
 println($`["foo"].reversed() is {repr(["foo"].reversed())}`);
 println($`["foo", "bar"].reversed() is {repr(["foo", "bar"].reversed())}`);
 println($`["foo", "bar", "baz"].reversed() is {repr(["foo", "bar", "baz"].reversed())}`);
+
+print("\n");
+
+let x = freeze ["foo", "bar"];
+let y = x.reversed();
+dumpln(x);
+dumpln(y);
 ################################################################################
 # [].reversed() is []
 # ["foo"].reversed() is ["foo"]
 # ["foo", "bar"].reversed() is ["bar", "foo"]
 # ["foo", "bar", "baz"].reversed() is ["baz", "bar", "foo"]
+#
+# ["foo", "bar"]
+# ["bar", "foo"]

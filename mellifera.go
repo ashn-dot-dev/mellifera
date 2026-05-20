@@ -8023,13 +8023,12 @@ func BuiltinVectorReversed(ctx *Context) *Builtin {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Vector)
 
-		result := delf.Copy().(*Vector)
-		result.CopyOnWrite()
-		if result.data != nil && len(result.data.elements) > 1 {
-			slices.Reverse(result.data.elements)
+		elements := []Value{}
+		for _, element := range delf.Elements() {
+			elements = append(elements, element.Copy())
 		}
-
-		return result, nil
+		slices.Reverse(elements)
+		return ctx.NewVector(elements), nil
 	})
 }
 
