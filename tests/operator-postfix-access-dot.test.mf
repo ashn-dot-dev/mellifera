@@ -31,6 +31,11 @@ try { x.f(); } catch err { dumpln(err); }
 
 print("\n");
 
+let x = 123; # metafunction references should work on non-map types
+try { dumpln(x.fixed); } catch err { dumpln(err); }
+
+print("\n");
+
 let meta = type {"f": function(self, value) { self.*.value = value; }};
 let x = new meta Map{"value": "foo"};
 dumpln(x);
@@ -88,12 +93,14 @@ try { y.nope = null; } catch err { dumpln(err); }
 # 456
 # inside metafunction f
 #
+# number::fixed@builtin
+#
 # {"value": "foo"}
 # {"value": "bar"}
 #
 # {"value": "foo"}
 # "foo"
-# meta::f@[operator-postfix-access-dot.test.mf, line 43]
+# meta::f@[operator-postfix-access-dot.test.mf, line 48]
 # {"value": "bar"}
 # {"value": "baz"}
 #

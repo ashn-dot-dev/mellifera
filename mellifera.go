@@ -4665,12 +4665,12 @@ func (self AstExpressionAccessDot) Eval(ctx *Context, env *Environment) (Value, 
 		if ok {
 			return lookup, nil
 		}
+	}
 
-		if m.meta != nil {
-			lookup, ok = m.meta.Lookup(field)
-			if ok {
-				return lookup, nil
-			}
+	if store.Meta(ctx) != nil {
+		lookup, ok := store.Meta(ctx).Lookup(field)
+		if ok {
+			return lookup, nil
 		}
 	}
 
@@ -4686,12 +4686,12 @@ func (self AstExpressionAccessDot) Eval(ctx *Context, env *Environment) (Value, 
 			if ok {
 				return lookup, nil
 			}
+		}
 
-			if m.meta != nil {
-				lookup, ok = m.meta.Lookup(field)
-				if ok {
-					return lookup, nil
-				}
+		if storeDeref.Meta(ctx) != nil {
+			lookup, ok := storeDeref.Meta(ctx).Lookup(field)
+			if ok {
+				return lookup, nil
 			}
 		}
 
