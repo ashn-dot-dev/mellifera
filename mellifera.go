@@ -7780,7 +7780,7 @@ func BuiltinVectorAny(ctx *Context) *Builtin {
 		function := arguments[1].(*Function)
 
 		for _, element := range delf.Elements() {
-			result, err := Call(ctx, nil, function, []Value{element})
+			result, err := Call(ctx, nil, function, []Value{element.Copy()})
 			if err != nil {
 				return nil, err
 			}
@@ -7807,7 +7807,7 @@ func BuiltinVectorAll(ctx *Context) *Builtin {
 		function := arguments[1].(*Function)
 
 		for _, element := range delf.Elements() {
-			result, err := Call(ctx, nil, function, []Value{element})
+			result, err := Call(ctx, nil, function, []Value{element.Copy()})
 			if err != nil {
 				return nil, err
 			}
@@ -7835,7 +7835,7 @@ func BuiltinVectorMap(ctx *Context) *Builtin {
 
 		mapped := []Value{}
 		for _, element := range delf.Elements() {
-			result, err := Call(ctx, nil, function, []Value{element})
+			result, err := Call(ctx, nil, function, []Value{element.Copy()})
 			if err != nil {
 				return nil, err
 			}
@@ -7856,7 +7856,7 @@ func BuiltinVectorFilter(ctx *Context) *Builtin {
 
 		filtered := []Value{}
 		for _, element := range delf.Elements() {
-			result, err := Call(ctx, nil, function, []Value{element})
+			result, err := Call(ctx, nil, function, []Value{element.Copy()})
 			if err != nil {
 				return nil, err
 			}

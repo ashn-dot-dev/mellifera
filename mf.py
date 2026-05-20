@@ -5340,7 +5340,7 @@ def builtin_vector_any(
     self: Reference, vector: Vector, function: Function
 ) -> Union[Value, Error]:
     for element in vector.data:
-        result = call(None, function, [element])
+        result = call(None, function, [copy(element)])
         if isinstance(result, Error):
             return result
         if not isinstance(result, Boolean):
@@ -5358,7 +5358,7 @@ def builtin_vector_all(
     self: Reference, vector: Vector, function: Function
 ) -> Union[Value, Error]:
     for element in vector.data:
-        result = call(None, function, [element])
+        result = call(None, function, [copy(element)])
         if isinstance(result, Error):
             return result
         if not isinstance(result, Boolean):
@@ -5377,7 +5377,7 @@ def builtin_vector_map(
 ) -> Union[Value, Error]:
     mapped = []
     for element in vector.data:
-        result = call(None, function, [element])
+        result = call(None, function, [copy(element)])
         if isinstance(result, Error):
             return result
         mapped.append(copy(result))
@@ -5390,7 +5390,7 @@ def builtin_vector_filter(
 ) -> Union[Value, Error]:
     filtered = []
     for element in vector.data:
-        result = call(None, function, [element])
+        result = call(None, function, [copy(element)])
         if isinstance(result, Error):
             return result
         if not isinstance(result, Boolean):
