@@ -23,6 +23,22 @@ try { dumpln( f               == f               ); } catch err { dumpln(err); }
 try { dumpln( f               == g               ); } catch err { dumpln(err); }
 try { dumpln( println         == println         ); } catch err { dumpln(err); }
 try { dumpln( println         == dumpln          ); } catch err { dumpln(err); }
+
+print("\n");
+
+# Order of elements in a map should not matter for structural equality.
+let x = {"foo": 123, "bar": 456};
+let y = {"bar": 456, "foo": 123};
+println($`x is {x}`);
+println($`y is {y}`);
+println($`x == y is {x == y}`);
+
+# Order of elements in a set should not matter for structural equality.
+let x = {"foo", "bar"};
+let y = {"bar", "foo"};
+println($`x is {x}`);
+println($`y is {y}`);
+println($`x == y is {x == y}`);
 ################################################################################
 # true
 # true
@@ -45,3 +61,10 @@ try { dumpln( println         == dumpln          ); } catch err { dumpln(err); }
 # false
 # true
 # false
+#
+# x is {"foo": 123, "bar": 456}
+# y is {"bar": 456, "foo": 123}
+# x == y is true
+# x is {"foo", "bar"}
+# y is {"bar", "foo"}
+# x == y is true

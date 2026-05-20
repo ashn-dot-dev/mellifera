@@ -1379,16 +1379,16 @@ func (self *Map) Equal(other Value) bool {
 
 	// Non-empty maps - self and other both have non-nil data.
 	selfCur := self.data.head
-	othrCur := othr.data.head
 	for selfCur != nil {
-		if !selfCur.key.Equal(othrCur.key) {
+		value, ok := othr.Lookup(selfCur.key)
+		if !ok {
 			return false
 		}
-		if !selfCur.value.Equal(othrCur.value) {
+		if !selfCur.value.Equal(value) {
 			return false
 		}
+
 		selfCur = selfCur.next
-		othrCur = othrCur.next
 	}
 
 	return true
@@ -1707,13 +1707,12 @@ func (self *Set) Equal(other Value) bool {
 
 	// Non-empty sets - self and other both have non-nil data.
 	selfCur := self.data.head
-	othrCur := othr.data.head
 	for selfCur != nil {
-		if !selfCur.key.Equal(othrCur.key) {
+		_, ok := othr.Lookup(selfCur.key)
+		if !ok {
 			return false
 		}
 		selfCur = selfCur.next
-		othrCur = othrCur.next
 	}
 
 	return true
