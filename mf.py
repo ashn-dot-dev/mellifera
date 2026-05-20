@@ -1116,6 +1116,11 @@ class Builtin(Value):
         arguments: list[Value], index: int, ty: Type[ValueType]
     ) -> ValueType:
         argument = arguments[index]
+        if ty == Function and isinstance(argument, Builtin):
+            # Built-in functions are treated as function types for argument
+            # checking purposes, as the difference between these types is
+            # opaque to the end-user.
+            return argument  # type: ignore
         if not isinstance(argument, ty):
             raise Exception(
                 f"expected {ty.typename()} value for argument {index}, received {typename(argument)}"
@@ -1127,6 +1132,15 @@ class Builtin(Value):
         arguments: list[Value], index: int, ty: Type[ValueType]
     ) -> Tuple[Reference, ValueType]:
         argument = arguments[index]
+        if (
+            isinstance(argument, Reference)
+            and ty == Function
+            and isinstance(argument.data, Builtin)
+        ):
+            # Built-in functions are treated as function types for argument
+            # checking purposes, as the difference between these types is
+            # opaque to the end-user.
+            return (argument, argument.data)  # type: ignore
         if not (isinstance(argument, Reference) and isinstance(argument.data, ty)):
             raise Exception(
                 f"expected reference to {ty.typename()} value for argument {index}, received {typename(argument)}"

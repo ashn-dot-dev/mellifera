@@ -7777,17 +7777,15 @@ func BuiltinVectorAny(ctx *Context) *Builtin {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Vector)
 
-		function := arguments[1].(*Function)
-
 		for _, element := range delf.Elements() {
-			result, err := Call(ctx, nil, function, []Value{element.Copy()})
+			result, err := Call(ctx, nil, arguments[1], []Value{element.Copy()})
 			if err != nil {
 				return nil, err
 			}
 
 			resultBoolean, ok := result.(*Boolean)
 			if !ok {
-				return nil, NewError(nil, ctx.NewStringf("expected function %s to return a boolean (received %s %s)", function, result.Typename(), result))
+				return nil, NewError(nil, ctx.NewStringf("expected function %s to return a boolean (received %s %s)", arguments[1], result.Typename(), result))
 			}
 
 			if resultBoolean.data {
@@ -7804,17 +7802,15 @@ func BuiltinVectorAll(ctx *Context) *Builtin {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Vector)
 
-		function := arguments[1].(*Function)
-
 		for _, element := range delf.Elements() {
-			result, err := Call(ctx, nil, function, []Value{element.Copy()})
+			result, err := Call(ctx, nil, arguments[1], []Value{element.Copy()})
 			if err != nil {
 				return nil, err
 			}
 
 			resultBoolean, ok := result.(*Boolean)
 			if !ok {
-				return nil, NewError(nil, ctx.NewStringf("expected function %s to return a boolean (received %s %s)", function, result.Typename(), result))
+				return nil, NewError(nil, ctx.NewStringf("expected function %s to return a boolean (received %s %s)", arguments[1], result.Typename(), result))
 			}
 
 			if !resultBoolean.data {
@@ -7831,11 +7827,9 @@ func BuiltinVectorMap(ctx *Context) *Builtin {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Vector)
 
-		function := arguments[1].(*Function)
-
 		mapped := []Value{}
 		for _, element := range delf.Elements() {
-			result, err := Call(ctx, nil, function, []Value{element.Copy()})
+			result, err := Call(ctx, nil, arguments[1], []Value{element.Copy()})
 			if err != nil {
 				return nil, err
 			}
@@ -7852,18 +7846,16 @@ func BuiltinVectorFilter(ctx *Context) *Builtin {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Vector)
 
-		function := arguments[1].(*Function)
-
 		filtered := []Value{}
 		for _, element := range delf.Elements() {
-			result, err := Call(ctx, nil, function, []Value{element.Copy()})
+			result, err := Call(ctx, nil, arguments[1], []Value{element.Copy()})
 			if err != nil {
 				return nil, err
 			}
 
 			resultBoolean, ok := result.(*Boolean)
 			if !ok {
-				return nil, NewError(nil, ctx.NewStringf("expected function %s to return a boolean (received %s %s)", function, result.Typename(), result))
+				return nil, NewError(nil, ctx.NewStringf("expected function %s to return a boolean (received %s %s)", arguments[1], result.Typename(), result))
 			}
 
 			if resultBoolean.data {
