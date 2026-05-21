@@ -3398,10 +3398,12 @@ class AstExpressionAccessIndex(AstExpression):
         store = self.store.eval(env)
         if isinstance(store, Error):
             return store
+
         field = self.field.eval(env)
         if isinstance(field, Error):
             return field
-        if isinstance(store, Vector):
+
+        def access_vector(store: Vector):
             try:
                 index = value_as_index(field)
                 if index >= len(store.data):
@@ -3415,11 +3417,28 @@ class AstExpressionAccessIndex(AstExpression):
                     self.location,
                     f"invalid vector access with index {field} ({str(e)})",
                 )
-        if isinstance(store, Map):
+
+        def access_map(store: Map):
             try:
                 return store[field]
             except (NotImplementedError, IndexError, KeyError):
                 return Error(self.location, f"invalid map access with field {field}")
+
+        if isinstance(store, Vector):
+            return access_vector(store)
+        if isinstance(store, Map):
+            return access_map(store)
+        if isinstance(store, Reference):
+            store_deref = store.data
+            if isinstance(store_deref, Vector):
+                return access_vector(store_deref)
+            if isinstance(store_deref, Map):
+                return access_map(store_deref)
+            return Error(
+                self.location,
+                f"invalid {store.typename()} to {store_deref.typename()} access with field {field}",
+            )
+
         return Error(
             self.location,
             f"attempted to access field of type {quote(typename(store))} with type {quote(typename(field))}",
@@ -3449,16 +3468,30 @@ class AstExpressionAccessScope(AstExpression):
         store = self.store.eval(env)
         if isinstance(store, Error):
             return store
+
         field = self.field.name
-        if not isinstance(store, Map):
+
+        def access_map(store: Map):
+            try:
+                return store[field]
+            except KeyError:
+                return Error(self.location, f"invalid map access with field {field}")
+
+        if isinstance(store, Map):
+            return access_map(store)
+        if isinstance(store, Reference):
+            store_deref = store.data
+            if isinstance(store_deref, Map):
+                return access_map(store_deref)
             return Error(
                 self.location,
-                f"attempted to access field of type {quote(typename(store))}",
+                f"invalid {store.typename()} to {store_deref.typename()} access with field {field}",
             )
-        try:
-            return store[field]
-        except KeyError:
-            return Error(self.location, f"invalid map access with field {field}")
+
+        return Error(
+            self.location,
+            f"attempted to access field of type {quote(typename(store))}",
+        )
 
 
 @final
@@ -4134,7 +4167,7 @@ class AstStatementAssignment(AstStatement):
         if isinstance(rhs, Error):
             return rhs
 
-        if isinstance(store, Vector):
+        def assign_vector(store: Vector) -> Optional[Error]:
             try:
                 index = value_as_index(field)
                 if index >= len(store.data):
@@ -4149,7 +4182,8 @@ class AstStatementAssignment(AstStatement):
                     self.location,
                     f"invalid vector assignment with index {field} ({str(e)})",
                 )
-        if isinstance(store, Map):
+
+        def assign_map(store: Map) -> Optional[Error]:
             try:
                 store[copy(field)] = copy(rhs)
                 return None
@@ -4159,19 +4193,21 @@ class AstStatementAssignment(AstStatement):
                     f"invalid map assignment with key {field} ({str(e)})",
                 )
 
+        if isinstance(store, Vector):
+            return assign_vector(store)
+        if isinstance(store, Map):
+            return assign_map(store)
+
         # Special case where a reference value is implicitly dereferenced when
         # accessing the target field.
         if isinstance(store, Reference):
             store_deref = store.data
-            if isinstance(store_deref, (Vector, Map)):
-                try:
-                    store_deref[copy(field)] = copy(rhs)
-                    return None
-                except (NotImplementedError, IndexError, KeyError):
-                    pass  # Handled by generic error just below
-                except Exception as e:
-                    return Error(self.location, str(e))
-
+            if isinstance(store_deref, Vector) and isinstance(
+                self.lhs, AstExpressionAccessIndex
+            ):
+                return assign_vector(store_deref)
+            if isinstance(store_deref, Map):
+                return assign_map(store_deref)
             return Error(
                 self.location,
                 f"invalid {store.typename()} to {store_deref.typename()} access with field {field}",

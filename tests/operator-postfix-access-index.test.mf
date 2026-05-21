@@ -1,12 +1,22 @@
+try { dumpln( null["foo"]                        ); } catch err { dumpln(err); }
 try { dumpln( null[0]                            ); } catch err { dumpln(err); }
+try { dumpln( true["foo"]                        ); } catch err { dumpln(err); }
 try { dumpln( true[0]                            ); } catch err { dumpln(err); }
+try { dumpln( 123["foo"]                         ); } catch err { dumpln(err); }
 try { dumpln( 123[0]                             ); } catch err { dumpln(err); }
+try { dumpln( "foo"["foo"]                       ); } catch err { dumpln(err); }
 try { dumpln( "foo"[0]                           ); } catch err { dumpln(err); }
+try { dumpln( ["foo", "bar"]["foo"]              ); } catch err { dumpln(err); }
 try { dumpln( ["foo", "bar"][0]                  ); } catch err { dumpln(err); }
 try { dumpln( Map{"foo": 123, "bar": 456}["foo"] ); } catch err { dumpln(err); }
+try { dumpln( Map{"foo": 123, "bar": 456}[0]     ); } catch err { dumpln(err); }
 try { dumpln( Set{"foo", "bar"}["foo"]           ); } catch err { dumpln(err); }
+try { dumpln( Set{"foo", "bar"}[0]               ); } catch err { dumpln(err); }
+try { dumpln( 123.&["foo"]                       ); } catch err { dumpln(err); }
 try { dumpln( 123.&[0]                           ); } catch err { dumpln(err); }
+try { dumpln( function(){}["foo"]                ); } catch err { dumpln(err); }
 try { dumpln( function(){}[0]                    ); } catch err { dumpln(err); }
+try { dumpln( println["foo"]                     ); } catch err { dumpln(err); }
 try { dumpln( println[0]                         ); } catch err { dumpln(err); }
 
 print("\n");
@@ -30,15 +40,25 @@ x["foo"] = "xyz";
 dumpln(x);
 try { dumpln(x["baz"]); } catch err { dumpln(err); }
 ################################################################################
+# "attempted to access field of type `null` with type `string`"
 # "attempted to access field of type `null` with type `number`"
+# "attempted to access field of type `boolean` with type `string`"
 # "attempted to access field of type `boolean` with type `number`"
+# "attempted to access field of type `number` with type `string`"
 # "attempted to access field of type `number` with type `number`"
+# "attempted to access field of type `string` with type `string`"
 # "attempted to access field of type `string` with type `number`"
+# "invalid vector access with index \"foo\" (cannot convert string into an integer)"
 # "foo"
 # 123
+# "invalid map access with field 0"
 # "attempted to access field of type `set` with type `string`"
-# "attempted to access field of type `reference` with type `number`"
+# "attempted to access field of type `set` with type `number`"
+# "invalid reference to number access with field \"foo\""
+# "invalid reference to number access with field 0"
+# "attempted to access field of type `function` with type `string`"
 # "attempted to access field of type `function` with type `number`"
+# "attempted to access field of type `function` with type `string`"
 # "attempted to access field of type `function` with type `number`"
 #
 # ["foo", "bar", "baz"]

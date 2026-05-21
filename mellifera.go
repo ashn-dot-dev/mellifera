@@ -4544,7 +4544,7 @@ func (self AstExpressionAccessIndex) Eval(ctx *Context, env *Environment) (Value
 		return nil, err
 	}
 
-	if v, ok := store.(*Vector); ok {
+	accessVector := func(storeVector *Vector) (Value, error) {
 		index, err := ValueAsIndex(field)
 		if err != nil {
 			return nil, NewError(
@@ -4553,16 +4553,18 @@ func (self AstExpressionAccessIndex) Eval(ctx *Context, env *Environment) (Value
 			)
 		}
 
-		if index >= v.Count() {
+		if index >= storeVector.Count() {
 			return nil, NewError(
 				self.Location,
-				ctx.NewStringf("invalid vector access with index %v (vector has a count of %v)", field, v.Count()),
+				ctx.NewStringf("invalid vector access with index %v (vector has a count of %v)", field, storeVector.Count()),
 			)
 		}
-		return v.Get(index), nil
+
+		return storeVector.Get(index), nil
 	}
-	if m, ok := store.(*Map); ok {
-		lookup, ok := m.Lookup(field)
+
+	accessMap := func(storeMap *Map) (Value, error) {
+		lookup, ok := storeMap.Lookup(field)
 		if !ok {
 			return nil, NewError(
 				self.Location,
@@ -4571,6 +4573,26 @@ func (self AstExpressionAccessIndex) Eval(ctx *Context, env *Environment) (Value
 		}
 
 		return lookup, nil
+	}
+
+	if storeVector, ok := store.(*Vector); ok {
+		return accessVector(storeVector)
+	}
+	if storeMap, ok := store.(*Map); ok {
+		return accessMap(storeMap)
+	}
+	if storeReference, ok := store.(*Reference); ok {
+		storeDeref := storeReference.data
+		if storeDerefVector, ok := storeDeref.(*Vector); ok {
+			return accessVector(storeDerefVector)
+		}
+		if storeDerefMap, ok := storeDeref.(*Map); ok {
+			return accessMap(storeDerefMap)
+		}
+		return nil, NewError(
+			self.Location,
+			ctx.NewStringf("invalid %s to %s access with field %v", store.Typename(), storeDeref.Typename(), field),
+		)
 	}
 
 	return nil, NewError(
@@ -4606,22 +4628,36 @@ func (self AstExpressionAccessScope) Eval(ctx *Context, env *Environment) (Value
 
 	field := self.Field.Name
 
-	m, ok := store.(*Map)
-	if !ok {
-		return nil, NewError(
-			self.Location,
-			ctx.NewStringf("attempted to access field of type %s", quote(store.Typename())),
-		)
+	accessMap := func(storeMap *Map) (Value, error) {
+		lookup, ok := storeMap.Lookup(field)
+		if !ok {
+			return nil, NewError(
+				self.Location,
+				ctx.NewStringf("invalid map access with field %v", field),
+			)
+		}
+
+		return lookup, nil
 	}
-	lookup, ok := m.Lookup(field)
-	if !ok {
+
+	if storeMap, ok := store.(*Map); ok {
+		return accessMap(storeMap)
+	}
+	if storeReference, ok := store.(*Reference); ok {
+		storeDeref := storeReference.data
+		if storeDerefMap, ok := storeDeref.(*Map); ok {
+			return accessMap(storeDerefMap)
+		}
 		return nil, NewError(
 			self.Location,
-			ctx.NewStringf("invalid map access with field %v", field),
+			ctx.NewStringf("invalid %s to %s access with field %v", store.Typename(), storeDeref.Typename(), field),
 		)
 	}
 
-	return lookup, nil
+	return nil, NewError(
+		self.Location,
+		ctx.NewStringf("attempted to access field of type %s", quote(store.Typename())),
+	)
 }
 
 type AstExpressionAccessDot struct {
@@ -5511,7 +5547,7 @@ func (self AstStatementAssignment) Eval(ctx *Context, env *Environment) (Control
 		return nil, err
 	}
 
-	assignVector := func(storeVector *Vector, rhs Value) error {
+	assignVector := func(storeVector *Vector) error {
 		index, err := ValueAsIndex(field)
 		if err != nil {
 			return NewError(
@@ -5534,10 +5570,11 @@ func (self AstStatementAssignment) Eval(ctx *Context, env *Environment) (Control
 				ctx.NewStringf("invalid vector assignment with index %v (%s)", field, err.Error()),
 			)
 		}
+
 		return nil
 	}
 
-	assignMap := func(storeMap *Map, rhs Value) error {
+	assignMap := func(storeMap *Map) error {
 		err := storeMap.Insert(field.Copy(), rhs.Copy())
 		if err != nil {
 			return NewError(
@@ -5545,26 +5582,27 @@ func (self AstStatementAssignment) Eval(ctx *Context, env *Environment) (Control
 				ctx.NewStringf("invalid map assignment with key %v (%s)", field, err.Error()),
 			)
 		}
+
 		return nil
 	}
 
 	if storeVector, ok := store.(*Vector); ok {
 		if _, lhsIsAccessIndex := self.Lhs.(AstExpressionAccessIndex); lhsIsAccessIndex {
-			return nil, assignVector(storeVector, rhs)
+			return nil, assignVector(storeVector)
 		}
 	}
 	if storeMap, ok := store.(*Map); ok {
-		return nil, assignMap(storeMap, rhs)
+		return nil, assignMap(storeMap)
 	}
 	if storeReference, ok := store.(*Reference); ok {
 		storeDeref := storeReference.data
 		if storeDerefVector, ok := storeDeref.(*Vector); ok {
 			if _, lhsIsAccessIndex := self.Lhs.(AstExpressionAccessIndex); lhsIsAccessIndex {
-				return nil, assignVector(storeDerefVector, rhs)
+				return nil, assignVector(storeDerefVector)
 			}
 		}
 		if storeDerefMap, ok := storeDeref.(*Map); ok {
-			return nil, assignMap(storeDerefMap, rhs)
+			return nil, assignMap(storeDerefMap)
 		}
 		return nil, NewError(
 			self.Location,

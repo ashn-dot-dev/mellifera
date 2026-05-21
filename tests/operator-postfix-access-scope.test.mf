@@ -32,7 +32,7 @@ try { dumpln(x::f); } catch err { dumpln(err); }
 # "attempted to access field of type `vector`"
 # 123
 # "attempted to access field of type `set`"
-# "attempted to access field of type `reference`"
+# "invalid reference to number access with field \"foo\""
 # "attempted to access field of type `function`"
 # "attempted to access field of type `function`"
 #
