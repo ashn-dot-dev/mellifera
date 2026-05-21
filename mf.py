@@ -4103,6 +4103,133 @@ class AstStatementReturn(AstStatement):
         return Return(result)
 
 
+# The eval_lvalue() function is similar to the eval() method associated with
+# every AstExpression, but is intended to be used specifically for expressions
+# on the left hand side of an assignment statement. Unlike eval(), this
+# function will recursively perform a copy-on-write operation when an index,
+# scope, or dot access expression is encountered *before* performing that
+# access operation, so that modification of nested values will not mutate
+# shared objects pointed to by semantically separate values.
+def eval_lvalue(expr: AstExpression, env: Environment) -> Union[Value, Error]:
+    field: Value
+    if isinstance(expr, AstExpressionAccessIndex):
+        inner_store = eval_lvalue(expr.store, env)
+        if isinstance(inner_store, Error):
+            return inner_store
+        inner_store.cow()
+
+        field_eval = expr.field.eval(env)
+        if isinstance(field_eval, Error):
+            return field_eval
+        field = field_eval
+
+        def access_vector(store: Vector):
+            try:
+                index = value_as_index(field)
+                if index >= len(store.data):
+                    return Error(
+                        expr.location,
+                        f"invalid vector access with index {field} (vector has a count of {len(store.data)})",
+                    )
+                return store[field]
+            except Exception as e:
+                return Error(
+                    expr.location,
+                    f"invalid vector access with index {field} ({str(e)})",
+                )
+
+        def access_map(store: Map):
+            try:
+                return store[field]
+            except (NotImplementedError, IndexError, KeyError):
+                return Error(expr.location, f"invalid map access with field {field}")
+
+        if isinstance(inner_store, Vector):
+            return access_vector(inner_store)
+        if isinstance(inner_store, Map):
+            return access_map(inner_store)
+        if isinstance(inner_store, Reference):
+            store_deref = inner_store.data
+            store_deref.cow()
+            if isinstance(store_deref, Vector):
+                return access_vector(store_deref)
+            if isinstance(store_deref, Map):
+                return access_map(store_deref)
+            return Error(
+                expr.location,
+                f"invalid {inner_store.typename()} to {store_deref.typename()} access with field {field}",
+            )
+
+        return Error(
+            expr.location,
+            f"attempted to access field of type {quote(typename(inner_store))} with type {quote(typename(field))}",
+        )
+
+    if isinstance(expr, AstExpressionAccessScope):
+        inner_store = eval_lvalue(expr.store, env)
+        if isinstance(inner_store, Error):
+            return inner_store
+        inner_store.cow()
+
+        field = expr.field.name
+
+        def access_map(store: Map):
+            try:
+                return store[field]
+            except KeyError:
+                return Error(expr.location, f"invalid map access with field {field}")
+
+        if isinstance(inner_store, Map):
+            return access_map(inner_store)
+        if isinstance(inner_store, Reference):
+            store_deref = inner_store.data
+            store_deref.cow()
+            if isinstance(store_deref, Map):
+                return access_map(store_deref)
+            return Error(
+                expr.location,
+                f"invalid {inner_store.typename()} to {store_deref.typename()} access with field {field}",
+            )
+
+        return Error(
+            expr.location,
+            f"attempted to access field of type {quote(typename(inner_store))}",
+        )
+
+    if isinstance(expr, AstExpressionAccessDot):
+        inner_store = eval_lvalue(expr.store, env)
+        if isinstance(inner_store, Error):
+            return inner_store
+        inner_store.cow()
+
+        field = expr.field.name
+
+        def access_map(store: Map):
+            try:
+                return store[field]
+            except KeyError:
+                return Error(expr.location, f"invalid map access with field {field}")
+
+        if isinstance(inner_store, Map):
+            return access_map(inner_store)
+        if isinstance(inner_store, Reference):
+            store_deref = inner_store.data
+            store_deref.cow()
+            if isinstance(store_deref, Map):
+                return access_map(store_deref)
+            return Error(
+                expr.location,
+                f"invalid {inner_store.typename()} to {store_deref.typename()} access with field {field}",
+            )
+
+        return Error(
+            expr.location,
+            f"invalid {inner_store.typename()} access with field {field}",
+        )
+
+    return expr.eval(env)
+
+
 @final
 @dataclass
 class AstStatementAssignment(AstStatement):
@@ -4138,7 +4265,7 @@ class AstStatementAssignment(AstStatement):
         store: Value
         field: Value
         if isinstance(self.lhs, AstExpressionAccessIndex):
-            lhs_store = self.lhs.store.eval(env)
+            lhs_store = eval_lvalue(self.lhs.store, env)
             if isinstance(lhs_store, Error):
                 return lhs_store
             lhs_field = self.lhs.field.eval(env)
@@ -4147,14 +4274,14 @@ class AstStatementAssignment(AstStatement):
             store = lhs_store
             field = lhs_field
         elif isinstance(self.lhs, AstExpressionAccessDot):
-            lhs_store = self.lhs.store.eval(env)
+            lhs_store = eval_lvalue(self.lhs.store, env)
             if isinstance(lhs_store, Error):
                 return lhs_store
             lhs_field = self.lhs.field.name
             store = lhs_store
             field = lhs_field
         elif isinstance(self.lhs, AstExpressionAccessScope):
-            lhs_store = self.lhs.store.eval(env)
+            lhs_store = eval_lvalue(self.lhs.store, env)
             if isinstance(lhs_store, Error):
                 return lhs_store
             lhs_field = self.lhs.field.name

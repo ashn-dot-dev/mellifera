@@ -5493,6 +5493,171 @@ func (self AstStatementAssignment) IntoValue(ctx *Context) Value {
 	})
 }
 
+// The evalLvalue() function is similar to the Eval() method associated with
+// every AstExpression, but is intended to be used specifically for expressions
+// on the left hand side of an assignment statement. Unlike Eval(), this
+// function will recursively perform a copy-on-write operation when an index,
+// scope, or dot access expression is encountered *before* performing that
+// access operation, so that modification of nested values will not mutate
+// shared objects pointed to by semantically separate values.
+func evalLvalue(expr AstExpression, ctx *Context, env *Environment) (Value, error) {
+	if exprAccessIndex, ok := expr.(AstExpressionAccessIndex); ok {
+		innerStore, err := evalLvalue(exprAccessIndex.Store, ctx, env)
+		if err != nil {
+			return nil, err
+		}
+		innerStore.CopyOnWrite()
+
+		field, err := exprAccessIndex.Field.Eval(ctx, env)
+		if err != nil {
+			return nil, err
+		}
+
+		accessVector := func(storeVector *Vector) (Value, error) {
+			index, err := ValueAsIndex(field)
+			if err != nil {
+				return nil, NewError(
+					exprAccessIndex.Location,
+					ctx.NewStringf("invalid vector access with index %v (%s)", field, err.Error()),
+				)
+			}
+
+			if index >= storeVector.Count() {
+				return nil, NewError(
+					exprAccessIndex.Location,
+					ctx.NewStringf("invalid vector access with index %v (vector has a count of %v)", field, storeVector.Count()),
+				)
+			}
+
+			return storeVector.Get(index), nil
+		}
+
+		accessMap := func(storeMap *Map) (Value, error) {
+			lookup, ok := storeMap.Lookup(field)
+			if !ok {
+				return nil, NewError(
+					exprAccessIndex.Location,
+					ctx.NewStringf("invalid map access with field %v", field),
+				)
+			}
+
+			return lookup, nil
+		}
+
+		if storeVector, ok := innerStore.(*Vector); ok {
+			return accessVector(storeVector)
+		}
+		if storeMap, ok := innerStore.(*Map); ok {
+			return accessMap(storeMap)
+		}
+		if storeReference, ok := innerStore.(*Reference); ok {
+			storeDeref := storeReference.data
+			storeDeref.CopyOnWrite()
+			if storeDerefVector, ok := storeDeref.(*Vector); ok {
+				return accessVector(storeDerefVector)
+			}
+			if storeDerefMap, ok := storeDeref.(*Map); ok {
+				return accessMap(storeDerefMap)
+			}
+			return nil, NewError(
+				exprAccessIndex.Location,
+				ctx.NewStringf("invalid %s to %s access with field %v", innerStore.Typename(), storeDeref.Typename(), field),
+			)
+		}
+
+		return nil, NewError(
+			exprAccessIndex.Location,
+			ctx.NewStringf("attempted to access field of type %s with type %s", quote(innerStore.Typename()), quote(field.Typename())),
+		)
+	}
+
+	if exprAccessScope, ok := expr.(AstExpressionAccessScope); ok {
+		innerStore, err := evalLvalue(exprAccessScope.Store, ctx, env)
+		if err != nil {
+			return nil, err
+		}
+		innerStore.CopyOnWrite()
+
+		field := exprAccessScope.Field.Name
+
+		accessMap := func(storeMap *Map) (Value, error) {
+			lookup, ok := storeMap.Lookup(field)
+			if !ok {
+				return nil, NewError(
+					exprAccessScope.Location,
+					ctx.NewStringf("invalid map access with field %v", field),
+				)
+			}
+
+			return lookup, nil
+		}
+
+		if storeMap, ok := innerStore.(*Map); ok {
+			return accessMap(storeMap)
+		}
+		if storeReference, ok := innerStore.(*Reference); ok {
+			storeDeref := storeReference.data
+			storeDeref.CopyOnWrite()
+			if storeDerefMap, ok := storeDeref.(*Map); ok {
+				return accessMap(storeDerefMap)
+			}
+			return nil, NewError(
+				exprAccessScope.Location,
+				ctx.NewStringf("invalid %s to %s access with field %v", innerStore.Typename(), storeDeref.Typename(), field),
+			)
+		}
+
+		return nil, NewError(
+			exprAccessScope.Location,
+			ctx.NewStringf("attempted to access field of type %s", quote(innerStore.Typename())),
+		)
+	}
+
+	if exprAccessDot, ok := expr.(AstExpressionAccessDot); ok {
+		innerStore, err := evalLvalue(exprAccessDot.Store, ctx, env)
+		if err != nil {
+			return nil, err
+		}
+		innerStore.CopyOnWrite()
+
+		field := exprAccessDot.Field.Name
+
+		accessMap := func(storeMap *Map) (Value, error) {
+			lookup, ok := storeMap.Lookup(field)
+			if !ok {
+				return nil, NewError(
+					exprAccessDot.Location,
+					ctx.NewStringf("invalid map access with field %v", field),
+				)
+			}
+
+			return lookup, nil
+		}
+
+		if storeMap, ok := innerStore.(*Map); ok {
+			return accessMap(storeMap)
+		}
+		if storeReference, ok := innerStore.(*Reference); ok {
+			storeDeref := storeReference.data
+			storeDeref.CopyOnWrite()
+			if storeDerefMap, ok := storeDeref.(*Map); ok {
+				return accessMap(storeDerefMap)
+			}
+			return nil, NewError(
+				exprAccessDot.Location,
+				ctx.NewStringf("invalid %s to %s access with field %v", innerStore.Typename(), storeDeref.Typename(), field),
+			)
+		}
+
+		return nil, NewError(
+			exprAccessDot.Location,
+			ctx.NewStringf("invalid %s access with field %v", innerStore.Typename(), field),
+		)
+	}
+
+	return expr.Eval(ctx, env)
+}
+
 func (self AstStatementAssignment) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
 	// Special case for identifier assignment, where we can directly update
 	// the environment using `Environment.Set`.
@@ -5515,7 +5680,7 @@ func (self AstStatementAssignment) Eval(ctx *Context, env *Environment) (Control
 	var err error
 
 	if lhsAccessIndex, ok := self.Lhs.(AstExpressionAccessIndex); ok {
-		store, err = lhsAccessIndex.Store.Eval(ctx, env)
+		store, err = evalLvalue(lhsAccessIndex.Store, ctx, env)
 		if err != nil {
 			return nil, err
 		}
@@ -5524,13 +5689,13 @@ func (self AstStatementAssignment) Eval(ctx *Context, env *Environment) (Control
 			return nil, err
 		}
 	} else if lhsAccessDot, ok := self.Lhs.(AstExpressionAccessDot); ok {
-		store, err = lhsAccessDot.Store.Eval(ctx, env)
+		store, err = evalLvalue(lhsAccessDot.Store, ctx, env)
 		if err != nil {
 			return nil, err
 		}
 		field = lhsAccessDot.Field.Name
 	} else if lhsAccessScope, ok := self.Lhs.(AstExpressionAccessScope); ok {
-		store, err = lhsAccessScope.Store.Eval(ctx, env)
+		store, err = evalLvalue(lhsAccessScope.Store, ctx, env)
 		if err != nil {
 			return nil, err
 		}

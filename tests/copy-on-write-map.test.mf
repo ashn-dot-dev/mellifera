@@ -1,44 +1,59 @@
-let a = {"abc": 123, "def": 456, "hij": {"xyz": 3.14}};
-let b = a;
-dumpln(a);
-dumpln(b);
+let x = {"foo": {"bar": 123}};
+let y = x;
+println($`x is {x}`);
+println($`y is {y}`);
+y["foo"] = {"bar": 456};
+println($`y["foo"] = {{"bar": 456}};`);
+println($`x is now {x}`);
+println($`y is now {y}`);
 
 print("\n");
 
-a["abc"] = "foo";
-dumpln(a);
-dumpln(b);
+let x = {"foo": {"bar": 123}};
+let y = x;
+println($`x is {x}`);
+println($`y is {y}`);
+y["foo"]["bar"] = 456;
+println($`y["foo"]["bar"] = 456;`);
+println($`x is now {x}`);
+println($`y is now {y}`);
 
 print("\n");
 
-b["hij"]["xyz"] = "bar";
-dumpln(a);
-dumpln(b);
+let x = {"foo": {"bar": 123}};
+let y = x;
+println($`x is {x}`);
+println($`y is {y}`);
 
-print("\n");
-
-function(x) {
-    x["abc"] = "baz";
-    dumpln(a);
-    dumpln(x);
-}(a);
-
-print("\n");
-
-dumpln(a);
-dumpln(b);
+println($`calling function with passing y as parameter z`);
+function(z) {
+    z["foo"] = {"bar": 456};
+    println($`z["foo"] = {{"bar": 456}}; # inside function`);
+    println($`x is {x} (inside function)`);
+    println($`y is {y} (inside function)`);
+    println($`z is {z} (inside function)`);
+}(y);
+println($`x is now {x} (outside function)`);
+println($`y is now {y} (outside function)`);
 ################################################################################
-# {"abc": 123, "def": 456, "hij": {"xyz": 3.14}}
-# {"abc": 123, "def": 456, "hij": {"xyz": 3.14}}
+# x is {"foo": {"bar": 123}}
+# y is {"foo": {"bar": 123}}
+# y["foo"] = {"bar": 456};
+# x is now {"foo": {"bar": 123}}
+# y is now {"foo": {"bar": 456}}
 #
-# {"abc": "foo", "def": 456, "hij": {"xyz": 3.14}}
-# {"abc": 123, "def": 456, "hij": {"xyz": 3.14}}
+# x is {"foo": {"bar": 123}}
+# y is {"foo": {"bar": 123}}
+# y["foo"]["bar"] = 456;
+# x is now {"foo": {"bar": 123}}
+# y is now {"foo": {"bar": 456}}
 #
-# {"abc": "foo", "def": 456, "hij": {"xyz": 3.14}}
-# {"abc": 123, "def": 456, "hij": {"xyz": "bar"}}
-#
-# {"abc": "foo", "def": 456, "hij": {"xyz": 3.14}}
-# {"abc": "baz", "def": 456, "hij": {"xyz": 3.14}}
-#
-# {"abc": "foo", "def": 456, "hij": {"xyz": 3.14}}
-# {"abc": 123, "def": 456, "hij": {"xyz": "bar"}}
+# x is {"foo": {"bar": 123}}
+# y is {"foo": {"bar": 123}}
+# calling function with passing y as parameter z
+# z["foo"] = {"bar": 456}; # inside function
+# x is {"foo": {"bar": 123}} (inside function)
+# y is {"foo": {"bar": 123}} (inside function)
+# z is {"foo": {"bar": 456}} (inside function)
+# x is now {"foo": {"bar": 123}} (outside function)
+# y is now {"foo": {"bar": 123}} (outside function)

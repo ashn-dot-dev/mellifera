@@ -1,44 +1,59 @@
-let a = {123, 456, 789, {"xyz"}};
-let b = a;
-dumpln(a);
-dumpln(a);
+let x = {"foo", "bar"};
+let y = x;
+println($`x is {x}`);
+println($`y is {y}`);
+y.insert("baz");
+println($`y.insert("baz");`);
+println($`x is now {x}`);
+println($`y is now {y}`);
 
 print("\n");
 
-a.insert("foo");
-dumpln(a);
-dumpln(b);
+let x = {"foo", "bar"};
+let y = x;
+println($`x is {x}`);
+println($`y is {y}`);
+y.remove("foo");
+println($`y.remove("foo");`);
+println($`x is now {x}`);
+println($`y is now {y}`);
 
 print("\n");
 
-b.remove({"xyz"});
-dumpln(a);
-dumpln(b);
+let x = {"foo", "bar"};
+let y = x;
+println($`x is {x}`);
+println($`y is {y}`);
 
-print("\n");
-
-function(x) {
-    x.insert(3.14);
-    dumpln(a);
-    dumpln(x);
-}(a);
-
-print("\n");
-
-dumpln(a);
-dumpln(b);
+println($`calling function with passing y as parameter z`);
+function(z) {
+    z.insert("baz");
+    println($`z.insert("baz"); # inside function`);
+    println($`x is {x} (inside function)`);
+    println($`y is {y} (inside function)`);
+    println($`z is {z} (inside function)`);
+}(y);
+println($`x is now {x} (outside function)`);
+println($`y is now {y} (outside function)`);
 ################################################################################
-# {123, 456, 789, {"xyz"}}
-# {123, 456, 789, {"xyz"}}
+# x is {"foo", "bar"}
+# y is {"foo", "bar"}
+# y.insert("baz");
+# x is now {"foo", "bar"}
+# y is now {"foo", "bar", "baz"}
 #
-# {123, 456, 789, {"xyz"}, "foo"}
-# {123, 456, 789, {"xyz"}}
+# x is {"foo", "bar"}
+# y is {"foo", "bar"}
+# y.remove("foo");
+# x is now {"foo", "bar"}
+# y is now {"bar"}
 #
-# {123, 456, 789, {"xyz"}, "foo"}
-# {123, 456, 789}
-#
-# {123, 456, 789, {"xyz"}, "foo"}
-# {123, 456, 789, {"xyz"}, "foo", 3.14}
-#
-# {123, 456, 789, {"xyz"}, "foo"}
-# {123, 456, 789}
+# x is {"foo", "bar"}
+# y is {"foo", "bar"}
+# calling function with passing y as parameter z
+# z.insert("baz"); # inside function
+# x is {"foo", "bar"} (inside function)
+# y is {"foo", "bar"} (inside function)
+# z is {"foo", "bar", "baz"} (inside function)
+# x is now {"foo", "bar"} (outside function)
+# y is now {"foo", "bar"} (outside function)
