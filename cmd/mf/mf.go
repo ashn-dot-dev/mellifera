@@ -269,7 +269,7 @@ func main() {
 			os.Exit(1)
 		}
 	}
-	module := ctx.NewMap([]mellifera.MapPair{
+	module := ctx.NewMapOrPanic([]mellifera.MapPair{
 		{ctx.NewString("path"), ctx.NewString(path)},
 		{ctx.NewString("file"), ctx.NewString(filepath.Base(path))},
 		{ctx.NewString("directory"), ctx.NewString(filepath.Dir(path))},

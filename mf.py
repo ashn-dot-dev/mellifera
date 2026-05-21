@@ -143,7 +143,16 @@ class SharedVectorData(UserList["Value"]):
 class SharedMapData(UserDict["Value", "Value"]):
     def __init__(self, data: Optional[dict["Value", "Value"]] = None):
         self.uses: int = 0
+        if data is not None:
+            for key in data.keys():
+                if isinstance(key, Number) and math.isnan(key.data):
+                    raise Exception("invalid NaN map key")
         super().__init__(data)
+
+    def __setitem__(self, key: "Value", value: "Value") -> None:
+        if isinstance(key, Number) and math.isnan(key.data):
+            raise Exception("invalid NaN map key")
+        super().__setitem__(key, value)
 
     def __copy__(self) -> "SharedMapData":
         return SharedMapData({copy(k): copy(v) for k, v in self.data.items()})
@@ -153,12 +162,20 @@ class SharedSetData(UserDict["Value", None]):
     def __init__(self, data: Optional[Iterable["Value"]] = None):
         self.uses: int = 0
         if data is not None:
+            for element in data:
+                if isinstance(element, Number) and math.isnan(element.data):
+                    raise Exception("invalid NaN set element")
             super().__init__({k: None for k in data})
         else:
             super().__init__()
 
-    def insert(self, element: "Value") -> None:
+    def __setitem__(self, element: "Value", value: None) -> None:
+        if isinstance(element, Number) and math.isnan(element.data):
+            raise Exception("invalid NaN set element")
         super().__setitem__(element, None)
+
+    def insert(self, element: "Value") -> None:
+        self.__setitem__(element, None)
 
     def remove(self, element: "Value") -> None:
         del self[element]
@@ -817,8 +834,8 @@ class Map(Value):
     def __setitem__(self, key: Value, value: Value) -> None:
         if self.is_immutable():
             raise Exception(f"attempted to modify immutable map {self}")
-        if self.is_immutable():
-            raise Exception(f"attempted to modify immutable map {self}")
+        if isinstance(key, Number) and math.isnan(key.data):
+            raise Exception("invalid NaN map key")
         if self.data.uses > 1:
             self.data.uses -= 1
             self.data = copy(self.data)  # copy-on-write
@@ -953,6 +970,8 @@ class Set(Value):
     def insert(self, element: "Value") -> None:
         if self.is_immutable():
             raise Exception(f"attempted to modify immutable set {self}")
+        if isinstance(element, Number) and math.isnan(element.data):
+            raise Exception("invalid NaN set element")
         if self.data.uses > 1:
             self.data.uses -= 1
             self.data = copy(self.data)  # copy-on-write
@@ -2421,16 +2440,19 @@ class AstExpressionMap(AstExpression):
         )
 
     def eval(self, env: Environment) -> Union[Value, Error]:
-        elements = SharedMapData()
-        for k, v in self.elements:
-            k_result = k.eval(env)
-            if isinstance(k_result, Error):
-                return k_result
-            v_result = v.eval(env)
-            if isinstance(v_result, Error):
-                return v_result
-            elements[copy(k_result)] = copy(v_result)
-        return Map.new(elements)
+        try:
+            elements = SharedMapData()
+            for k, v in self.elements:
+                k_result = k.eval(env)
+                if isinstance(k_result, Error):
+                    return k_result
+                v_result = v.eval(env)
+                if isinstance(v_result, Error):
+                    return v_result
+                elements[copy(k_result)] = copy(v_result)
+            return Map.new(elements)
+        except Exception as e:
+            return Error(self.location, str(e))
 
 
 @final
@@ -2453,13 +2475,16 @@ class AstExpressionSet(AstExpression):
         )
 
     def eval(self, env: Environment) -> Union[Value, Error]:
-        elements = SharedSetData()
-        for x in self.elements:
-            result = x.eval(env)
-            if isinstance(result, Error):
-                return result
-            elements.insert(copy(result))
-        return Set.new(elements)
+        try:
+            elements = SharedSetData()
+            for x in self.elements:
+                result = x.eval(env)
+                if isinstance(result, Error):
+                    return result
+                elements.insert(copy(result))
+            return Set.new(elements)
+        except Exception as e:
+            return Error(self.location, str(e))
 
 
 @final

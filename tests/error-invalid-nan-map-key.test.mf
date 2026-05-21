@@ -1,0 +1,5 @@
+try { {NaN: "foo"}; } catch err { dumpln(err); }
+try { let x = Map{}; x[NaN] = "foo"; } catch err { dumpln(err); }
+################################################################################
+# "invalid NaN map key"
+# "invalid map assignment with key NaN (invalid NaN map key)"

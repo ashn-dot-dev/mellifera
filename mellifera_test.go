@@ -524,7 +524,7 @@ func TestVectorCombEncode(t *testing.T) {
 
 func TestMapConstructorNilElements(t *testing.T) {
 	ctx := NewContext()
-	m := ctx.NewMap(nil)
+	m := ctx.NewMapOrPanic(nil)
 	AssertEq(t, 0, m.Count())
 
 	AssertEq(t, m.Get(ctx.NewNull()), nil)
@@ -534,11 +534,11 @@ func TestMapConstructorNilElements(t *testing.T) {
 func TestMapConstructorNonNilElements(t *testing.T) {
 	ctx := NewContext()
 	{
-		m := ctx.NewMap([]MapPair{})
+		m := ctx.NewMapOrPanic([]MapPair{})
 		AssertEq(t, 0, m.Count())
 	}
 	{
-		m := ctx.NewMap([]MapPair{
+		m := ctx.NewMapOrPanic([]MapPair{
 			{ctx.NewNumber(123.456), ctx.NewString("abc")},
 			{ctx.NewString("foo"), ctx.NewString("def")},
 			{ctx.NewVector(nil), ctx.NewString("hij")},
@@ -557,13 +557,13 @@ func TestMapConstructorNonNilElements(t *testing.T) {
 func TestMapTypename(t *testing.T) {
 	{
 		ctx := NewContext()
-		m := ctx.NewMap(nil)
+		m := ctx.NewMapOrPanic(nil)
 		AssertEq(t, "map", m.Typename())
 	}
 	{
 		ctx := NewContext()
-		meta := ctx.NewMetaMap("meta", nil)
-		m := ctx.NewMapWithType(meta, nil)
+		meta := ctx.NewMetaMapOrPanic("meta", nil)
+		m := ctx.NewMapWithTypeOrPanic(meta, nil)
 		AssertEq(t, "meta", m.Typename())
 	}
 }
@@ -571,15 +571,15 @@ func TestMapTypename(t *testing.T) {
 func TestMapString(t *testing.T) {
 	ctx := NewContext()
 	{
-		m := ctx.NewMap(nil)
+		m := ctx.NewMapOrPanic(nil)
 		AssertEq(t, "Map{}", m.String())
 	}
 	{
-		m := ctx.NewMap([]MapPair{})
+		m := ctx.NewMapOrPanic([]MapPair{})
 		AssertEq(t, "Map{}", m.String())
 	}
 	{
-		m := ctx.NewMap([]MapPair{
+		m := ctx.NewMapOrPanic([]MapPair{
 			{ctx.NewNumber(123.456), ctx.NewString("abc")},
 			{ctx.NewString("foo"), ctx.NewString("def")},
 			{ctx.NewVector(nil), ctx.NewString("hij")},
@@ -591,15 +591,15 @@ func TestMapString(t *testing.T) {
 func TestMapCopy(t *testing.T) {
 	ctx := NewContext()
 	{
-		m := ctx.NewMap(nil)
+		m := ctx.NewMapOrPanic(nil)
 		AssertEq(t, m.Count(), m.Copy().(*Map).Count())
 	}
 	{
-		m := ctx.NewMap([]MapPair{})
+		m := ctx.NewMapOrPanic([]MapPair{})
 		AssertEq(t, m.Count(), m.Copy().(*Map).Count())
 	}
 	{
-		m := ctx.NewMap([]MapPair{
+		m := ctx.NewMapOrPanic([]MapPair{
 			{ctx.NewNumber(123.456), ctx.NewString("abc")},
 			{ctx.NewString("foo"), ctx.NewString("def")},
 			{ctx.NewVector(nil), ctx.NewString("hij")},
@@ -617,7 +617,7 @@ func TestMapCopy(t *testing.T) {
 
 func TestMapCopyOnWrite(t *testing.T) {
 	ctx := NewContext()
-	a := ctx.NewMap([]MapPair{
+	a := ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewNumber(123.456), ctx.NewString("abc")},
 		{ctx.NewString("foo"), ctx.NewString("def")},
 		{ctx.NewVector(nil), ctx.NewString("hij")},
@@ -662,7 +662,7 @@ func TestMapCopyOnWrite(t *testing.T) {
 func TestMapCombEncode(t *testing.T) {
 	ctx := NewContext()
 
-	empty := ctx.NewMap(nil)
+	empty := ctx.NewMapOrPanic(nil)
 	{
 		var sb strings.Builder
 		e := NewCombEncoder(&sb)
@@ -679,13 +679,13 @@ func TestMapCombEncode(t *testing.T) {
 		AssertEq(t, "Map{}", sb.String())
 	}
 
-	nonEmpty := ctx.NewMap([]MapPair{
+	nonEmpty := ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewNull(), ctx.NewNull()},
 		{ctx.NewBoolean(false), ctx.NewBoolean(false)},
 		{ctx.NewNumber(123.456), ctx.NewNumber(123.456)},
 		{ctx.NewString("foo"), ctx.NewString("foo")},
-		{ctx.NewString("empty"), ctx.NewMap(nil)},
-		{ctx.NewString("non-empty"), ctx.NewMap([]MapPair{
+		{ctx.NewString("empty"), ctx.NewMapOrPanic(nil)},
+		{ctx.NewString("non-empty"), ctx.NewMapOrPanic([]MapPair{
 			{ctx.NewString("abc"), ctx.NewString("foo")},
 			{ctx.NewString("def"), ctx.NewString("bar")},
 			{ctx.NewString("hij"), ctx.NewString("baz")},
@@ -727,11 +727,11 @@ func TestMapCombEncode(t *testing.T) {
 }`, sb.String())
 	}
 
-	deeplyNested := ctx.NewMap([]MapPair{
-		{ctx.NewString("foo"), ctx.NewMap([]MapPair{
-			{ctx.NewString("bar"), ctx.NewMap([]MapPair{
-				{ctx.NewString("baz"), ctx.NewMap([]MapPair{
-					{ctx.NewString("qux"), ctx.NewMap(nil)},
+	deeplyNested := ctx.NewMapOrPanic([]MapPair{
+		{ctx.NewString("foo"), ctx.NewMapOrPanic([]MapPair{
+			{ctx.NewString("bar"), ctx.NewMapOrPanic([]MapPair{
+				{ctx.NewString("baz"), ctx.NewMapOrPanic([]MapPair{
+					{ctx.NewString("qux"), ctx.NewMapOrPanic(nil)},
 				})},
 			})},
 		})},
@@ -765,7 +765,7 @@ func TestMapCombEncode(t *testing.T) {
 func TestMapInsert(t *testing.T) {
 	ctx := NewContext()
 
-	a := ctx.NewMap([]MapPair{
+	a := ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewNumber(123.456), ctx.NewString("abc")},
 		{ctx.NewString("foo"), ctx.NewString("def")},
 		{ctx.NewVector(nil), ctx.NewString("hij")},
@@ -774,7 +774,7 @@ func TestMapInsert(t *testing.T) {
 	AssertEq(t, aInsertErr, nil)
 	AssertEq(t, `{123.456: "abc", "foo": "def", []: "hij", "xyz": "inserted"}`, a.String())
 
-	b := ctx.NewMetaMap("meta", []MapPair{
+	b := ctx.NewMetaMapOrPanic("meta", []MapPair{
 		{ctx.NewNumber(123.456), ctx.NewString("abc")},
 		{ctx.NewString("foo"), ctx.NewString("def")},
 		{ctx.NewVector(nil), ctx.NewString("hij")},
@@ -788,7 +788,7 @@ func TestMapInsert(t *testing.T) {
 func TestMapRemove(t *testing.T) {
 	ctx := NewContext()
 
-	a := ctx.NewMap([]MapPair{
+	a := ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewNumber(123.456), ctx.NewString("abc")},
 		{ctx.NewString("foo"), ctx.NewString("def")},
 		{ctx.NewVector(nil), ctx.NewString("hij")},
@@ -797,7 +797,7 @@ func TestMapRemove(t *testing.T) {
 	AssertEq(t, aRemoveErr, nil)
 	AssertEq(t, `{123.456: "abc", []: "hij"}`, a.String())
 
-	b := ctx.NewMetaMap("meta", []MapPair{
+	b := ctx.NewMetaMapOrPanic("meta", []MapPair{
 		{ctx.NewNumber(123.456), ctx.NewString("abc")},
 		{ctx.NewString("foo"), ctx.NewString("def")},
 		{ctx.NewVector(nil), ctx.NewString("hij")},
@@ -810,7 +810,7 @@ func TestMapRemove(t *testing.T) {
 
 func TestSetConstructorNilElements(t *testing.T) {
 	ctx := NewContext()
-	set := ctx.NewSet(nil)
+	set := ctx.NewSetOrPanic(nil)
 	AssertEq(t, 0, set.Count())
 
 	AssertEq(t, set.Get(ctx.NewNull()), nil)
@@ -820,11 +820,11 @@ func TestSetConstructorNilElements(t *testing.T) {
 func TestSetConstructorNonNilElements(t *testing.T) {
 	ctx := NewContext()
 	{
-		set := ctx.NewSet([]Value{})
+		set := ctx.NewSetOrPanic([]Value{})
 		AssertEq(t, 0, set.Count())
 	}
 	{
-		set := ctx.NewSet([]Value{
+		set := ctx.NewSetOrPanic([]Value{
 			ctx.NewNumber(123.456),
 			ctx.NewString("foo"),
 			ctx.NewVector(nil),
@@ -842,22 +842,22 @@ func TestSetConstructorNonNilElements(t *testing.T) {
 
 func TestSetTypename(t *testing.T) {
 	ctx := NewContext()
-	set := ctx.NewSet(nil)
+	set := ctx.NewSetOrPanic(nil)
 	AssertEq(t, "set", set.Typename())
 }
 
 func TestSetString(t *testing.T) {
 	ctx := NewContext()
 	{
-		set := ctx.NewSet(nil)
+		set := ctx.NewSetOrPanic(nil)
 		AssertEq(t, "Set{}", set.String())
 	}
 	{
-		set := ctx.NewSet([]Value{})
+		set := ctx.NewSetOrPanic([]Value{})
 		AssertEq(t, "Set{}", set.String())
 	}
 	{
-		set := ctx.NewSet([]Value{
+		set := ctx.NewSetOrPanic([]Value{
 			ctx.NewNumber(123.456),
 			ctx.NewString("foo"),
 			ctx.NewVector(nil),
@@ -869,15 +869,15 @@ func TestSetString(t *testing.T) {
 func TestSetCopy(t *testing.T) {
 	ctx := NewContext()
 	{
-		set := ctx.NewSet(nil)
+		set := ctx.NewSetOrPanic(nil)
 		AssertEq(t, set.Count(), set.Copy().(*Set).Count())
 	}
 	{
-		set := ctx.NewSet([]Value{})
+		set := ctx.NewSetOrPanic([]Value{})
 		AssertEq(t, set.Count(), set.Copy().(*Set).Count())
 	}
 	{
-		set := ctx.NewSet([]Value{
+		set := ctx.NewSetOrPanic([]Value{
 			ctx.NewNumber(123.456),
 			ctx.NewString("foo"),
 			ctx.NewVector(nil),
@@ -895,7 +895,7 @@ func TestSetCopy(t *testing.T) {
 
 func TestSetCopyOnWrite(t *testing.T) {
 	ctx := NewContext()
-	a := ctx.NewSet([]Value{
+	a := ctx.NewSetOrPanic([]Value{
 		ctx.NewNumber(123.456),
 		ctx.NewString("foo"),
 		ctx.NewVector(nil),
@@ -941,7 +941,7 @@ func TestSetCopyOnWrite(t *testing.T) {
 func TestSetCombEncode(t *testing.T) {
 	ctx := NewContext()
 
-	empty := ctx.NewSet(nil)
+	empty := ctx.NewSetOrPanic(nil)
 	{
 		var sb strings.Builder
 		e := NewCombEncoder(&sb)
@@ -958,13 +958,13 @@ func TestSetCombEncode(t *testing.T) {
 		AssertEq(t, "Set{}", sb.String())
 	}
 
-	nonEmpty := ctx.NewSet([]Value{
+	nonEmpty := ctx.NewSetOrPanic([]Value{
 		ctx.NewNull(),
 		ctx.NewBoolean(false),
 		ctx.NewNumber(123.456),
 		ctx.NewString("foo"),
-		ctx.NewSet(nil),
-		ctx.NewSet([]Value{
+		ctx.NewSetOrPanic(nil),
+		ctx.NewSetOrPanic([]Value{
 			ctx.NewString("foo"),
 			ctx.NewString("bar"),
 			ctx.NewString("baz"),
@@ -1005,10 +1005,10 @@ func TestSetCombEncode(t *testing.T) {
 }`, sb.String())
 	}
 
-	deeplyNested := ctx.NewSet([]Value{
-		ctx.NewSet([]Value{
-			ctx.NewSet([]Value{
-				ctx.NewSet([]Value{
+	deeplyNested := ctx.NewSetOrPanic([]Value{
+		ctx.NewSetOrPanic([]Value{
+			ctx.NewSetOrPanic([]Value{
+				ctx.NewSetOrPanic([]Value{
 					ctx.NewString("foo"),
 				}),
 			}),

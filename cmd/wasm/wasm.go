@@ -104,7 +104,7 @@ func JsValueIntoMelliferaValue(ctx *mellifera.Context, jsValue js.Value) (mellif
 			}
 			pairs = append(pairs, mellifera.MapPair{keyMfValue, valueMfValue})
 		}
-		return ctx.NewMap(pairs), nil
+		return ctx.NewMap(pairs)
 	default:
 		return nil, mellifera.NewError(nil, ctx.NewStringf("unable to represent JavaScript value %v in Mellifera", jsValue))
 	}
@@ -572,7 +572,7 @@ func eval(source string, stdout, stderr io.Writer) (mellifera.Value, error) {
 	ctx.Stdout = stdout
 	ctx.Stderr = stderr
 
-	JsValueType = ctx.NewMetaMap("js::value", []mellifera.MapPair{
+	JsValueType = ctx.NewMetaMapOrPanic("js::value", []mellifera.MapPair{
 		{ctx.NewString("get"), BuiltinJsValueGet(ctx)},
 		{ctx.NewString("set"), BuiltinJsValueSet(ctx)},
 		{ctx.NewString("delete"), BuiltinJsValueDelete(ctx)},
@@ -580,7 +580,7 @@ func eval(source string, stdout, stderr io.Writer) (mellifera.Value, error) {
 		{ctx.NewString("set_index"), BuiltinJsValueSetIndex(ctx)},
 		{ctx.NewString("call"), BuiltinJsValueCall(ctx)},
 	}).Freeze().(*mellifera.Map)
-	ctx.BaseEnvironment.Let("js", ctx.NewMap([]mellifera.MapPair{
+	ctx.BaseEnvironment.Let("js", ctx.NewMapOrPanic([]mellifera.MapPair{
 		{ctx.NewString("value"), JsValueType},
 		{ctx.NewString("from_mellifera"), BuiltinJsFromMellifera(ctx)},
 		{ctx.NewString("into_mellifera"), BuiltinJsIntoMellifera(ctx)},

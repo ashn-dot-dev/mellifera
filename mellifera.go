@@ -270,11 +270,11 @@ func NewContext() *Context {
 	ctx.Stdout = os.Stdout
 	ctx.Stderr = os.Stderr
 
-	ctx.functionMeta = ctx.NewMetaMap("function", nil)
-	ctx.booleanMeta = ctx.NewMetaMap("boolean", []MapPair{
+	ctx.functionMeta = ctx.NewMetaMapOrPanic("function", nil)
+	ctx.booleanMeta = ctx.NewMetaMapOrPanic("boolean", []MapPair{
 		{ctx.NewString("init"), BuiltinBooleanInit(ctx)},
 	})
-	ctx.numberMeta = ctx.NewMetaMap("number", []MapPair{
+	ctx.numberMeta = ctx.NewMetaMapOrPanic("number", []MapPair{
 		{ctx.NewString("MAX_SAFE_INTEGER"), ctx.NewNumber(MAX_SAFE_INTEGER)},
 		{ctx.NewString("MIN_SAFE_INTEGER"), ctx.NewNumber(MIN_SAFE_INTEGER)},
 		{ctx.NewString("init"), BuiltinNumberInit(ctx)},
@@ -287,7 +287,7 @@ func NewContext() *Context {
 		{ctx.NewString("floor"), BuiltinNumberFloor(ctx)},
 		{ctx.NewString("ceil"), BuiltinNumberCeil(ctx)},
 	})
-	ctx.stringMeta = ctx.NewMetaMap("string", []MapPair{
+	ctx.stringMeta = ctx.NewMetaMapOrPanic("string", []MapPair{
 		{ctx.NewString("init"), BuiltinStringInit(ctx)},
 		{ctx.NewString("bytes"), BuiltinStringBytes(ctx)},
 		{ctx.NewString("runes"), BuiltinStringRunes(ctx)},
@@ -308,12 +308,12 @@ func NewContext() *Context {
 		{ctx.NewString("to_upper"), BuiltinStringToUpper(ctx)},
 		{ctx.NewString("to_lower"), BuiltinStringToLower(ctx)},
 	})
-	ctx.regexpMeta = ctx.NewMetaMap("regexp", []MapPair{
+	ctx.regexpMeta = ctx.NewMetaMapOrPanic("regexp", []MapPair{
 		{ctx.NewString("init"), BuiltinRegexpInit(ctx)},
 		{ctx.NewString("split"), BuiltinRegexpSplit(ctx)},
 		{ctx.NewString("replace"), BuiltinRegexpReplace(ctx)},
 	})
-	ctx.vectorMeta = ctx.NewMetaMap("vector", []MapPair{
+	ctx.vectorMeta = ctx.NewMetaMapOrPanic("vector", []MapPair{
 		{ctx.NewString("init"), BuiltinVectorInit(ctx)},
 		{ctx.NewString("count"), BuiltinVectorCount(ctx)},
 		{ctx.NewString("is_empty"), BuiltinVectorIsEmpty(ctx)},
@@ -334,7 +334,7 @@ func NewContext() *Context {
 		{ctx.NewString("sorted_by"), ctx.NewNull()},     // deferred instantiation
 		{ctx.NewString("into_iterator"), ctx.NewNull()}, // deferred instantiation
 	})
-	ctx.mapMeta = ctx.NewMetaMap("map", []MapPair{
+	ctx.mapMeta = ctx.NewMetaMapOrPanic("map", []MapPair{
 		{ctx.NewString("count"), BuiltinMapCount(ctx)},
 		{ctx.NewString("is_empty"), BuiltinMapIsEmpty(ctx)},
 		{ctx.NewString("contains"), BuiltinMapContains(ctx)},
@@ -345,7 +345,7 @@ func NewContext() *Context {
 		{ctx.NewString("pairs"), BuiltinMapPairs(ctx)},
 		{ctx.NewString("union"), ctx.NewNull()}, // deferred instantiation
 	})
-	ctx.setMeta = ctx.NewMetaMap("set", []MapPair{
+	ctx.setMeta = ctx.NewMetaMapOrPanic("set", []MapPair{
 		{ctx.NewString("count"), BuiltinSetCount(ctx)},
 		{ctx.NewString("is_empty"), BuiltinSetIsEmpty(ctx)},
 		{ctx.NewString("contains"), BuiltinSetContains(ctx)},
@@ -355,7 +355,7 @@ func NewContext() *Context {
 		{ctx.NewString("intersection"), ctx.NewNull()}, // deferred instantiation
 		{ctx.NewString("difference"), ctx.NewNull()},   // deferred instantiation
 	})
-	ctx.referenceMeta = ctx.NewMetaMap("reference", nil)
+	ctx.referenceMeta = ctx.NewMetaMapOrPanic("reference", nil)
 
 	ctx.Null = &Null{}
 
@@ -405,24 +405,24 @@ func NewContext() *Context {
 	ctx.BaseEnvironment.Let("min", BuiltinMin(ctx))
 	ctx.BaseEnvironment.Let("max", BuiltinMax(ctx))
 	ctx.BaseEnvironment.Let("import", BuiltinImport(ctx))
-	ctx.BaseEnvironment.Let("comb", ctx.NewMap([]MapPair{
+	ctx.BaseEnvironment.Let("comb", ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("decode"), BuiltinCombDecode(ctx)},
 		{ctx.NewString("encode"), BuiltinCombEncode(ctx)},
 		{ctx.NewString("encode_ex"), BuiltinCombEncodeEx(ctx)},
 	}).Freeze())
-	ctx.BaseEnvironment.Let("fs", ctx.NewMap([]MapPair{
+	ctx.BaseEnvironment.Let("fs", ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("read"), BuiltinFsRead(ctx)},
 		{ctx.NewString("write"), BuiltinFsWrite(ctx)},
 		{ctx.NewString("append"), BuiltinFsAppend(ctx)},
 	}).Freeze())
-	ctx.BaseEnvironment.Let("html", ctx.NewMap([]MapPair{
+	ctx.BaseEnvironment.Let("html", ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("escape"), BuiltinHtmlEscape(ctx)},
 	}).Freeze())
-	ctx.BaseEnvironment.Let("json", ctx.NewMap([]MapPair{
+	ctx.BaseEnvironment.Let("json", ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("decode"), BuiltinJsonDecode(ctx)},
 		{ctx.NewString("encode"), BuiltinJsonEncode(ctx)},
 	}).Freeze())
-	ctx.BaseEnvironment.Let("math", ctx.NewMap([]MapPair{
+	ctx.BaseEnvironment.Let("math", ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("e"), ctx.NewNumber(math.E)},
 		{ctx.NewString("pi"), ctx.NewNumber(math.Pi)},
 		{ctx.NewString("is_nan"), BuiltinMathIsNaN(ctx)},
@@ -457,20 +457,20 @@ func NewContext() *Context {
 		{ctx.NewString("acosh"), BuiltinMathAcosh(ctx)},
 		{ctx.NewString("atanh"), BuiltinMathAtanh(ctx)},
 	}).Freeze())
-	ctx.BaseEnvironment.Let("module", ctx.NewMap([]MapPair{
+	ctx.BaseEnvironment.Let("module", ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("path"), ctx.NewNull()},
 		{ctx.NewString("file"), ctx.NewNull()},
 		{ctx.NewString("directory"), ctx.NewNull()},
 	}).Freeze())
-	ctx.BaseEnvironment.Let("random", ctx.NewMap([]MapPair{
+	ctx.BaseEnvironment.Let("random", ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("seed"), BuiltinRandomSeed(ctx)},
 		{ctx.NewString("integer"), BuiltinRandomInteger(ctx)},
 	}).Freeze())
-	ctx.BaseEnvironment.Let("re", ctx.NewMap([]MapPair{
+	ctx.BaseEnvironment.Let("re", ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("split"), BuiltinReSplit(ctx)},
 		{ctx.NewString("replace"), BuiltinReReplace(ctx)},
 	}).Freeze())
-	ctx.BaseEnvironment.Let("ty", ctx.NewMap([]MapPair{
+	ctx.BaseEnvironment.Let("ty", ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("is"), BuiltinTyIs(ctx)},
 		{ctx.NewString("is_null"), BuiltinTyIsNull(ctx)},
 		{ctx.NewString("is_boolean"), BuiltinTyIsBoolean(ctx)},
@@ -541,13 +541,13 @@ func (ctx *Context) NewVector(elements []Value) *Vector {
 	}
 }
 
-func (ctx *Context) NewMap(elements []MapPair) *Map {
+func (ctx *Context) NewMap(elements []MapPair) (*Map, error) {
 	if elements == nil || len(elements) == 0 {
 		return &Map{
 			data: nil,
 			meta: ctx.mapMeta,
 			name: nil,
-		}
+		}, nil
 	}
 
 	result := &Map{
@@ -556,36 +556,80 @@ func (ctx *Context) NewMap(elements []MapPair) *Map {
 		name: nil,
 	}
 	for _, element := range elements {
-		result.Insert(element.Key, element.Value)
+		err := result.Insert(element.Key, element.Value)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
+}
+
+func (ctx *Context) NewMapOrPanic(elements []MapPair) *Map {
+	result, err := ctx.NewMap(elements)
+	if err != nil {
+		panic(err.Error())
 	}
 	return result
 }
 
-func (ctx *Context) NewMapWithType(meta *Map, elements []MapPair) *Map {
+func (ctx *Context) NewMapWithType(meta *Map, elements []MapPair) (*Map, error) {
 	if meta.name == nil {
-		panic("meta argument is not a metamap")
+		return nil, errors.New("meta argument is not a metamap")
 	}
 
-	result := ctx.NewMap(elements)
+	result, err := ctx.NewMap(elements)
+	if err != nil {
+		return nil, err
+	}
 	result.meta = meta.Copy().(*Map)
 
+	return result, nil
+}
+
+func (ctx *Context) NewMapWithTypeOrPanic(meta *Map, elements []MapPair) *Map {
+	result, err := ctx.NewMapWithType(meta, elements)
+	if err != nil {
+		panic(err.Error())
+	}
 	return result
 }
 
-func (ctx *Context) NewMetaMap(name string, elements []MapPair) *Map {
-	result := ctx.NewMap(elements)
+func (ctx *Context) NewMetaMap(name string, elements []MapPair) (*Map, error) {
+	result, err := ctx.NewMap(elements)
+	if err != nil {
+		return nil, err
+	}
 	result.name = &name
-	return result.Freeze().(*Map)
+	return result.Freeze().(*Map), nil
 }
 
-func (ctx *Context) NewSet(elements []Value) *Set {
+func (ctx *Context) NewMetaMapOrPanic(name string, elements []MapPair) *Map {
+	result, err := ctx.NewMetaMap(name, elements)
+	if err != nil {
+		panic(err.Error())
+	}
+	return result
+}
+
+func (ctx *Context) NewSet(elements []Value) (*Set, error) {
 	if elements == nil || len(elements) == 0 {
-		return &Set{data: nil}
+		return &Set{data: nil}, nil
 	}
 
 	result := &Set{data: nil}
 	for _, element := range elements {
-		result.Insert(element)
+		err := result.Insert(element)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
+}
+
+func (ctx *Context) NewSetOrPanic(elements []Value) *Set {
+	result, err := ctx.NewSet(elements)
+	if err != nil {
+		panic(err.Error())
 	}
 	return result
 }
@@ -1471,10 +1515,15 @@ func (self *Map) Lookup(key Value) (Value, bool) {
 	return element.value, true
 }
 
-// Returns an error when attempting to insert into a frozen map.
 func (self *Map) Insert(key, value Value) error {
 	if self.IsImmutable() {
 		return fmt.Errorf("attempted to modify immutable map %v", self)
+	}
+
+	if keyNumber, ok := key.(*Number); ok {
+		if math.IsNaN(keyNumber.data) {
+			return errors.New("invalid NaN map key")
+		}
 	}
 
 	self.CopyOnWrite()
@@ -1797,6 +1846,12 @@ func (self *Set) Insert(value Value) error {
 		return fmt.Errorf("attempted to modify immutable set %v", self)
 	}
 
+	if valueNumber, ok := value.(*Number); ok {
+		if math.IsNaN(valueNumber.data) {
+			return errors.New("invalid NaN set element")
+		}
+	}
+
 	self.CopyOnWrite()
 	if self.data == nil {
 		self.data = &setData{
@@ -2064,7 +2119,7 @@ func optionalSourceLocationIntoValue(ctx *Context, location *SourceLocation) Val
 	if location == nil {
 		return ctx.Null
 	}
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("file"), ctx.NewString(location.File)},
 		{ctx.NewString("line"), ctx.NewNumber(float64(location.Line))},
 	})
@@ -2162,7 +2217,7 @@ func (self Token) String() string {
 }
 
 func (self Token) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(self.Kind)},
 		{ctx.NewString("literal"), ctx.NewString(self.Literal)},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
@@ -3078,7 +3133,7 @@ func (self AstProgram) IntoValue(ctx *Context) Value {
 	for _, statement := range self.Statements {
 		statements.Push(statement.IntoValue(ctx))
 	}
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("statements"), statements},
@@ -3124,7 +3179,7 @@ type AstIdentifier struct {
 }
 
 func (self AstIdentifier) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("name"), self.Name.Copy()},
@@ -3141,7 +3196,7 @@ func (self AstExpressionIdentifier) ExpressionLocation() *SourceLocation {
 }
 
 func (self AstExpressionIdentifier) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("name"), self.Name.Copy()},
@@ -3170,7 +3225,7 @@ func (self AstExpressionTemplate) IntoValue(ctx *Context) Value {
 	for _, element := range self.Template {
 		elements = append(elements, element.IntoValue(ctx))
 	}
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("template"), ctx.NewVector(elements)},
@@ -3220,7 +3275,7 @@ func (self AstExpressionNull) ExpressionLocation() *SourceLocation {
 }
 
 func (self AstExpressionNull) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 	})
@@ -3240,7 +3295,7 @@ func (self AstExpressionBoolean) ExpressionLocation() *SourceLocation {
 }
 
 func (self AstExpressionBoolean) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("data"), self.Data.Copy()},
@@ -3261,7 +3316,7 @@ func (self AstExpressionNumber) ExpressionLocation() *SourceLocation {
 }
 
 func (self AstExpressionNumber) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("data"), self.Data.Copy()},
@@ -3282,7 +3337,7 @@ func (self AstExpressionString) ExpressionLocation() *SourceLocation {
 }
 
 func (self AstExpressionString) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("data"), self.Data.Copy()},
@@ -3303,7 +3358,7 @@ func (self AstExpressionRegexp) ExpressionLocation() *SourceLocation {
 }
 
 func (self AstExpressionRegexp) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("data"), ctx.NewString(self.Data.String())},
@@ -3324,7 +3379,7 @@ func (self AstExpressionRegexpGroup) ExpressionLocation() *SourceLocation {
 }
 
 func (self AstExpressionRegexpGroup) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("group"), ctx.NewNumber(float64(self.Group))},
@@ -3365,7 +3420,7 @@ func (self AstExpressionVector) IntoValue(ctx *Context) Value {
 	for _, element := range self.Elements {
 		elements = append(elements, element.IntoValue(ctx))
 	}
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("elements"), ctx.NewVector(elements)},
@@ -3404,7 +3459,7 @@ func (self AstExpressionMap) IntoValue(ctx *Context) Value {
 		elements = append(elements,
 			ctx.NewVector([]Value{element.Key.IntoValue(ctx), element.Value.IntoValue(ctx)}))
 	}
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("elements"), ctx.NewVector(elements)},
@@ -3424,7 +3479,14 @@ func (self AstExpressionMap) Eval(ctx *Context, env *Environment) (Value, error)
 		}
 		pairs = append(pairs, MapPair{k.Copy(), v.Copy()})
 	}
-	return ctx.NewMap(pairs), nil
+	value, err := ctx.NewMap(pairs)
+	if err != nil {
+		return nil, NewError(
+			self.Location,
+			ctx.NewString(err.Error()),
+		)
+	}
+	return value, nil
 }
 
 type AstExpressionSet struct {
@@ -3441,7 +3503,7 @@ func (self AstExpressionSet) IntoValue(ctx *Context) Value {
 	for _, element := range self.Elements {
 		elements = append(elements, element.IntoValue(ctx))
 	}
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("elements"), ctx.NewVector(elements)},
@@ -3457,7 +3519,15 @@ func (self AstExpressionSet) Eval(ctx *Context, env *Environment) (Value, error)
 		}
 		elements = append(elements, value.Copy())
 	}
-	return ctx.NewSet(elements), nil
+	result, err := ctx.NewSet(elements)
+	if err != nil {
+		return nil, NewError(
+			self.Location,
+			ctx.NewString(err.Error()),
+		)
+	}
+	return result, nil
+
 }
 
 type AstExpressionFunction struct {
@@ -3480,7 +3550,7 @@ func (self AstExpressionFunction) IntoValue(ctx *Context) Value {
 	if self.Name != nil {
 		name = self.Name.Copy()
 	}
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("parameters"), parameters},
@@ -3503,7 +3573,7 @@ func (self AstExpressionFreeze) ExpressionLocation() *SourceLocation {
 }
 
 func (self AstExpressionFreeze) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("expression"), self.Expression.IntoValue(ctx)},
@@ -3535,7 +3605,7 @@ func (self AstExpressionType) IntoValue(ctx *Context) Value {
 	if self.Extends != nil {
 		extends = self.Extends.IntoValue(ctx)
 	}
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("name"), ctx.NewString(self.Name)},
@@ -3585,11 +3655,20 @@ func (self AstExpressionType) Eval(ctx *Context, env *Environment) (Value, error
 		//
 		// The super-type map is immutable, so we can directly use pairs from
 		// the super-type map to construct the extended map.
-		result = ctx.NewMap(extendsMap.Pairs())
+		result, err = ctx.NewMap(extendsMap.Pairs())
+		if err != nil {
+			return nil, NewError(
+				self.Location,
+				ctx.NewString(err.Error()),
+			)
+		}
 		for _, pair := range valueMap.Pairs() {
 			err := result.Insert(pair.Key.Copy(), pair.Value.Copy())
 			if err != nil {
-				return nil, err
+				return nil, NewError(
+					self.Location,
+					ctx.NewString(err.Error()),
+				)
 			}
 		}
 	} else {
@@ -3597,7 +3676,13 @@ func (self AstExpressionType) Eval(ctx *Context, env *Environment) (Value, error
 		// from the evaluated map expression. Creation of a new map ensures
 		// that assigning a name to the result of a type expression will not
 		// overwrite the name of an already frozen map.
-		result = ctx.NewMap(nil)
+		result, err = ctx.NewMap(nil)
+		if err != nil {
+			return nil, NewError(
+				self.Location,
+				ctx.NewString(err.Error()),
+			)
+		}
 		for _, pair := range valueMap.Pairs() {
 			err := result.Insert(pair.Key.Copy(), pair.Value.Copy())
 			if err != nil {
@@ -3622,7 +3707,7 @@ func (self AstExpressionNew) ExpressionLocation() *SourceLocation {
 }
 
 func (self AstExpressionNew) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("meta"), self.Meta.IntoValue(ctx)},
@@ -3668,7 +3753,13 @@ func (self AstExpressionNew) Eval(ctx *Context, env *Environment) (Value, error)
 	// the evaluated map expression. Creation of a new map ensures that a new
 	// expression applied to a frozen map does not silently change the existing
 	// metamap of that frozen map.
-	result := ctx.NewMap(nil)
+	result, err := ctx.NewMap(nil)
+	if err != nil {
+		return nil, NewError(
+			self.Location,
+			ctx.NewString(err.Error()),
+		)
+	}
 	for _, pair := range valueMap.Pairs() {
 		err := result.Insert(pair.Key.Copy(), pair.Value.Copy())
 		if err != nil {
@@ -3689,7 +3780,7 @@ func (self AstExpressionGrouped) ExpressionLocation() *SourceLocation {
 }
 
 func (self AstExpressionGrouped) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("expression"), self.Expression.IntoValue(ctx)},
@@ -3710,7 +3801,7 @@ func (self AstExpressionPositive) ExpressionLocation() *SourceLocation {
 }
 
 func (self AstExpressionPositive) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("expression"), self.Expression.IntoValue(ctx)},
@@ -3743,7 +3834,7 @@ func (self AstExpressionNegative) ExpressionLocation() *SourceLocation {
 }
 
 func (self AstExpressionNegative) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("expression"), self.Expression.IntoValue(ctx)},
@@ -3776,7 +3867,7 @@ func (self AstExpressionNot) ExpressionLocation() *SourceLocation {
 }
 
 func (self AstExpressionNot) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("expression"), self.Expression.IntoValue(ctx)},
@@ -3810,7 +3901,7 @@ func (self AstExpressionAnd) ExpressionLocation() *SourceLocation {
 }
 
 func (self AstExpressionAnd) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("lhs"), self.Lhs.IntoValue(ctx)},
@@ -3860,7 +3951,7 @@ func (self AstExpressionOr) ExpressionLocation() *SourceLocation {
 }
 
 func (self AstExpressionOr) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("lhs"), self.Lhs.IntoValue(ctx)},
@@ -3910,7 +4001,7 @@ func (self AstExpressionEq) ExpressionLocation() *SourceLocation {
 }
 
 func (self AstExpressionEq) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("lhs"), self.Lhs.IntoValue(ctx)},
@@ -3943,7 +4034,7 @@ func (self AstExpressionNe) ExpressionLocation() *SourceLocation {
 }
 
 func (self AstExpressionNe) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("lhs"), self.Lhs.IntoValue(ctx)},
@@ -3976,7 +4067,7 @@ func (self AstExpressionLe) ExpressionLocation() *SourceLocation {
 }
 
 func (self AstExpressionLe) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("lhs"), self.Lhs.IntoValue(ctx)},
@@ -4028,7 +4119,7 @@ func (self AstExpressionGe) ExpressionLocation() *SourceLocation {
 }
 
 func (self AstExpressionGe) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("lhs"), self.Lhs.IntoValue(ctx)},
@@ -4080,7 +4171,7 @@ func (self AstExpressionLt) ExpressionLocation() *SourceLocation {
 }
 
 func (self AstExpressionLt) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("lhs"), self.Lhs.IntoValue(ctx)},
@@ -4132,7 +4223,7 @@ func (self AstExpressionGt) ExpressionLocation() *SourceLocation {
 }
 
 func (self AstExpressionGt) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("lhs"), self.Lhs.IntoValue(ctx)},
@@ -4184,7 +4275,7 @@ func (self AstExpressionEqRe) ExpressionLocation() *SourceLocation {
 }
 
 func (self AstExpressionEqRe) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("lhs"), self.Lhs.IntoValue(ctx)},
@@ -4230,7 +4321,7 @@ func (self AstExpressionNeRe) ExpressionLocation() *SourceLocation {
 }
 
 func (self AstExpressionNeRe) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("lhs"), self.Lhs.IntoValue(ctx)},
@@ -4276,7 +4367,7 @@ func (self AstExpressionAdd) ExpressionLocation() *SourceLocation {
 }
 
 func (self AstExpressionAdd) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("lhs"), self.Lhs.IntoValue(ctx)},
@@ -4343,7 +4434,7 @@ func (self AstExpressionSub) ExpressionLocation() *SourceLocation {
 }
 
 func (self AstExpressionSub) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("lhs"), self.Lhs.IntoValue(ctx)},
@@ -4387,7 +4478,7 @@ func (self AstExpressionMul) ExpressionLocation() *SourceLocation {
 }
 
 func (self AstExpressionMul) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("lhs"), self.Lhs.IntoValue(ctx)},
@@ -4431,7 +4522,7 @@ func (self AstExpressionDiv) ExpressionLocation() *SourceLocation {
 }
 
 func (self AstExpressionDiv) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("lhs"), self.Lhs.IntoValue(ctx)},
@@ -4475,7 +4566,7 @@ func (self AstExpressionRem) ExpressionLocation() *SourceLocation {
 }
 
 func (self AstExpressionRem) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("lhs"), self.Lhs.IntoValue(ctx)},
@@ -4525,7 +4616,7 @@ func (self AstExpressionAccessIndex) ExpressionLocation() *SourceLocation {
 }
 
 func (self AstExpressionAccessIndex) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("store"), self.Store.IntoValue(ctx)},
@@ -4612,7 +4703,7 @@ func (self AstExpressionAccessScope) ExpressionLocation() *SourceLocation {
 }
 
 func (self AstExpressionAccessScope) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("store"), self.Store.IntoValue(ctx)},
@@ -4671,7 +4762,7 @@ func (self AstExpressionAccessDot) ExpressionLocation() *SourceLocation {
 }
 
 func (self AstExpressionAccessDot) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("store"), self.Store.IntoValue(ctx)},
@@ -4753,7 +4844,7 @@ func (self AstExpressionMkref) ExpressionLocation() *SourceLocation {
 }
 
 func (self AstExpressionMkref) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("lhs"), self.Lhs.IntoValue(ctx)},
@@ -4778,7 +4869,7 @@ func (self AstExpressionDeref) ExpressionLocation() *SourceLocation {
 }
 
 func (self AstExpressionDeref) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("lhs"), self.Lhs.IntoValue(ctx)},
@@ -4817,7 +4908,7 @@ func (self AstExpressionFunctionCall) IntoValue(ctx *Context) Value {
 	for _, argument := range self.Arguments {
 		arguments.Push(argument.IntoValue(ctx))
 	}
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("function"), self.Function.IntoValue(ctx)},
@@ -4904,7 +4995,7 @@ func (self AstBlock) IntoValue(ctx *Context) Value {
 	for _, statement := range self.Statements {
 		statements.Push(statement.IntoValue(ctx))
 	}
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("statements"), statements},
@@ -4931,7 +5022,7 @@ type AstConditional struct {
 }
 
 func (self AstConditional) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("condition"), self.Condition.IntoValue(ctx)},
@@ -4978,7 +5069,7 @@ func (self AstStatementLet) StatementLocation() *SourceLocation {
 }
 
 func (self AstStatementLet) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("identifier"), self.Identifier.IntoValue(ctx)},
@@ -5016,7 +5107,7 @@ func (self AstStatementIfElifElse) IntoValue(ctx *Context) Value {
 	if self.ElseBlock != nil {
 		elseBlock = self.ElseBlock.IntoValue(ctx)
 	}
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("conditionals"), conditionals},
@@ -5067,7 +5158,7 @@ func (self AstStatementFor) IntoValue(ctx *Context) Value {
 		vIsReference = ctx.NewBoolean(self.VIsReference)
 	}
 
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("identifier_k"), self.IdentifierK.IntoValue(ctx)},
@@ -5280,7 +5371,7 @@ func (self AstStatementWhile) StatementLocation() *SourceLocation {
 }
 
 func (self AstStatementWhile) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("expression"), self.Expression.IntoValue(ctx)},
@@ -5335,7 +5426,7 @@ func (self AstStatementBreak) StatementLocation() *SourceLocation {
 }
 
 func (self AstStatementBreak) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 	})
@@ -5354,7 +5445,7 @@ func (self AstStatementContinue) StatementLocation() *SourceLocation {
 }
 
 func (self AstStatementContinue) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 	})
@@ -5381,7 +5472,7 @@ func (self AstStatementTry) IntoValue(ctx *Context) Value {
 		catchIdentifier = self.CatchIdentifier.IntoValue(ctx)
 	}
 
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("try_block"), self.TryBlock.IntoValue(ctx)},
@@ -5425,7 +5516,7 @@ func (self AstStatementError) StatementLocation() *SourceLocation {
 }
 
 func (self AstStatementError) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("expression"), self.Expression.IntoValue(ctx)},
@@ -5455,7 +5546,7 @@ func (self AstStatementReturn) IntoValue(ctx *Context) Value {
 		expression = (*self.Expression).IntoValue(ctx)
 	}
 
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("expression"), expression},
@@ -5485,7 +5576,7 @@ func (self AstStatementAssignment) StatementLocation() *SourceLocation {
 }
 
 func (self AstStatementAssignment) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("lhs"), self.Lhs.IntoValue(ctx)},
@@ -5791,7 +5882,7 @@ func (self AstStatementExpression) StatementLocation() *SourceLocation {
 }
 
 func (self AstStatementExpression) IntoValue(ctx *Context) Value {
-	return ctx.NewMap([]MapPair{
+	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
 		{ctx.NewString("expression"), self.Expression.IntoValue(ctx)},
@@ -7833,10 +7924,14 @@ func BuiltinStringCut(ctx *Context) *Builtin {
 
 		prefix := ctx.NewString(delf.data[0:found])
 		suffix := ctx.NewString(delf.data[found+len(target.data):])
-		return ctx.NewMap([]MapPair{
+		result, err := ctx.NewMap([]MapPair{
 			{ctx.NewString("prefix"), prefix},
 			{ctx.NewString("suffix"), suffix},
-		}), nil
+		})
+		if err != nil {
+			return nil, NewError(nil, ctx.NewString(err.Error()))
+		}
+		return result, nil
 	})
 }
 
@@ -8511,10 +8606,14 @@ func BuiltinMapPairs(ctx *Context) *Builtin {
 		pairs := delf.Pairs()
 		result := ctx.NewVector(nil)
 		for _, pair := range pairs {
-			result.Push(ctx.NewMap([]MapPair{
+			pair, err := ctx.NewMap([]MapPair{
 				{ctx.NewString("key"), pair.Key.Copy()},
 				{ctx.NewString("value"), pair.Value.Copy()},
-			}))
+			})
+			if err != nil {
+				return nil, NewError(nil, ctx.NewString(err.Error()))
+			}
+			result.Push(pair)
 		}
 
 		return result, nil
@@ -8997,7 +9096,7 @@ func BuiltinImport(ctx *Context) *Builtin {
 				return nil, NewError(nil, ctx.NewString(err.Error()))
 			}
 
-			importModuleMap := ctx.NewMap([]MapPair{
+			importModuleMap := ctx.NewMapOrPanic([]MapPair{
 				{ctx.NewString("path"), ctx.NewString(absolute)},
 				{ctx.NewString("file"), ctx.NewString(filepath.Base(absolute))},
 				{ctx.NewString("directory"), ctx.NewString(filepath.Dir(absolute))},
@@ -9329,7 +9428,7 @@ func jsonDecode(ctx *Context, j any) (Value, error) {
 			}
 			pairs = append(pairs, MapPair{k, v})
 		}
-		return ctx.NewMap(pairs), nil
+		return ctx.NewMap(pairs)
 	}
 
 	return nil, fmt.Errorf("cannot JSON-decode type %T", *jp)
