@@ -9553,6 +9553,9 @@ func BuiltinMathCbrt(ctx *Context) *Builtin {
 func BuiltinMathClamp(ctx *Context) Value {
 	function := ctx.NewValueFromSourceOrPanic("math::clamp", `
 let clamp = function(value, min, max) {
+	if min > max {
+		error "clamp min > max";
+	}
 	if value < min {
 		return min;
 	}

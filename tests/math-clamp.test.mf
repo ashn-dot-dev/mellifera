@@ -3,9 +3,15 @@ dumpln(math::clamp(150, 100, 200));
 dumpln(math::clamp(200, 100, 200));
 dumpln(math::clamp(0, 100, 200));
 dumpln(math::clamp(300, 100, 200));
+dumpln(math::clamp(100, 150, 150));
+dumpln(math::clamp(150, 150, 150));
+try { dumpln(math::clamp(150, 1, 0)); } catch err { dumpln(err); }
 ################################################################################
 # 100
 # 150
 # 200
 # 100
 # 200
+# 150
+# 150
+# "clamp min > max"

@@ -6616,6 +6616,9 @@ def builtin_math_cbrt(value: Number) -> Union[Value, Error]:
 def builtin_math_clamp():
     return """
     let clamp = function(value, min, max) {
+        if min > max {
+            error "clamp min > max";
+        }
         if value < min {
             return min;
         }
