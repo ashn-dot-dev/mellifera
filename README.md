@@ -5,11 +5,11 @@ semantics, structural equality, copy-on-write data sharing, strong dynamic
 typing, explicit references, and a lightweight nominal type system with
 structural protocols.
 
-```mellifera
+```
 println("hello 🐝");
 ```
 
-```sh
+```
 $ mf examples/hello.mf
 hello 🐝
 ```
@@ -19,7 +19,7 @@ utilities while still providing reasonable tools to develop larger projects.
 Here is an example word counting program in Mellifera showcasing some of the
 syntax and semantics of the language.
 
-```mellifera
+```
 #!/usr/bin/env mf
 # usage: cat FILE | word-count-simple.mf
 let words = re::split(input(), r`\s+`)
@@ -46,7 +46,7 @@ for pair in ordered {
 }
 ```
 
-```sh
+```
 $ cat /tmp/peter-piper.txt
 Peter Piper picked a peck of pickled peppers,
 A peck of pickled peppers Peter Piper picked;
@@ -73,7 +73,7 @@ b`, `a` and `b` will contain separate copies of the same value. Mellifera also
 performs equality comparisons based on structural equality, so two values are
 considered to be equal if they have the same contents.
 
-```mellifera
+```
 let x = ["foo", {"bar": 123}, "baz"];
 let y = x; # x is assigned to y by copy
 println($`x is {x}`);
@@ -99,7 +99,7 @@ println($`z is {z}`);
 println($`y == z is {y == z}`);
 ```
 
-```sh
+```
 $ mf examples/value-semantics-and-structural-equality.mf
 x is ["foo", {"bar": 123}, "baz"]
 y is ["foo", {"bar": 123}, "baz"]
@@ -119,7 +119,7 @@ semantics with explicit references. One may obtain a reference to a value using
 the postfix `.&` operator, then later dereference that reference-value to get
 the original referenced value using the postfix `.*` operator.
 
-```mellifera
+```
 let pass_by_value = function(val) {
     println($"[inside pass_by_value] val starts as {val}");
 
@@ -154,7 +154,7 @@ pass_by_reference(y.&); # .& is the postfix addressof operator
 println($"[outside pass_by_reference] y ends as {y}");
 ```
 
-```sh
+```
 $ mf examples/explicit-references.mf
 [outside pass_by_value] x starts as ["foo", "bar", "baz"]
 [inside pass_by_value] val starts as ["foo", "bar", "baz"]
@@ -174,7 +174,7 @@ sufficient for most simple programs, but when the need arises for more
 structured data, users have the option to define custom types with specific
 behavior.
 
-```mellifera
+```
 let vec2 = type {
     "fixed": function(self, ndigits) {
         return new vec2 {
@@ -199,7 +199,7 @@ println($`vb.magnitude() is {vb.magnitude()}`);
 println($`vb.fixed(3) is {vb.fixed(3)}`);
 ```
 
-```sh
+```
 $ mf examples/user-defined-types.mf
 va is {"x": 3, "y": 4} with type vec2
 va.magnitude() is 5
@@ -209,7 +209,7 @@ vb.magnitude() is 4.154354402313313
 vb.fixed(3) is {"x": 2.718, "y": -3.142}
 ```
 
-```mellifera
+```
 let fizzbuzzer = type extends iterator {
     .init = function(n, max) {
         return new fizzbuzzer {"n": n, "max": max};
@@ -239,7 +239,7 @@ for x in fb {
 }
 ```
 
-```sh
+```
 $ mf examples/user-defined-iterators.mf
 1
 2
@@ -262,7 +262,7 @@ Mellifera is intended to be a practical language with reasonable
 exception-based error handling and pleasant top-level error traces for when
 things go wrong.
 
-```mellifera
+```
 try {
     fs::read("/path/to/file/that/does/not/exist.txt");
 }
@@ -286,7 +286,7 @@ function() {
 }();
 ```
 
-```sh
+```
 $ mf examples/exceptions.mf
 error: failed to read file "/path/to/file/that/does/not/exist.txt" (file not found)
 
@@ -305,7 +305,7 @@ programs can be found under the `examples` directory.
 Build the Mellifera interpreter and associated tooling and install Mellifera to
 the location specified by `MELLIFERA_HOME` (default `$HOME/.mellifera`):
 
-```sh
+```
 make build install                               # Install to $HOME/.mellifera
 make build install MELLIFERA_HOME=/opt/mellifera # Install to /opt/mellifera
 ```
@@ -315,14 +315,14 @@ configuration file), replacing `$HOME/.mellifera` with your chosen
 `MELLIFERA_HOME` directory if installing to a non-default `MELLIFERA_HOME`
 location:
 
-```sh
+```
 export PATH="$HOME/.mellifera/bin:$PATH"
 ```
 
 Finally, open a new interactive shell and verify the Mellifera interpreter was
 successfully installed with:
 
-```sh
+```
 $ printf 'println("Hello world!");' | mf /dev/stdin
 Hello world!
 ```
@@ -343,7 +343,7 @@ respectively.
 
 ### General Development (Default Go Implementation)
 
-```sh
+```
 make build   # build standalone interpreter executable
 make check   # run unit tests and interpreter golden tests
 make format  # format sources
@@ -352,7 +352,7 @@ make install # install standalone Mellifera tooling
 
 ### Development on the Go Library & Interpreter
 
-```sh
+```
 make build-go  # build standalone interpreter executable
 make wasm-go   # build Wasm module for embedding in the browser
 make check-go  # run unit tests and interpreter golden tests
@@ -364,7 +364,7 @@ The Go Mellifera implementation has experimental support for running Mellifera
 programs in the browser via [WebAssembly](https://webassembly.org/web). In a
 terminal run the following command:
 
-```sh
+```
 make wasm-go && python3 -m http.server
 ```
 
@@ -373,7 +373,7 @@ interact with a minimal web build of the interpreter.
 
 ### Development on the Python Reference Interpreter
 
-```sh
+```
 python3 -m venv .venv-mellifera
 . .venv-mellifera/bin/activate
 python3 -m pip install -r requirements.txt
@@ -390,14 +390,14 @@ the token stream and abstract syntax tree representations produced by both
 interpreters are identical for a large set of programs in the Mellifera
 repository, including all example and test programs:
 
-```sh
+```
 sh tools/validate-compatibility.sh
 ```
 
 To build, format, lint, run tests, and validate compatibility between both
 implementations, use the following one-liner:
 
-```sh
+```
 make clean format-go format-py lint-py build-go wasm-go check-go check-py && sh tools/validate-compatibility.sh
 ```
 
