@@ -47,12 +47,24 @@ for pair in ordered {
 ```
 
 ```sh
-curl -s https://www.gutenberg.org/files/71/71-0.txt | mf examples/word-count-simple.mf | head -n 5
-the 692
-to 440
-and 418
-of 391
-a 293
+$ cat /tmp/peter-piper.txt
+Peter Piper picked a peck of pickled peppers,
+A peck of pickled peppers Peter Piper picked;
+If Peter Piper picked a peck of pickled peppers,
+Where's the peck of pickled peppers Peter Piper picked?
+
+$ cat /tmp/peter-piper.txt | mf examples/word-count-simple.mf
+peter 4
+piper 4
+picked 4
+peck 4
+of 4
+pickled 4
+peppers 4
+a 3
+if 1
+where's 1
+the 1
 ```
 
 Mellifera features value semantics, meaning assignment operations copy the
