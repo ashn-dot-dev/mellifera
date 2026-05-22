@@ -288,7 +288,7 @@ function() {
 
 ```sh
 $ mf examples/exceptions.mf
-error: failed to read file "/path/to/file/that/does/not/exist.txt"
+error: failed to read file "/path/to/file/that/does/not/exist.txt" (file not found)
 
 [examples/exceptions.mf, line 12] error: oopsie
 ...within f@[examples/exceptions.mf, line 11] called from examples/exceptions.mf, line 14
