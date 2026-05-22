@@ -2663,7 +2663,7 @@ func (self *Lexer) lexTemplate() (Token, error) {
 			bytes = []byte{}
 			self.position += len("{")
 
-			lexer := NewLexer(self.ctx, self.remaining(), nil)
+			lexer := NewLexer(self.ctx, self.remaining(), self.currentLocation())
 			parser, err := NewParser(&lexer)
 			if err != nil {
 				return err

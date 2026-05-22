@@ -1743,7 +1743,7 @@ class Lexer:
                     string = str()
                 self.position += len("{")
                 try:
-                    lexer = Lexer(self._remaining())
+                    lexer = Lexer(self._remaining(), copy(self.location))
                     parser = Parser(lexer)
                     expression = parser.parse_expression()
                 except Exception as e:
