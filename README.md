@@ -302,7 +302,7 @@ programs can be found under the `examples` directory.
 
 ## Installing
 
-Build the Mellifera interpreter and associated tooling and install Mellifera to
+Build the Mellifera interpreter + associated tooling and install Mellifera to
 the location specified by `MELLIFERA_HOME` (default `$HOME/.mellifera`):
 
 ```
@@ -330,7 +330,7 @@ Hello world!
 ## Development
 
 Mellifera currently has two implementations: a library & interpreter written in
-Go (`mellifera.go` and `cmd/mf/mf.go`) which serves as the primary language
+Go (`mellifera.go` and `cmd/mf/mf.go`), which serves as the primary language
 implementation, and an older reference interpreter written in Python (`mf.py`),
 which served as the original language implementation during prototyping. In
 order to ensure that Mellifera does not depend on a particular host language,
@@ -362,7 +362,7 @@ make install   # install standalone Mellifera tooling
 
 The Go Mellifera implementation has experimental support for running Mellifera
 programs in the browser via [WebAssembly](https://webassembly.org/web). In a
-terminal run the following command:
+terminal, run the following command:
 
 ```
 make wasm-go && python3 -m http.server
@@ -411,7 +411,7 @@ missing a critical built-in function? Is there a misleading error message that
 could use some attention? Did you find a bug in the interpreter? Let me know by
 creating a [new issue](https://github.com/ashn-dot-dev/mellifera/issues/new)!
 
-Want to assist the project through code or documentation contributions, take a
+Want to assist the project through code or documentation contributions? Take a
 look at open issues marked with the
 [help-wanted](https://github.com/ashn-dot-dev/mellifera/issues?q=state%3Aopen%20label%3A%22help-wanted%22)
 label for areas where your help would be particularly appreciated.
