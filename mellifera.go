@@ -7523,7 +7523,7 @@ let iterator = type {
 return iterator;
 `
 
-func BuiltinBooleanInit(ctx *Context) *Builtin {
+func BuiltinBooleanInit(ctx *Context) Value {
 	return ctx.NewBuiltin("boolean::init", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		if x, ok := arguments[0].(*Boolean); ok {
 			return ctx.NewBoolean(x.data), nil
@@ -7541,7 +7541,7 @@ func BuiltinBooleanInit(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinNumberInit(ctx *Context) *Builtin {
+func BuiltinNumberInit(ctx *Context) Value {
 	return ctx.NewBuiltin("number::init", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		if x, ok := arguments[0].(*Number); ok {
 			return ctx.NewNumber(x.data), nil
@@ -7595,7 +7595,7 @@ func BuiltinNumberInit(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinNumberIsNan(ctx *Context) *Builtin {
+func BuiltinNumberIsNan(ctx *Context) Value {
 	return ctx.NewBuiltin("number::is_nan", []Type{TRef(TVal(NUMBER))}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Number)
@@ -7603,7 +7603,7 @@ func BuiltinNumberIsNan(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinNumberIsInf(ctx *Context) *Builtin {
+func BuiltinNumberIsInf(ctx *Context) Value {
 	return ctx.NewBuiltin("number::is_inf", []Type{TRef(TVal(NUMBER))}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Number)
@@ -7611,7 +7611,7 @@ func BuiltinNumberIsInf(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinNumberIsInteger(ctx *Context) *Builtin {
+func BuiltinNumberIsInteger(ctx *Context) Value {
 	return ctx.NewBuiltin("number::is_integer", []Type{TRef(TVal(NUMBER))}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Number)
@@ -7624,7 +7624,7 @@ func BuiltinNumberIsInteger(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinNumberFixed(ctx *Context) *Builtin {
+func BuiltinNumberFixed(ctx *Context) Value {
 	return ctx.NewBuiltin("number::fixed", []Type{TRef(TVal(NUMBER)), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Number)
@@ -7647,7 +7647,7 @@ func BuiltinNumberFixed(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinNumberTrunc(ctx *Context) *Builtin {
+func BuiltinNumberTrunc(ctx *Context) Value {
 	return ctx.NewBuiltin("number::trunc", []Type{TRef(TVal(NUMBER))}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Number)
@@ -7655,7 +7655,7 @@ func BuiltinNumberTrunc(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinNumberRound(ctx *Context) *Builtin {
+func BuiltinNumberRound(ctx *Context) Value {
 	return ctx.NewBuiltin("number::round", []Type{TRef(TVal(NUMBER))}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Number)
@@ -7663,7 +7663,7 @@ func BuiltinNumberRound(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinNumberFloor(ctx *Context) *Builtin {
+func BuiltinNumberFloor(ctx *Context) Value {
 	return ctx.NewBuiltin("number::floor", []Type{TRef(TVal(NUMBER))}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Number)
@@ -7671,7 +7671,7 @@ func BuiltinNumberFloor(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinNumberCeil(ctx *Context) *Builtin {
+func BuiltinNumberCeil(ctx *Context) Value {
 	return ctx.NewBuiltin("number::ceil", []Type{TRef(TVal(NUMBER))}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Number)
@@ -7679,7 +7679,7 @@ func BuiltinNumberCeil(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinStringInit(ctx *Context) *Builtin {
+func BuiltinStringInit(ctx *Context) Value {
 	return ctx.NewBuiltin("string::init", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		value := arguments[0]
 
@@ -7706,7 +7706,7 @@ func BuiltinStringInit(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinStringBytes(ctx *Context) *Builtin {
+func BuiltinStringBytes(ctx *Context) Value {
 	return ctx.NewBuiltin("string::bytes", []Type{TRef(TVal(STRING))}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*String)
@@ -7720,7 +7720,7 @@ func BuiltinStringBytes(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinStringRunes(ctx *Context) *Builtin {
+func BuiltinStringRunes(ctx *Context) Value {
 	return ctx.NewBuiltin("string::runes", []Type{TRef(TVal(STRING))}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*String)
@@ -7733,7 +7733,7 @@ func BuiltinStringRunes(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinStringCount(ctx *Context) *Builtin {
+func BuiltinStringCount(ctx *Context) Value {
 	return ctx.NewBuiltin("string::count", []Type{TRef(TVal(STRING))}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*String)
@@ -7742,7 +7742,7 @@ func BuiltinStringCount(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinStringIsEmpty(ctx *Context) *Builtin {
+func BuiltinStringIsEmpty(ctx *Context) Value {
 	return ctx.NewBuiltin("string::is_empty", []Type{TRef(TVal(STRING))}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*String)
@@ -7751,7 +7751,7 @@ func BuiltinStringIsEmpty(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinStringContains(ctx *Context) *Builtin {
+func BuiltinStringContains(ctx *Context) Value {
 	return ctx.NewBuiltin("string::contains", []Type{TRef(TVal(STRING)), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*String)
@@ -7762,7 +7762,7 @@ func BuiltinStringContains(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinStringStartsWith(ctx *Context) *Builtin {
+func BuiltinStringStartsWith(ctx *Context) Value {
 	return ctx.NewBuiltin("string::starts_with", []Type{TRef(TVal(STRING)), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*String)
@@ -7773,7 +7773,7 @@ func BuiltinStringStartsWith(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinStringEndsWith(ctx *Context) *Builtin {
+func BuiltinStringEndsWith(ctx *Context) Value {
 	return ctx.NewBuiltin("string::ends_with", []Type{TRef(TVal(STRING)), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*String)
@@ -7784,7 +7784,7 @@ func BuiltinStringEndsWith(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinStringTrim(ctx *Context) *Builtin {
+func BuiltinStringTrim(ctx *Context) Value {
 	return ctx.NewBuiltin("string::trim", []Type{TRef(TVal(STRING))}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*String)
@@ -7793,7 +7793,7 @@ func BuiltinStringTrim(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinStringFind(ctx *Context) *Builtin {
+func BuiltinStringFind(ctx *Context) Value {
 	return ctx.NewBuiltin("string::find", []Type{TRef(TVal(STRING)), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*String)
@@ -7809,7 +7809,7 @@ func BuiltinStringFind(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinStringRfind(ctx *Context) *Builtin {
+func BuiltinStringRfind(ctx *Context) Value {
 	return ctx.NewBuiltin("string::rfind", []Type{TRef(TVal(STRING)), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*String)
@@ -7825,7 +7825,7 @@ func BuiltinStringRfind(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinStringSlice(ctx *Context) *Builtin {
+func BuiltinStringSlice(ctx *Context) Value {
 	return ctx.NewBuiltin("string::slice", []Type{TRef(TVal(STRING)), TVal(NUMBER), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*String)
@@ -7856,7 +7856,7 @@ func BuiltinStringSlice(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinStringSplit(ctx *Context) *Builtin {
+func BuiltinStringSplit(ctx *Context) Value {
 	return ctx.NewBuiltin("string::split", []Type{TRef(TVal(STRING)), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*String)
@@ -7879,7 +7879,7 @@ func BuiltinStringSplit(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinStringJoin(ctx *Context) *Builtin {
+func BuiltinStringJoin(ctx *Context) Value {
 	return ctx.NewBuiltin("string::join", []Type{TRef(TVal(STRING)), TVal(VECTOR)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*String)
@@ -7905,7 +7905,7 @@ func BuiltinStringJoin(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinStringCut(ctx *Context) *Builtin {
+func BuiltinStringCut(ctx *Context) Value {
 	return ctx.NewBuiltin("string::cut", []Type{TRef(TVal(STRING)), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*String)
@@ -7930,7 +7930,7 @@ func BuiltinStringCut(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinStringReplace(ctx *Context) *Builtin {
+func BuiltinStringReplace(ctx *Context) Value {
 	return ctx.NewBuiltin("string::replace", []Type{TRef(TVal(STRING)), TVal(STRING), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*String)
@@ -7943,7 +7943,7 @@ func BuiltinStringReplace(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinStringToTitle(ctx *Context) *Builtin {
+func BuiltinStringToTitle(ctx *Context) Value {
 	return ctx.NewBuiltin("string::to_title", []Type{TRef(TVal(STRING))}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*String)
@@ -7952,7 +7952,7 @@ func BuiltinStringToTitle(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinStringToUpper(ctx *Context) *Builtin {
+func BuiltinStringToUpper(ctx *Context) Value {
 	return ctx.NewBuiltin("string::to_upper", []Type{TRef(TVal(STRING))}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*String)
@@ -7961,7 +7961,7 @@ func BuiltinStringToUpper(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinStringToLower(ctx *Context) *Builtin {
+func BuiltinStringToLower(ctx *Context) Value {
 	return ctx.NewBuiltin("string::to_lower", []Type{TRef(TVal(STRING))}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*String)
@@ -7970,7 +7970,7 @@ func BuiltinStringToLower(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinRegexpInit(ctx *Context) *Builtin {
+func BuiltinRegexpInit(ctx *Context) Value {
 	return ctx.NewBuiltin("regexp::init", []Type{TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
 		text := arguments[0].(*String)
 
@@ -7983,7 +7983,7 @@ func BuiltinRegexpInit(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinRegexpSplit(ctx *Context) *Builtin {
+func BuiltinRegexpSplit(ctx *Context) Value {
 	return ctx.NewBuiltin("regexp::split", []Type{TRef(TVal(REGEXP)), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Regexp)
@@ -7999,7 +7999,7 @@ func BuiltinRegexpSplit(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinRegexpReplace(ctx *Context) *Builtin {
+func BuiltinRegexpReplace(ctx *Context) Value {
 	return ctx.NewBuiltin("regexp::replace", []Type{TRef(TVal(REGEXP)), TVal(STRING), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Regexp)
@@ -8012,7 +8012,7 @@ func BuiltinRegexpReplace(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinVectorInit(ctx *Context) *Builtin {
+func BuiltinVectorInit(ctx *Context) Value {
 	return ctx.NewBuiltin("vector::init", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		value := arguments[0]
 
@@ -8062,7 +8062,7 @@ func BuiltinVectorInit(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinVectorCount(ctx *Context) *Builtin {
+func BuiltinVectorCount(ctx *Context) Value {
 	return ctx.NewBuiltin("vector::count", []Type{TRef(TVal(VECTOR))}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Vector)
@@ -8071,7 +8071,7 @@ func BuiltinVectorCount(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinVectorIsEmpty(ctx *Context) *Builtin {
+func BuiltinVectorIsEmpty(ctx *Context) Value {
 	return ctx.NewBuiltin("vector::is_empty", []Type{TRef(TVal(VECTOR))}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Vector)
@@ -8080,7 +8080,7 @@ func BuiltinVectorIsEmpty(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinVectorContains(ctx *Context) *Builtin {
+func BuiltinVectorContains(ctx *Context) Value {
 	return ctx.NewBuiltin("vector::contains", []Type{TRef(TVal(VECTOR)), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Vector)
@@ -8097,7 +8097,7 @@ func BuiltinVectorContains(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinVectorAny(ctx *Context) *Builtin {
+func BuiltinVectorAny(ctx *Context) Value {
 	return ctx.NewBuiltin("vector::any", []Type{TRef(TVal(VECTOR)), TVal(FUNCTION)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Vector)
@@ -8122,7 +8122,7 @@ func BuiltinVectorAny(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinVectorAll(ctx *Context) *Builtin {
+func BuiltinVectorAll(ctx *Context) Value {
 	return ctx.NewBuiltin("vector::all", []Type{TRef(TVal(VECTOR)), TVal(FUNCTION)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Vector)
@@ -8147,7 +8147,7 @@ func BuiltinVectorAll(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinVectorMap(ctx *Context) *Builtin {
+func BuiltinVectorMap(ctx *Context) Value {
 	return ctx.NewBuiltin("vector::map", []Type{TRef(TVal(VECTOR)), TVal(FUNCTION)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Vector)
@@ -8166,7 +8166,7 @@ func BuiltinVectorMap(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinVectorFilter(ctx *Context) *Builtin {
+func BuiltinVectorFilter(ctx *Context) Value {
 	return ctx.NewBuiltin("vector::filter", []Type{TRef(TVal(VECTOR)), TVal(FUNCTION)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Vector)
@@ -8192,7 +8192,7 @@ func BuiltinVectorFilter(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinVectorFind(ctx *Context) *Builtin {
+func BuiltinVectorFind(ctx *Context) Value {
 	return ctx.NewBuiltin("vector::find", []Type{TRef(TVal(VECTOR)), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Vector)
@@ -8210,7 +8210,7 @@ func BuiltinVectorFind(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinVectorRfind(ctx *Context) *Builtin {
+func BuiltinVectorRfind(ctx *Context) Value {
 	return ctx.NewBuiltin("vector::rfind", []Type{TRef(TVal(VECTOR)), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Vector)
@@ -8229,7 +8229,7 @@ func BuiltinVectorRfind(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinVectorPush(ctx *Context) *Builtin {
+func BuiltinVectorPush(ctx *Context) Value {
 	return ctx.NewBuiltin("vector::push", []Type{TRef(TVal(VECTOR)), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Vector)
@@ -8243,7 +8243,7 @@ func BuiltinVectorPush(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinVectorPop(ctx *Context) *Builtin {
+func BuiltinVectorPop(ctx *Context) Value {
 	return ctx.NewBuiltin("vector::pop", []Type{TRef(TVal(VECTOR))}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Vector)
@@ -8261,7 +8261,7 @@ func BuiltinVectorPop(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinVectorInsert(ctx *Context) *Builtin {
+func BuiltinVectorInsert(ctx *Context) Value {
 	return ctx.NewBuiltin("vector::insert", []Type{TRef(TVal(VECTOR)), TVal(NUMBER), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Vector)
@@ -8284,7 +8284,7 @@ func BuiltinVectorInsert(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinVectorRemove(ctx *Context) *Builtin {
+func BuiltinVectorRemove(ctx *Context) Value {
 	return ctx.NewBuiltin("vector::remove", []Type{TRef(TVal(VECTOR)), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Vector)
@@ -8307,7 +8307,7 @@ func BuiltinVectorRemove(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinVectorSlice(ctx *Context) *Builtin {
+func BuiltinVectorSlice(ctx *Context) Value {
 	return ctx.NewBuiltin("vector::slice", []Type{TRef(TVal(VECTOR)), TVal(NUMBER), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Vector)
@@ -8343,7 +8343,7 @@ func BuiltinVectorSlice(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinVectorReversed(ctx *Context) *Builtin {
+func BuiltinVectorReversed(ctx *Context) Value {
 	return ctx.NewBuiltin("vector::reversed", []Type{TRef(TVal(VECTOR))}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Vector)
@@ -8494,7 +8494,7 @@ return function(self) {
 	})
 }
 
-func BuiltinMapCount(ctx *Context) *Builtin {
+func BuiltinMapCount(ctx *Context) Value {
 	return ctx.NewBuiltin("map::count", []Type{TRef(TVal(MAP))}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Map)
@@ -8503,7 +8503,7 @@ func BuiltinMapCount(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinMapIsEmpty(ctx *Context) *Builtin {
+func BuiltinMapIsEmpty(ctx *Context) Value {
 	return ctx.NewBuiltin("map::is_empty", []Type{TRef(TVal(MAP))}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Map)
@@ -8512,7 +8512,7 @@ func BuiltinMapIsEmpty(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinMapContains(ctx *Context) *Builtin {
+func BuiltinMapContains(ctx *Context) Value {
 	return ctx.NewBuiltin("map::contains", []Type{TRef(TVal(MAP)), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Map)
@@ -8525,7 +8525,7 @@ func BuiltinMapContains(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinMapInsert(ctx *Context) *Builtin {
+func BuiltinMapInsert(ctx *Context) Value {
 	return ctx.NewBuiltin("map::insert", []Type{TRef(TVal(MAP)), TVal(ANY), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Map)
@@ -8542,7 +8542,7 @@ func BuiltinMapInsert(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinMapRemove(ctx *Context) *Builtin {
+func BuiltinMapRemove(ctx *Context) Value {
 	return ctx.NewBuiltin("map::remove", []Type{TRef(TVal(MAP)), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Map)
@@ -8563,7 +8563,7 @@ func BuiltinMapRemove(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinMapKeys(ctx *Context) *Builtin {
+func BuiltinMapKeys(ctx *Context) Value {
 	return ctx.NewBuiltin("map::keys", []Type{TRef(TVal(MAP))}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Map)
@@ -8578,7 +8578,7 @@ func BuiltinMapKeys(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinMapValues(ctx *Context) *Builtin {
+func BuiltinMapValues(ctx *Context) Value {
 	return ctx.NewBuiltin("map::values", []Type{TRef(TVal(MAP))}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Map)
@@ -8593,7 +8593,7 @@ func BuiltinMapValues(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinMapPairs(ctx *Context) *Builtin {
+func BuiltinMapPairs(ctx *Context) Value {
 	return ctx.NewBuiltin("map::pairs", []Type{TRef(TVal(MAP))}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Map)
@@ -8639,7 +8639,7 @@ return function(a, b) {
 	})
 }
 
-func BuiltinSetCount(ctx *Context) *Builtin {
+func BuiltinSetCount(ctx *Context) Value {
 	return ctx.NewBuiltin("set::count", []Type{TRef(TVal(SET))}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Set)
@@ -8648,7 +8648,7 @@ func BuiltinSetCount(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinSetIsEmpty(ctx *Context) *Builtin {
+func BuiltinSetIsEmpty(ctx *Context) Value {
 	return ctx.NewBuiltin("set::is_empty", []Type{TRef(TVal(SET))}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Set)
@@ -8657,7 +8657,7 @@ func BuiltinSetIsEmpty(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinSetContains(ctx *Context) *Builtin {
+func BuiltinSetContains(ctx *Context) Value {
 	return ctx.NewBuiltin("set::contains", []Type{TRef(TVal(SET)), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Set)
@@ -8670,7 +8670,7 @@ func BuiltinSetContains(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinSetInsert(ctx *Context) *Builtin {
+func BuiltinSetInsert(ctx *Context) Value {
 	return ctx.NewBuiltin("set::insert", []Type{TRef(TVal(SET)), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Set)
@@ -8686,7 +8686,7 @@ func BuiltinSetInsert(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinSetRemove(ctx *Context) *Builtin {
+func BuiltinSetRemove(ctx *Context) Value {
 	return ctx.NewBuiltin("set::remove", []Type{TRef(TVal(SET)), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Set)
@@ -8777,7 +8777,7 @@ return function(a, b) {
 	})
 }
 
-func BuiltinExit(ctx *Context) *Builtin {
+func BuiltinExit(ctx *Context) Value {
 	return ctx.NewBuiltin("exit", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		integer, err := ValueAsSafeInteger(arguments[0])
 		if err != nil {
@@ -8788,7 +8788,7 @@ func BuiltinExit(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinAssert(ctx *Context) *Builtin {
+func BuiltinAssert(ctx *Context) Value {
 	function := ctx.NewValueFromSourceOrPanic("assert", `
 let assert = function(condition) {
 	if not condition {
@@ -8803,7 +8803,7 @@ return assert;
 	})
 }
 
-func BuiltinTypeof(ctx *Context) *Builtin {
+func BuiltinTypeof(ctx *Context) Value {
 	return ctx.NewBuiltin("typeof", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		value := arguments[0]
 
@@ -8815,19 +8815,19 @@ func BuiltinTypeof(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinTypename(ctx *Context) *Builtin {
+func BuiltinTypename(ctx *Context) Value {
 	return ctx.NewBuiltin("typename", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewString(arguments[0].Typename()), nil
 	})
 }
 
-func BuiltinRepr(ctx *Context) *Builtin {
+func BuiltinRepr(ctx *Context) Value {
 	return ctx.NewBuiltin("repr", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewStringf("%v", arguments[0]), nil
 	})
 }
 
-func BuiltinInput(ctx *Context) *Builtin {
+func BuiltinInput(ctx *Context) Value {
 	return ctx.NewBuiltin("input", []Type{}, func(ctx *Context, arguments []Value) (Value, error) {
 		data, err := io.ReadAll(ctx.Stdin)
 		if err != nil {
@@ -8837,7 +8837,7 @@ func BuiltinInput(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinInputln(ctx *Context) *Builtin {
+func BuiltinInputln(ctx *Context) Value {
 	return ctx.NewBuiltin("inputln", []Type{}, func(ctx *Context, arguments []Value) (Value, error) {
 		reader := bufio.NewReader(ctx.Stdin)
 		data, err := reader.ReadString('\n')
@@ -8848,21 +8848,21 @@ func BuiltinInputln(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinDump(ctx *Context) *Builtin {
+func BuiltinDump(ctx *Context) Value {
 	return ctx.NewBuiltin("dump", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		fmt.Fprintf(ctx.Stdout, "%v", arguments[0])
 		return ctx.NewNull(), nil
 	})
 }
 
-func BuiltinDumpln(ctx *Context) *Builtin {
+func BuiltinDumpln(ctx *Context) Value {
 	return ctx.NewBuiltin("dumpln", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		fmt.Fprintf(ctx.Stdout, "%v\n", arguments[0])
 		return ctx.NewNull(), nil
 	})
 }
 
-func BuiltinPrint(ctx *Context) *Builtin {
+func BuiltinPrint(ctx *Context) Value {
 	return ctx.NewBuiltin("print", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		if metaFunction, ok := MetaFunction(ctx, arguments[0], ctx.constStringIntoString); ok {
 			result, err := Call(ctx, nil, metaFunction, []Value{ctx.NewReference(arguments[0])})
@@ -8890,7 +8890,7 @@ func BuiltinPrint(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinPrintln(ctx *Context) *Builtin {
+func BuiltinPrintln(ctx *Context) Value {
 	return ctx.NewBuiltin("println", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		if metaFunction, ok := MetaFunction(ctx, arguments[0], ctx.constStringIntoString); ok {
 			result, err := Call(ctx, nil, metaFunction, []Value{ctx.NewReference(arguments[0])})
@@ -8918,7 +8918,7 @@ func BuiltinPrintln(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinEprint(ctx *Context) *Builtin {
+func BuiltinEprint(ctx *Context) Value {
 	return ctx.NewBuiltin("eprint", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		if metaFunction, ok := MetaFunction(ctx, arguments[0], ctx.constStringIntoString); ok {
 			result, err := Call(ctx, nil, metaFunction, []Value{ctx.NewReference(arguments[0])})
@@ -8946,7 +8946,7 @@ func BuiltinEprint(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinEprintln(ctx *Context) *Builtin {
+func BuiltinEprintln(ctx *Context) Value {
 	return ctx.NewBuiltin("eprintln", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		if metaFunction, ok := MetaFunction(ctx, arguments[0], ctx.constStringIntoString); ok {
 			result, err := Call(ctx, nil, metaFunction, []Value{ctx.NewReference(arguments[0])})
@@ -9038,7 +9038,7 @@ return max;
 	})
 }
 
-func BuiltinImport(ctx *Context) *Builtin {
+func BuiltinImport(ctx *Context) Value {
 	return ctx.NewBuiltin("import", []Type{TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
 		target := arguments[0].(*String)
 
@@ -9214,7 +9214,7 @@ func combValidate(ctx *Context, expr AstExpression) error {
 	return validationError()
 }
 
-func BuiltinCombDecode(ctx *Context) *Builtin {
+func BuiltinCombDecode(ctx *Context) Value {
 	return ctx.NewBuiltin("comb::decode", []Type{TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
 		encoded := arguments[0].(*String)
 
@@ -9239,7 +9239,7 @@ func BuiltinCombDecode(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinCombEncode(ctx *Context) *Builtin {
+func BuiltinCombEncode(ctx *Context) Value {
 	return ctx.NewBuiltin("comb::encode", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		var sb strings.Builder
 		encoder := NewCombEncoder(&sb)
@@ -9252,7 +9252,7 @@ func BuiltinCombEncode(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinCombEncodeEx(ctx *Context) *Builtin {
+func BuiltinCombEncodeEx(ctx *Context) Value {
 	return ctx.NewBuiltin("comb::encode_ex", []Type{TVal(ANY), TVal(MAP)}, func(ctx *Context, arguments []Value) (Value, error) {
 		options := arguments[1].(*Map)
 		var indent *string = nil // optional
@@ -9304,7 +9304,7 @@ func BuiltinCombEncodeEx(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinFsRead(ctx *Context) *Builtin {
+func BuiltinFsRead(ctx *Context) Value {
 	return ctx.NewBuiltin("fs::read", []Type{TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
 		path := arguments[0].(*String)
 
@@ -9322,7 +9322,7 @@ func BuiltinFsRead(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinFsWrite(ctx *Context) *Builtin {
+func BuiltinFsWrite(ctx *Context) Value {
 	return ctx.NewBuiltin("fs::write", []Type{TVal(STRING), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
 		path := arguments[0].(*String)
 		data := arguments[1].(*String)
@@ -9339,7 +9339,7 @@ func BuiltinFsWrite(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinFsAppend(ctx *Context) *Builtin {
+func BuiltinFsAppend(ctx *Context) Value {
 	return ctx.NewBuiltin("fs::append", []Type{TVal(STRING), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
 		path := arguments[0].(*String)
 		data := arguments[1].(*String)
@@ -9356,7 +9356,7 @@ func BuiltinFsAppend(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinHtmlEscape(ctx *Context) *Builtin {
+func BuiltinHtmlEscape(ctx *Context) Value {
 	return ctx.NewBuiltin("html::escape", []Type{TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
 		text := arguments[0].(*String)
 
@@ -9430,7 +9430,7 @@ func jsonDecode(ctx *Context, j any) (Value, error) {
 	return nil, fmt.Errorf("cannot JSON-decode type %T", *jp)
 }
 
-func BuiltinJsonDecode(ctx *Context) *Builtin {
+func BuiltinJsonDecode(ctx *Context) Value {
 	return ctx.NewBuiltin("json::decode", []Type{TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
 		encoded := arguments[0].(*String)
 
@@ -9523,7 +9523,7 @@ func jsonEncode(value Value) (any, error) {
 	return nil, fmt.Errorf("cannot JSON-encode value %v of type %s", value, value.Typename())
 }
 
-func BuiltinJsonEncode(ctx *Context) *Builtin {
+func BuiltinJsonEncode(ctx *Context) Value {
 	return ctx.NewBuiltin("json::encode", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		j, err := jsonEncode(arguments[0])
 		if err != nil {
@@ -9537,19 +9537,19 @@ func BuiltinJsonEncode(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinMathIsNaN(ctx *Context) *Builtin {
+func BuiltinMathIsNaN(ctx *Context) Value {
 	return ctx.NewBuiltin("math::is_nan", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewBoolean(math.IsNaN(arguments[0].(*Number).data)), nil
 	})
 }
 
-func BuiltinMathIsInf(ctx *Context) *Builtin {
+func BuiltinMathIsInf(ctx *Context) Value {
 	return ctx.NewBuiltin("math::is_inf", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewBoolean(math.IsInf(arguments[0].(*Number).data, 0)), nil
 	})
 }
 
-func BuiltinMathIsInteger(ctx *Context) *Builtin {
+func BuiltinMathIsInteger(ctx *Context) Value {
 	return ctx.NewBuiltin("math::is_integer", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		value := arguments[0].(*Number)
 
@@ -9561,85 +9561,85 @@ func BuiltinMathIsInteger(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinMathTrunc(ctx *Context) *Builtin {
+func BuiltinMathTrunc(ctx *Context) Value {
 	return ctx.NewBuiltin("math::trunc", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewNumber(math.Trunc(arguments[0].(*Number).data)), nil
 	})
 }
 
-func BuiltinMathRound(ctx *Context) *Builtin {
+func BuiltinMathRound(ctx *Context) Value {
 	return ctx.NewBuiltin("math::round", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewNumber(math.Round(arguments[0].(*Number).data)), nil
 	})
 }
 
-func BuiltinMathFloor(ctx *Context) *Builtin {
+func BuiltinMathFloor(ctx *Context) Value {
 	return ctx.NewBuiltin("math::floor", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewNumber(math.Floor(arguments[0].(*Number).data)), nil
 	})
 }
 
-func BuiltinMathCeil(ctx *Context) *Builtin {
+func BuiltinMathCeil(ctx *Context) Value {
 	return ctx.NewBuiltin("math::ceil", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewNumber(math.Ceil(arguments[0].(*Number).data)), nil
 	})
 }
 
-func BuiltinMathAbs(ctx *Context) *Builtin {
+func BuiltinMathAbs(ctx *Context) Value {
 	return ctx.NewBuiltin("math::abs", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewNumber(math.Abs(arguments[0].(*Number).data)), nil
 	})
 }
 
-func BuiltinMathExp(ctx *Context) *Builtin {
+func BuiltinMathExp(ctx *Context) Value {
 	return ctx.NewBuiltin("math::exp", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewNumber(math.Exp(arguments[0].(*Number).data)), nil
 	})
 }
 
-func BuiltinMathExp2(ctx *Context) *Builtin {
+func BuiltinMathExp2(ctx *Context) Value {
 	return ctx.NewBuiltin("math::exp2", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewNumber(math.Exp2(arguments[0].(*Number).data)), nil
 	})
 }
 
-func BuiltinMathExp10(ctx *Context) *Builtin {
+func BuiltinMathExp10(ctx *Context) Value {
 	return ctx.NewBuiltin("math::exp10", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewNumber(math.Pow(10, arguments[0].(*Number).data)), nil
 	})
 }
 
-func BuiltinMathLog(ctx *Context) *Builtin {
+func BuiltinMathLog(ctx *Context) Value {
 	return ctx.NewBuiltin("math::log", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewNumber(math.Log(arguments[0].(*Number).data)), nil
 	})
 }
 
-func BuiltinMathLog2(ctx *Context) *Builtin {
+func BuiltinMathLog2(ctx *Context) Value {
 	return ctx.NewBuiltin("math::log2", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewNumber(math.Log2(arguments[0].(*Number).data)), nil
 	})
 }
 
-func BuiltinMathLog10(ctx *Context) *Builtin {
+func BuiltinMathLog10(ctx *Context) Value {
 	return ctx.NewBuiltin("math::log10", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewNumber(math.Log10(arguments[0].(*Number).data)), nil
 	})
 }
 
-func BuiltinMathPow(ctx *Context) *Builtin {
+func BuiltinMathPow(ctx *Context) Value {
 	return ctx.NewBuiltin("math::pow", []Type{TVal(NUMBER), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewNumber(math.Pow(arguments[0].(*Number).data, arguments[1].(*Number).data)), nil
 	})
 }
 
-func BuiltinMathSqrt(ctx *Context) *Builtin {
+func BuiltinMathSqrt(ctx *Context) Value {
 	return ctx.NewBuiltin("math::sqrt", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewNumber(math.Sqrt(arguments[0].(*Number).data)), nil
 	})
 }
 
-func BuiltinMathCbrt(ctx *Context) *Builtin {
+func BuiltinMathCbrt(ctx *Context) Value {
 	return ctx.NewBuiltin("math::cbrt", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewNumber(math.Cbrt(arguments[0].(*Number).data)), nil
 	})
@@ -9667,85 +9667,85 @@ return clamp;
 	})
 }
 
-func BuiltinMathSin(ctx *Context) *Builtin {
+func BuiltinMathSin(ctx *Context) Value {
 	return ctx.NewBuiltin("math::sin", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewNumber(math.Sin(arguments[0].(*Number).data)), nil
 	})
 }
 
-func BuiltinMathCos(ctx *Context) *Builtin {
+func BuiltinMathCos(ctx *Context) Value {
 	return ctx.NewBuiltin("math::cos", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewNumber(math.Cos(arguments[0].(*Number).data)), nil
 	})
 }
 
-func BuiltinMathTan(ctx *Context) *Builtin {
+func BuiltinMathTan(ctx *Context) Value {
 	return ctx.NewBuiltin("math::tan", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewNumber(math.Tan(arguments[0].(*Number).data)), nil
 	})
 }
 
-func BuiltinMathAsin(ctx *Context) *Builtin {
+func BuiltinMathAsin(ctx *Context) Value {
 	return ctx.NewBuiltin("math::asin", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewNumber(math.Asin(arguments[0].(*Number).data)), nil
 	})
 }
 
-func BuiltinMathAcos(ctx *Context) *Builtin {
+func BuiltinMathAcos(ctx *Context) Value {
 	return ctx.NewBuiltin("math::acos", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewNumber(math.Acos(arguments[0].(*Number).data)), nil
 	})
 }
 
-func BuiltinMathAtan(ctx *Context) *Builtin {
+func BuiltinMathAtan(ctx *Context) Value {
 	return ctx.NewBuiltin("math::atan", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewNumber(math.Atan(arguments[0].(*Number).data)), nil
 	})
 }
 
-func BuiltinMathAtan2(ctx *Context) *Builtin {
+func BuiltinMathAtan2(ctx *Context) Value {
 	return ctx.NewBuiltin("math::atan2", []Type{TVal(NUMBER), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewNumber(math.Atan2(arguments[0].(*Number).data, arguments[1].(*Number).data)), nil
 	})
 }
 
-func BuiltinMathSinh(ctx *Context) *Builtin {
+func BuiltinMathSinh(ctx *Context) Value {
 	return ctx.NewBuiltin("math::sinh", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewNumber(math.Sinh(arguments[0].(*Number).data)), nil
 	})
 }
 
-func BuiltinMathCosh(ctx *Context) *Builtin {
+func BuiltinMathCosh(ctx *Context) Value {
 	return ctx.NewBuiltin("math::cosh", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewNumber(math.Cosh(arguments[0].(*Number).data)), nil
 	})
 }
 
-func BuiltinMathTanh(ctx *Context) *Builtin {
+func BuiltinMathTanh(ctx *Context) Value {
 	return ctx.NewBuiltin("math::tanh", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewNumber(math.Tanh(arguments[0].(*Number).data)), nil
 	})
 }
 
-func BuiltinMathAsinh(ctx *Context) *Builtin {
+func BuiltinMathAsinh(ctx *Context) Value {
 	return ctx.NewBuiltin("math::asinh", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewNumber(math.Asinh(arguments[0].(*Number).data)), nil
 	})
 }
 
-func BuiltinMathAcosh(ctx *Context) *Builtin {
+func BuiltinMathAcosh(ctx *Context) Value {
 	return ctx.NewBuiltin("math::acosh", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewNumber(math.Acosh(arguments[0].(*Number).data)), nil
 	})
 }
 
-func BuiltinMathAtanh(ctx *Context) *Builtin {
+func BuiltinMathAtanh(ctx *Context) Value {
 	return ctx.NewBuiltin("math::atanh", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewNumber(math.Atanh(arguments[0].(*Number).data)), nil
 	})
 }
 
-func BuiltinRandomSeed(ctx *Context) *Builtin {
+func BuiltinRandomSeed(ctx *Context) Value {
 	return ctx.NewBuiltin("random::seed", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		seed := arguments[0].Hash()
 		ctx.rng = rand.New(rand.NewPCG(seed, seed))
@@ -9753,7 +9753,7 @@ func BuiltinRandomSeed(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinRandomInteger(ctx *Context) *Builtin {
+func BuiltinRandomInteger(ctx *Context) Value {
 	return ctx.NewBuiltin("random::integer", []Type{TVal(NUMBER), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		min := arguments[0].(*Number)
 		if math.IsInf(min.data, 0) || math.IsNaN(min.data) || math.Trunc(min.data) != min.data {
@@ -9805,7 +9805,7 @@ return function(string, regexp, replacement) {
 	})
 }
 
-func BuiltinTyIs(ctx *Context) *Builtin {
+func BuiltinTyIs(ctx *Context) Value {
 	return ctx.NewBuiltin("ty::is", []Type{TVal(ANY), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		value := arguments[0]
 		ty := arguments[1]
@@ -9822,70 +9822,70 @@ func BuiltinTyIs(ctx *Context) *Builtin {
 	})
 }
 
-func BuiltinTyIsNull(ctx *Context) *Builtin {
+func BuiltinTyIsNull(ctx *Context) Value {
 	return ctx.NewBuiltin("ty::is_null", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		_, ok := arguments[0].(*Null)
 		return ctx.NewBoolean(ok), nil
 	})
 }
 
-func BuiltinTyIsBoolean(ctx *Context) *Builtin {
+func BuiltinTyIsBoolean(ctx *Context) Value {
 	return ctx.NewBuiltin("ty::is_boolean", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		_, ok := arguments[0].(*Boolean)
 		return ctx.NewBoolean(ok), nil
 	})
 }
 
-func BuiltinTyIsNumber(ctx *Context) *Builtin {
+func BuiltinTyIsNumber(ctx *Context) Value {
 	return ctx.NewBuiltin("ty::is_number", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		_, ok := arguments[0].(*Number)
 		return ctx.NewBoolean(ok), nil
 	})
 }
 
-func BuiltinTyIsString(ctx *Context) *Builtin {
+func BuiltinTyIsString(ctx *Context) Value {
 	return ctx.NewBuiltin("ty::is_string", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		_, ok := arguments[0].(*String)
 		return ctx.NewBoolean(ok), nil
 	})
 }
 
-func BuiltinTyIsRegexp(ctx *Context) *Builtin {
+func BuiltinTyIsRegexp(ctx *Context) Value {
 	return ctx.NewBuiltin("ty::is_regexp", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		_, ok := arguments[0].(*Regexp)
 		return ctx.NewBoolean(ok), nil
 	})
 }
 
-func BuiltinTyIsVector(ctx *Context) *Builtin {
+func BuiltinTyIsVector(ctx *Context) Value {
 	return ctx.NewBuiltin("ty::is_vector", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		_, ok := arguments[0].(*Vector)
 		return ctx.NewBoolean(ok), nil
 	})
 }
 
-func BuiltinTyIsMap(ctx *Context) *Builtin {
+func BuiltinTyIsMap(ctx *Context) Value {
 	return ctx.NewBuiltin("ty::is_map", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		_, ok := arguments[0].(*Map)
 		return ctx.NewBoolean(ok), nil
 	})
 }
 
-func BuiltinTyIsSet(ctx *Context) *Builtin {
+func BuiltinTyIsSet(ctx *Context) Value {
 	return ctx.NewBuiltin("ty::is_set", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		_, ok := arguments[0].(*Set)
 		return ctx.NewBoolean(ok), nil
 	})
 }
 
-func BuiltinTyIsReference(ctx *Context) *Builtin {
+func BuiltinTyIsReference(ctx *Context) Value {
 	return ctx.NewBuiltin("ty::is_reference", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		_, ok := arguments[0].(*Reference)
 		return ctx.NewBoolean(ok), nil
 	})
 }
 
-func BuiltinTyIsFunction(ctx *Context) *Builtin {
+func BuiltinTyIsFunction(ctx *Context) Value {
 	return ctx.NewBuiltin("ty::is_function", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		if _, ok := arguments[0].(*Function); ok {
 			return ctx.NewBoolean(true), nil
