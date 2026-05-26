@@ -3080,7 +3080,7 @@ func (self Continue) ControlFlowLocation() *SourceLocation {
 
 // Update the name values of named functions that are children somewhere in
 // this map, either direct map-level values or a decendent of another map.
-func UpdateNamedFunctions(ctx *Context, ast *AstExpressionMap, prefix string) {
+func updateNamedFunctions(ctx *Context, ast *AstExpressionMap, prefix string) {
 	for _, pair := range ast.Elements {
 		k := pair.Key
 		v := pair.Value
@@ -3095,7 +3095,7 @@ func UpdateNamedFunctions(ctx *Context, ast *AstExpressionMap, prefix string) {
 			continue
 		}
 		if vAstExpressionMap, ok := v.(*AstExpressionMap); ok {
-			UpdateNamedFunctions(ctx, vAstExpressionMap, prefix+kAstExpressionString.Data.data+TOKEN_SCOPE)
+			updateNamedFunctions(ctx, vAstExpressionMap, prefix+kAstExpressionString.Data.data+TOKEN_SCOPE)
 			continue
 		}
 	}
@@ -6339,7 +6339,7 @@ func (self *Parser) ParseExpressionMapOrSet() (AstExpression, error) {
 
 	if mapOrSet == TOKEN_MAP {
 		result := &AstExpressionMap{location, mapElements}
-		UpdateNamedFunctions(self.lexer.ctx, result, "")
+		updateNamedFunctions(self.lexer.ctx, result, "")
 		return result, nil
 	}
 	if mapOrSet == TOKEN_SET {
@@ -6941,10 +6941,10 @@ func (self *Parser) ParseStatementLet() (AstStatement, error) {
 	} else if astExpressionType, ok := expression.(*AstExpressionType); ok {
 		astExpressionType.Name = identifier.Name.data
 		if astExpressionTypeExpressionMap, ok := astExpressionType.Expression.(*AstExpressionMap); ok {
-			UpdateNamedFunctions(self.lexer.ctx, astExpressionTypeExpressionMap, identifier.Name.data+TOKEN_SCOPE)
+			updateNamedFunctions(self.lexer.ctx, astExpressionTypeExpressionMap, identifier.Name.data+TOKEN_SCOPE)
 		}
 	} else if astExpressionMap, ok := expression.(*AstExpressionMap); ok {
-		UpdateNamedFunctions(self.lexer.ctx, astExpressionMap, identifier.Name.data+TOKEN_SCOPE)
+		updateNamedFunctions(self.lexer.ctx, astExpressionMap, identifier.Name.data+TOKEN_SCOPE)
 	}
 
 	return &AstStatementLet{location, identifier, expression}, nil
