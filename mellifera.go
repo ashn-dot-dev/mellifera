@@ -3081,11 +3081,11 @@ func (self Continue) ControlFlowLocation() *SourceLocation {
 // Update the name values of named functions that are children somewhere in
 // this map, either direct map-level values or a decendent of another map.
 func UpdateNamedFunctions(ctx *Context, ast *AstExpressionMap, prefix string) {
-	for i, pair := range ast.Elements {
+	for _, pair := range ast.Elements {
 		k := pair.Key
 		v := pair.Value
 
-		kAstExpressionString, ok := k.(AstExpressionString)
+		kAstExpressionString, ok := k.(*AstExpressionString)
 		if !ok {
 			continue
 		}
@@ -3094,9 +3094,8 @@ func UpdateNamedFunctions(ctx *Context, ast *AstExpressionMap, prefix string) {
 			vAstExpressionFunction.Name = ctx.NewString(prefix + kAstExpressionString.Data.data)
 			continue
 		}
-		if vAstExpressionMap, ok := v.(AstExpressionMap); ok {
-			UpdateNamedFunctions(ctx, &vAstExpressionMap, prefix+kAstExpressionString.Data.data+TOKEN_SCOPE)
-			ast.Elements[i].Value = vAstExpressionMap
+		if vAstExpressionMap, ok := v.(*AstExpressionMap); ok {
+			UpdateNamedFunctions(ctx, vAstExpressionMap, prefix+kAstExpressionString.Data.data+TOKEN_SCOPE)
 			continue
 		}
 	}
@@ -3138,7 +3137,7 @@ func (self AstProgram) IntoValue(ctx *Context) Value {
 func (self AstProgram) Eval(ctx *Context, env *Environment) (Value, error) {
 	var result Value = ctx.Null
 	for _, statement := range self.Statements {
-		if statementExpression, ok := statement.(AstStatementExpression); ok {
+		if statementExpression, ok := statement.(*AstStatementExpression); ok {
 			// If a top-level statement is an expression, directly evaluate
 			// that expression and save the result. This allows the result of
 			// the last top-level expression statement to be used as the
@@ -3527,8 +3526,8 @@ func (self AstExpressionSet) Eval(ctx *Context, env *Environment) (Value, error)
 
 type AstExpressionFunction struct {
 	Location   *SourceLocation // Optional
-	Parameters []AstIdentifier
-	Body       AstBlock
+	Parameters []*AstIdentifier
+	Body       *AstBlock
 	Name       *String // optional
 }
 
@@ -4690,7 +4689,7 @@ func (self AstExpressionAccessIndex) Eval(ctx *Context, env *Environment) (Value
 type AstExpressionAccessScope struct {
 	Location *SourceLocation // Optional
 	Store    AstExpression
-	Field    AstIdentifier
+	Field    *AstIdentifier
 }
 
 func (self AstExpressionAccessScope) ExpressionLocation() *SourceLocation {
@@ -4749,7 +4748,7 @@ func (self AstExpressionAccessScope) Eval(ctx *Context, env *Environment) (Value
 type AstExpressionAccessDot struct {
 	Location *SourceLocation // Optional
 	Store    AstExpression
-	Field    AstIdentifier
+	Field    *AstIdentifier
 }
 
 func (self AstExpressionAccessDot) ExpressionLocation() *SourceLocation {
@@ -4915,7 +4914,7 @@ func (self AstExpressionFunctionCall) Eval(ctx *Context, env *Environment) (Valu
 	var function Value = nil
 	var selfArgument Value = nil
 	var err error = nil
-	if accessDot, ok := self.Function.(AstExpressionAccessDot); ok {
+	if accessDot, ok := self.Function.(*AstExpressionAccessDot); ok {
 		// Special case when dot access is used for a function call. An
 		// implicit `self` argument is passed by reference to the function.
 		store, err := accessDot.Store.Eval(ctx, env)
@@ -5013,7 +5012,7 @@ func (self AstBlock) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
 type AstConditional struct {
 	Location  *SourceLocation // Optional
 	Condition AstExpression
-	Body      AstBlock
+	Body      *AstBlock
 }
 
 func (self AstConditional) IntoValue(ctx *Context) Value {
@@ -5055,7 +5054,7 @@ func (self AstConditional) Eval(ctx *Context, env *Environment) (ControlFlow, er
 
 type AstStatementLet struct {
 	Location   *SourceLocation // Optional
-	Identifier AstIdentifier
+	Identifier *AstIdentifier
 	Expression AstExpression
 }
 
@@ -5085,7 +5084,7 @@ func (self AstStatementLet) Eval(ctx *Context, env *Environment) (ControlFlow, e
 
 type AstStatementIfElifElse struct {
 	Location     *SourceLocation // Optional
-	Conditionals []AstConditional
+	Conditionals []*AstConditional
 	ElseBlock    *AstBlock // Optional
 }
 
@@ -5130,12 +5129,12 @@ func (self AstStatementIfElifElse) Eval(ctx *Context, env *Environment) (Control
 
 type AstStatementFor struct {
 	Location     *SourceLocation // Optional
-	IdentifierK  AstIdentifier
+	IdentifierK  *AstIdentifier
 	IdentifierV  *AstIdentifier // Optional
 	KIsReference bool
 	VIsReference bool
 	Collection   AstExpression
-	Block        AstBlock
+	Block        *AstBlock
 }
 
 func (self AstStatementFor) StatementLocation() *SourceLocation {
@@ -5358,7 +5357,7 @@ func (self AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, e
 type AstStatementWhile struct {
 	Location   *SourceLocation // Optional
 	Expression AstExpression
-	Block      AstBlock
+	Block      *AstBlock
 }
 
 func (self AstStatementWhile) StatementLocation() *SourceLocation {
@@ -5452,9 +5451,9 @@ func (self AstStatementContinue) Eval(ctx *Context, env *Environment) (ControlFl
 
 type AstStatementTry struct {
 	Location        *SourceLocation // Optional
-	TryBlock        AstBlock
+	TryBlock        *AstBlock
 	CatchIdentifier *AstIdentifier // Optional
-	CatchBlock      AstBlock
+	CatchBlock      *AstBlock
 }
 
 func (self AstStatementTry) StatementLocation() *SourceLocation {
@@ -5587,7 +5586,7 @@ func (self AstStatementAssignment) IntoValue(ctx *Context) Value {
 // access operation, so that modification of nested values will not mutate
 // shared objects pointed to by semantically separate values.
 func evalLvalue(expr AstExpression, ctx *Context, env *Environment) (Value, error) {
-	if exprAccessIndex, ok := expr.(AstExpressionAccessIndex); ok {
+	if exprAccessIndex, ok := expr.(*AstExpressionAccessIndex); ok {
 		innerStore, err := evalLvalue(exprAccessIndex.Store, ctx, env)
 		if err != nil {
 			return nil, err
@@ -5657,7 +5656,7 @@ func evalLvalue(expr AstExpression, ctx *Context, env *Environment) (Value, erro
 		)
 	}
 
-	if exprAccessScope, ok := expr.(AstExpressionAccessScope); ok {
+	if exprAccessScope, ok := expr.(*AstExpressionAccessScope); ok {
 		innerStore, err := evalLvalue(exprAccessScope.Store, ctx, env)
 		if err != nil {
 			return nil, err
@@ -5699,7 +5698,7 @@ func evalLvalue(expr AstExpression, ctx *Context, env *Environment) (Value, erro
 		)
 	}
 
-	if exprAccessDot, ok := expr.(AstExpressionAccessDot); ok {
+	if exprAccessDot, ok := expr.(*AstExpressionAccessDot); ok {
 		innerStore, err := evalLvalue(exprAccessDot.Store, ctx, env)
 		if err != nil {
 			return nil, err
@@ -5747,7 +5746,7 @@ func evalLvalue(expr AstExpression, ctx *Context, env *Environment) (Value, erro
 func (self AstStatementAssignment) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
 	// Special case for identifier assignment, where we can directly update
 	// the environment using `Environment.Set`.
-	if lhsIdentifier, ok := self.Lhs.(AstExpressionIdentifier); ok {
+	if lhsIdentifier, ok := self.Lhs.(*AstExpressionIdentifier); ok {
 		rhs, err := self.Rhs.Eval(ctx, env)
 		if err != nil {
 			return nil, err
@@ -5765,7 +5764,7 @@ func (self AstStatementAssignment) Eval(ctx *Context, env *Environment) (Control
 	var field Value
 	var err error
 
-	if lhsAccessIndex, ok := self.Lhs.(AstExpressionAccessIndex); ok {
+	if lhsAccessIndex, ok := self.Lhs.(*AstExpressionAccessIndex); ok {
 		store, err = evalLvalue(lhsAccessIndex.Store, ctx, env)
 		if err != nil {
 			return nil, err
@@ -5774,13 +5773,13 @@ func (self AstStatementAssignment) Eval(ctx *Context, env *Environment) (Control
 		if err != nil {
 			return nil, err
 		}
-	} else if lhsAccessDot, ok := self.Lhs.(AstExpressionAccessDot); ok {
+	} else if lhsAccessDot, ok := self.Lhs.(*AstExpressionAccessDot); ok {
 		store, err = evalLvalue(lhsAccessDot.Store, ctx, env)
 		if err != nil {
 			return nil, err
 		}
 		field = lhsAccessDot.Field.Name
-	} else if lhsAccessScope, ok := self.Lhs.(AstExpressionAccessScope); ok {
+	} else if lhsAccessScope, ok := self.Lhs.(*AstExpressionAccessScope); ok {
 		store, err = evalLvalue(lhsAccessScope.Store, ctx, env)
 		if err != nil {
 			return nil, err
@@ -5838,7 +5837,7 @@ func (self AstStatementAssignment) Eval(ctx *Context, env *Environment) (Control
 	}
 
 	if storeVector, ok := store.(*Vector); ok {
-		if _, lhsIsAccessIndex := self.Lhs.(AstExpressionAccessIndex); lhsIsAccessIndex {
+		if _, lhsIsAccessIndex := self.Lhs.(*AstExpressionAccessIndex); lhsIsAccessIndex {
 			return nil, assignVector(storeVector)
 		}
 	}
@@ -5848,7 +5847,7 @@ func (self AstStatementAssignment) Eval(ctx *Context, env *Environment) (Control
 	if storeReference, ok := store.(*Reference); ok {
 		storeDeref := storeReference.data
 		if storeDerefVector, ok := storeDeref.(*Vector); ok {
-			if _, lhsIsAccessIndex := self.Lhs.(AstExpressionAccessIndex); lhsIsAccessIndex {
+			if _, lhsIsAccessIndex := self.Lhs.(*AstExpressionAccessIndex); lhsIsAccessIndex {
 				return nil, assignVector(storeDerefVector)
 			}
 		}
@@ -6038,25 +6037,25 @@ func (self *Parser) identifier(name string) *String {
 	return self.lexer.ctx.identifierCache[name]
 }
 
-func (self *Parser) ParseProgram() (AstProgram, error) {
+func (self *Parser) ParseProgram() (*AstProgram, error) {
 	location := self.currentToken.Location
 	statements := []AstStatement{}
 	for !self.checkCurrent(TOKEN_EOF) {
 		statement, err := self.ParseStatement()
 		if err != nil {
-			return AstProgram{}, err
+			return &AstProgram{}, err
 		}
 		statements = append(statements, statement)
 	}
-	return AstProgram{location, statements}, nil
+	return &AstProgram{location, statements}, nil
 }
 
-func (self *Parser) ParseIdentifier() (AstIdentifier, error) {
+func (self *Parser) ParseIdentifier() (*AstIdentifier, error) {
 	token, err := self.expectCurrent(TOKEN_IDENTIFIER)
 	if err != nil {
-		return AstIdentifier{}, err
+		return &AstIdentifier{}, err
 	}
-	return AstIdentifier{token.Location, self.identifier(token.Literal)}, nil
+	return &AstIdentifier{token.Location, self.identifier(token.Literal)}, nil
 }
 
 func (self *Parser) ParseExpression() (AstExpression, error) {
@@ -6103,7 +6102,7 @@ func (self *Parser) ParseExpressionIdentifier() (AstExpression, error) {
 	if err != nil {
 		return nil, err
 	}
-	return AstExpressionIdentifier{token.Location, self.identifier(token.Literal)}, nil
+	return &AstExpressionIdentifier{token.Location, self.identifier(token.Literal)}, nil
 }
 
 func (self *Parser) ParseExpressionTemplate() (AstExpression, error) {
@@ -6111,7 +6110,7 @@ func (self *Parser) ParseExpressionTemplate() (AstExpression, error) {
 	if err != nil {
 		return nil, err
 	}
-	return AstExpressionTemplate{token.Location, token.Template}, nil
+	return &AstExpressionTemplate{token.Location, token.Template}, nil
 }
 
 func (self *Parser) ParseExpressionNull() (AstExpression, error) {
@@ -6119,7 +6118,7 @@ func (self *Parser) ParseExpressionNull() (AstExpression, error) {
 	if err != nil {
 		return nil, err
 	}
-	return AstExpressionNull{token.Location}, nil
+	return &AstExpressionNull{token.Location}, nil
 }
 
 func (self *Parser) ParseExpressionBoolean() (AstExpression, error) {
@@ -6128,14 +6127,14 @@ func (self *Parser) ParseExpressionBoolean() (AstExpression, error) {
 		if err != nil {
 			return nil, err
 		}
-		return AstExpressionBoolean{token.Location, self.context().NewBoolean(true)}, nil
+		return &AstExpressionBoolean{token.Location, self.context().NewBoolean(true)}, nil
 	}
 	if self.checkCurrent(TOKEN_FALSE) {
 		token, err := self.expectCurrent(TOKEN_FALSE)
 		if err != nil {
 			return nil, err
 		}
-		return AstExpressionBoolean{token.Location, self.context().NewBoolean(false)}, nil
+		return &AstExpressionBoolean{token.Location, self.context().NewBoolean(false)}, nil
 	}
 	return nil, ParseError{
 		self.currentToken.Location,
@@ -6155,7 +6154,7 @@ func (self *Parser) ParseExpressionNumber() (AstExpression, error) {
 	if !ok {
 		return nil, errors.New("missing number token value")
 	}
-	return AstExpressionNumber{token.Location, value}, nil
+	return &AstExpressionNumber{token.Location, value}, nil
 }
 
 func (self *Parser) ParseExpressionString() (AstExpression, error) {
@@ -6170,7 +6169,7 @@ func (self *Parser) ParseExpressionString() (AstExpression, error) {
 	if !ok {
 		return nil, errors.New("missing string token value")
 	}
-	return AstExpressionString{token.Location, value}, nil
+	return &AstExpressionString{token.Location, value}, nil
 }
 
 func (self *Parser) ParseExpressionRegexp() (AstExpression, error) {
@@ -6185,7 +6184,7 @@ func (self *Parser) ParseExpressionRegexp() (AstExpression, error) {
 	if !ok {
 		return nil, errors.New("missing regexp token value")
 	}
-	return AstExpressionRegexp{token.Location, value}, nil
+	return &AstExpressionRegexp{token.Location, value}, nil
 }
 
 func (self *Parser) ParseExpressionRegexpGroup() (AstExpression, error) {
@@ -6196,7 +6195,7 @@ func (self *Parser) ParseExpressionRegexpGroup() (AstExpression, error) {
 			fmt.Sprintf("expected regexp group, found %v", self.currentToken),
 		}
 	}
-	return AstExpressionRegexpGroup{token.Location, token.Group}, nil
+	return &AstExpressionRegexpGroup{token.Location, token.Group}, nil
 }
 
 func (self *Parser) ParseExpressionVector() (AstExpression, error) {
@@ -6228,7 +6227,7 @@ func (self *Parser) ParseExpressionVector() (AstExpression, error) {
 		return nil, err
 	}
 
-	return AstExpressionVector{location, elements}, nil
+	return &AstExpressionVector{location, elements}, nil
 }
 
 func (self *Parser) ParseExpressionMapOrSet() (AstExpression, error) {
@@ -6288,7 +6287,7 @@ func (self *Parser) ParseExpressionMapOrSet() (AstExpression, error) {
 			if err != nil {
 				return nil, err
 			}
-			expression = AstExpressionString{identifier.(AstExpressionIdentifier).Location, identifier.(AstExpressionIdentifier).Name}
+			expression = &AstExpressionString{identifier.(*AstExpressionIdentifier).Location, identifier.(*AstExpressionIdentifier).Name}
 		} else {
 			element, err := self.ParseExpression()
 			if err != nil {
@@ -6339,12 +6338,12 @@ func (self *Parser) ParseExpressionMapOrSet() (AstExpression, error) {
 	}
 
 	if mapOrSet == TOKEN_MAP {
-		result := AstExpressionMap{location, mapElements}
-		UpdateNamedFunctions(self.lexer.ctx, &result, "")
+		result := &AstExpressionMap{location, mapElements}
+		UpdateNamedFunctions(self.lexer.ctx, result, "")
 		return result, nil
 	}
 	if mapOrSet == TOKEN_SET {
-		return AstExpressionSet{location, setElements}, nil
+		return &AstExpressionSet{location, setElements}, nil
 	}
 	return nil, ParseError{
 		Location: location,
@@ -6364,7 +6363,7 @@ func (self *Parser) ParseExpressionFunction() (AstExpression, error) {
 		return nil, err
 	}
 
-	parameters := []AstIdentifier{}
+	parameters := []*AstIdentifier{}
 	for !self.checkCurrent(TOKEN_RPAREN) {
 		if len(parameters) != 0 {
 			if _, err := self.expectCurrent(TOKEN_COMMA); err != nil {
@@ -6414,7 +6413,7 @@ func (self *Parser) ParseExpressionFreeze() (AstExpression, error) {
 		return nil, err
 	}
 
-	return AstExpressionFreeze{location, expression}, nil
+	return &AstExpressionFreeze{location, expression}, nil
 }
 
 func (self *Parser) ParseExpressionType() (AstExpression, error) {
@@ -6446,7 +6445,7 @@ func (self *Parser) ParseExpressionType() (AstExpression, error) {
 		name = fmt.Sprintf("type@[%s, line %v]", location.File, location.Line)
 	}
 
-	return AstExpressionType{location, name, extends, expression}, nil
+	return &AstExpressionType{location, name, extends, expression}, nil
 }
 
 func (self *Parser) ParseExpressionNew() (AstExpression, error) {
@@ -6466,7 +6465,7 @@ func (self *Parser) ParseExpressionNew() (AstExpression, error) {
 		return nil, err
 	}
 
-	return AstExpressionNew{location, meta, expression}, nil
+	return &AstExpressionNew{location, meta, expression}, nil
 }
 
 func (self *Parser) ParseExpressionGrouped() (AstExpression, error) {
@@ -6486,7 +6485,7 @@ func (self *Parser) ParseExpressionGrouped() (AstExpression, error) {
 		return nil, err
 	}
 
-	return AstExpressionGrouped{location, expression}, nil
+	return &AstExpressionGrouped{location, expression}, nil
 }
 
 func (self *Parser) ParseExpressionPositive() (AstExpression, error) {
@@ -6501,7 +6500,7 @@ func (self *Parser) ParseExpressionPositive() (AstExpression, error) {
 		return nil, err
 	}
 
-	return AstExpressionPositive{location, expression}, nil
+	return &AstExpressionPositive{location, expression}, nil
 }
 
 func (self *Parser) ParseExpressionNegative() (AstExpression, error) {
@@ -6516,7 +6515,7 @@ func (self *Parser) ParseExpressionNegative() (AstExpression, error) {
 		return nil, err
 	}
 
-	return AstExpressionNegative{location, expression}, nil
+	return &AstExpressionNegative{location, expression}, nil
 }
 
 func (self *Parser) ParseExpressionNot() (AstExpression, error) {
@@ -6531,7 +6530,7 @@ func (self *Parser) ParseExpressionNot() (AstExpression, error) {
 		return nil, err
 	}
 
-	return AstExpressionNot{location, expression}, nil
+	return &AstExpressionNot{location, expression}, nil
 }
 
 func (self *Parser) ParseExpressionAnd(lhs AstExpression) (AstExpression, error) {
@@ -6546,7 +6545,7 @@ func (self *Parser) ParseExpressionAnd(lhs AstExpression) (AstExpression, error)
 		return nil, err
 	}
 
-	return AstExpressionAnd{location, lhs, rhs}, nil
+	return &AstExpressionAnd{location, lhs, rhs}, nil
 }
 
 func (self *Parser) ParseExpressionOr(lhs AstExpression) (AstExpression, error) {
@@ -6561,7 +6560,7 @@ func (self *Parser) ParseExpressionOr(lhs AstExpression) (AstExpression, error) 
 		return nil, err
 	}
 
-	return AstExpressionOr{location, lhs, rhs}, nil
+	return &AstExpressionOr{location, lhs, rhs}, nil
 }
 
 func (self *Parser) ParseExpressionEq(lhs AstExpression) (AstExpression, error) {
@@ -6576,7 +6575,7 @@ func (self *Parser) ParseExpressionEq(lhs AstExpression) (AstExpression, error) 
 		return nil, err
 	}
 
-	return AstExpressionEq{location, lhs, rhs}, nil
+	return &AstExpressionEq{location, lhs, rhs}, nil
 }
 
 func (self *Parser) ParseExpressionNe(lhs AstExpression) (AstExpression, error) {
@@ -6591,7 +6590,7 @@ func (self *Parser) ParseExpressionNe(lhs AstExpression) (AstExpression, error) 
 		return nil, err
 	}
 
-	return AstExpressionNe{location, lhs, rhs}, nil
+	return &AstExpressionNe{location, lhs, rhs}, nil
 }
 
 func (self *Parser) ParseExpressionLe(lhs AstExpression) (AstExpression, error) {
@@ -6606,7 +6605,7 @@ func (self *Parser) ParseExpressionLe(lhs AstExpression) (AstExpression, error) 
 		return nil, err
 	}
 
-	return AstExpressionLe{location, lhs, rhs}, nil
+	return &AstExpressionLe{location, lhs, rhs}, nil
 }
 
 func (self *Parser) ParseExpressionGe(lhs AstExpression) (AstExpression, error) {
@@ -6621,7 +6620,7 @@ func (self *Parser) ParseExpressionGe(lhs AstExpression) (AstExpression, error) 
 		return nil, err
 	}
 
-	return AstExpressionGe{location, lhs, rhs}, nil
+	return &AstExpressionGe{location, lhs, rhs}, nil
 }
 
 func (self *Parser) ParseExpressionLt(lhs AstExpression) (AstExpression, error) {
@@ -6636,7 +6635,7 @@ func (self *Parser) ParseExpressionLt(lhs AstExpression) (AstExpression, error) 
 		return nil, err
 	}
 
-	return AstExpressionLt{location, lhs, rhs}, nil
+	return &AstExpressionLt{location, lhs, rhs}, nil
 }
 
 func (self *Parser) ParseExpressionGt(lhs AstExpression) (AstExpression, error) {
@@ -6651,7 +6650,7 @@ func (self *Parser) ParseExpressionGt(lhs AstExpression) (AstExpression, error) 
 		return nil, err
 	}
 
-	return AstExpressionGt{location, lhs, rhs}, nil
+	return &AstExpressionGt{location, lhs, rhs}, nil
 }
 
 func (self *Parser) ParseExpressionEqRe(lhs AstExpression) (AstExpression, error) {
@@ -6666,7 +6665,7 @@ func (self *Parser) ParseExpressionEqRe(lhs AstExpression) (AstExpression, error
 		return nil, err
 	}
 
-	return AstExpressionEqRe{location, lhs, rhs}, nil
+	return &AstExpressionEqRe{location, lhs, rhs}, nil
 }
 
 func (self *Parser) ParseExpressionNeRe(lhs AstExpression) (AstExpression, error) {
@@ -6681,7 +6680,7 @@ func (self *Parser) ParseExpressionNeRe(lhs AstExpression) (AstExpression, error
 		return nil, err
 	}
 
-	return AstExpressionNeRe{location, lhs, rhs}, nil
+	return &AstExpressionNeRe{location, lhs, rhs}, nil
 }
 
 func (self *Parser) ParseExpressionAdd(lhs AstExpression) (AstExpression, error) {
@@ -6696,7 +6695,7 @@ func (self *Parser) ParseExpressionAdd(lhs AstExpression) (AstExpression, error)
 		return nil, err
 	}
 
-	return AstExpressionAdd{location, lhs, rhs}, nil
+	return &AstExpressionAdd{location, lhs, rhs}, nil
 }
 
 func (self *Parser) ParseExpressionSub(lhs AstExpression) (AstExpression, error) {
@@ -6711,7 +6710,7 @@ func (self *Parser) ParseExpressionSub(lhs AstExpression) (AstExpression, error)
 		return nil, err
 	}
 
-	return AstExpressionSub{location, lhs, rhs}, nil
+	return &AstExpressionSub{location, lhs, rhs}, nil
 }
 
 func (self *Parser) ParseExpressionMul(lhs AstExpression) (AstExpression, error) {
@@ -6726,7 +6725,7 @@ func (self *Parser) ParseExpressionMul(lhs AstExpression) (AstExpression, error)
 		return nil, err
 	}
 
-	return AstExpressionMul{location, lhs, rhs}, nil
+	return &AstExpressionMul{location, lhs, rhs}, nil
 }
 
 func (self *Parser) ParseExpressionDiv(lhs AstExpression) (AstExpression, error) {
@@ -6741,7 +6740,7 @@ func (self *Parser) ParseExpressionDiv(lhs AstExpression) (AstExpression, error)
 		return nil, err
 	}
 
-	return AstExpressionDiv{location, lhs, rhs}, nil
+	return &AstExpressionDiv{location, lhs, rhs}, nil
 }
 
 func (self *Parser) ParseExpressionRem(lhs AstExpression) (AstExpression, error) {
@@ -6756,7 +6755,7 @@ func (self *Parser) ParseExpressionRem(lhs AstExpression) (AstExpression, error)
 		return nil, err
 	}
 
-	return AstExpressionRem{location, lhs, rhs}, nil
+	return &AstExpressionRem{location, lhs, rhs}, nil
 }
 
 func (self *Parser) ParseExpressionFunctionCall(lhs AstExpression) (AstExpression, error) {
@@ -6788,7 +6787,7 @@ func (self *Parser) ParseExpressionFunctionCall(lhs AstExpression) (AstExpressio
 		return nil, err
 	}
 
-	return AstExpressionFunctionCall{location, lhs, arguments}, nil
+	return &AstExpressionFunctionCall{location, lhs, arguments}, nil
 }
 
 func (self *Parser) ParseExpressionAccessIndex(lhs AstExpression) (AstExpression, error) {
@@ -6804,7 +6803,7 @@ func (self *Parser) ParseExpressionAccessIndex(lhs AstExpression) (AstExpression
 	if err != nil {
 		return nil, err
 	}
-	return AstExpressionAccessIndex{token.Location, lhs, field}, nil
+	return &AstExpressionAccessIndex{token.Location, lhs, field}, nil
 }
 
 func (self *Parser) ParseExpressionAccessScope(lhs AstExpression) (AstExpression, error) {
@@ -6816,7 +6815,7 @@ func (self *Parser) ParseExpressionAccessScope(lhs AstExpression) (AstExpression
 	if err != nil {
 		return nil, err
 	}
-	return AstExpressionAccessScope{token.Location, lhs, field}, nil
+	return &AstExpressionAccessScope{token.Location, lhs, field}, nil
 }
 
 func (self *Parser) ParseExpressionAccessDot(lhs AstExpression) (AstExpression, error) {
@@ -6828,7 +6827,7 @@ func (self *Parser) ParseExpressionAccessDot(lhs AstExpression) (AstExpression, 
 	if err != nil {
 		return nil, err
 	}
-	return AstExpressionAccessDot{token.Location, lhs, field}, nil
+	return &AstExpressionAccessDot{token.Location, lhs, field}, nil
 }
 
 func (self *Parser) ParseExpressionMkref(lhs AstExpression) (AstExpression, error) {
@@ -6836,7 +6835,7 @@ func (self *Parser) ParseExpressionMkref(lhs AstExpression) (AstExpression, erro
 	if err != nil {
 		return nil, err
 	}
-	return AstExpressionMkref{token.Location, lhs}, nil
+	return &AstExpressionMkref{token.Location, lhs}, nil
 }
 
 func (self *Parser) ParseExpressionDeref(lhs AstExpression) (AstExpression, error) {
@@ -6844,30 +6843,30 @@ func (self *Parser) ParseExpressionDeref(lhs AstExpression) (AstExpression, erro
 	if err != nil {
 		return nil, err
 	}
-	return AstExpressionDeref{token.Location, lhs}, nil
+	return &AstExpressionDeref{token.Location, lhs}, nil
 }
 
-func (self *Parser) ParseBlock() (AstBlock, error) {
+func (self *Parser) ParseBlock() (*AstBlock, error) {
 	token, err := self.expectCurrent(TOKEN_LBRACE)
 	if err != nil {
-		return AstBlock{}, err
+		return &AstBlock{}, err
 	}
 
 	statements := []AstStatement{}
 	for !self.checkCurrent(TOKEN_RBRACE) {
 		statement, err := self.ParseStatement()
 		if err != nil {
-			return AstBlock{}, err
+			return &AstBlock{}, err
 		}
 		statements = append(statements, statement)
 	}
 
 	_, err = self.expectCurrent(TOKEN_RBRACE)
 	if err != nil {
-		return AstBlock{}, err
+		return &AstBlock{}, err
 	}
 
-	return AstBlock{token.Location, statements}, nil
+	return &AstBlock{token.Location, statements}, nil
 }
 
 func (self *Parser) ParseStatement() (AstStatement, error) {
@@ -6939,21 +6938,16 @@ func (self *Parser) ParseStatementLet() (AstStatement, error) {
 
 	if astExpressionFunction, ok := expression.(*AstExpressionFunction); ok {
 		astExpressionFunction.Name = identifier.Name
-	} else if astExpressionType, ok := expression.(AstExpressionType); ok {
+	} else if astExpressionType, ok := expression.(*AstExpressionType); ok {
 		astExpressionType.Name = identifier.Name.data
-		expression = astExpressionType
-
-		if astExpressionTypeExpressionMap, ok := astExpressionType.Expression.(AstExpressionMap); ok {
-			UpdateNamedFunctions(self.lexer.ctx, &astExpressionTypeExpressionMap, identifier.Name.data+TOKEN_SCOPE)
-			astExpressionType.Expression = astExpressionTypeExpressionMap
-			expression = astExpressionType
+		if astExpressionTypeExpressionMap, ok := astExpressionType.Expression.(*AstExpressionMap); ok {
+			UpdateNamedFunctions(self.lexer.ctx, astExpressionTypeExpressionMap, identifier.Name.data+TOKEN_SCOPE)
 		}
-	} else if astExpressionMap, ok := expression.(AstExpressionMap); ok {
-		UpdateNamedFunctions(self.lexer.ctx, &astExpressionMap, identifier.Name.data+TOKEN_SCOPE)
-		expression = astExpressionMap
+	} else if astExpressionMap, ok := expression.(*AstExpressionMap); ok {
+		UpdateNamedFunctions(self.lexer.ctx, astExpressionMap, identifier.Name.data+TOKEN_SCOPE)
 	}
 
-	return AstStatementLet{location, identifier, expression}, nil
+	return &AstStatementLet{location, identifier, expression}, nil
 }
 
 func (self *Parser) ParseStatementIfElifElse() (AstStatement, error) {
@@ -6965,27 +6959,27 @@ func (self *Parser) ParseStatementIfElifElse() (AstStatement, error) {
 	}
 	location := self.currentToken.Location
 
-	parseConditional := func() (AstConditional, error) {
+	parseConditional := func() (*AstConditional, error) {
 		token, err := self.advanceToken()
 		if err != nil {
-			return AstConditional{}, err
+			return &AstConditional{}, err
 		}
 		location := token.Location
 
 		condition, err := self.ParseExpression()
 		if err != nil {
-			return AstConditional{}, err
+			return &AstConditional{}, err
 		}
 
 		body, err := self.ParseBlock()
 		if err != nil {
-			return AstConditional{}, err
+			return &AstConditional{}, err
 		}
 
-		return AstConditional{location, condition, body}, nil
+		return &AstConditional{location, condition, body}, nil
 	}
 
-	conditionals := []AstConditional{}
+	conditionals := []*AstConditional{}
 	for {
 		if len(conditionals) == 0 && self.checkCurrent(TOKEN_IF) {
 			conditional, err := parseConditional()
@@ -7019,10 +7013,10 @@ func (self *Parser) ParseStatementIfElifElse() (AstStatement, error) {
 		if err != nil {
 			return nil, err
 		}
-		elseBlock = &block
+		elseBlock = block
 	}
 
-	return AstStatementIfElifElse{location, conditionals, elseBlock}, nil
+	return &AstStatementIfElifElse{location, conditionals, elseBlock}, nil
 }
 
 func (self *Parser) ParseStatementFor() (AstStatement, error) {
@@ -7058,7 +7052,7 @@ func (self *Parser) ParseStatementFor() (AstStatement, error) {
 		if err != nil {
 			return nil, err
 		}
-		identifierV = &identifier
+		identifierV = identifier
 
 		if self.checkCurrent(TOKEN_MKREF) {
 			_, err := self.expectCurrent(TOKEN_MKREF)
@@ -7091,7 +7085,7 @@ func (self *Parser) ParseStatementFor() (AstStatement, error) {
 		}
 	}
 
-	return AstStatementFor{location, identifierK, identifierV, kIsReference, vIsReference, collection, block}, nil
+	return &AstStatementFor{location, identifierK, identifierV, kIsReference, vIsReference, collection, block}, nil
 }
 
 func (self *Parser) ParseStatementWhile() (AstStatement, error) {
@@ -7111,7 +7105,7 @@ func (self *Parser) ParseStatementWhile() (AstStatement, error) {
 		return nil, err
 	}
 
-	return AstStatementWhile{location, expression, block}, nil
+	return &AstStatementWhile{location, expression, block}, nil
 }
 
 func (self *Parser) ParseStatementBreak() (AstStatement, error) {
@@ -7126,7 +7120,7 @@ func (self *Parser) ParseStatementBreak() (AstStatement, error) {
 		return nil, err
 	}
 
-	return AstStatementBreak{location}, nil
+	return &AstStatementBreak{location}, nil
 }
 
 func (self *Parser) ParseStatementContinue() (AstStatement, error) {
@@ -7141,7 +7135,7 @@ func (self *Parser) ParseStatementContinue() (AstStatement, error) {
 		return nil, err
 	}
 
-	return AstStatementContinue{location}, nil
+	return &AstStatementContinue{location}, nil
 }
 
 func (self *Parser) ParseStatementTry() (AstStatement, error) {
@@ -7166,7 +7160,7 @@ func (self *Parser) ParseStatementTry() (AstStatement, error) {
 		if err != nil {
 			return nil, err
 		}
-		catchIdentifier = &identifier
+		catchIdentifier = identifier
 	}
 
 	catchBlock, err := self.ParseBlock()
@@ -7174,7 +7168,7 @@ func (self *Parser) ParseStatementTry() (AstStatement, error) {
 		return nil, err
 	}
 
-	return AstStatementTry{location, tryBlock, catchIdentifier, catchBlock}, nil
+	return &AstStatementTry{location, tryBlock, catchIdentifier, catchBlock}, nil
 }
 
 func (self *Parser) ParseStatementError() (AstStatement, error) {
@@ -7194,7 +7188,7 @@ func (self *Parser) ParseStatementError() (AstStatement, error) {
 		return nil, err
 	}
 
-	return AstStatementError{location, expression}, nil
+	return &AstStatementError{location, expression}, nil
 }
 
 func (self *Parser) ParseStatementReturn() (AstStatement, error) {
@@ -7218,7 +7212,7 @@ func (self *Parser) ParseStatementReturn() (AstStatement, error) {
 		return nil, err
 	}
 
-	return AstStatementReturn{location, expression}, nil
+	return &AstStatementReturn{location, expression}, nil
 }
 
 func (self *Parser) ParseStatementExpressionOrAssignment() (AstStatement, error) {
@@ -7233,7 +7227,7 @@ func (self *Parser) ParseStatementExpressionOrAssignment() (AstStatement, error)
 			return nil, err
 		}
 
-		return AstStatementExpression{expression.ExpressionLocation(), expression}, nil
+		return &AstStatementExpression{expression.ExpressionLocation(), expression}, nil
 	}
 
 	token, err := self.expectCurrent(TOKEN_ASSIGN)
@@ -7252,7 +7246,7 @@ func (self *Parser) ParseStatementExpressionOrAssignment() (AstStatement, error)
 		return nil, err
 	}
 
-	return AstStatementAssignment{location, expression, rhs}, nil
+	return &AstStatementAssignment{location, expression, rhs}, nil
 }
 
 func Call(ctx *Context, location *SourceLocation, callable Value, arguments []Value) (Value, error) {
@@ -9139,29 +9133,29 @@ func BuiltinImport(ctx *Context) Value {
 func combValidate(ctx *Context, expr AstExpression) error {
 	validationError := func() error {
 		found := reflect.TypeOf(expr).Name()
-		if x, ok := expr.(AstExpressionIdentifier); ok {
+		if x, ok := expr.(*AstExpressionIdentifier); ok {
 			found = x.Name.data
 		}
 		return NewError(expr.ExpressionLocation(), ctx.NewStringf("expected comb value, found %s", found))
 	}
 
-	if _, ok := expr.(AstExpressionNull); ok {
+	if _, ok := expr.(*AstExpressionNull); ok {
 		return nil
 	}
 
-	if _, ok := expr.(AstExpressionBoolean); ok {
+	if _, ok := expr.(*AstExpressionBoolean); ok {
 		return nil
 	}
 
-	if _, ok := expr.(AstExpressionNumber); ok {
+	if _, ok := expr.(*AstExpressionNumber); ok {
 		return nil
 	}
 
-	if _, ok := expr.(AstExpressionString); ok {
+	if _, ok := expr.(*AstExpressionString); ok {
 		return nil
 	}
 
-	if x, ok := expr.(AstExpressionVector); ok {
+	if x, ok := expr.(*AstExpressionVector); ok {
 		for _, element := range x.Elements {
 			if err := combValidate(ctx, element); err != nil {
 				return err
@@ -9170,7 +9164,7 @@ func combValidate(ctx *Context, expr AstExpression) error {
 		return nil
 	}
 
-	if x, ok := expr.(AstExpressionMap); ok {
+	if x, ok := expr.(*AstExpressionMap); ok {
 		for _, pair := range x.Elements {
 			if err := combValidate(ctx, pair.Key); err != nil {
 				return err
@@ -9182,7 +9176,7 @@ func combValidate(ctx *Context, expr AstExpression) error {
 		return nil
 	}
 
-	if x, ok := expr.(AstExpressionSet); ok {
+	if x, ok := expr.(*AstExpressionSet); ok {
 		for _, element := range x.Elements {
 			if err := combValidate(ctx, element); err != nil {
 				return err
@@ -9191,21 +9185,21 @@ func combValidate(ctx *Context, expr AstExpression) error {
 		return nil
 	}
 
-	if x, ok := expr.(AstExpressionPositive); ok {
+	if x, ok := expr.(*AstExpressionPositive); ok {
 		if err := combValidate(ctx, x.Expression); err != nil {
 			return err
 		}
-		if _, isNumber := x.Expression.(AstExpressionNumber); !isNumber {
+		if _, isNumber := x.Expression.(*AstExpressionNumber); !isNumber {
 			return validationError()
 		}
 		return nil
 	}
 
-	if x, ok := expr.(AstExpressionNegative); ok {
+	if x, ok := expr.(*AstExpressionNegative); ok {
 		if err := combValidate(ctx, x.Expression); err != nil {
 			return err
 		}
-		if _, isNumber := x.Expression.(AstExpressionNumber); !isNumber {
+		if _, isNumber := x.Expression.(*AstExpressionNumber); !isNumber {
 			return validationError()
 		}
 		return nil
