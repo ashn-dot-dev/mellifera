@@ -529,7 +529,7 @@ func (ctx *Context) NewVector(elements []Value) *Vector {
 	}
 
 	return &Vector{
-		data: &VectorData{
+		data: &vectorData{
 			elements: elements,
 			uses:     1,
 		},
@@ -967,13 +967,13 @@ func (self *Regexp) CombEncode(e *CombEncoder) error {
 	return e.err
 }
 
-type VectorData struct {
+type vectorData struct {
 	elements []Value
 	uses     int
 }
 
 type Vector struct {
-	data   *VectorData
+	data   *vectorData
 	frozen bool
 }
 
@@ -1017,7 +1017,7 @@ func (self *Vector) CopyOnWrite() {
 		for i, element := range self.data.elements {
 			elements[i] = element.Copy()
 		}
-		self.data = &VectorData{
+		self.data = &vectorData{
 			elements: elements,
 			uses:     1,
 		}
@@ -1133,7 +1133,7 @@ func (self *Vector) Insert(index int, value Value) error {
 	self.CopyOnWrite()
 
 	if self.data == nil {
-		self.data = &VectorData{
+		self.data = &vectorData{
 			elements: nil,
 			uses:     1,
 		}
@@ -1165,7 +1165,7 @@ func (self *Vector) Push(value Value) error {
 
 	self.CopyOnWrite()
 	if self.data == nil {
-		self.data = &VectorData{
+		self.data = &vectorData{
 			elements: nil,
 			uses:     1,
 		}
