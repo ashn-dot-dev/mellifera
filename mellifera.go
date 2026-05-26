@@ -25,11 +25,6 @@ const (
 	MIN_SAFE_INTEGER  = -9007199254740991 // -(2**53 - 1)
 )
 
-// Utility function used to get the address of literals.
-func Ptr[T any](v T) *T {
-	return &v
-}
-
 func escape(s string) string {
 	result := ""
 	index := 0
@@ -9267,7 +9262,8 @@ func BuiltinCombEncodeEx(ctx *Context) *Builtin {
 				if v, ok := pair.Value.(*Number); ok {
 					vInt, err := ValueAsSafeInteger(v)
 					if err == nil && vInt >= 0 {
-						indent = Ptr("")
+						empty := ""
+						indent = &empty
 						for _ = range vInt {
 							*indent = *indent + " "
 						}

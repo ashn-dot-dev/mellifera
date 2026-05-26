@@ -6,6 +6,11 @@ import (
 	"testing"
 )
 
+// Utility function used to get the address of literals.
+func Ptr[T any](v T) *T {
+	return &v
+}
+
 // Asserts a == b
 func AssertEq[T comparable](t *testing.T, a T, b T) {
 	t.Helper()
