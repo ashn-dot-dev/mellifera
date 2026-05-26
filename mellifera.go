@@ -9132,7 +9132,7 @@ func BuiltinImport(ctx *Context) Value {
 // (separate parse mode? separate parser type?).
 func combValidate(ctx *Context, expr AstExpression) error {
 	validationError := func() error {
-		found := reflect.TypeOf(expr).Name()
+		found := reflect.TypeOf(expr).Elem().Name()
 		if x, ok := expr.(*AstExpressionIdentifier); ok {
 			found = x.Name.data
 		}
