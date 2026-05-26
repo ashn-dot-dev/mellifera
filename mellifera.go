@@ -7298,7 +7298,7 @@ func Call(ctx *Context, location *SourceLocation, callable Value, arguments []Va
 	}
 
 	if builtin, ok := callable.(*Builtin); ok {
-		if err := TypeCheckArguments(builtin.types, arguments); err != nil {
+		if err := typeCheckArguments(builtin.types, arguments); err != nil {
 			e := NewError(
 				nil,
 				ctx.NewString(err.Error()),
@@ -7359,7 +7359,7 @@ func TRef(base Type) Type {
 	return Type{REFERENCE, &base}
 }
 
-func TypeCheckArgument(index int, expected Type, received Value) error {
+func typeCheckArgument(index int, expected Type, received Value) error {
 	switch expected.Kind {
 	case ANY:
 		return nil
@@ -7403,7 +7403,7 @@ func TypeCheckArgument(index int, expected Type, received Value) error {
 		if expected.Base == nil {
 			return nil // No required base type.
 		}
-		if err := TypeCheckArgument(index, *expected.Base, reference.data); err != nil {
+		if err := typeCheckArgument(index, *expected.Base, reference.data); err != nil {
 			return fmt.Errorf("expected reference to %s value for argument %v, received reference to %s", expected.Base, index, reference.data.Typename())
 		}
 		return nil
@@ -7422,13 +7422,13 @@ func TypeCheckArgument(index int, expected Type, received Value) error {
 	return fmt.Errorf("expected %s value for argument %v, received %s", expected, index, received.Typename())
 }
 
-func TypeCheckArguments(types []Type, arguments []Value) error {
+func typeCheckArguments(types []Type, arguments []Value) error {
 	if len(types) != len(arguments) {
 		return fmt.Errorf("invalid function argument count (expected %v, received %v)", len(types), len(arguments))
 	}
 
 	for i := range types {
-		if err := TypeCheckArgument(i, types[i], arguments[i]); err != nil {
+		if err := typeCheckArgument(i, types[i], arguments[i]); err != nil {
 			return err
 		}
 	}
