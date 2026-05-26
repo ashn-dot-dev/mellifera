@@ -7335,7 +7335,7 @@ const (
 	MAP       = "map"
 	SET       = "set"
 	REFERENCE = "reference"
-	FUNCTION  = "function"
+	CALLABLE  = "callable"
 	EXTERNAL  = "external"
 )
 
@@ -7407,7 +7407,7 @@ func typeCheckArgument(index int, expected Type, received Value) error {
 			return fmt.Errorf("expected reference to %s value for argument %v, received reference to %s", expected.Base, index, reference.data.Typename())
 		}
 		return nil
-	case FUNCTION:
+	case CALLABLE:
 		if _, ok := received.(*Function); ok {
 			return nil
 		}
@@ -8098,7 +8098,7 @@ func BuiltinVectorContains(ctx *Context) Value {
 }
 
 func BuiltinVectorAny(ctx *Context) Value {
-	return ctx.NewBuiltin("vector::any", []Type{TRef(TVal(VECTOR)), TVal(FUNCTION)}, func(ctx *Context, arguments []Value) (Value, error) {
+	return ctx.NewBuiltin("vector::any", []Type{TRef(TVal(VECTOR)), TVal(CALLABLE)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Vector)
 
@@ -8123,7 +8123,7 @@ func BuiltinVectorAny(ctx *Context) Value {
 }
 
 func BuiltinVectorAll(ctx *Context) Value {
-	return ctx.NewBuiltin("vector::all", []Type{TRef(TVal(VECTOR)), TVal(FUNCTION)}, func(ctx *Context, arguments []Value) (Value, error) {
+	return ctx.NewBuiltin("vector::all", []Type{TRef(TVal(VECTOR)), TVal(CALLABLE)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Vector)
 
@@ -8148,7 +8148,7 @@ func BuiltinVectorAll(ctx *Context) Value {
 }
 
 func BuiltinVectorMap(ctx *Context) Value {
-	return ctx.NewBuiltin("vector::map", []Type{TRef(TVal(VECTOR)), TVal(FUNCTION)}, func(ctx *Context, arguments []Value) (Value, error) {
+	return ctx.NewBuiltin("vector::map", []Type{TRef(TVal(VECTOR)), TVal(CALLABLE)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Vector)
 
@@ -8167,7 +8167,7 @@ func BuiltinVectorMap(ctx *Context) Value {
 }
 
 func BuiltinVectorFilter(ctx *Context) Value {
-	return ctx.NewBuiltin("vector::filter", []Type{TRef(TVal(VECTOR)), TVal(FUNCTION)}, func(ctx *Context, arguments []Value) (Value, error) {
+	return ctx.NewBuiltin("vector::filter", []Type{TRef(TVal(VECTOR)), TVal(CALLABLE)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Vector)
 
@@ -8464,7 +8464,7 @@ return function(self, compare) {
 };
 `)
 
-	return ctx.NewBuiltin("vector::sorted_by", []Type{TRef(TVal(VECTOR)), TVal(FUNCTION)}, func(ctx *Context, arguments []Value) (Value, error) {
+	return ctx.NewBuiltin("vector::sorted_by", []Type{TRef(TVal(VECTOR)), TVal(CALLABLE)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return Call(ctx, nil, function, arguments)
 	})
 }
