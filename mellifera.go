@@ -8400,7 +8400,7 @@ let sort = function(x) {
 };
 return function(self) {
 	if not ty::is_reference(self) {
-		error $"expected reference to vector value for argument 0, received {self.Typename()}";
+		error $"expected reference to vector value for argument 0, received {typename(self)}";
 	}
 	if not ty::is_vector(self.*) {
 		error $"expected reference to vector value for argument 0, received reference to {typename(self.*)}";
@@ -8457,7 +8457,7 @@ let sort = function(x, compare) {
 };
 return function(self, compare) {
 	if not ty::is_reference(self) {
-		error $"expected reference to vector value for argument 0, received {self.Typename()}";
+		error $"expected reference to vector value for argument 0, received {typename(self)}";
 	}
 	if not ty::is_vector(self.*) {
 		error $"expected reference to vector value for argument 0, received reference to {typename(self.*)}";
