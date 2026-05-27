@@ -5535,7 +5535,7 @@ func (self AstStatementError) Eval(ctx *Context, env *Environment) (ControlFlow,
 
 type AstStatementReturn struct {
 	Location   *SourceLocation // Optional
-	Expression *AstExpression  // Optional
+	Expression AstExpression   // Optional
 }
 
 func (self AstStatementReturn) StatementLocation() *SourceLocation {
@@ -5545,7 +5545,7 @@ func (self AstStatementReturn) StatementLocation() *SourceLocation {
 func (self AstStatementReturn) IntoValue(ctx *Context) Value {
 	var expression Value = ctx.NewNull()
 	if self.Expression != nil {
-		expression = (*self.Expression).IntoValue(ctx)
+		expression = self.Expression.IntoValue(ctx)
 	}
 
 	return ctx.NewMapOrPanic([]MapPair{
@@ -5560,7 +5560,7 @@ func (self AstStatementReturn) Eval(ctx *Context, env *Environment) (ControlFlow
 		return Return{self.Location, ctx.NewNull()}, nil
 	}
 
-	value, err := (*self.Expression).Eval(ctx, env)
+	value, err := self.Expression.Eval(ctx, env)
 	if err != nil {
 		return nil, err
 	}
@@ -7212,13 +7212,13 @@ func (self *Parser) ParseStatementReturn() (AstStatement, error) {
 	}
 	location := token.Location
 
-	var expression *AstExpression = nil
+	var expression AstExpression = nil
 	if !self.checkCurrent(TOKEN_SEMICOLON) {
 		expr, err := self.ParseExpression()
 		if err != nil {
 			return nil, err
 		}
-		expression = &expr
+		expression = expr
 	}
 
 	_, err = self.expectCurrent(TOKEN_SEMICOLON)
