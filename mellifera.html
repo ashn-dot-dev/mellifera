@@ -78,17 +78,34 @@ button {
 }
 </style>
 
+<textarea hidden readonly id="foo.mf" style="display: none">
+return "foo";
+</textarea>
+<textarea hidden readonly id="barlib/lib.mf" style="display: none">
+return "bar";
+</textarea>
+<textarea hidden readonly id="bazlib/lib.mf" style="display: none">
+return import("baz.mf");
+</textarea>
+<textarea hidden readonly id="bazlib/baz.mf" style="display: none">
+return "baz";
+</textarea>
+
 <textarea rows="16" id="program" placeholder="Enter your Mellifera program here..." wrap="off">
 println("hello 🐝");
 
 print("\n");
 
 # virtual file system operations
-println($`foo.txt contains the text "{fs::read("foo.txt")}"`);
+println($`foo.txt contains the text {repr(fs::read("foo.txt"))}`);
 fs::write("bar.txt", "bar");
-println($`bar.txt contains the text "{fs::read("bar.txt")}"`);
-fs::append("bar.txt", "baz");
-println($`bar.txt now contains the text "{fs::read("bar.txt")}"`);
+println($`bar.txt contains the text {repr(fs::read("bar.txt"))}`);
+fs::append("bar.txt", "bar");
+println($`bar.txt now contains the text {repr(fs::read("bar.txt"))}`);
+println($`imported foo.mf is {repr(import("foo.mf"))}`);
+println($`imported barlib is {repr(import("barlib"))}`);
+println($`imported bazlib is {repr(import("bazlib"))}`);
+println($`imported bazlib/ (with a trailing slash) is {repr(import("bazlib/"))}`);
 
 print("\n");
 
@@ -183,7 +200,7 @@ let program_text = js::into_mellifera(program.get("value"));
 let updated_text = program_text + "# 🐝 💬Hello there!\n";
 program.set("value", js::from_mellifera(updated_text));
 </textarea>
-<button onClick='mellifera.eval(document.getElementById("program").value, {stdout: "output", stderr: "output", fs: {"foo.txt": "foo"}});'>Run</button>
+<button onClick='mellifera.eval(document.getElementById("program").value, {stdout: "output", stderr: "output", fs: {"foo.txt": "foo", "foo.mf": document.getElementById("foo.mf").value, "barlib/lib.mf": document.getElementById("barlib/lib.mf").value, "bazlib/lib.mf": document.getElementById("bazlib/lib.mf").value, "bazlib/baz.mf": document.getElementById("bazlib/baz.mf").value}});'>Run</button>
 <textarea rows="16" id="output" placeholder="Output..." readonly wrap="off"></textarea>
 
 </body>

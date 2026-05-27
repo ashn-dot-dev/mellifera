@@ -3,7 +3,9 @@ package main
 import (
 	"fmt"
 	"os"
+	"path"
 	"runtime/debug"
+	"strings"
 	"syscall/js"
 
 	"ashn.dev/mellifera"
@@ -560,7 +562,7 @@ func BuiltinFsRead(ctx *mellifera.Context) mellifera.Value {
 	return ctx.NewBuiltin("fs::read", []mellifera.Type{
 		mellifera.TVal(mellifera.STRING),
 	}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
-		path := arguments[0].(*mellifera.String)
+		file := arguments[0].(*mellifera.String)
 
 		fs, err := ctx.BaseEnvironment.Get("@fs")
 		if err != nil {
@@ -568,18 +570,18 @@ func BuiltinFsRead(ctx *mellifera.Context) mellifera.Value {
 		}
 		fsMap, ok := fs.(*mellifera.Map)
 		if !ok {
-			return nil, mellifera.NewError(nil, ctx.NewStringf("expected map value, found %v", fs))
+			return nil, mellifera.NewError(nil, ctx.NewStringf("expected @fs map value, found %v", fs))
 		}
 
 		// Directly map string filenames to text content. This is a flat
 		// mapping that ignores the concept of directory structure.
-		text, ok := fsMap.Lookup(path)
+		text, ok := fsMap.Lookup(file)
 		if !ok {
-			return nil, mellifera.NewError(nil, ctx.NewStringf("failed to read file %v (file not found)", path))
+			return nil, mellifera.NewError(nil, ctx.NewStringf("failed to read file %v (file not found)", file))
 		}
 		_, ok = text.(*mellifera.String)
 		if !ok {
-			return nil, mellifera.NewError(nil, ctx.NewStringf("expected string value, found %v", text))
+			return nil, mellifera.NewError(nil, ctx.NewStringf("expected @fs file string value, found %v", text))
 		}
 
 		return text, nil
@@ -591,7 +593,7 @@ func BuiltinFsWrite(ctx *mellifera.Context) mellifera.Value {
 		mellifera.TVal(mellifera.STRING),
 		mellifera.TVal(mellifera.STRING),
 	}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
-		path := arguments[0].(*mellifera.String)
+		file := arguments[0].(*mellifera.String)
 		data := arguments[1].(*mellifera.String)
 
 		fs, err := ctx.BaseEnvironment.Get("@fs")
@@ -600,12 +602,12 @@ func BuiltinFsWrite(ctx *mellifera.Context) mellifera.Value {
 		}
 		fsMap, ok := fs.(*mellifera.Map)
 		if !ok {
-			return nil, mellifera.NewError(nil, ctx.NewStringf("expected map value, found %v", fs))
+			return nil, mellifera.NewError(nil, ctx.NewStringf("expected @fs map value, found %v", fs))
 		}
 
 		// Directly map string filenames to text content. This is a flat
 		// mapping that ignores the concept of directory structure.
-		err = fsMap.Insert(path, data)
+		err = fsMap.Insert(file, data)
 		if err != nil {
 			return nil, mellifera.NewError(nil, ctx.NewString(err.Error()))
 		}
@@ -619,7 +621,7 @@ func BuiltinFsAppend(ctx *mellifera.Context) mellifera.Value {
 		mellifera.TVal(mellifera.STRING),
 		mellifera.TVal(mellifera.STRING),
 	}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
-		path := arguments[0].(*mellifera.String)
+		file := arguments[0].(*mellifera.String)
 		data := arguments[1].(*mellifera.String)
 
 		fs, err := ctx.BaseEnvironment.Get("@fs")
@@ -628,25 +630,125 @@ func BuiltinFsAppend(ctx *mellifera.Context) mellifera.Value {
 		}
 		fsMap, ok := fs.(*mellifera.Map)
 		if !ok {
-			return nil, mellifera.NewError(nil, ctx.NewStringf("expected map value, found %v", fs))
+			return nil, mellifera.NewError(nil, ctx.NewStringf("expected @fs map value, found %v", fs))
 		}
 
 		// Directly map string filenames to text content. This is a flat
 		// mapping that ignores the concept of directory structure.
-		text, ok := fsMap.Lookup(path)
+		text, ok := fsMap.Lookup(file)
 		if !ok {
-			return nil, mellifera.NewError(nil, ctx.NewStringf("failed to read file %v (file not found)", path))
+			return nil, mellifera.NewError(nil, ctx.NewStringf("failed to read file %v (file not found)", file))
 		}
 		textString, ok := text.(*mellifera.String)
 		if !ok {
-			return nil, mellifera.NewError(nil, ctx.NewStringf("expected string value, found %v", text))
+			return nil, mellifera.NewError(nil, ctx.NewStringf("expected @fs file string value, found %v", text))
 		}
-		err = fsMap.Insert(path, ctx.NewString(textString.Data()+data.Data()))
+		err = fsMap.Insert(file, ctx.NewString(textString.Data()+data.Data()))
 		if err != nil {
 			return nil, mellifera.NewError(nil, ctx.NewString(err.Error()))
 		}
 
 		return ctx.NewNull(), nil
+	})
+}
+
+func BuiltinImport(ctx *mellifera.Context) mellifera.Value {
+	return ctx.NewBuiltin("import", []mellifera.Type{
+		mellifera.TVal(mellifera.STRING),
+	}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
+		target := arguments[0].(*mellifera.String)
+
+		env := mellifera.NewEnvironment(ctx.BaseEnvironment)
+		module, err := ctx.BaseEnvironment.Get("module")
+		if err != nil {
+			return nil, mellifera.NewError(nil, ctx.NewString(err.Error()))
+		}
+		moduleMap, ok := module.(*mellifera.Map)
+		if !ok {
+			return nil, mellifera.NewError(nil, ctx.NewStringf("expected map module value, received %v", module.Typename()))
+		}
+		_, modulePathOk := moduleMap.Lookup(ctx.NewString("path"))
+		_, moduleFileOk := moduleMap.Lookup(ctx.NewString("file"))
+		moduleDirectory, moduleDirectoryOk := moduleMap.Lookup(ctx.NewString("directory"))
+		if !modulePathOk || !moduleFileOk || !moduleDirectoryOk {
+			return nil, mellifera.NewError(nil, ctx.NewStringf("expected module map to contain `path`, `file` and `directory` values, received %v", module))
+		}
+
+		// Always restore module fields.
+		defer (func() {
+			_ = ctx.BaseEnvironment.Set("module", moduleMap)
+		})()
+
+		fs, err := ctx.BaseEnvironment.Get("@fs")
+		if err != nil {
+			return nil, mellifera.NewError(nil, ctx.NewString(err.Error()))
+		}
+		fsMap, ok := fs.(*mellifera.Map)
+		if !ok {
+			return nil, mellifera.NewError(nil, ctx.NewStringf("expected @fs map value, found %v", fs))
+		}
+
+		var result mellifera.Value = nil
+		paths := []string{
+			target.Data(), // direct path
+		}
+		if moduleDirectoryString, ok := moduleDirectory.(*mellifera.String); ok {
+			paths = append(paths, moduleDirectoryString.Data()+"/"+target.Data()) // path within current module diretory
+		}
+		for _, p := range paths {
+			// Strip the trailing slash off of directories.
+			p = strings.TrimSuffix(p, "/")
+			if _, ok := fsMap.Lookup(ctx.NewString(p + "/lib.mf")); ok {
+				// If the path is a directory with a known <directory>/lib.mf file,
+				// such as in the case of a library, load that entry point file.
+				p = p + "/lib.mf"
+			}
+
+			importModuleMap := ctx.NewMapOrPanic([]mellifera.MapPair{
+				{ctx.NewString("path"), ctx.NewString(p)},
+				{ctx.NewString("file"), ctx.NewString(path.Base(p))},
+				{ctx.NewString("directory"), ctx.NewString(path.Dir(p))},
+			}).Freeze()
+			if err := ctx.BaseEnvironment.Set("module", importModuleMap); err != nil {
+				return nil, mellifera.NewError(nil, ctx.NewString(err.Error()))
+			}
+
+			// Directly map string filenames to text content. This is a flat
+			// mapping that ignores the concept of directory structure.
+			text, ok := fsMap.Lookup(ctx.NewString(p))
+			if !ok {
+				continue
+			}
+
+			textString, ok := text.(*mellifera.String)
+			if !ok {
+				return nil, mellifera.NewError(nil, ctx.NewStringf("expected @fs file string value, found %v", text))
+			}
+			source := textString.Data()
+
+			lexer := mellifera.NewLexer(ctx, source, &mellifera.SourceLocation{p, 1})
+			parser, err := mellifera.NewParser(&lexer)
+			if err != nil {
+				return nil, mellifera.NewError(nil, ctx.NewString(err.Error()))
+			}
+			program, err := parser.ParseProgram()
+			if err != nil {
+				return nil, mellifera.NewError(nil, ctx.NewString(err.Error()))
+			}
+			result, err = program.Eval(ctx, env)
+			if err != nil {
+				if e, ok := err.(mellifera.Error); ok {
+					return nil, e
+				}
+				return nil, mellifera.NewError(nil, ctx.NewString(err.Error()))
+			}
+			break
+		}
+
+		if result == nil {
+			return nil, mellifera.NewError(nil, ctx.NewStringf("module %v not found", target))
+		}
+		return result, nil
 	})
 }
 
@@ -714,11 +816,12 @@ func main() {
 			}()
 
 			ctx.BaseEnvironment.Let("@fs", fs)
-			ctx.BaseEnvironment.Let("fs", ctx.NewMapOrPanic([]mellifera.MapPair{
+			ctx.BaseEnvironment.Set("fs", ctx.NewMapOrPanic([]mellifera.MapPair{
 				{ctx.NewString("read"), BuiltinFsRead(ctx)},
 				{ctx.NewString("write"), BuiltinFsWrite(ctx)},
 				{ctx.NewString("append"), BuiltinFsAppend(ctx)},
 			}).Freeze())
+			ctx.BaseEnvironment.Set("import", BuiltinImport(ctx))
 			ctx.BaseEnvironment.Let("@js::value", ctx.NewMetaMapOrPanic("js::value", []mellifera.MapPair{
 				{ctx.NewString("get"), BuiltinJsValueGet(ctx)},
 				{ctx.NewString("set"), BuiltinJsValueSet(ctx)},

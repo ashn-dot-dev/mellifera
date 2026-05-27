@@ -9051,7 +9051,7 @@ func BuiltinImport(ctx *Context) Value {
 		}
 		moduleMap, ok := module.(*Map)
 		if !ok {
-			return nil, NewError(nil, ctx.NewStringf("expected map module value, received %v", quote(module.Typename())))
+			return nil, NewError(nil, ctx.NewStringf("expected map module value, received %v", module.Typename()))
 		}
 		_, modulePathOk := moduleMap.Lookup(ctx.NewString("path"))
 		_, moduleFileOk := moduleMap.Lookup(ctx.NewString("file"))
@@ -9070,7 +9070,10 @@ func BuiltinImport(ctx *Context) Value {
 		})()
 
 		var result Value = nil
-		paths := []string{moduleDirectoryString.data}
+		paths := []string{
+			"/",                        // root directory
+			moduleDirectoryString.data, // current module diretory
+		}
 		if search, ok := os.LookupEnv("MELLIFERA_SEARCH_PATH"); ok {
 			for _, p := range strings.Split(search, ":") {
 				paths = append(paths, p)
@@ -9083,9 +9086,9 @@ func BuiltinImport(ctx *Context) Value {
 				continue
 			}
 			if stat.IsDir() {
-				// If the path is a directory, such as in the case of a library,
-				// load the entry point to the library and/or group of files,
-				// using the name `<directory>/lib.mf` by convention.
+				// If the path is a directory, such as in the case of a
+				// library, load the entry point to the library and/or group of
+				// files, using the name <directory>/lib.mf by convention.
 				path = path + string(os.PathSeparator) + "lib.mf"
 			}
 			absolute, err := filepath.Abs(path)
@@ -9126,10 +9129,10 @@ func BuiltinImport(ctx *Context) Value {
 			}
 			break
 		}
+
 		if result == nil {
 			return nil, NewError(nil, ctx.NewStringf("module %v not found", target))
 		}
-
 		return result, nil
 	})
 }
