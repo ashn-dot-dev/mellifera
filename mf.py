@@ -593,7 +593,10 @@ class Vector(Value):
         self.data.uses -= 1
 
     def __hash__(self):
-        return hash(str(self))
+        result = 0
+        for element in self.data:
+            result += hash(element)
+        return result
 
     def __eq__(self, other):
         if not isinstance(other, Vector):
@@ -779,7 +782,10 @@ class Map(Value):
         self.data.uses -= 1
 
     def __hash__(self):
-        return hash(str(self))
+        result = 0
+        for key, value in self.data.items():
+            result += hash(key) + hash(value)
+        return result
 
     def __eq__(self, other):
         if not isinstance(other, Map):
@@ -924,7 +930,10 @@ class Set(Value):
         self.data.uses -= 1
 
     def __hash__(self):
-        return hash(str(self))
+        result = 0
+        for element in self.data.keys():
+            result += hash(element)
+        return result
 
     def __eq__(self, other):
         if not isinstance(other, Set):

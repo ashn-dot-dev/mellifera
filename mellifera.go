@@ -1045,7 +1045,13 @@ func (self *Vector) IsImmutable() bool {
 }
 
 func (self *Vector) Hash() uint64 {
-	return fnv1a(self.String())
+	var hash uint64 = 0
+	if self.data != nil {
+		for _, element := range self.data.elements {
+			hash += element.Hash()
+		}
+	}
+	return hash
 }
 
 func (self *Vector) Equal(other Value) bool {
@@ -1399,7 +1405,15 @@ func (self *Map) IsImmutable() bool {
 }
 
 func (self *Map) Hash() uint64 {
-	return fnv1a(self.String())
+	var hash uint64 = 0
+	if self.data != nil {
+		cur := self.data.head
+		for cur != nil {
+			hash += cur.key.Hash() + cur.value.Hash()
+			cur = cur.next
+		}
+	}
+	return hash
 }
 
 func (self *Map) Equal(other Value) bool {
@@ -1732,7 +1746,15 @@ func (self *Set) IsImmutable() bool {
 }
 
 func (self *Set) Hash() uint64 {
-	return fnv1a(self.String())
+	var hash uint64 = 0
+	if self.data != nil {
+		cur := self.data.head
+		for cur != nil {
+			hash += cur.key.Hash()
+			cur = cur.next
+		}
+	}
+	return hash
 }
 
 func (self *Set) Equal(other Value) bool {

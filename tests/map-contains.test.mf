@@ -1,5 +1,14 @@
 dumpln({"a": 123, "b": 456, "c": 789}.contains("a"));
 dumpln({"a": 123, "b": 456, "c": 789}.contains("foo"));
+
+print("\n");
+
+# Structural equality means element order should not matter.
+dumpln({{"a": 123, "b": 456}: "foo"}.contains({"a": 123, "b": 456}));
+dumpln({{"a": 123, "b": 456}: "foo"}.contains({"b": 456, "a": 123}));
 ################################################################################
 # true
 # false
+#
+# true
+# true
