@@ -1,7 +1,6 @@
 package mellifera
 
 import (
-	"bufio"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -8869,10 +8868,22 @@ func BuiltinInput(ctx *Context) Value {
 
 func BuiltinInputln(ctx *Context) Value {
 	return ctx.NewBuiltin("inputln", []Type{}, func(ctx *Context, arguments []Value) (Value, error) {
-		reader := bufio.NewReader(ctx.Stdin)
-		data, err := reader.ReadString('\n')
-		if err != nil {
-			return nil, NewError(nil, ctx.NewString(err.Error()))
+		data := []byte{}
+		buf := make([]byte, 1)
+		for {
+			nbytes, err := ctx.Stdin.Read(buf)
+			if nbytes != 0 {
+				if buf[0] == '\n' {
+					break
+				}
+				data = append(data, buf[0])
+			}
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+				return nil, NewError(nil, ctx.NewString(err.Error()))
+			}
 		}
 		return ctx.NewString(string(data)), nil
 	})
