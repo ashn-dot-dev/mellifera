@@ -6244,16 +6244,22 @@ func (self *Parser) ParseExpressionMapOrSet() (AstExpression, error) {
 	if self.checkCurrent(TOKEN_MAP) {
 		mapOrSet = TOKEN_MAP
 		location = self.currentToken.Location
-		self.advanceToken()
-		_, err := self.expectCurrent(TOKEN_LBRACE)
+		_, err := self.advanceToken()
+		if err != nil {
+			return nil, err
+		}
+		_, err = self.expectCurrent(TOKEN_LBRACE)
 		if err != nil {
 			return nil, err
 		}
 	} else if self.checkCurrent(TOKEN_SET) {
 		mapOrSet = TOKEN_SET
 		location = self.currentToken.Location
-		self.advanceToken()
-		_, err := self.expectCurrent(TOKEN_LBRACE)
+		_, err := self.advanceToken()
+		if err != nil {
+			return nil, err
+		}
+		_, err = self.expectCurrent(TOKEN_LBRACE)
 		if err != nil {
 			return nil, err
 		}
