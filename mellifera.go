@@ -3033,6 +3033,14 @@ func (self *Environment) Get(name string) (Value, error) {
 	return nil, fmt.Errorf("identifier %s is not defined", quote(name))
 }
 
+func (self *Environment) GetOrPanic(name string) Value {
+	value, err := self.Get(name)
+	if err != nil {
+		panic(err)
+	}
+	return value
+}
+
 func (self *Environment) SetRegexpMatch(match RegexpMatch) {
 	self.match = &match
 }

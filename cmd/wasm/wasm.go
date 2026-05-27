@@ -118,7 +118,7 @@ func BuiltinJsFromMellifera(ctx *mellifera.Context) *mellifera.Builtin {
 		if err != nil {
 			return nil, err
 		}
-		return ctx.NewExternalWithType(JsValueType, jsValue), nil
+		return ctx.NewExternalWithType(ctx.BaseEnvironment.GetOrPanic("@js::value").(*mellifera.Map), jsValue), nil
 	})
 }
 
@@ -242,8 +242,6 @@ func BuiltinJsIsFunction(ctx *mellifera.Context) *mellifera.Builtin {
 	})
 }
 
-var JsValueType *mellifera.Map = nil // js::value
-
 func BuiltinJsValueGet(ctx *mellifera.Context) *mellifera.Builtin {
 	return ctx.NewBuiltin("js::value::get", []mellifera.Type{
 		mellifera.TRef(mellifera.TVal(mellifera.EXTERNAL)),
@@ -263,7 +261,7 @@ func BuiltinJsValueGet(ctx *mellifera.Context) *mellifera.Builtin {
 		}
 
 		lookup := delfJsValue.Get(property.Data())
-		return ctx.NewExternalWithType(JsValueType, lookup), nil
+		return ctx.NewExternalWithType(ctx.BaseEnvironment.GetOrPanic("@js::value").(*mellifera.Map), lookup), nil
 	})
 }
 
@@ -344,7 +342,7 @@ func BuiltinJsValueGetIndex(ctx *mellifera.Context) *mellifera.Builtin {
 		}
 
 		lookup := delfJsValue.Index(indexInt)
-		return ctx.NewExternalWithType(JsValueType, lookup), nil
+		return ctx.NewExternalWithType(ctx.BaseEnvironment.GetOrPanic("@js::value").(*mellifera.Map), lookup), nil
 	})
 }
 
@@ -405,7 +403,7 @@ func BuiltinJsValueCall(ctx *mellifera.Context) *mellifera.Builtin {
 
 		methodJsValue := delfJsValue.Get(method.Data())
 		if methodJsValue.Type() != js.TypeFunction {
-			return nil, mellifera.NewError(nil, ctx.NewStringf("external value %v is does not have method %s (found %v)", delf, method.Data(), ctx.NewExternalWithType(JsValueType, methodJsValue)))
+			return nil, mellifera.NewError(nil, ctx.NewStringf("external value %v is does not have method %s (found %v)", delf, method.Data(), ctx.NewExternalWithType(ctx.BaseEnvironment.GetOrPanic("@js::value").(*mellifera.Map), methodJsValue)))
 		}
 
 		argsSlice := []any{}
@@ -422,7 +420,7 @@ func BuiltinJsValueCall(ctx *mellifera.Context) *mellifera.Builtin {
 		}
 
 		result := delfJsValue.Call(method.Data(), argsSlice...)
-		return ctx.NewExternalWithType(JsValueType, result), nil
+		return ctx.NewExternalWithType(ctx.BaseEnvironment.GetOrPanic("@js::value").(*mellifera.Map), result), nil
 	})
 }
 
@@ -457,7 +455,7 @@ func BuiltinJsCall(ctx *mellifera.Context) *mellifera.Builtin {
 		}
 
 		result := functionJsValue.Invoke(argsSlice...)
-		return ctx.NewExternalWithType(JsValueType, result), nil
+		return ctx.NewExternalWithType(ctx.BaseEnvironment.GetOrPanic("@js::value").(*mellifera.Map), result), nil
 	})
 }
 
@@ -492,13 +490,13 @@ func BuiltinJsCallNew(ctx *mellifera.Context) *mellifera.Builtin {
 		}
 
 		result := functionJsValue.New(argsSlice...)
-		return ctx.NewExternalWithType(JsValueType, result), nil
+		return ctx.NewExternalWithType(ctx.BaseEnvironment.GetOrPanic("@js::value").(*mellifera.Map), result), nil
 	})
 }
 
 func BuiltinJsGlobal(ctx *mellifera.Context) *mellifera.Builtin {
 	return ctx.NewBuiltin("js::global", []mellifera.Type{}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
-		return ctx.NewExternalWithType(JsValueType, js.Global()), nil
+		return ctx.NewExternalWithType(ctx.BaseEnvironment.GetOrPanic("@js::value").(*mellifera.Map), js.Global()), nil
 	})
 }
 
@@ -572,16 +570,16 @@ func eval(source string, stdout, stderr io.Writer) (mellifera.Value, error) {
 	ctx.Stdout = stdout
 	ctx.Stderr = stderr
 
-	JsValueType = ctx.NewMetaMapOrPanic("js::value", []mellifera.MapPair{
+	ctx.BaseEnvironment.Let("@js::value", ctx.NewMetaMapOrPanic("js::value", []mellifera.MapPair{
 		{ctx.NewString("get"), BuiltinJsValueGet(ctx)},
 		{ctx.NewString("set"), BuiltinJsValueSet(ctx)},
 		{ctx.NewString("delete"), BuiltinJsValueDelete(ctx)},
 		{ctx.NewString("get_index"), BuiltinJsValueGetIndex(ctx)},
 		{ctx.NewString("set_index"), BuiltinJsValueSetIndex(ctx)},
 		{ctx.NewString("call"), BuiltinJsValueCall(ctx)},
-	}).Freeze().(*mellifera.Map)
+	}).Freeze())
 	ctx.BaseEnvironment.Let("js", ctx.NewMapOrPanic([]mellifera.MapPair{
-		{ctx.NewString("value"), JsValueType},
+		{ctx.NewString("value"), ctx.BaseEnvironment.GetOrPanic("@js::value")},
 		{ctx.NewString("from_mellifera"), BuiltinJsFromMellifera(ctx)},
 		{ctx.NewString("into_mellifera"), BuiltinJsIntoMellifera(ctx)},
 		{ctx.NewString("is_undefined"), BuiltinJsIsUndefined(ctx)},
