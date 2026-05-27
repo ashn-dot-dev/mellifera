@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"runtime/debug"
 	"syscall/js"
@@ -557,58 +556,98 @@ func BuiltinJsTypeof(ctx *mellifera.Context) *mellifera.Builtin {
 	})
 }
 
-func eval(source string, stdout, stderr io.Writer) (mellifera.Value, error) {
-	fmt.Printf("[mellifera.eval] stdout=%+v, stderr=%+v\n", stdout, stderr)
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Printf("[mellifera.eval] encountered panic: %v\n", r)
-			debug.PrintStack()
+func BuiltinFsRead(ctx *mellifera.Context) mellifera.Value {
+	return ctx.NewBuiltin("fs::read", []mellifera.Type{
+		mellifera.TVal(mellifera.STRING),
+	}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
+		path := arguments[0].(*mellifera.String)
+
+		fs, err := ctx.BaseEnvironment.Get("@fs")
+		if err != nil {
+			return nil, mellifera.NewError(nil, ctx.NewString(err.Error()))
 		}
-	}()
+		fsMap, ok := fs.(*mellifera.Map)
+		if !ok {
+			return nil, mellifera.NewError(nil, ctx.NewStringf("expected map value, found %v", fs))
+		}
 
-	ctx := mellifera.NewContext()
-	ctx.Stdout = stdout
-	ctx.Stderr = stderr
+		// Directly map string filenames to text content. This is a flat
+		// mapping that ignores the concept of directory structure.
+		text, ok := fsMap.Lookup(path)
+		if !ok {
+			return nil, mellifera.NewError(nil, ctx.NewStringf("failed to read file %v (file not found)", path))
+		}
+		_, ok = text.(*mellifera.String)
+		if !ok {
+			return nil, mellifera.NewError(nil, ctx.NewStringf("expected string value, found %v", text))
+		}
 
-	ctx.BaseEnvironment.Let("@js::value", ctx.NewMetaMapOrPanic("js::value", []mellifera.MapPair{
-		{ctx.NewString("get"), BuiltinJsValueGet(ctx)},
-		{ctx.NewString("set"), BuiltinJsValueSet(ctx)},
-		{ctx.NewString("delete"), BuiltinJsValueDelete(ctx)},
-		{ctx.NewString("get_index"), BuiltinJsValueGetIndex(ctx)},
-		{ctx.NewString("set_index"), BuiltinJsValueSetIndex(ctx)},
-		{ctx.NewString("call"), BuiltinJsValueCall(ctx)},
-	}).Freeze())
-	ctx.BaseEnvironment.Let("js", ctx.NewMapOrPanic([]mellifera.MapPair{
-		{ctx.NewString("value"), ctx.BaseEnvironment.GetOrPanic("@js::value")},
-		{ctx.NewString("from_mellifera"), BuiltinJsFromMellifera(ctx)},
-		{ctx.NewString("into_mellifera"), BuiltinJsIntoMellifera(ctx)},
-		{ctx.NewString("is_undefined"), BuiltinJsIsUndefined(ctx)},
-		{ctx.NewString("is_null"), BuiltinJsIsNull(ctx)},
-		{ctx.NewString("is_boolean"), BuiltinJsIsBoolean(ctx)},
-		{ctx.NewString("is_number"), BuiltinJsIsNumber(ctx)},
-		{ctx.NewString("is_string"), BuiltinJsIsString(ctx)},
-		{ctx.NewString("is_symbol"), BuiltinJsIsSymbol(ctx)},
-		{ctx.NewString("is_array"), BuiltinJsIsArray(ctx)},
-		{ctx.NewString("is_object"), BuiltinJsIsObject(ctx)},
-		{ctx.NewString("is_function"), BuiltinJsIsFunction(ctx)},
-		{ctx.NewString("call"), BuiltinJsCall(ctx)},
-		{ctx.NewString("call_new"), BuiltinJsCallNew(ctx)},
-		{ctx.NewString("global"), BuiltinJsGlobal(ctx)},
-		{ctx.NewString("typeof"), BuiltinJsTypeof(ctx)},
-	}).Freeze())
+		return text, nil
+	})
+}
 
-	lexer := mellifera.NewLexer(ctx, source, &mellifera.SourceLocation{"<program>", 1})
-	parser, err := mellifera.NewParser(&lexer)
-	if err != nil {
-		return nil, err
-	}
+func BuiltinFsWrite(ctx *mellifera.Context) mellifera.Value {
+	return ctx.NewBuiltin("fs::write", []mellifera.Type{
+		mellifera.TVal(mellifera.STRING),
+		mellifera.TVal(mellifera.STRING),
+	}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
+		path := arguments[0].(*mellifera.String)
+		data := arguments[1].(*mellifera.String)
 
-	program, err := parser.ParseProgram()
-	if err != nil {
-		return nil, err
-	}
+		fs, err := ctx.BaseEnvironment.Get("@fs")
+		if err != nil {
+			return nil, mellifera.NewError(nil, ctx.NewString(err.Error()))
+		}
+		fsMap, ok := fs.(*mellifera.Map)
+		if !ok {
+			return nil, mellifera.NewError(nil, ctx.NewStringf("expected map value, found %v", fs))
+		}
 
-	return program.Eval(ctx, ctx.BaseEnvironment)
+		// Directly map string filenames to text content. This is a flat
+		// mapping that ignores the concept of directory structure.
+		err = fsMap.Insert(path, data)
+		if err != nil {
+			return nil, mellifera.NewError(nil, ctx.NewString(err.Error()))
+		}
+
+		return ctx.NewNull(), nil
+	})
+}
+
+func BuiltinFsAppend(ctx *mellifera.Context) mellifera.Value {
+	return ctx.NewBuiltin("fs::append", []mellifera.Type{
+		mellifera.TVal(mellifera.STRING),
+		mellifera.TVal(mellifera.STRING),
+	}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
+		path := arguments[0].(*mellifera.String)
+		data := arguments[1].(*mellifera.String)
+
+		fs, err := ctx.BaseEnvironment.Get("@fs")
+		if err != nil {
+			return nil, mellifera.NewError(nil, ctx.NewString(err.Error()))
+		}
+		fsMap, ok := fs.(*mellifera.Map)
+		if !ok {
+			return nil, mellifera.NewError(nil, ctx.NewStringf("expected map value, found %v", fs))
+		}
+
+		// Directly map string filenames to text content. This is a flat
+		// mapping that ignores the concept of directory structure.
+		text, ok := fsMap.Lookup(path)
+		if !ok {
+			return nil, mellifera.NewError(nil, ctx.NewStringf("failed to read file %v (file not found)", path))
+		}
+		textString, ok := text.(*mellifera.String)
+		if !ok {
+			return nil, mellifera.NewError(nil, ctx.NewStringf("expected string value, found %v", text))
+		}
+		err = fsMap.Insert(path, ctx.NewString(textString.Data()+data.Data()))
+		if err != nil {
+			return nil, mellifera.NewError(nil, ctx.NewString(err.Error()))
+		}
+
+		return ctx.NewNull(), nil
+	})
 }
 
 func main() {
@@ -633,46 +672,113 @@ func main() {
 		}
 		options := args[1]
 
-		var stdout io.Writer = os.Stdout
-		if !options.Get("stdout").IsUndefined() {
-			if options.Get("stdout").Type() != js.TypeString {
-				fmt.Fprintf(os.Stderr, "error: expected options.stdout to be a string, received %v\n", options.Get("stdout"))
-				return nil
+		ctx := mellifera.NewContext()
+		eval := func() (mellifera.Value, error) {
+			if !options.Get("stdout").IsUndefined() {
+				if options.Get("stdout").Type() != js.TypeString {
+					return nil, fmt.Errorf("error: expected options.stdout to be a string, received %v\n", options.Get("stdout"))
+				}
+				stdoutTextarea := textarea{options.Get("stdout").String()}
+				stdoutTextarea.clear()
+				ctx.Stdout = stdoutTextarea
 			}
-			stdoutTextarea := textarea{options.Get("stdout").String()}
-			stdoutTextarea.clear()
-			stdout = stdoutTextarea
-		}
-		var stderr io.Writer = os.Stderr
-		if !options.Get("stderr").IsUndefined() {
-			if options.Get("stderr").Type() != js.TypeString {
-				fmt.Fprintf(os.Stderr, "error: expected options.stderr to be a string, received %v\n", options.Get("stderr"))
-				return nil
+
+			if !options.Get("stderr").IsUndefined() {
+				if options.Get("stderr").Type() != js.TypeString {
+					return nil, fmt.Errorf("error: expected options.stderr to be a string, received %v\n", options.Get("stderr"))
+				}
+				stderrTextarea := textarea{options.Get("stderr").String()}
+				stderrTextarea.clear()
+				ctx.Stderr = stderrTextarea
 			}
-			stderrTextarea := textarea{options.Get("stderr").String()}
-			stderrTextarea.clear()
-			stderr = stderrTextarea
+
+			fs := ctx.NewMapOrPanic(nil)
+			if !options.Get("fs").IsUndefined() {
+				value, err := JsValueIntoMelliferaValue(ctx, options.Get("fs"))
+				if err != nil {
+					return nil, err
+				}
+				valueMap, ok := value.(*mellifera.Map)
+				if !ok {
+					return nil, fmt.Errorf("expected options.fs to be a string, received %v\n", value)
+				}
+				fs = valueMap
+			}
+
+			fmt.Printf("[mellifera.eval] stdout=%+v, stderr=%+v, fs=%v\n", ctx.Stdout, ctx.Stderr, fs)
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Printf("[mellifera.eval] encountered panic: %v\n", r)
+					debug.PrintStack()
+				}
+			}()
+
+			ctx.BaseEnvironment.Let("@fs", fs)
+			ctx.BaseEnvironment.Let("fs", ctx.NewMapOrPanic([]mellifera.MapPair{
+				{ctx.NewString("read"), BuiltinFsRead(ctx)},
+				{ctx.NewString("write"), BuiltinFsWrite(ctx)},
+				{ctx.NewString("append"), BuiltinFsAppend(ctx)},
+			}).Freeze())
+			ctx.BaseEnvironment.Let("@js::value", ctx.NewMetaMapOrPanic("js::value", []mellifera.MapPair{
+				{ctx.NewString("get"), BuiltinJsValueGet(ctx)},
+				{ctx.NewString("set"), BuiltinJsValueSet(ctx)},
+				{ctx.NewString("delete"), BuiltinJsValueDelete(ctx)},
+				{ctx.NewString("get_index"), BuiltinJsValueGetIndex(ctx)},
+				{ctx.NewString("set_index"), BuiltinJsValueSetIndex(ctx)},
+				{ctx.NewString("call"), BuiltinJsValueCall(ctx)},
+			}).Freeze())
+			ctx.BaseEnvironment.Let("js", ctx.NewMapOrPanic([]mellifera.MapPair{
+				{ctx.NewString("value"), ctx.BaseEnvironment.GetOrPanic("@js::value")},
+				{ctx.NewString("from_mellifera"), BuiltinJsFromMellifera(ctx)},
+				{ctx.NewString("into_mellifera"), BuiltinJsIntoMellifera(ctx)},
+				{ctx.NewString("is_undefined"), BuiltinJsIsUndefined(ctx)},
+				{ctx.NewString("is_null"), BuiltinJsIsNull(ctx)},
+				{ctx.NewString("is_boolean"), BuiltinJsIsBoolean(ctx)},
+				{ctx.NewString("is_number"), BuiltinJsIsNumber(ctx)},
+				{ctx.NewString("is_string"), BuiltinJsIsString(ctx)},
+				{ctx.NewString("is_symbol"), BuiltinJsIsSymbol(ctx)},
+				{ctx.NewString("is_array"), BuiltinJsIsArray(ctx)},
+				{ctx.NewString("is_object"), BuiltinJsIsObject(ctx)},
+				{ctx.NewString("is_function"), BuiltinJsIsFunction(ctx)},
+				{ctx.NewString("call"), BuiltinJsCall(ctx)},
+				{ctx.NewString("call_new"), BuiltinJsCallNew(ctx)},
+				{ctx.NewString("global"), BuiltinJsGlobal(ctx)},
+				{ctx.NewString("typeof"), BuiltinJsTypeof(ctx)},
+			}).Freeze())
+
+			lexer := mellifera.NewLexer(ctx, source, &mellifera.SourceLocation{"<program>", 1})
+			parser, err := mellifera.NewParser(&lexer)
+			if err != nil {
+				return nil, err
+			}
+
+			program, err := parser.ParseProgram()
+			if err != nil {
+				return nil, err
+			}
+
+			return program.Eval(ctx, ctx.BaseEnvironment)
 		}
 
-		_, err := eval(source, stdout, stderr)
+		_, err := eval()
 		if err != nil {
 			if e, ok := err.(mellifera.ParseError); ok && e.Location != nil {
-				fmt.Fprintf(stderr, "[%v, line %v] error: %v\n", e.Location.File, e.Location.Line, err)
+				fmt.Fprintf(ctx.Stderr, "[%v, line %v] error: %v\n", e.Location.File, e.Location.Line, err)
 			} else if e, ok := err.(mellifera.Error); ok {
 				if e.Location != nil {
-					fmt.Fprintf(stderr, "[%v, line %v] error: %v\n", e.Location.File, e.Location.Line, err)
+					fmt.Fprintf(ctx.Stderr, "[%v, line %v] error: %v\n", e.Location.File, e.Location.Line, err)
 				} else {
-					fmt.Fprintf(stderr, "error: %v\n", err)
+					fmt.Fprintf(ctx.Stderr, "error: %v\n", err)
 				}
 				for _, element := range e.Trace {
 					s := fmt.Sprintf("...within %v", element.FuncName)
 					if element.Location != nil {
 						s += fmt.Sprintf(" called from %s, line %v", element.Location.File, element.Location.Line)
 					}
-					fmt.Fprintf(stderr, "%s\n", s)
+					fmt.Fprintf(ctx.Stderr, "%s\n", s)
 				}
 			} else {
-				fmt.Fprintf(stderr, "%v\n", err)
+				fmt.Fprintf(ctx.Stderr, "%v\n", err)
 			}
 		}
 

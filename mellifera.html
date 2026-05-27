@@ -83,6 +83,15 @@ println("hello 🐝");
 
 print("\n");
 
+# virtual file system operations
+println($`foo.txt contains the text "{fs::read("foo.txt")}"`);
+fs::write("bar.txt", "bar");
+println($`bar.txt contains the text "{fs::read("bar.txt")}"`);
+fs::append("bar.txt", "baz");
+println($`bar.txt now contains the text "{fs::read("bar.txt")}"`);
+
+print("\n");
+
 # the test data object, window.test, was initialized on page load
 println($`the built-in js library is {js}`);
 println($`js::global().get("test") is {js::global().get("test")}`);
@@ -174,7 +183,7 @@ let program_text = js::into_mellifera(program.get("value"));
 let updated_text = program_text + "# 🐝 💬Hello there!\n";
 program.set("value", js::from_mellifera(updated_text));
 </textarea>
-<button onClick='mellifera.eval(document.getElementById("program").value, {stdout: "output", stderr: "output"});'>Run</button>
+<button onClick='mellifera.eval(document.getElementById("program").value, {stdout: "output", stderr: "output", fs: {"foo.txt": "foo"}});'>Run</button>
 <textarea rows="16" id="output" placeholder="Output..." readonly wrap="off"></textarea>
 
 </body>
