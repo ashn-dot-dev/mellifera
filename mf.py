@@ -6334,19 +6334,22 @@ def builtin_import(target: String) -> Union[Value, Error]:
     module_directory = module[CONST_STRING_DIRECTORY]
     assert isinstance(module_directory, String)
     try:
-        # Always search the current module directory first
-        paths: list[str] = [module_directory.runes]
-        MELLIFERA_SEARCH_PATH = os.environ.get("MELLIFERA_SEARCH_PATH")
-        if MELLIFERA_SEARCH_PATH is not None:
-            paths += MELLIFERA_SEARCH_PATH.split(":")
+        paths: list[Path] = []
+        if Path(target.runes).is_absolute():
+            paths.append(Path(target.runes))
+        else:
+            paths.append(Path(module_directory.runes) / target.runes)
+            MELLIFERA_SEARCH_PATH = os.environ.get("MELLIFERA_SEARCH_PATH")
+            if MELLIFERA_SEARCH_PATH is not None:
+                for sp in MELLIFERA_SEARCH_PATH.split(":"):
+                    paths.append(Path(sp) / target.runes)
         for p in paths:
-            path = Path(p) / target.runes
-            if path.is_dir():
+            if p.is_dir():
                 # If the path is a directory, such as in the case of a library,
                 # load the entry point to the library and/or group of files, using
                 # the name `<directory>/lib.mf` by convention.
-                path = path / "lib.mf"
-            absolute = str(path.absolute())
+                p = p / "lib.mf"
+            absolute = str(p.absolute())
             env.set(
                 CONST_STRING_MODULE,
                 Map.new(
@@ -6358,7 +6361,7 @@ def builtin_import(target: String) -> Union[Value, Error]:
                 ).freeze(),
             )
             try:
-                result = eval_file(path, env)
+                result = eval_file(p, env)
                 break
             except FileNotFoundError:
                 pass

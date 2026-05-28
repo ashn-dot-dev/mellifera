@@ -9109,18 +9109,19 @@ func BuiltinImport(ctx *Context) Value {
 		})()
 
 		var result Value = nil
-		paths := []string{
-			"/",                        // root directory
-			moduleDirectoryString.data, // current module diretory
-		}
-		if search, ok := os.LookupEnv("MELLIFERA_SEARCH_PATH"); ok {
-			for _, p := range strings.Split(search, ":") {
-				paths = append(paths, p)
+		paths := []string{}
+		if filepath.IsAbs(target.data) {
+			paths = append(paths, target.data) // direct path
+		} else {
+			paths = append(paths, filepath.Join(moduleDirectoryString.data, target.data)) // current module directory
+			if search, ok := os.LookupEnv("MELLIFERA_SEARCH_PATH"); ok {
+				for _, p := range strings.Split(search, ":") {
+					paths = append(paths, filepath.Join(p, target.data))
+				}
 			}
 		}
 		for _, p := range paths {
-			path := p + string(os.PathSeparator) + target.data
-			stat, err := os.Stat(path)
+			stat, err := os.Stat(p)
 			if err != nil {
 				continue
 			}
@@ -9128,9 +9129,9 @@ func BuiltinImport(ctx *Context) Value {
 				// If the path is a directory, such as in the case of a
 				// library, load the entry point to the library and/or group of
 				// files, using the name <directory>/lib.mf by convention.
-				path = path + string(os.PathSeparator) + "lib.mf"
+				p = filepath.Join(p, "lib.mf")
 			}
-			absolute, err := filepath.Abs(path)
+			absolute, err := filepath.Abs(p)
 			if err != nil {
 				return nil, NewError(nil, ctx.NewString(err.Error()))
 			}
@@ -9150,7 +9151,7 @@ func BuiltinImport(ctx *Context) Value {
 			}
 			source := string(bytes)
 
-			lexer := NewLexer(ctx, source, &SourceLocation{path, 1})
+			lexer := NewLexer(ctx, source, &SourceLocation{p, 1})
 			parser, err := NewParser(&lexer)
 			if err != nil {
 				return nil, NewError(nil, ctx.NewString(err.Error()))
