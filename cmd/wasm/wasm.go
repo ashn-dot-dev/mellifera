@@ -11,6 +11,13 @@ import (
 	"ashn.dev/mellifera"
 )
 
+type contextCacheEntry struct {
+	ctx *mellifera.Context
+	env *mellifera.Environment
+}
+
+var contextCache = make(map[string]contextCacheEntry)
+
 type textarea struct {
 	id string
 }
@@ -774,8 +781,9 @@ func main() {
 		}
 		options := args[1]
 
-		ctx := mellifera.NewContext()
-		eval := func() (mellifera.Value, error) {
+		newContext := func() (*mellifera.Context, error) {
+			ctx := mellifera.NewContext()
+
 			if !options.Get("stdout").IsUndefined() {
 				if options.Get("stdout").Type() != js.TypeString {
 					return nil, fmt.Errorf("error: expected options.stdout to be a string, received %v\n", options.Get("stdout"))
@@ -802,18 +810,10 @@ func main() {
 				}
 				valueMap, ok := value.(*mellifera.Map)
 				if !ok {
-					return nil, fmt.Errorf("expected options.fs to be a string, received %v\n", value)
+					return nil, fmt.Errorf("expected options.fs to be a map, received %v\n", value)
 				}
 				fs = valueMap
 			}
-
-			fmt.Printf("[mellifera.eval] stdout=%+v, stderr=%+v, fs=%v\n", ctx.Stdout, ctx.Stderr, fs)
-			defer func() {
-				if r := recover(); r != nil {
-					fmt.Printf("[mellifera.eval] encountered panic: %v\n", r)
-					debug.PrintStack()
-				}
-			}()
 
 			ctx.BaseEnvironment.Let("@fs", fs)
 			ctx.BaseEnvironment.Set("fs", ctx.NewMapOrPanic([]mellifera.MapPair{
@@ -849,6 +849,48 @@ func main() {
 				{ctx.NewString("typeof"), BuiltinJsTypeof(ctx)},
 			}).Freeze())
 
+			return ctx, nil
+		}
+
+		var ctx *mellifera.Context = nil
+		var env *mellifera.Environment = nil
+		eval := func() (mellifera.Value, error) {
+			var err error = nil
+			if !options.Get("context").IsUndefined() {
+				if options.Get("context").Type() != js.TypeString {
+					return nil, fmt.Errorf("error: expected options.context to be a string, received %v\n", options.Get("context"))
+				}
+				key := options.Get("context").String()
+				cached, ok := contextCache[key]
+				if ok {
+					fmt.Printf("[mellifera.eval] using existing named context %q\n", key)
+					ctx = cached.ctx
+					env = cached.env
+				} else {
+					fmt.Printf("[mellifera.eval] using new named context %q\n", key)
+					ctx, err = newContext()
+					if err != nil {
+						return nil, err
+					}
+					env = mellifera.NewEnvironment(ctx.BaseEnvironment)
+					contextCache[key] = contextCacheEntry{ctx, env}
+				}
+			} else {
+				ctx, err = newContext()
+				if err != nil {
+					return nil, err
+				}
+				env = mellifera.NewEnvironment(ctx.BaseEnvironment)
+			}
+
+			fmt.Printf("[mellifera.eval] stdout=%+v, stderr=%+v, fs=%v\n", ctx.Stdout, ctx.Stderr, ctx.BaseEnvironment.GetOrPanic("@fs"))
+			defer func() {
+				if r := recover(); r != nil {
+					fmt.Printf("[mellifera.eval] encountered panic: %v\n", r)
+					debug.PrintStack()
+				}
+			}()
+
 			lexer := mellifera.NewLexer(ctx, source, &mellifera.SourceLocation{"<program>", 1})
 			parser, err := mellifera.NewParser(&lexer)
 			if err != nil {
@@ -860,7 +902,7 @@ func main() {
 				return nil, err
 			}
 
-			return program.Eval(ctx, ctx.BaseEnvironment)
+			return program.Eval(ctx, env)
 		}
 
 		_, err := eval()

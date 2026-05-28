@@ -200,7 +200,7 @@ let program_text = js::into_mellifera(program.get("value"));
 let updated_text = program_text + "# 🐝 💬Hello there!\n";
 program.set("value", js::from_mellifera(updated_text));
 </textarea>
-<button onClick='mellifera.eval(document.getElementById("program").value, {stdout: "output", stderr: "output", fs: {"foo.txt": "foo", "foo.mf": document.getElementById("foo.mf").value, "barlib/lib.mf": document.getElementById("barlib/lib.mf").value, "bazlib/lib.mf": document.getElementById("bazlib/lib.mf").value, "bazlib/baz.mf": document.getElementById("bazlib/baz.mf").value}});'>Run</button>
+<button onClick='mellifera.eval(document.getElementById("program").value, {context: "main", stdout: "output", stderr: "output", fs: {"foo.txt": "foo", "foo.mf": document.getElementById("foo.mf").value, "barlib/lib.mf": document.getElementById("barlib/lib.mf").value, "bazlib/lib.mf": document.getElementById("bazlib/lib.mf").value, "bazlib/baz.mf": document.getElementById("bazlib/baz.mf").value}});'>Run</button>
 <textarea rows="16" id="output" placeholder="Output..." readonly wrap="off"></textarea>
 
 </body>
