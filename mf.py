@@ -6654,7 +6654,7 @@ def builtin_math_clamp():
     return """
     let clamp = function(value, min, max) {
         if min > max {
-            error "clamp min > max";
+            error $"min > max ({min} > {max})";
         }
         if value < min {
             return min;
@@ -6784,6 +6784,7 @@ def builtin_random_integer(min: Number, max: Number) -> Union[Value, Error]:
     max_integer = int(max)
 
     if min_integer > max_integer:
+        return Error(None, f"min > max ({min} > {max})")
         min_integer, max_integer = max_integer, min_integer
     if min_integer < MIN_SAFE_INTEGER or min_integer > MAX_SAFE_INTEGER:
         return Error(None, f"integer {min} is outside the safe integer range")

@@ -9694,7 +9694,7 @@ func BuiltinMathClamp(ctx *Context) Value {
 	function := ctx.NewValueFromSourceOrPanic("math::clamp", `
 let clamp = function(value, min, max) {
 	if min > max {
-		error "clamp min > max";
+		error $"min > max ({min} > {max})";
 	}
 	if value < min {
 		return min;
@@ -9811,7 +9811,7 @@ func BuiltinRandomInteger(ctx *Context) Value {
 		}
 
 		if min.data > max.data {
-			min, max = max, min
+			return nil, NewError(nil, ctx.NewStringf("min > max (%v > %v)", min, max))
 		}
 		if min.data < float64(MIN_SAFE_INTEGER) || min.data > float64(MAX_SAFE_INTEGER) {
 			return nil, NewError(nil, ctx.NewStringf("integer %v is outside the safe integer range", min))

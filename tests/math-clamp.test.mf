@@ -14,4 +14,4 @@ try { dumpln(math::clamp(150, 1, 0)); } catch err { dumpln(err); }
 # 200
 # 150
 # 150
-# "clamp min > max"
+# "min > max (1 > 0)"
