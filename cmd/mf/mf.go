@@ -20,7 +20,10 @@ func dumpTokensSource(ctx *mellifera.Context, source string, location *mellifera
 		return err
 	}
 	for token.Kind != mellifera.TOKEN_EOF {
-		tokens.Push(token.IntoValue(ctx))
+		err = tokens.Push(token.IntoValue(ctx))
+		if err != nil {
+			return err
+		}
 		token, err = lexer.NextToken()
 		if err != nil {
 			return err
@@ -251,7 +254,7 @@ func main() {
 	argvIntoValue := func() mellifera.Value {
 		result := ctx.NewVector(nil)
 		for _, arg := range argv {
-			result.Push(ctx.NewString(arg))
+			_ = result.Push(ctx.NewString(arg))
 		}
 		return result.Freeze()
 	}

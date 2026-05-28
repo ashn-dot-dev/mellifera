@@ -486,7 +486,7 @@ func NewContext() *Context {
 	ctx.setMeta.data.Insert(ctx.NewString("union"), BuiltinSetUnion(ctx))
 	ctx.setMeta.data.Insert(ctx.NewString("intersection"), BuiltinSetIntersection(ctx))
 	ctx.setMeta.data.Insert(ctx.NewString("difference"), BuiltinSetDifference(ctx))
-	ctx.BaseEnvironment.Set("range", BuiltinRange(ctx))
+	_ = ctx.BaseEnvironment.Set("range", BuiltinRange(ctx))
 
 	return ctx
 }
@@ -1392,7 +1392,10 @@ func (self *Map) Freeze() Value {
 	if value.data != nil {
 		pairs := value.Pairs()
 		for _, pair := range pairs {
-			value.Insert(pair.Key.Freeze(), pair.Value.Freeze())
+			err := value.Insert(pair.Key.Freeze(), pair.Value.Freeze())
+			if err != nil {
+				panic(err) // should never occur
+			}
 		}
 	}
 	value.frozen = true
@@ -1733,7 +1736,10 @@ func (self *Set) Freeze() Value {
 	value.CopyOnWrite()
 	if value.data != nil {
 		for _, element := range value.Elements() {
-			value.Insert(element.Freeze())
+			err := value.Insert(element.Freeze())
+			if err != nil {
+				panic(err) // should never occur
+			}
 		}
 	}
 	value.frozen = true
@@ -3154,7 +3160,7 @@ type AstProgram struct {
 func (self AstProgram) IntoValue(ctx *Context) Value {
 	statements := ctx.NewVector(nil)
 	for _, statement := range self.Statements {
-		statements.Push(statement.IntoValue(ctx))
+		_ = statements.Push(statement.IntoValue(ctx))
 	}
 	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
@@ -3567,7 +3573,7 @@ func (self AstExpressionFunction) ExpressionLocation() *SourceLocation {
 func (self AstExpressionFunction) IntoValue(ctx *Context) Value {
 	parameters := ctx.NewVector(nil)
 	for _, parameter := range self.Parameters {
-		parameters.Push(parameter.IntoValue(ctx))
+		_ = parameters.Push(parameter.IntoValue(ctx))
 	}
 	var name Value = ctx.NewNull()
 	if self.Name != nil {
@@ -4929,7 +4935,7 @@ func (self AstExpressionFunctionCall) ExpressionLocation() *SourceLocation {
 func (self AstExpressionFunctionCall) IntoValue(ctx *Context) Value {
 	arguments := ctx.NewVector(nil)
 	for _, argument := range self.Arguments {
-		arguments.Push(argument.IntoValue(ctx))
+		_ = arguments.Push(argument.IntoValue(ctx))
 	}
 	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
@@ -5016,7 +5022,7 @@ type AstBlock struct {
 func (self AstBlock) IntoValue(ctx *Context) Value {
 	statements := ctx.NewVector(nil)
 	for _, statement := range self.Statements {
-		statements.Push(statement.IntoValue(ctx))
+		_ = statements.Push(statement.IntoValue(ctx))
 	}
 	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
@@ -5124,7 +5130,7 @@ func (self AstStatementIfElifElse) StatementLocation() *SourceLocation {
 func (self AstStatementIfElifElse) IntoValue(ctx *Context) Value {
 	conditionals := ctx.NewVector(nil)
 	for _, conditional := range self.Conditionals {
-		conditionals.Push(conditional.IntoValue(ctx))
+		_ = conditionals.Push(conditional.IntoValue(ctx))
 	}
 	var elseBlock Value = ctx.NewNull()
 	if self.ElseBlock != nil {
@@ -7743,7 +7749,10 @@ func BuiltinStringBytes(ctx *Context) Value {
 		vector := ctx.NewVector(nil)
 		bytes := []byte(delf.data)
 		for i := range bytes {
-			vector.Push(ctx.NewString(string([]byte{bytes[i]})))
+			err := vector.Push(ctx.NewString(string([]byte{bytes[i]})))
+			if err != nil {
+				return nil, NewError(nil, ctx.NewString(err.Error()))
+			}
 		}
 		return vector, nil
 	})
@@ -7756,7 +7765,10 @@ func BuiltinStringRunes(ctx *Context) Value {
 
 		vector := ctx.NewVector(nil)
 		for _, r := range delf.data {
-			vector.Push(ctx.NewString(string(r)))
+			err := vector.Push(ctx.NewString(string(r)))
+			if err != nil {
+				return nil, NewError(nil, ctx.NewString(err.Error()))
+			}
 		}
 		return vector, nil
 	})
@@ -7895,14 +7907,20 @@ func BuiltinStringSplit(ctx *Context) Value {
 		vector := ctx.NewVector(nil)
 		if len(target.data) == 0 {
 			for _, r := range delf.data {
-				vector.Push(ctx.NewString(string(r)))
+				err := vector.Push(ctx.NewString(string(r)))
+				if err != nil {
+					return nil, NewError(nil, ctx.NewString(err.Error()))
+				}
 			}
 			return vector, nil
 		}
 
 		split := strings.Split(delf.data, target.data)
 		for i := range split {
-			vector.Push(ctx.NewString(split[i]))
+			err := vector.Push(ctx.NewString(split[i]))
+			if err != nil {
+				return nil, NewError(nil, ctx.NewString(err.Error()))
+			}
 		}
 		return vector, nil
 	})
@@ -8021,7 +8039,10 @@ func BuiltinRegexpSplit(ctx *Context) Value {
 
 		result := ctx.NewVector(nil)
 		for _, s := range delf.data.Split(text.data, -1) {
-			result.Push(ctx.NewString(s))
+			err := result.Push(ctx.NewString(s))
+			if err != nil {
+				return nil, NewError(nil, ctx.NewString(err.Error()))
+			}
 		}
 
 		return result, nil
@@ -8058,7 +8079,10 @@ func BuiltinVectorInit(ctx *Context) Value {
 					}
 					return nil, err
 				}
-				result.Push(iterated.Copy())
+				err = result.Push(iterated.Copy())
+				if err != nil {
+					return nil, NewError(nil, ctx.NewString(err.Error()))
+				}
 			}
 			return result, nil
 		}
@@ -8066,7 +8090,10 @@ func BuiltinVectorInit(ctx *Context) Value {
 		if valueVector, ok := value.(*Vector); ok {
 			result := ctx.NewVector(nil)
 			for _, element := range valueVector.Elements() {
-				result.Push(element.Copy())
+				err := result.Push(element.Copy())
+				if err != nil {
+					return nil, NewError(nil, ctx.NewString(err.Error()))
+				}
 			}
 			return result, nil
 		}
@@ -8074,7 +8101,10 @@ func BuiltinVectorInit(ctx *Context) Value {
 		if valueMap, ok := value.(*Map); ok {
 			result := ctx.NewVector(nil)
 			for _, pair := range valueMap.Pairs() {
-				result.Push(ctx.NewVector([]Value{pair.Key.Copy(), pair.Value.Copy()}))
+				err := result.Push(ctx.NewVector([]Value{pair.Key.Copy(), pair.Value.Copy()}))
+				if err != nil {
+					return nil, NewError(nil, ctx.NewString(err.Error()))
+				}
 			}
 			return result, nil
 		}
@@ -8082,7 +8112,10 @@ func BuiltinVectorInit(ctx *Context) Value {
 		if valueSet, ok := value.(*Set); ok {
 			result := ctx.NewVector(nil)
 			for _, element := range valueSet.Elements() {
-				result.Push(element.Copy())
+				err := result.Push(element.Copy())
+				if err != nil {
+					return nil, NewError(nil, ctx.NewString(err.Error()))
+				}
 			}
 			return result, nil
 		}
@@ -8365,7 +8398,10 @@ func BuiltinVectorSlice(ctx *Context) Value {
 
 		result := ctx.NewVector(nil)
 		for i := bgn_index; i < end_index; i++ {
-			result.Push(delf.Get(i).Copy())
+			err := result.Push(delf.Get(i).Copy())
+			if err != nil {
+				return nil, NewError(nil, ctx.NewString(err.Error()))
+			}
 		}
 
 		return result, nil
@@ -8600,7 +8636,10 @@ func BuiltinMapKeys(ctx *Context) Value {
 		pairs := delf.Pairs()
 		result := ctx.NewVector(nil)
 		for _, pair := range pairs {
-			result.Push(pair.Key.Copy())
+			err := result.Push(pair.Key.Copy())
+			if err != nil {
+				return nil, NewError(nil, ctx.NewString(err.Error()))
+			}
 		}
 
 		return result, nil
@@ -8615,7 +8654,10 @@ func BuiltinMapValues(ctx *Context) Value {
 		pairs := delf.Pairs()
 		result := ctx.NewVector(nil)
 		for _, pair := range pairs {
-			result.Push(pair.Value.Copy())
+			err := result.Push(pair.Value.Copy())
+			if err != nil {
+				return nil, NewError(nil, ctx.NewString(err.Error()))
+			}
 		}
 
 		return result, nil
@@ -8637,7 +8679,10 @@ func BuiltinMapPairs(ctx *Context) Value {
 			if err != nil {
 				return nil, NewError(nil, ctx.NewString(err.Error()))
 			}
-			result.Push(pair)
+			err = result.Push(pair)
+			if err != nil {
+				return nil, NewError(nil, ctx.NewString(err.Error()))
+			}
 		}
 
 		return result, nil

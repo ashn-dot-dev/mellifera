@@ -411,7 +411,7 @@ func TestVectorCopyOnWrite(t *testing.T) {
 	AssertEq(t, 2, b.data.uses)
 	AssertEq(t, a.data, b.data)
 
-	b.Set(1, ctx.NewNumber(123.456))
+	_ = b.Set(1, ctx.NewNumber(123.456))
 	AssertEq(t, a.Count(), b.Count())
 	AssertEq(t, 1, a.data.uses)
 	AssertEq(t, 1, b.data.uses)
@@ -633,7 +633,7 @@ func TestMapCopyOnWrite(t *testing.T) {
 	AssertEq(t, 2, b.data.uses)
 	AssertEq(t, a.data, b.data)
 
-	b.Insert(ctx.NewNumber(123.456), ctx.NewNull())
+	_ = b.Insert(ctx.NewNumber(123.456), ctx.NewNull())
 	AssertEq(t, a.Count(), b.Count())
 	AssertEq(t, 1, a.data.uses)
 	AssertEq(t, 1, b.data.uses)
@@ -648,7 +648,7 @@ func TestMapCopyOnWrite(t *testing.T) {
 	AssertEq(t, b.Get(ctx.NewVector(nil)).Equal(ctx.NewString("hij")), true)
 
 	c := a.Copy().(*Map)
-	c.Remove(ctx.NewString("foo"))
+	_ = c.Remove(ctx.NewString("foo"))
 
 	AssertEq(t, a.Count()-1, c.Count())
 	AssertEq(t, 1, a.data.uses)
@@ -911,7 +911,7 @@ func TestSetCopyOnWrite(t *testing.T) {
 	AssertEq(t, 2, b.data.uses)
 	AssertEq(t, a.data, b.data)
 
-	b.Insert(ctx.NewString("bar"))
+	_ = b.Insert(ctx.NewString("bar"))
 	AssertEq(t, a.Count()+1, b.Count())
 	AssertEq(t, 1, a.data.uses)
 	AssertEq(t, 1, b.data.uses)
@@ -927,7 +927,7 @@ func TestSetCopyOnWrite(t *testing.T) {
 	AssertEq(t, b.Get(ctx.NewString("bar")).Equal(ctx.NewString("bar")), true)
 
 	c := a.Copy().(*Set)
-	c.Remove(ctx.NewString("foo"))
+	_ = c.Remove(ctx.NewString("foo"))
 
 	AssertEq(t, a.Count()-1, c.Count())
 	AssertEq(t, 1, a.data.uses)
