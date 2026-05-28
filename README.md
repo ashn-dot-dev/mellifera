@@ -361,7 +361,7 @@ make install   # install standalone Mellifera tooling
 ```
 
 The Go Mellifera implementation has experimental support for running Mellifera
-programs in the browser via [WebAssembly](https://webassembly.org/web). In a
+programs in the browser via [WebAssembly](https://webassembly.org). In a
 terminal, run the following command:
 
 ```
