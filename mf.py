@@ -1331,7 +1331,7 @@ class SourceLocation:
 
 class TokenKind(enum.Enum):
     # Meta
-    EOF = "eof"
+    EOF = "end-of-file"
     # Identifiers and Literals
     IDENTIFIER = "identifier"
     TEMPLATE = "template"
@@ -1441,16 +1441,8 @@ class Token:
     group: Optional[int] = None
 
     def __str__(self):
-        if self.kind == TokenKind.EOF:
-            return "end-of-file"
-        if self.kind == TokenKind.IDENTIFIER:
-            return f"{self.literal}"
-        if self.kind == TokenKind.NUMBER:
-            return f"{self.literal}"
-        if self.kind == TokenKind.STRING:
-            return f"{self.literal}"
-        if self.kind.value in Token.KEYWORDS:
-            return self.kind.value
+        if self.literal != "":
+            return self.literal
         return f"{self.kind.value}"
 
     def into_value(self) -> Value:
@@ -5084,7 +5076,7 @@ class Parser:
         if not self._check_current(TokenKind.EOF):
             raise ParseError(
                 self.current_token.location,
-                f"expected end-of-input, found {self.current_token}",
+                f"expected {TokenKind.EOF}, found {self.current_token}",
             )
         result = ast.eval(Environment())
         if isinstance(result, Error):
@@ -5114,7 +5106,7 @@ class Parser:
             return self.parse_expression_negative()
         raise ParseError(
             self.current_token.location,
-            f"expected comb value, found {self.current_token}",
+            f"expected expression, found {self.current_token}",
         )
 
 

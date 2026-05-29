@@ -49,7 +49,19 @@ dumpln(comb::decode(`{"foo", ["abc", "def"], {"blub": null}}`));
 
 print("\n");
 
-try { dumpln(comb::decode(`{}`)); } catch err { println($"error: {err}"); }
+try { comb::decode(""); } catch err { println($"error: {err}"); }
+try { comb::decode(" "); } catch err { println($"error: {err}"); }
+try { comb::decode("  "); } catch err { println($"error: {err}"); }
+try { comb::decode("   "); } catch err { println($"error: {err}"); }
+try { comb::decode("bad"); } catch err { println($"error: {err}"); }
+try { comb::decode("N"); } catch err { println($"error: {err}"); } # first character of NaN
+try { comb::decode("Na"); } catch err { println($"error: {err}"); } # first two characters of NaN
+try { comb::decode("I"); } catch err { println($"error: {err}"); } # first character of Inf
+try { comb::decode("In"); } catch err { println($"error: {err}"); } # first two characters of Inf
+try { comb::decode(`{}`); } catch err { println($"error: {err}"); } # ambigious set or map
+try { comb::decode("Map{}123"); } catch err { println($"error: {err}"); } # extra characters after valid JSON
+try { comb::decode("Map{}r`foo`"); } catch err { println($"error: {err}"); } # extra characters after valid JSON
+try { comb::decode("Map{}extra"); } catch err { println($"error: {err}"); } # extra characters after valid JSON
 ################################################################################
 # null
 #
@@ -60,8 +72,8 @@ try { dumpln(comb::decode(`{}`)); } catch err { println($"error: {err}"); }
 # 123.456
 # 123.456
 # -123.456
-# error: expected comb value, found NaN
-# error: expected comb value, found Inf
+# error: expected expression, found NaN
+# error: expected expression, found Inf
 #
 # "foo"
 # "foo\nbar"
@@ -86,4 +98,16 @@ try { dumpln(comb::decode(`{}`)); } catch err { println($"error: {err}"); }
 # {"foo", "bar"}
 # {"foo", ["abc", "def"], {"blub": null}}
 #
+# error: expected expression, found end-of-file
+# error: expected expression, found end-of-file
+# error: expected expression, found end-of-file
+# error: expected expression, found end-of-file
+# error: expected expression, found bad
+# error: expected expression, found N
+# error: expected expression, found Na
+# error: expected expression, found I
+# error: expected expression, found In
 # error: ambiguous empty map or set
+# error: expected end-of-file, found 123
+# error: expected end-of-file, found r`foo`
+# error: expected end-of-file, found extra

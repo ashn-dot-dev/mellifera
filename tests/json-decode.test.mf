@@ -32,6 +32,19 @@ let decoded = json::decode(`{"foo": 123, "bar": ["abc", "def"], "baz": {"blub": 
 assert(decoded.contains("foo") and decoded["foo"] == 123);
 assert(decoded.contains("bar") and decoded["bar"] == ["abc", "def"]);
 assert(decoded.contains("baz") and decoded["baz"] == {"blub": null});
+
+print("\n");
+
+try { json::decode(""); } catch err { println($"error: {err}"); }
+try { json::decode(" "); } catch err { println($"error: {err}"); }
+try { json::decode("  "); } catch err { println($"error: {err}"); }
+try { json::decode("   "); } catch err { println($"error: {err}"); }
+try { json::decode("bad"); } catch err { println($"error: {err}"); }
+try { json::decode("N"); } catch err { println($"error: {err}"); } # first character of NaN
+try { json::decode("Na"); } catch err { println($"error: {err}"); } # first two characters of NaN
+try { json::decode("I"); } catch err { println($"error: {err}"); } # first character of Inf
+try { json::decode("In"); } catch err { println($"error: {err}"); } # first two characters of Inf
+try { json::decode("{}extra"); } catch err { println($"error: {err}"); } # extra characters after valid JSON
 ################################################################################
 # null
 #
@@ -52,3 +65,14 @@ assert(decoded.contains("baz") and decoded["baz"] == {"blub": null});
 #
 # Map{}
 # {"foo": 123}
+#
+# error: cannot JSON-decode string ""
+# error: cannot JSON-decode string " "
+# error: cannot JSON-decode string "  "
+# error: cannot JSON-decode string "   "
+# error: cannot JSON-decode string "bad"
+# error: cannot JSON-decode string "N"
+# error: cannot JSON-decode string "Na"
+# error: cannot JSON-decode string "I"
+# error: cannot JSON-decode string "In"
+# error: cannot JSON-decode string "{}extra"

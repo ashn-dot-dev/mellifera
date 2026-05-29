@@ -2235,6 +2235,9 @@ type Token struct {
 }
 
 func (self Token) String() string {
+	if self.Literal != "" {
+		return self.Literal
+	}
 	return self.Kind
 }
 
@@ -9232,7 +9235,7 @@ func combValidate(ctx *Context, expr AstExpression) error {
 		if x, ok := expr.(*AstExpressionIdentifier); ok {
 			found = x.Name.data
 		}
-		return NewError(expr.ExpressionLocation(), ctx.NewStringf("expected comb value, found %s", found))
+		return NewError(expr.ExpressionLocation(), ctx.NewStringf("expected expression, found %s", found))
 	}
 
 	if _, ok := expr.(*AstExpressionNull); ok {
@@ -9319,6 +9322,12 @@ func BuiltinCombDecode(ctx *Context) Value {
 				return nil, NewError(e.Location, ctx.NewString(e.Error()))
 			}
 			return nil, err
+		}
+		if parser.currentToken.Kind != TOKEN_EOF {
+			return nil, NewError(
+				parser.currentToken.Location,
+				ctx.NewStringf("expected %s, found %v", TOKEN_EOF, parser.currentToken),
+			)
 		}
 		err = combValidate(ctx, expr)
 		if err != nil {
@@ -9527,7 +9536,7 @@ func BuiltinJsonDecode(ctx *Context) Value {
 		var j any = new(any)
 		err := json.Unmarshal([]byte(encoded.data), &j)
 		if err != nil {
-			if e, ok := err.(*json.SyntaxError); ok {
+			if e, ok := err.(*json.SyntaxError); ok && len(encoded.data) >= 1 {
 				if strings.HasPrefix(strings.ToLower(encoded.data[e.Offset-1:]), "nan") {
 					return nil, NewError(nil, ctx.NewStringf("cannot JSON-decode string \"%s\"", escape(encoded.data[e.Offset-1:e.Offset+2])))
 				}
@@ -9535,7 +9544,7 @@ func BuiltinJsonDecode(ctx *Context) Value {
 					return nil, NewError(nil, ctx.NewStringf("cannot JSON-decode string \"%s\"", escape(encoded.data[e.Offset-1:e.Offset+2])))
 				}
 			}
-			return nil, NewError(nil, ctx.NewString(err.Error()))
+			return nil, NewError(nil, ctx.NewStringf("cannot JSON-decode string %v", encoded))
 		}
 		decoded, err := jsonDecode(ctx, j)
 		if err != nil {
