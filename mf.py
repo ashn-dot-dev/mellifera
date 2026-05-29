@@ -1869,6 +1869,14 @@ class Lexer:
         text = match[0]
         self.position += len(text)
         literal = self.source[start : self.position]
+        try:
+            group = int(text)
+            if group < MIN_SAFE_INTEGER or group > MAX_SAFE_INTEGER:
+                raise Exception("out-of-range")
+        except Exception:
+            raise ParseError(
+                copy(self.location), f"invalid regexp capture group ${text}"
+            )
         return self._new_token(TokenKind.REGEXP_GROUP, literal, group=int(text))
 
     def next_token(self) -> Token:

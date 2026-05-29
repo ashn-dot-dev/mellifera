@@ -2939,8 +2939,11 @@ func (self *Lexer) lexRegexpGroup() (Token, error) {
 	if integer != "" {
 		self.position += len(integer)
 		parsed, err := strconv.ParseInt(integer, 10, 0)
-		if err != nil {
-			return Token{}, err
+		if err != nil || parsed < MIN_SAFE_INTEGER || parsed > MAX_SAFE_INTEGER {
+			return Token{}, ParseError{
+				Location: location,
+				why:      fmt.Sprintf("invalid regexp capture group $%v", integer),
+			}
 		}
 		literal := self.source[start:self.position]
 		return Token{
