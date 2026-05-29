@@ -134,6 +134,7 @@ class InvalidFieldAccess(KeyError):
 class SharedVectorData(UserList["Value"]):
     def __init__(self, data: Optional[Iterable["Value"]] = None):
         self.uses: int = 0
+        self.refs: int = 0
         super().__init__(data)
 
     def __copy__(self) -> "SharedVectorData":
@@ -143,6 +144,7 @@ class SharedVectorData(UserList["Value"]):
 class SharedMapData(UserDict["Value", "Value"]):
     def __init__(self, data: Optional[dict["Value", "Value"]] = None):
         self.uses: int = 0
+        self.refs: int = 0
         if data is not None:
             for key in data.keys():
                 if isinstance(key, Number) and math.isnan(key.data):
@@ -161,6 +163,7 @@ class SharedMapData(UserDict["Value", "Value"]):
 class SharedSetData(UserDict["Value", None]):
     def __init__(self, data: Optional[Iterable["Value"]] = None):
         self.uses: int = 0
+        self.refs: int = 0
         if data is not None:
             for element in data:
                 if isinstance(element, Number) and math.isnan(element.data):
@@ -701,6 +704,11 @@ class Vector(Value):
     def __copy__(self) -> "Vector":
         if self.is_immutable():
             return self  # immutable value
+        if self.data.refs > 0:
+            # Deep-copy elements to ensure that shared data containing at least
+            # one reference does not allow for shared mutation of semantically
+            # separate values created via copy.
+            return Vector(SharedVectorData([copy(x) for x in self.data]), self.meta)
         return Vector(self.data, self.meta)
 
     def cow(self) -> None:
@@ -872,6 +880,14 @@ class Map(Value):
     def __copy__(self) -> "Map":
         if self.is_immutable():
             return self  # immutable value
+        if self.data.refs > 0:
+            # Deep-copy elements to ensure that shared data containing at least
+            # one reference does not allow for shared mutation of semantically
+            # separate values created via copy.
+            return Map(
+                SharedMapData({copy(k): copy(v) for k, v in self.data.items()}),
+                self.meta,
+            )
         return Map(self.data, self.meta)
 
     def cow(self) -> None:
@@ -999,6 +1015,11 @@ class Set(Value):
     def __copy__(self) -> "Set":
         if self.is_immutable():
             return self  # immutable value
+        if self.data.refs > 0:
+            # Deep-copy elements to ensure that shared data containing at least
+            # one reference does not allow for shared mutation of semantically
+            # separate values created via copy.
+            return Set(SharedSetData([copy(x) for x in self.data]), self.meta)
         return Set(self.data, self.meta)
 
     def cow(self) -> None:
@@ -1035,6 +1056,11 @@ class Reference(Value):
     @staticmethod
     def new(data: Value) -> "Reference":
         return Reference(data, _REFERENCE_META)
+
+    @staticmethod
+    def mark_referenced(value: Value) -> None:
+        if isinstance(value, (Vector, Map, Set)):
+            value.data.refs += 1
 
     def __hash__(self):
         return hash(id(self.data))
@@ -3342,7 +3368,7 @@ class AstExpressionFunctionCall(AstExpression):
         if isinstance(self.function, AstExpressionAccessDot):
             # Special case when dot access is used for a function call. An
             # implicit `self` argument is passed by reference to the function.
-            store = self.function.store.eval(env)
+            store = eval_lvalue(self.function.store, env, True)
             if isinstance(store, Error):
                 return store
             self_argument = Reference.new(store)
@@ -3610,7 +3636,7 @@ class AstExpressionMkref(AstExpression):
         )
 
     def eval(self, env: Environment) -> Union[Value, Error]:
-        result = self.lhs.eval(env)
+        result = eval_lvalue(self.lhs, env, True)
         if isinstance(result, Error):
             return result
         return Reference.new(result)
@@ -3815,6 +3841,8 @@ class AstStatementFor(AstStatement):
         collection = self.collection.eval(env)
         if isinstance(collection, Error):
             return collection
+        if self.k_is_reference or self.v_is_reference:
+            collection.cow()
         collection = copy(collection)
 
         loop_env = Environment(env)
@@ -4136,13 +4164,23 @@ class AstStatementReturn(AstStatement):
 # scope, or dot access expression is encountered *before* performing that
 # access operation, so that modification of nested values will not mutate
 # shared objects pointed to by semantically separate values.
-def eval_lvalue(expr: AstExpression, env: Environment) -> Union[Value, Error]:
+#
+# If the mark_ref argument is true, then Referece.mark_referenced() will be
+# invoked on each inner store value as a means to recursively mark each value
+# in an access expression chain as referenced. This ensures that no two
+# semantically separate values can accidentally share underlying data through a
+# reference.
+def eval_lvalue(
+    expr: AstExpression, env: Environment, mark_ref: bool = False
+) -> Union[Value, Error]:
     field: Value
     if isinstance(expr, AstExpressionAccessIndex):
-        inner_store = eval_lvalue(expr.store, env)
+        inner_store = eval_lvalue(expr.store, env, mark_ref)
         if isinstance(inner_store, Error):
             return inner_store
         inner_store.cow()
+        if mark_ref:
+            Reference.mark_referenced(inner_store)
 
         field_eval = expr.field.eval(env)
         if isinstance(field_eval, Error):
@@ -4177,6 +4215,8 @@ def eval_lvalue(expr: AstExpression, env: Environment) -> Union[Value, Error]:
         if isinstance(inner_store, Reference):
             store_deref = inner_store.data
             store_deref.cow()
+            if mark_ref:
+                Reference.mark_referenced(store_deref)
             if isinstance(store_deref, Vector):
                 return access_vector(store_deref)
             if isinstance(store_deref, Map):
@@ -4192,11 +4232,12 @@ def eval_lvalue(expr: AstExpression, env: Environment) -> Union[Value, Error]:
         )
 
     if isinstance(expr, AstExpressionAccessScope):
-        inner_store = eval_lvalue(expr.store, env)
+        inner_store = eval_lvalue(expr.store, env, mark_ref)
         if isinstance(inner_store, Error):
             return inner_store
         inner_store.cow()
-
+        if mark_ref:
+            Reference.mark_referenced(inner_store)
         field = expr.field.name
 
         def access_map(store: Map):
@@ -4210,6 +4251,8 @@ def eval_lvalue(expr: AstExpression, env: Environment) -> Union[Value, Error]:
         if isinstance(inner_store, Reference):
             store_deref = inner_store.data
             store_deref.cow()
+            if mark_ref:
+                Reference.mark_referenced(store_deref)
             if isinstance(store_deref, Map):
                 return access_map(store_deref)
             return Error(
@@ -4223,10 +4266,12 @@ def eval_lvalue(expr: AstExpression, env: Environment) -> Union[Value, Error]:
         )
 
     if isinstance(expr, AstExpressionAccessDot):
-        inner_store = eval_lvalue(expr.store, env)
+        inner_store = eval_lvalue(expr.store, env, mark_ref)
         if isinstance(inner_store, Error):
             return inner_store
         inner_store.cow()
+        if mark_ref:
+            Reference.mark_referenced(inner_store)
 
         field = expr.field.name
 
@@ -4241,6 +4286,8 @@ def eval_lvalue(expr: AstExpression, env: Environment) -> Union[Value, Error]:
         if isinstance(inner_store, Reference):
             store_deref = inner_store.data
             store_deref.cow()
+            if mark_ref:
+                Reference.mark_referenced(store_deref)
             if isinstance(store_deref, Map):
                 return access_map(store_deref)
             return Error(

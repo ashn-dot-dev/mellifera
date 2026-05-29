@@ -628,7 +628,25 @@ func (ctx *Context) NewSetOrPanic(elements []Value) *Set {
 	return result
 }
 
+func markReferenced(value Value) {
+	switch v := value.(type) {
+	case *Vector:
+		if v.data != nil {
+			v.data.refs += 1
+		}
+	case *Map:
+		if v.data != nil {
+			v.data.refs += 1
+		}
+	case *Set:
+		if v.data != nil {
+			v.data.refs += 1
+		}
+	}
+}
+
 func (ctx *Context) NewReference(value Value) *Reference {
+	markReferenced(value)
 	return &Reference{value}
 }
 
@@ -969,6 +987,7 @@ func (self *Regexp) CombEncode(e *CombEncoder) error {
 type vectorData struct {
 	elements []Value
 	uses     int
+	refs     int
 }
 
 type Vector struct {
@@ -1003,6 +1022,22 @@ func (self *Vector) Copy() Value {
 
 	if self.data == nil {
 		return &Vector{data: nil}
+	}
+
+	if self.data.refs > 0 {
+		// Deep-copy elements to ensure that shared data containing at least
+		// one reference does not allow for shared mutation of semantically
+		// separate values created via copy.
+		elements := make([]Value, len(self.data.elements))
+		for i, element := range self.data.elements {
+			elements[i] = element.Copy()
+		}
+		return &Vector{
+			data: &vectorData{
+				elements: elements,
+				uses:     1,
+			},
+		}
 	}
 
 	self.data.uses += 1
@@ -1213,6 +1248,7 @@ type mapData struct {
 	tail    *mapElement
 	count   int
 	uses    int
+	refs    int
 }
 
 func (self *mapData) LookupWithHash(key Value, hash uint64) (*mapElement, bool) {
@@ -1353,6 +1389,23 @@ func (self *Map) Copy() Value {
 	if self.data == nil {
 		return &Map{
 			data: nil,
+			meta: self.meta,
+			name: self.name,
+		}
+	}
+
+	if self.data.refs > 0 {
+		// Deep-copy elements to ensure that shared data containing at least
+		// one reference does not allow for shared mutation of semantically
+		// separate values created via copy.
+		data := &mapData{uses: 1}
+		cur := self.data.head
+		for cur != nil {
+			data.Insert(cur.key.Copy(), cur.value.Copy())
+			cur = cur.next
+		}
+		return &Map{
+			data: data,
 			meta: self.meta,
 			name: self.name,
 		}
@@ -1574,6 +1627,7 @@ type setData struct {
 	tail    *setElement
 	count   int
 	uses    int
+	refs    int
 }
 
 // Returns nil on lookup failure.
@@ -1705,6 +1759,19 @@ func (self *Set) Copy() Value {
 
 	if self.data == nil {
 		return &Set{data: nil}
+	}
+
+	if self.data.refs > 0 {
+		// Deep-copy elements to ensure that shared data containing at least
+		// one reference does not allow for shared mutation of semantically
+		// separate values created via copy.
+		data := &setData{uses: 1}
+		cur := self.data.head
+		for cur != nil {
+			data.Insert(cur.key.Copy())
+			cur = cur.next
+		}
+		return &Set{data: data}
 	}
 
 	self.data.uses += 1
@@ -4884,7 +4951,7 @@ func (self AstExpressionMkref) IntoValue(ctx *Context) Value {
 }
 
 func (self AstExpressionMkref) Eval(ctx *Context, env *Environment) (Value, error) {
-	value, err := self.Lhs.Eval(ctx, env)
+	value, err := evalLvalue(self.Lhs, ctx, env, true)
 	if err != nil {
 		return nil, err
 	}
@@ -4955,7 +5022,7 @@ func (self AstExpressionFunctionCall) Eval(ctx *Context, env *Environment) (Valu
 	if accessDot, ok := self.Function.(*AstExpressionAccessDot); ok {
 		// Special case when dot access is used for a function call. An
 		// implicit `self` argument is passed by reference to the function.
-		store, err := accessDot.Store.Eval(ctx, env)
+		store, err := evalLvalue(accessDot.Store, ctx, env, true)
 		if err != nil {
 			return nil, err
 		}
@@ -5206,6 +5273,9 @@ func (self AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, e
 	collection, error := self.Collection.Eval(ctx, env)
 	if error != nil {
 		return nil, error
+	}
+	if self.KIsReference || self.VIsReference {
+		collection.CopyOnWrite()
 	}
 	collection = collection.Copy()
 
@@ -5623,13 +5693,21 @@ func (self AstStatementAssignment) IntoValue(ctx *Context) Value {
 // scope, or dot access expression is encountered *before* performing that
 // access operation, so that modification of nested values will not mutate
 // shared objects pointed to by semantically separate values.
-func evalLvalue(expr AstExpression, ctx *Context, env *Environment) (Value, error) {
+//
+// If the markRef argument is true, then markReferenced() will be invoked on
+// each inner store value as a means to recursively mark each value in an
+// access expression chain as referenced. This ensures that no two semantically
+// separate values can accidentally share underlying data through a reference.
+func evalLvalue(expr AstExpression, ctx *Context, env *Environment, markRef bool) (Value, error) {
 	if exprAccessIndex, ok := expr.(*AstExpressionAccessIndex); ok {
-		innerStore, err := evalLvalue(exprAccessIndex.Store, ctx, env)
+		innerStore, err := evalLvalue(exprAccessIndex.Store, ctx, env, markRef)
 		if err != nil {
 			return nil, err
 		}
 		innerStore.CopyOnWrite()
+		if markRef {
+			markReferenced(innerStore)
+		}
 
 		field, err := exprAccessIndex.Field.Eval(ctx, env)
 		if err != nil {
@@ -5676,6 +5754,10 @@ func evalLvalue(expr AstExpression, ctx *Context, env *Environment) (Value, erro
 		if storeReference, ok := innerStore.(*Reference); ok {
 			storeDeref := storeReference.data
 			storeDeref.CopyOnWrite()
+			if markRef {
+				markReferenced(storeDeref)
+			}
+
 			if storeDerefVector, ok := storeDeref.(*Vector); ok {
 				return accessVector(storeDerefVector)
 			}
@@ -5695,11 +5777,14 @@ func evalLvalue(expr AstExpression, ctx *Context, env *Environment) (Value, erro
 	}
 
 	if exprAccessScope, ok := expr.(*AstExpressionAccessScope); ok {
-		innerStore, err := evalLvalue(exprAccessScope.Store, ctx, env)
+		innerStore, err := evalLvalue(exprAccessScope.Store, ctx, env, markRef)
 		if err != nil {
 			return nil, err
 		}
 		innerStore.CopyOnWrite()
+		if markRef {
+			markReferenced(innerStore)
+		}
 
 		field := exprAccessScope.Field.Name
 
@@ -5721,6 +5806,10 @@ func evalLvalue(expr AstExpression, ctx *Context, env *Environment) (Value, erro
 		if storeReference, ok := innerStore.(*Reference); ok {
 			storeDeref := storeReference.data
 			storeDeref.CopyOnWrite()
+			if markRef {
+				markReferenced(storeDeref)
+			}
+
 			if storeDerefMap, ok := storeDeref.(*Map); ok {
 				return accessMap(storeDerefMap)
 			}
@@ -5737,11 +5826,14 @@ func evalLvalue(expr AstExpression, ctx *Context, env *Environment) (Value, erro
 	}
 
 	if exprAccessDot, ok := expr.(*AstExpressionAccessDot); ok {
-		innerStore, err := evalLvalue(exprAccessDot.Store, ctx, env)
+		innerStore, err := evalLvalue(exprAccessDot.Store, ctx, env, markRef)
 		if err != nil {
 			return nil, err
 		}
 		innerStore.CopyOnWrite()
+		if markRef {
+			markReferenced(innerStore)
+		}
 
 		field := exprAccessDot.Field.Name
 
@@ -5763,6 +5855,10 @@ func evalLvalue(expr AstExpression, ctx *Context, env *Environment) (Value, erro
 		if storeReference, ok := innerStore.(*Reference); ok {
 			storeDeref := storeReference.data
 			storeDeref.CopyOnWrite()
+			if markRef {
+				markReferenced(storeDeref)
+			}
+
 			if storeDerefMap, ok := storeDeref.(*Map); ok {
 				return accessMap(storeDerefMap)
 			}
@@ -5803,7 +5899,7 @@ func (self AstStatementAssignment) Eval(ctx *Context, env *Environment) (Control
 	var err error
 
 	if lhsAccessIndex, ok := self.Lhs.(*AstExpressionAccessIndex); ok {
-		store, err = evalLvalue(lhsAccessIndex.Store, ctx, env)
+		store, err = evalLvalue(lhsAccessIndex.Store, ctx, env, false)
 		if err != nil {
 			return nil, err
 		}
@@ -5812,13 +5908,13 @@ func (self AstStatementAssignment) Eval(ctx *Context, env *Environment) (Control
 			return nil, err
 		}
 	} else if lhsAccessDot, ok := self.Lhs.(*AstExpressionAccessDot); ok {
-		store, err = evalLvalue(lhsAccessDot.Store, ctx, env)
+		store, err = evalLvalue(lhsAccessDot.Store, ctx, env, false)
 		if err != nil {
 			return nil, err
 		}
 		field = lhsAccessDot.Field.Name
 	} else if lhsAccessScope, ok := self.Lhs.(*AstExpressionAccessScope); ok {
-		store, err = evalLvalue(lhsAccessScope.Store, ctx, env)
+		store, err = evalLvalue(lhsAccessScope.Store, ctx, env, false)
 		if err != nil {
 			return nil, err
 		}

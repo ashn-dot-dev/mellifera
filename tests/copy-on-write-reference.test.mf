@@ -1,0 +1,119 @@
+# x and y are separate values, so x[0].& should only reference into x
+let x = [{"abc": "foo"}];
+let r = x[0].&; # assign reference r before copying x
+let y = x;
+r["abc"] = "bar";
+dumpln(x);
+dumpln(y);
+
+print("\n");
+
+# x and y are separate values, so x[0].& should only reference into x
+let x = [{"abc": "foo"}];
+let y = x;
+let r = x[0].&; # assign reference r after copying x
+r["abc"] = "bar";
+dumpln(x);
+dumpln(y);
+
+print("\n");
+
+# x and y are separate values, so y[0].& should only reference into y
+let x = [{"abc": "foo"}];
+let y = x;
+let r = y[0].&; # assign reference r after copying y
+r["abc"] = "bar";
+dumpln(x);
+dumpln(y);
+
+print("\n");
+
+# copy-on-write applied to a value with mutliple references should be visible
+# to both refrences.
+let x = {"abc": "foo"};
+let y = x;
+let r1 = x.&;
+let r2 = x.&;
+r1["abc"] = "bar";
+dumpln(x);
+dumpln(y);
+dumpln(r1.*);
+dumpln(r2.*);
+
+print("\n");
+
+# member function call implicitly creating a shared reference (top-level)
+let x = ["foo", "bar"];
+let y = x;
+x.push("baz");
+dumpln(x);
+dumpln(y);
+
+print("\n");
+
+# member function call implicitly creating a shared reference (one level of nesting)
+let x = {"a": ["foo", "bar"]};
+let y = x;
+x.a.push("baz");
+dumpln(x);
+dumpln(y);
+
+print("\n");
+
+# member function call implicitly creating a shared reference (two levels of nesting)
+let x = {"a": {"b": ["foo", "bar"]}};
+let y = x;
+x.a.b.push("baz");
+dumpln(x);
+dumpln(y);
+
+print("\n");
+
+# for-loop over refrence to shared vector elements
+let x = [{"n": 123}, {"n": 456}];
+let y = x;
+for v.& in x {
+  v["n"] = v["n"] + 1;
+}
+dumpln(x);
+dumpln(y);
+
+print("\n");
+
+# for-loop over refrence to shared map values
+let x = {"a": {"n": 123}, "b": {"n": 456}};
+let y = x;
+for k, v.& in x {
+  v["n"] = v["n"] + 1;
+}
+dumpln(x);
+dumpln(y);
+################################################################################
+# [{"abc": "bar"}]
+# [{"abc": "foo"}]
+#
+# [{"abc": "bar"}]
+# [{"abc": "foo"}]
+#
+# [{"abc": "foo"}]
+# [{"abc": "bar"}]
+#
+# {"abc": "bar"}
+# {"abc": "foo"}
+# {"abc": "bar"}
+# {"abc": "bar"}
+#
+# ["foo", "bar", "baz"]
+# ["foo", "bar"]
+#
+# {"a": ["foo", "bar", "baz"]}
+# {"a": ["foo", "bar"]}
+#
+# {"a": {"b": ["foo", "bar", "baz"]}}
+# {"a": {"b": ["foo", "bar"]}}
+#
+# [{"n": 124}, {"n": 457}]
+# [{"n": 123}, {"n": 456}]
+#
+# {"a": {"n": 124}, "b": {"n": 457}}
+# {"a": {"n": 123}, "b": {"n": 456}}
