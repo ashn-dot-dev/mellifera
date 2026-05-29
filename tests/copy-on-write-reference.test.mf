@@ -1,6 +1,6 @@
 # x and y are separate values, so x[0].& should only reference into x
 let x = [{"abc": "foo"}];
-let r = x[0].&; # assign reference r before copying x
+let r = x[0].&; # assign reference r before copying vector x
 let y = x;
 r["abc"] = "bar";
 dumpln(x);
@@ -11,7 +11,7 @@ print("\n");
 # x and y are separate values, so x[0].& should only reference into x
 let x = [{"abc": "foo"}];
 let y = x;
-let r = x[0].&; # assign reference r after copying x
+let r = x[0].&; # assign reference r after copying vector x
 r["abc"] = "bar";
 dumpln(x);
 dumpln(y);
@@ -21,15 +21,45 @@ print("\n");
 # x and y are separate values, so y[0].& should only reference into y
 let x = [{"abc": "foo"}];
 let y = x;
-let r = y[0].&; # assign reference r after copying y
+let r = y[0].&; # assign reference r after copying vector y
 r["abc"] = "bar";
 dumpln(x);
 dumpln(y);
 
 print("\n");
 
-# copy-on-write applied to a value with mutliple references should be visible
-# to both refrences.
+# x and y are separate values, so x["a"].& should only reference into x
+let x = {"a": {"abc": "foo"}};
+let r = x["a"].&; # assign reference r before copying map x
+let y = x;
+r["abc"] = "bar";
+dumpln(x);
+dumpln(y);
+
+print("\n");
+
+# x and y are separate values, so x["a"].& should only reference into x
+let x = {"a": {"abc": "foo"}};
+let y = x;
+let r = x["a"].&; # assign reference r after copying map x
+r["abc"] = "bar";
+dumpln(x);
+dumpln(y);
+
+print("\n");
+
+# x and y are separate values, so y["a"].& should only reference into y
+let x = {"a": {"abc": "foo"}};
+let y = x;
+let r = y["a"].&; # assign reference r after copying map x
+r["abc"] = "bar";
+dumpln(x);
+dumpln(y);
+
+print("\n");
+
+# copy-on-write applied to a value with multiple references should be visible
+# to both references.
 let x = {"abc": "foo"};
 let y = x;
 let r1 = x.&;
@@ -39,6 +69,28 @@ dumpln(x);
 dumpln(y);
 dumpln(r1.*);
 dumpln(r2.*);
+
+print("\n");
+
+# a reference taken before multiple copies should not alias any of those copies
+let x = [{"abc": "foo"}];
+let r = x[0].&;
+let y = x;
+let z = x;
+r["abc"] = "bar";
+dumpln(x);
+dumpln(y);
+dumpln(z);
+
+print("\n");
+
+# deeply nested references should only reference their original value
+let x = {"a": {"b": {"abc": "foo"}}};
+let y = x;
+let r = x["a"]["b"].&;
+r["abc"] = "bar";
+dumpln(x);
+dumpln(y);
 
 print("\n");
 
@@ -88,6 +140,38 @@ for k, v.& in x {
 }
 dumpln(x);
 dumpln(y);
+
+print("\n");
+
+# reference escaping from a function
+let T = type {
+    .ref = function(self) {
+        return self;
+    },
+};
+let x = {"data": new T {"abc": "foo"}};
+let r = x["data"].ref(); # r references x["data"]
+let y = x;
+r["abc"] = "bar";
+dumpln(x);
+dumpln(y);
+
+print("\n");
+
+# reference captured by an enclosing function
+let T = type {
+    .fn = function(self) {
+        return function() {
+            self["abc"] = "bar";
+        };
+    },
+};
+let x = {"data": new T {"abc": "foo"}};
+let f = x["data"].fn(); # f closes over a reference to x["data"]
+let y = x;
+f();
+dumpln(x);
+dumpln(y);
 ################################################################################
 # [{"abc": "bar"}]
 # [{"abc": "foo"}]
@@ -98,10 +182,26 @@ dumpln(y);
 # [{"abc": "foo"}]
 # [{"abc": "bar"}]
 #
+# {"a": {"abc": "bar"}}
+# {"a": {"abc": "foo"}}
+#
+# {"a": {"abc": "bar"}}
+# {"a": {"abc": "foo"}}
+#
+# {"a": {"abc": "foo"}}
+# {"a": {"abc": "bar"}}
+#
 # {"abc": "bar"}
 # {"abc": "foo"}
 # {"abc": "bar"}
 # {"abc": "bar"}
+#
+# [{"abc": "bar"}]
+# [{"abc": "foo"}]
+# [{"abc": "foo"}]
+#
+# {"a": {"b": {"abc": "bar"}}}
+# {"a": {"b": {"abc": "foo"}}}
 #
 # ["foo", "bar", "baz"]
 # ["foo", "bar"]
@@ -117,3 +217,9 @@ dumpln(y);
 #
 # {"a": {"n": 124}, "b": {"n": 457}}
 # {"a": {"n": 123}, "b": {"n": 456}}
+#
+# {"data": {"abc": "bar"}}
+# {"data": {"abc": "foo"}}
+#
+# {"data": {"abc": "bar"}}
+# {"data": {"abc": "foo"}}
