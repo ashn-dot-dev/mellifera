@@ -3850,8 +3850,17 @@ class AstStatementFor(AstStatement):
         if isinstance(collection, Error):
             return collection
         if self.k_is_reference or self.v_is_reference:
+            # Reference iteration aliases elements from the original
+            # collection. The collection is specifically *not* copied here,
+            # since updates though referenced values should be observed in that
+            # original collection.
             collection.cow()
-        collection = copy(collection)
+            Reference.mark_referenced(collection)
+        else:
+            # Value iteration iterates over copies of each element, so we
+            # iterate over a shallow copy of the collection to allow
+            # modifcation of that original collection during iteration.
+            collection = copy(collection)
 
         loop_env = Environment(env)
         if metafunction := collection.metafunction(CONST_STRING_NEXT):
@@ -3919,8 +3928,6 @@ class AstStatementFor(AstStatement):
                     self.location,
                     f"attempted key-value iteration over type {quote(typename(collection))}",
                 )
-            # Iterate over a shallow copy of the vector data in order to allow
-            # vector modification during iteration.
             for x in list(collection.data):
                 loop_env.let(
                     self.identifier_k.name,
@@ -3941,8 +3948,6 @@ class AstStatementFor(AstStatement):
                     self.location,
                     f"cannot use a key-reference over type {quote(typename(collection))}",
                 )
-            # Iterate over a shallow copy of the map data in order to allow map
-            # modification during iteration.
             for k, v in dict(collection.data).items():
                 loop_env.let(self.identifier_k.name, copy(k))
                 if self.identifier_v is not None:

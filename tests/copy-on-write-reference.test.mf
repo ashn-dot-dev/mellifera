@@ -121,7 +121,7 @@ dumpln(y);
 
 print("\n");
 
-# for-loop over refrence to shared vector elements
+# for-loop over reference to shared vector elements
 let x = [{"n": 123}, {"n": 456}];
 let y = x;
 for v.& in x {
@@ -132,7 +132,7 @@ dumpln(y);
 
 print("\n");
 
-# for-loop over refrence to shared map values
+# for-loop over reference to shared map values
 let x = {"a": {"n": 123}, "b": {"n": 456}};
 let y = x;
 for k, v.& in x {
@@ -140,6 +140,51 @@ for k, v.& in x {
 }
 dumpln(x);
 dumpln(y);
+
+print("\n");
+
+# snapshots of a vector before modification through referenced elements
+let v = [{"abc": "foo"}];
+let snapshot = null;
+for x.& in v {
+    snapshot = v;
+    x["abc"] = "bar";
+}
+dumpln(v);
+dumpln(snapshot);
+
+print("\n");
+
+# snapshots of a map before modification through referenced values
+let m = {"a": {"n": 123}};
+let snapshot = null;
+for k, x.& in m {
+    snapshot = m;
+    x["n"] = x["n"] + 1;
+}
+dumpln(m);
+dumpln(snapshot);
+
+print("\n");
+
+# modifying a vector during iteration should not affect the iterated elements
+let v = [{"n": 123}];
+let snapshot = null;
+for x.& in v {
+    x["n"] = x["n"] + 1;
+    v.push({"n": "bar"});
+}
+dumpln(v);
+
+print("\n");
+
+# modifying a map during iteration should not affect the iterated elements
+let m = {"a": {"n": 123}, "b": {"n": 456}};
+for k, x.& in m {
+    x["n"] = x["n"] + 1;
+    m.insert("c", {"n": "bar"});
+}
+dumpln(m);
 
 print("\n");
 
@@ -217,6 +262,16 @@ dumpln(y);
 #
 # {"a": {"n": 124}, "b": {"n": 457}}
 # {"a": {"n": 123}, "b": {"n": 456}}
+#
+# [{"abc": "bar"}]
+# [{"abc": "foo"}]
+#
+# {"a": {"n": 124}}
+# {"a": {"n": 123}}
+#
+# [{"n": 124}, {"n": "bar"}]
+#
+# {"a": {"n": 124}, "b": {"n": 457}, "c": {"n": "bar"}}
 #
 # {"data": {"abc": "bar"}}
 # {"data": {"abc": "foo"}}

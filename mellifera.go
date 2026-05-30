@@ -5278,9 +5278,18 @@ func (self AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, e
 		return nil, error
 	}
 	if self.KIsReference || self.VIsReference {
+		// Reference iteration aliases elements from the original collection.
+		// The collection is specifically *not* copied here, since updates
+		// though referenced values should be observed in that original
+		// collection.
 		collection.CopyOnWrite()
+		markReferenced(collection)
+	} else {
+		// Value iteration iterates over copies of each element, so we iterate
+		// over a shallow copy of the collection to allow modifcation of that
+		// original collection during iteration.
+		collection = collection.Copy()
 	}
-	collection = collection.Copy()
 
 	loopEnv := NewEnvironment(env)
 
@@ -5366,10 +5375,12 @@ func (self AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, e
 				ctx.NewStringf("attempted key-value iteration over type %s", quote(collection.Typename())),
 			)
 		}
-		// Iterate over a shallow copy of the vector data in order to allow
-		// vector modification during iteration.
-		collectionVector = collectionVector.Copy().(*Vector)
-		for _, x := range collectionVector.Elements() {
+		// Save the list of elements so that modification to the collection
+		// during iteration does not change the sequence of iteration.
+		elements := collectionVector.Elements()
+		snapshot := make([]Value, len(elements))
+		copy(snapshot, elements)
+		for _, x := range snapshot {
 			var k Value = nil
 			if self.KIsReference {
 				k = ctx.NewReference(x)
@@ -5398,10 +5409,11 @@ func (self AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, e
 				ctx.NewStringf("cannot use a key-reference over type %s", quote(collection.Typename())),
 			)
 		}
-		// Iterate over a shallow copy of the map data in order to allow map
-		// modification during iteration.
-		collectionMap = collectionMap.Copy().(*Map)
-		for _, pair := range collectionMap.Pairs() {
+		// Save the list of key-value pairs so that modification to the
+		// collection during iteration does not change the sequence of
+		// iteration.
+		pairs := collectionMap.Pairs()
+		for _, pair := range pairs {
 			loopEnv.Let(self.IdentifierK.Name.data, pair.Key.Copy())
 			if self.IdentifierV != nil {
 				var v Value = nil
