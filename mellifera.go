@@ -2750,7 +2750,7 @@ func (self *Lexer) lexTemplate() (Token, error) {
 
 		if strings.HasPrefix(self.remaining(), "{") {
 			if len(bytes) != 0 {
-				template = append(template, AstExpressionString{location, self.ctx.NewString(string(bytes))})
+				template = append(template, &AstExpressionString{location, self.ctx.NewString(string(bytes))})
 			}
 			bytes = []byte{}
 			self.position += len("{")
@@ -2807,7 +2807,7 @@ func (self *Lexer) lexTemplate() (Token, error) {
 			}
 		}
 		if len(bytes) != 0 {
-			template = append(template, AstExpressionString{location, self.ctx.NewString(string(bytes))})
+			template = append(template, &AstExpressionString{location, self.ctx.NewString(string(bytes))})
 		}
 		if err := self.expectRune('`'); err != nil {
 			return Token{}, err
@@ -2831,7 +2831,7 @@ func (self *Lexer) lexTemplate() (Token, error) {
 			}
 		}
 		if len(bytes) != 0 {
-			template = append(template, AstExpressionString{location, self.ctx.NewString(string(bytes))})
+			template = append(template, &AstExpressionString{location, self.ctx.NewString(string(bytes))})
 		}
 		if err := self.expectRune('`'); err != nil {
 			return Token{}, err
@@ -2849,7 +2849,7 @@ func (self *Lexer) lexTemplate() (Token, error) {
 			}
 		}
 		if len(bytes) != 0 {
-			template = append(template, AstExpressionString{location, self.ctx.NewString(string(bytes))})
+			template = append(template, &AstExpressionString{location, self.ctx.NewString(string(bytes))})
 		}
 		if err := self.expectRune('"'); err != nil {
 			return Token{}, err
@@ -3242,7 +3242,7 @@ func (self AstProgram) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstProgram) Eval(ctx *Context, env *Environment) (Value, error) {
+func (self *AstProgram) Eval(ctx *Context, env *Environment) (Value, error) {
 	var result Value = ctx.Null
 	for _, statement := range self.Statements {
 		if statementExpression, ok := statement.(*AstStatementExpression); ok {
@@ -3305,7 +3305,7 @@ func (self AstExpressionIdentifier) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstExpressionIdentifier) Eval(ctx *Context, env *Environment) (Value, error) {
+func (self *AstExpressionIdentifier) Eval(ctx *Context, env *Environment) (Value, error) {
 	value, err := env.Get(self.Name.data)
 	if err != nil {
 		return nil, NewError(self.Location, ctx.NewString(err.Error()))
@@ -3334,7 +3334,7 @@ func (self AstExpressionTemplate) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstExpressionTemplate) Eval(ctx *Context, env *Environment) (Value, error) {
+func (self *AstExpressionTemplate) Eval(ctx *Context, env *Environment) (Value, error) {
 	output := []byte{}
 	for _, element := range self.Template {
 		value, err := element.Eval(ctx, env)
@@ -3383,7 +3383,7 @@ func (self AstExpressionNull) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstExpressionNull) Eval(ctx *Context, env *Environment) (Value, error) {
+func (self *AstExpressionNull) Eval(ctx *Context, env *Environment) (Value, error) {
 	return ctx.Null.Copy(), nil
 }
 
@@ -3404,7 +3404,7 @@ func (self AstExpressionBoolean) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstExpressionBoolean) Eval(ctx *Context, env *Environment) (Value, error) {
+func (self *AstExpressionBoolean) Eval(ctx *Context, env *Environment) (Value, error) {
 	return self.Data.Copy(), nil
 }
 
@@ -3425,7 +3425,7 @@ func (self AstExpressionNumber) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstExpressionNumber) Eval(ctx *Context, env *Environment) (Value, error) {
+func (self *AstExpressionNumber) Eval(ctx *Context, env *Environment) (Value, error) {
 	return self.Data.Copy(), nil
 }
 
@@ -3446,7 +3446,7 @@ func (self AstExpressionString) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstExpressionString) Eval(ctx *Context, env *Environment) (Value, error) {
+func (self *AstExpressionString) Eval(ctx *Context, env *Environment) (Value, error) {
 	return self.Data.Copy(), nil
 }
 
@@ -3467,7 +3467,7 @@ func (self AstExpressionRegexp) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstExpressionRegexp) Eval(ctx *Context, env *Environment) (Value, error) {
+func (self *AstExpressionRegexp) Eval(ctx *Context, env *Environment) (Value, error) {
 	return self.Data.Copy(), nil
 }
 
@@ -3488,7 +3488,7 @@ func (self AstExpressionRegexpGroup) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstExpressionRegexpGroup) Eval(ctx *Context, env *Environment) (Value, error) {
+func (self *AstExpressionRegexpGroup) Eval(ctx *Context, env *Environment) (Value, error) {
 	match, ok := env.GetRegexpMatch()
 	if !ok {
 		return nil, NewError(nil, ctx.NewString("regular expression did not match"))
@@ -3529,7 +3529,7 @@ func (self AstExpressionVector) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstExpressionVector) Eval(ctx *Context, env *Environment) (Value, error) {
+func (self *AstExpressionVector) Eval(ctx *Context, env *Environment) (Value, error) {
 	elements := []Value{}
 	for _, element := range self.Elements {
 		value, err := element.Eval(ctx, env)
@@ -3568,7 +3568,7 @@ func (self AstExpressionMap) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstExpressionMap) Eval(ctx *Context, env *Environment) (Value, error) {
+func (self *AstExpressionMap) Eval(ctx *Context, env *Environment) (Value, error) {
 	pairs := []MapPair{}
 	for _, element := range self.Elements {
 		k, err := element.Key.Eval(ctx, env)
@@ -3612,7 +3612,7 @@ func (self AstExpressionSet) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstExpressionSet) Eval(ctx *Context, env *Environment) (Value, error) {
+func (self *AstExpressionSet) Eval(ctx *Context, env *Environment) (Value, error) {
 	elements := []Value{}
 	for _, element := range self.Elements {
 		value, err := element.Eval(ctx, env)
@@ -3682,7 +3682,7 @@ func (self AstExpressionFreeze) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstExpressionFreeze) Eval(ctx *Context, env *Environment) (Value, error) {
+func (self *AstExpressionFreeze) Eval(ctx *Context, env *Environment) (Value, error) {
 	value, err := self.Expression.Eval(ctx, env)
 	if err != nil {
 		return nil, err
@@ -3716,7 +3716,7 @@ func (self AstExpressionType) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstExpressionType) Eval(ctx *Context, env *Environment) (Value, error) {
+func (self *AstExpressionType) Eval(ctx *Context, env *Environment) (Value, error) {
 	var extendsMap *Map = nil
 	if self.Extends != nil {
 		extends, err := self.Extends.Eval(ctx, env)
@@ -3817,7 +3817,7 @@ func (self AstExpressionNew) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstExpressionNew) Eval(ctx *Context, env *Environment) (Value, error) {
+func (self *AstExpressionNew) Eval(ctx *Context, env *Environment) (Value, error) {
 	meta, err := self.Meta.Eval(ctx, env)
 	if err != nil {
 		return nil, err
@@ -3889,7 +3889,7 @@ func (self AstExpressionGrouped) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstExpressionGrouped) Eval(ctx *Context, env *Environment) (Value, error) {
+func (self *AstExpressionGrouped) Eval(ctx *Context, env *Environment) (Value, error) {
 	return self.Expression.Eval(ctx, env)
 }
 
@@ -3910,7 +3910,7 @@ func (self AstExpressionPositive) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstExpressionPositive) Eval(ctx *Context, env *Environment) (Value, error) {
+func (self *AstExpressionPositive) Eval(ctx *Context, env *Environment) (Value, error) {
 	value, err := self.Expression.Eval(ctx, env)
 	if err != nil {
 		return nil, err
@@ -3943,7 +3943,7 @@ func (self AstExpressionNegative) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstExpressionNegative) Eval(ctx *Context, env *Environment) (Value, error) {
+func (self *AstExpressionNegative) Eval(ctx *Context, env *Environment) (Value, error) {
 	value, err := self.Expression.Eval(ctx, env)
 	if err != nil {
 		return nil, err
@@ -3976,7 +3976,7 @@ func (self AstExpressionNot) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstExpressionNot) Eval(ctx *Context, env *Environment) (Value, error) {
+func (self *AstExpressionNot) Eval(ctx *Context, env *Environment) (Value, error) {
 	value, err := self.Expression.Eval(ctx, env)
 	if err != nil {
 		return nil, err
@@ -4011,7 +4011,7 @@ func (self AstExpressionAnd) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstExpressionAnd) Eval(ctx *Context, env *Environment) (Value, error) {
+func (self *AstExpressionAnd) Eval(ctx *Context, env *Environment) (Value, error) {
 	lhs, err := self.Lhs.Eval(ctx, env)
 	if err != nil {
 		return nil, err
@@ -4061,7 +4061,7 @@ func (self AstExpressionOr) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstExpressionOr) Eval(ctx *Context, env *Environment) (Value, error) {
+func (self *AstExpressionOr) Eval(ctx *Context, env *Environment) (Value, error) {
 	lhs, err := self.Lhs.Eval(ctx, env)
 	if err != nil {
 		return nil, err
@@ -4111,7 +4111,7 @@ func (self AstExpressionEq) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstExpressionEq) Eval(ctx *Context, env *Environment) (Value, error) {
+func (self *AstExpressionEq) Eval(ctx *Context, env *Environment) (Value, error) {
 	lhs, err := self.Lhs.Eval(ctx, env)
 	if err != nil {
 		return nil, err
@@ -4144,7 +4144,7 @@ func (self AstExpressionNe) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstExpressionNe) Eval(ctx *Context, env *Environment) (Value, error) {
+func (self *AstExpressionNe) Eval(ctx *Context, env *Environment) (Value, error) {
 	lhs, err := self.Lhs.Eval(ctx, env)
 	if err != nil {
 		return nil, err
@@ -4177,7 +4177,7 @@ func (self AstExpressionLe) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstExpressionLe) Eval(ctx *Context, env *Environment) (Value, error) {
+func (self *AstExpressionLe) Eval(ctx *Context, env *Environment) (Value, error) {
 	lhs, err := self.Lhs.Eval(ctx, env)
 	if err != nil {
 		return nil, err
@@ -4229,7 +4229,7 @@ func (self AstExpressionGe) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstExpressionGe) Eval(ctx *Context, env *Environment) (Value, error) {
+func (self *AstExpressionGe) Eval(ctx *Context, env *Environment) (Value, error) {
 	lhs, err := self.Lhs.Eval(ctx, env)
 	if err != nil {
 		return nil, err
@@ -4281,7 +4281,7 @@ func (self AstExpressionLt) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstExpressionLt) Eval(ctx *Context, env *Environment) (Value, error) {
+func (self *AstExpressionLt) Eval(ctx *Context, env *Environment) (Value, error) {
 	lhs, err := self.Lhs.Eval(ctx, env)
 	if err != nil {
 		return nil, err
@@ -4333,7 +4333,7 @@ func (self AstExpressionGt) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstExpressionGt) Eval(ctx *Context, env *Environment) (Value, error) {
+func (self *AstExpressionGt) Eval(ctx *Context, env *Environment) (Value, error) {
 	lhs, err := self.Lhs.Eval(ctx, env)
 	if err != nil {
 		return nil, err
@@ -4385,7 +4385,7 @@ func (self AstExpressionEqRe) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstExpressionEqRe) Eval(ctx *Context, env *Environment) (Value, error) {
+func (self *AstExpressionEqRe) Eval(ctx *Context, env *Environment) (Value, error) {
 	lhs, err := self.Lhs.Eval(ctx, env)
 	if err != nil {
 		return nil, err
@@ -4431,7 +4431,7 @@ func (self AstExpressionNeRe) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstExpressionNeRe) Eval(ctx *Context, env *Environment) (Value, error) {
+func (self *AstExpressionNeRe) Eval(ctx *Context, env *Environment) (Value, error) {
 	lhs, err := self.Lhs.Eval(ctx, env)
 	if err != nil {
 		return nil, err
@@ -4477,7 +4477,7 @@ func (self AstExpressionAdd) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstExpressionAdd) Eval(ctx *Context, env *Environment) (Value, error) {
+func (self *AstExpressionAdd) Eval(ctx *Context, env *Environment) (Value, error) {
 	lhs, err := self.Lhs.Eval(ctx, env)
 	if err != nil {
 		return nil, err
@@ -4544,7 +4544,7 @@ func (self AstExpressionSub) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstExpressionSub) Eval(ctx *Context, env *Environment) (Value, error) {
+func (self *AstExpressionSub) Eval(ctx *Context, env *Environment) (Value, error) {
 	lhs, err := self.Lhs.Eval(ctx, env)
 	if err != nil {
 		return nil, err
@@ -4588,7 +4588,7 @@ func (self AstExpressionMul) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstExpressionMul) Eval(ctx *Context, env *Environment) (Value, error) {
+func (self *AstExpressionMul) Eval(ctx *Context, env *Environment) (Value, error) {
 	lhs, err := self.Lhs.Eval(ctx, env)
 	if err != nil {
 		return nil, err
@@ -4632,7 +4632,7 @@ func (self AstExpressionDiv) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstExpressionDiv) Eval(ctx *Context, env *Environment) (Value, error) {
+func (self *AstExpressionDiv) Eval(ctx *Context, env *Environment) (Value, error) {
 	lhs, err := self.Lhs.Eval(ctx, env)
 	if err != nil {
 		return nil, err
@@ -4676,7 +4676,7 @@ func (self AstExpressionRem) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstExpressionRem) Eval(ctx *Context, env *Environment) (Value, error) {
+func (self *AstExpressionRem) Eval(ctx *Context, env *Environment) (Value, error) {
 	lhs, err := self.Lhs.Eval(ctx, env)
 	if err != nil {
 		return nil, err
@@ -4726,7 +4726,7 @@ func (self AstExpressionAccessIndex) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstExpressionAccessIndex) Eval(ctx *Context, env *Environment) (Value, error) {
+func (self *AstExpressionAccessIndex) Eval(ctx *Context, env *Environment) (Value, error) {
 	store, err := self.Store.Eval(ctx, env)
 	if err != nil {
 		return nil, err
@@ -4813,7 +4813,7 @@ func (self AstExpressionAccessScope) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstExpressionAccessScope) Eval(ctx *Context, env *Environment) (Value, error) {
+func (self *AstExpressionAccessScope) Eval(ctx *Context, env *Environment) (Value, error) {
 	store, err := self.Store.Eval(ctx, env)
 	if err != nil {
 		return nil, err
@@ -4872,7 +4872,7 @@ func (self AstExpressionAccessDot) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstExpressionAccessDot) Eval(ctx *Context, env *Environment) (Value, error) {
+func (self *AstExpressionAccessDot) Eval(ctx *Context, env *Environment) (Value, error) {
 	store, err := self.Store.Eval(ctx, env)
 	if err != nil {
 		return nil, err
@@ -4953,7 +4953,7 @@ func (self AstExpressionMkref) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstExpressionMkref) Eval(ctx *Context, env *Environment) (Value, error) {
+func (self *AstExpressionMkref) Eval(ctx *Context, env *Environment) (Value, error) {
 	value, err := evalLvalue(self.Lhs, ctx, env, true)
 	if err != nil {
 		return nil, err
@@ -4978,7 +4978,7 @@ func (self AstExpressionDeref) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstExpressionDeref) Eval(ctx *Context, env *Environment) (Value, error) {
+func (self *AstExpressionDeref) Eval(ctx *Context, env *Environment) (Value, error) {
 	value, err := self.Lhs.Eval(ctx, env)
 	if err != nil {
 		return nil, err
@@ -5018,7 +5018,7 @@ func (self AstExpressionFunctionCall) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstExpressionFunctionCall) Eval(ctx *Context, env *Environment) (Value, error) {
+func (self *AstExpressionFunctionCall) Eval(ctx *Context, env *Environment) (Value, error) {
 	var function Value = nil
 	var selfArgument Value = nil
 	var err error = nil
@@ -5104,7 +5104,7 @@ func (self AstBlock) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstBlock) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
+func (self *AstBlock) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
 	for _, statement := range self.Statements {
 		cflow, error := statement.Eval(ctx, env)
 		if error != nil {
@@ -5155,7 +5155,7 @@ func (self AstConditional) exec(ctx *Context, env *Environment) (ControlFlow, bo
 	return nil, false, nil
 }
 
-func (self AstConditional) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
+func (self *AstConditional) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
 	result, _, err := self.exec(ctx, env)
 	return result, err
 }
@@ -5179,7 +5179,7 @@ func (self AstStatementLet) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstStatementLet) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
+func (self *AstStatementLet) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
 	value, error := self.Expression.Eval(ctx, env)
 	if error != nil {
 		return nil, error
@@ -5217,7 +5217,7 @@ func (self AstStatementIfElifElse) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstStatementIfElifElse) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
+func (self *AstStatementIfElifElse) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
 	for _, conditional := range self.Conditionals {
 		result, executed, err := conditional.exec(ctx, env)
 		if err != nil {
@@ -5272,7 +5272,7 @@ func (self AstStatementFor) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
+func (self *AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
 	collection, error := self.Collection.Eval(ctx, env)
 	if error != nil {
 		return nil, error
@@ -5496,7 +5496,7 @@ func (self AstStatementWhile) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstStatementWhile) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
+func (self *AstStatementWhile) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
 	for {
 		expression, error := self.Expression.Eval(ctx, env)
 		if error != nil {
@@ -5549,7 +5549,7 @@ func (self AstStatementBreak) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstStatementBreak) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
+func (self *AstStatementBreak) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
 	return Break{self.Location}, nil
 }
 
@@ -5568,7 +5568,7 @@ func (self AstStatementContinue) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstStatementContinue) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
+func (self *AstStatementContinue) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
 	return Continue{self.Location}, nil
 }
 
@@ -5598,7 +5598,7 @@ func (self AstStatementTry) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstStatementTry) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
+func (self *AstStatementTry) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
 	result, err := self.TryBlock.Eval(ctx, env)
 	if err != nil {
 		error, ok := err.(Error)
@@ -5640,7 +5640,7 @@ func (self AstStatementError) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstStatementError) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
+func (self *AstStatementError) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
 	value, err := self.Expression.Eval(ctx, env)
 	if err != nil {
 		return nil, err
@@ -5670,7 +5670,7 @@ func (self AstStatementReturn) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstStatementReturn) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
+func (self *AstStatementReturn) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
 	if self.Expression == nil {
 		return Return{self.Location, ctx.NewNull()}, nil
 	}
@@ -5892,7 +5892,7 @@ func evalLvalue(expr AstExpression, ctx *Context, env *Environment, markRef bool
 	return expr.Eval(ctx, env)
 }
 
-func (self AstStatementAssignment) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
+func (self *AstStatementAssignment) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
 	// Special case for identifier assignment, where we can directly update
 	// the environment using `Environment.Set`.
 	if lhsIdentifier, ok := self.Lhs.(*AstExpressionIdentifier); ok {
@@ -6032,7 +6032,7 @@ func (self AstStatementExpression) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self AstStatementExpression) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
+func (self *AstStatementExpression) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
 	_, error := self.Expression.Eval(ctx, env)
 	if error != nil {
 		return nil, error
