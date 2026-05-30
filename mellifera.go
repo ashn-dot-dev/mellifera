@@ -9858,8 +9858,17 @@ func BuiltinMathCbrt(ctx *Context) Value {
 func BuiltinMathClamp(ctx *Context) Value {
 	function := ctx.NewValueFromSourceOrPanic("math::clamp", `
 let clamp = function(value, min, max) {
+	if min.is_nan() {
+		error $"min is {min}";
+	}
+	if max.is_nan() {
+		error $"max is {max}";
+	}
 	if min > max {
 		error $"min > max ({min} > {max})";
+	}
+	if value.is_nan() {
+		return NaN;
 	}
 	if value < min {
 		return min;

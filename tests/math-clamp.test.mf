@@ -5,7 +5,10 @@ dumpln(math::clamp(0, 100, 200));
 dumpln(math::clamp(300, 100, 200));
 dumpln(math::clamp(100, 150, 150));
 dumpln(math::clamp(150, 150, 150));
+dumpln(math::clamp(NaN, 100, 200));
 try { dumpln(math::clamp(150, 1, 0)); } catch err { dumpln(err); }
+try { dumpln(math::clamp(150, NaN, 1)); } catch err { dumpln(err); }
+try { dumpln(math::clamp(150, 0, NaN)); } catch err { dumpln(err); }
 ################################################################################
 # 100
 # 150
@@ -14,4 +17,7 @@ try { dumpln(math::clamp(150, 1, 0)); } catch err { dumpln(err); }
 # 200
 # 150
 # 150
+# NaN
 # "min > max (1 > 0)"
+# "min is NaN"
+# "max is NaN"
