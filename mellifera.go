@@ -84,6 +84,8 @@ type Value interface {
 	Typename() string
 	String() string
 	Meta(ctx *Context) *Map
+	Give() Value
+	Take() Value
 	Copy() Value
 	CopyOnWrite()
 	Freeze() Value
@@ -527,9 +529,14 @@ func (ctx *Context) NewVector(elements []Value) *Vector {
 		return &Vector{data: nil}
 	}
 
+	owned := make([]Value, len(elements))
+	for i := range elements {
+		owned[i] = elements[i].Take()
+	}
+
 	return &Vector{
 		data: &vectorData{
-			elements: elements,
+			elements: owned,
 			uses:     1,
 		},
 	}
@@ -712,6 +719,14 @@ func (self *Null) Meta(ctx *Context) *Map {
 	return nil
 }
 
+func (self *Null) Give() Value {
+	return self // immutable value
+}
+
+func (self *Null) Take() Value {
+	return self // immutable value
+}
+
 func (self *Null) Copy() Value {
 	return self // immutable value
 }
@@ -762,6 +777,14 @@ func (self *Boolean) String() string {
 
 func (self *Boolean) Meta(ctx *Context) *Map {
 	return ctx.booleanMeta
+}
+
+func (self *Boolean) Give() Value {
+	return self // immutable value
+}
+
+func (self *Boolean) Take() Value {
+	return self // immutable value
 }
 
 func (self *Boolean) Copy() Value {
@@ -836,6 +859,14 @@ func (self *Number) Meta(ctx *Context) *Map {
 	return ctx.numberMeta
 }
 
+func (self *Number) Give() Value {
+	return self // immutable value
+}
+
+func (self *Number) Take() Value {
+	return self // immutable value
+}
+
 func (self *Number) Copy() Value {
 	return self // immutable value
 }
@@ -897,6 +928,14 @@ func (self *String) Meta(ctx *Context) *Map {
 	return ctx.stringMeta
 }
 
+func (self *String) Give() Value {
+	return self // immutable value
+}
+
+func (self *String) Take() Value {
+	return self // immutable value
+}
+
 func (self *String) Copy() Value {
 	return self // immutable value
 }
@@ -949,6 +988,14 @@ func (self *Regexp) Meta(ctx *Context) *Map {
 	return ctx.regexpMeta
 }
 
+func (self *Regexp) Give() Value {
+	return self // immutable value
+}
+
+func (self *Regexp) Take() Value {
+	return self // immutable value
+}
+
 func (self *Regexp) Copy() Value {
 	return self // immutable value
 }
@@ -984,6 +1031,19 @@ func (self *Regexp) CombEncode(e *CombEncoder) error {
 	return e.err
 }
 
+type containerState int
+
+const (
+	// The container is currently free to be taken and owned by another entity.
+	containerStateFree = iota
+	// The container is currently owned and must be given before it can be
+	// owned by another entity.
+	containerStateOwned
+	// The container is frozen and immutable, so giving or taking it will have
+	// no effect.
+	containerStateFrozen
+)
+
 type vectorData struct {
 	elements []Value
 	uses     int
@@ -991,8 +1051,8 @@ type vectorData struct {
 }
 
 type Vector struct {
-	data   *vectorData
-	frozen bool
+	data  *vectorData
+	state containerState
 }
 
 func (self *Vector) Typename() string {
@@ -1013,6 +1073,36 @@ func (self *Vector) String() string {
 
 func (self *Vector) Meta(ctx *Context) *Map {
 	return ctx.vectorMeta
+}
+
+func (self *Vector) Give() Value {
+	switch self.state {
+	case containerStateFree:
+		// already free.
+	case containerStateOwned:
+		// owned -> free
+		self.state = containerStateFree
+	case containerStateFrozen:
+		// immutable value
+	default:
+		panic("unreachable")
+	}
+	return self
+}
+
+func (self *Vector) Take() Value {
+	switch self.state {
+	case containerStateFree:
+		// free -> owned
+		self.state = containerStateOwned
+	case containerStateOwned:
+		panic("attempting to take owned vector")
+	case containerStateFrozen:
+		// immutable value
+	default:
+		panic("unreachable")
+	}
+	return self
 }
 
 func (self *Vector) Copy() Value {
@@ -1070,12 +1160,12 @@ func (self *Vector) Freeze() Value {
 			value.data.elements[i] = value.data.elements[i].Freeze()
 		}
 	}
-	value.frozen = true
+	value.state = containerStateFrozen
 	return value
 }
 
 func (self *Vector) IsImmutable() bool {
-	return self.frozen
+	return self.state == containerStateFrozen
 }
 
 func (self *Vector) Hash() uint64 {
@@ -1161,7 +1251,7 @@ func (self *Vector) Set(index int, value Value) error {
 	}
 
 	self.CopyOnWrite()
-	self.data.elements[index] = value
+	self.data.elements[index] = value.Take()
 	return nil
 }
 
@@ -1179,7 +1269,7 @@ func (self *Vector) Insert(index int, value Value) error {
 		}
 	}
 
-	self.data.elements = slices.Insert(self.data.elements, index, value)
+	self.data.elements = slices.Insert(self.data.elements, index, value.Take())
 	return nil
 }
 
@@ -1195,7 +1285,7 @@ func (self *Vector) Remove(index int) (Value, error) {
 
 	element := self.data.elements[index]
 	self.data.elements = slices.Delete(self.data.elements, index, index+1)
-	return element, nil
+	return element.Give(), nil
 }
 
 func (self *Vector) Push(value Value) error {
@@ -1210,7 +1300,7 @@ func (self *Vector) Push(value Value) error {
 			uses:     1,
 		}
 	}
-	self.data.elements = append(self.data.elements, value)
+	self.data.elements = append(self.data.elements, value.Take())
 	return nil
 }
 
@@ -1227,7 +1317,7 @@ func (self *Vector) Pop() (Value, error) {
 
 	element := self.data.elements[len(self.data.elements)-1]
 	self.data.elements = self.data.elements[:len(self.data.elements)-1]
-	return element, nil
+	return element.Give(), nil
 }
 
 type MapPair struct {
@@ -1349,10 +1439,10 @@ func (self *mapData) Remove(key Value) {
 }
 
 type Map struct {
-	data   *mapData
-	meta   *Map    // Optional (non-nil implies that this is a mutable map)
-	name   *string // Optional (non-nil implies that this is a frozen metamap)
-	frozen bool    // Primary source of truth on whether this map is frozen.
+	data  *mapData
+	meta  *Map    // Optional (non-nil implies that this is a mutable map)
+	name  *string // Optional (non-nil implies that this is a frozen metamap)
+	state containerState
 }
 
 func (self *Map) Typename() string {
@@ -1379,6 +1469,36 @@ func (self *Map) String() string {
 
 func (self *Map) Meta(ctx *Context) *Map {
 	return self.meta
+}
+
+func (self *Map) Give() Value {
+	switch self.state {
+	case containerStateFree:
+		// already free.
+	case containerStateOwned:
+		// owned -> free
+		self.state = containerStateFree
+	case containerStateFrozen:
+		// immutable value
+	default:
+		panic("unreachable")
+	}
+	return self
+}
+
+func (self *Map) Take() Value {
+	switch self.state {
+	case containerStateFree:
+		// free -> owned
+		self.state = containerStateOwned
+	case containerStateOwned:
+		panic("attempting to take owned map")
+	case containerStateFrozen:
+		// immutable value
+	default:
+		panic("unreachable")
+	}
+	return self
 }
 
 func (self *Map) Copy() Value {
@@ -1451,12 +1571,12 @@ func (self *Map) Freeze() Value {
 			}
 		}
 	}
-	value.frozen = true
+	value.state = containerStateFrozen
 	return value
 }
 
 func (self *Map) IsImmutable() bool {
-	return self.frozen
+	return self.state == containerStateFrozen
 }
 
 func (self *Map) Hash() uint64 {
@@ -1597,7 +1717,7 @@ func (self *Map) Insert(key, value Value) error {
 		}
 	}
 
-	self.data.Insert(key, value)
+	self.data.Insert(key.Take(), value.Take())
 	return nil
 }
 
@@ -1726,8 +1846,8 @@ func (self *setData) Remove(key Value) {
 }
 
 type Set struct {
-	data   *setData
-	frozen bool
+	data  *setData
+	state containerState
 }
 
 func (self *Set) Typename() string {
@@ -1750,6 +1870,36 @@ func (self *Set) String() string {
 
 func (self *Set) Meta(ctx *Context) *Map {
 	return ctx.setMeta
+}
+
+func (self *Set) Give() Value {
+	switch self.state {
+	case containerStateFree:
+		// already free.
+	case containerStateOwned:
+		// owned -> free
+		self.state = containerStateFree
+	case containerStateFrozen:
+		// immutable value
+	default:
+		panic("unreachable")
+	}
+	return self
+}
+
+func (self *Set) Take() Value {
+	switch self.state {
+	case containerStateFree:
+		// free -> owned
+		self.state = containerStateOwned
+	case containerStateOwned:
+		panic("attempting to take owned set")
+	case containerStateFrozen:
+		// immutable value
+	default:
+		panic("unreachable")
+	}
+	return self
 }
 
 func (self *Set) Copy() Value {
@@ -1809,12 +1959,12 @@ func (self *Set) Freeze() Value {
 			}
 		}
 	}
-	value.frozen = true
+	value.state = containerStateFrozen
 	return value
 }
 
 func (self *Set) IsImmutable() bool {
-	return self.frozen
+	return self.state == containerStateFrozen
 }
 
 func (self *Set) Hash() uint64 {
@@ -1948,7 +2098,7 @@ func (self *Set) Insert(value Value) error {
 		}
 	}
 
-	self.data.Insert(value)
+	self.data.Insert(value.Take())
 	return nil
 }
 
@@ -1984,6 +2134,14 @@ func (self *Reference) String() string {
 
 func (self *Reference) Meta(ctx *Context) *Map {
 	return ctx.referenceMeta
+}
+
+func (self *Reference) Give() Value {
+	return self // immutable value
+}
+
+func (self *Reference) Take() Value {
+	return self // immutable value
 }
 
 func (self *Reference) Copy() Value {
@@ -2051,6 +2209,14 @@ func (self *Function) Meta(ctx *Context) *Map {
 	return ctx.functionMeta
 }
 
+func (self *Function) Give() Value {
+	return self // immutable value
+}
+
+func (self *Function) Take() Value {
+	return self // immutable value
+}
+
 func (self *Function) Copy() Value {
 	return self // immutable value
 }
@@ -2102,6 +2268,14 @@ func (self *Builtin) String() string {
 
 func (self *Builtin) Meta(ctx *Context) *Map {
 	return ctx.functionMeta
+}
+
+func (self *Builtin) Give() Value {
+	return self // immutable value
+}
+
+func (self *Builtin) Take() Value {
+	return self // immutable value
 }
 
 func (self *Builtin) Copy() Value {
@@ -2162,6 +2336,14 @@ func (self *External) String() string {
 
 func (self *External) Meta(ctx *Context) *Map {
 	return self.meta
+}
+
+func (self *External) Give() Value {
+	return self // immutable value
+}
+
+func (self *External) Take() Value {
+	return self // immutable value
 }
 
 func (self *External) Copy() Value {
@@ -3105,7 +3287,7 @@ func NewEnvironment(outer *Environment) *Environment {
 }
 
 func (self *Environment) Let(name string, value Value) {
-	self.store[name] = value
+	self.store[name] = value.Take()
 }
 
 func (self *Environment) Set(name string, value Value) error {
@@ -3113,7 +3295,7 @@ func (self *Environment) Set(name string, value Value) error {
 	for env != nil {
 		_, ok := env.store[name]
 		if ok {
-			env.store[name] = value
+			env.store[name] = value.Take()
 			return nil
 		}
 		env = env.outer
@@ -5607,7 +5789,7 @@ func (self *AstStatementTry) Eval(ctx *Context, env *Environment) (ControlFlow, 
 		}
 		env := NewEnvironment(env)
 		if self.CatchIdentifier != nil {
-			env.Let(self.CatchIdentifier.Name.data, error.Value)
+			env.Let(self.CatchIdentifier.Name.data, error.Value.Copy())
 		}
 		return self.CatchBlock.Eval(ctx, env)
 	}
@@ -8433,7 +8615,7 @@ func BuiltinVectorPop(ctx *Context) Value {
 			return nil, NewError(nil, ctx.NewStringf("invalid vector::pop operation (%s)", err.Error()))
 		}
 
-		return value.Copy(), nil
+		return value, nil
 	})
 }
 
@@ -8479,7 +8661,7 @@ func BuiltinVectorRemove(ctx *Context) Value {
 			return nil, NewError(nil, ctx.NewStringf("invalid vector::remove operation (%s)", err.Error()))
 		}
 
-		return value.Copy(), nil
+		return value, nil
 	})
 }
 
@@ -8738,7 +8920,7 @@ func BuiltinMapRemove(ctx *Context) Value {
 			return nil, NewError(nil, ctx.NewStringf("invalid map::remove operation (%s)", err.Error()))
 		}
 
-		return lookup.Copy(), nil
+		return lookup, nil
 	})
 }
 

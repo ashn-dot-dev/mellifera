@@ -3,6 +3,18 @@ try {                 } catch err { println($"error: {err}"); }
 try { 1 + 1;          } catch     { println("error");         }
 try { 1 + "foo";      } catch err { println($"error: {err}"); }
 try { error "oopsie"; } catch err { println($"error: {err}"); }
+
+# Errors are always copied when bound to the catch variable.
+let set = {"foo"};
+try {
+    error set;
+} catch err {
+    err.insert("bar"); # only affects the newly bound err
+    println($`err is {err}`);
+}
+println($`set is {set}`);
 ################################################################################
 # error: attempted + operation with types `number` and `string`
 # error: oopsie
+# err is {"foo", "bar"}
+# set is {"foo"}

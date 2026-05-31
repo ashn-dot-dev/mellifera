@@ -4111,7 +4111,7 @@ class AstStatementTry(AstStatement):
         if isinstance(result, Error):
             env = Environment(env)
             if self.catch_identifier is not None:
-                env.let(self.catch_identifier.name, result.value)
+                env.let(self.catch_identifier.name, copy(result.value))
             return self.catch_block.eval(env)
         return None
 
