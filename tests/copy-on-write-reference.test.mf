@@ -121,6 +121,17 @@ dumpln(y);
 
 print("\n");
 
+# member function call returning a (copied) value that was originally referenced in a container
+let x = [["foo"]];
+let r = x[0].&;
+let v = x.pop();
+v.push("bar");
+dumpln(x);
+dumpln(v);
+dumpln(r.*);
+
+print("\n");
+
 # for-loop over reference to shared vector elements
 let x = [{"n": 123}, {"n": 456}];
 let y = x;
@@ -256,6 +267,10 @@ dumpln(y);
 #
 # {"a": {"b": ["foo", "bar", "baz"]}}
 # {"a": {"b": ["foo", "bar"]}}
+#
+# []
+# ["foo", "bar"]
+# ["foo"]
 #
 # [{"n": 124}, {"n": 457}]
 # [{"n": 123}, {"n": 456}]

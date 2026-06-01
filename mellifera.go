@@ -84,7 +84,6 @@ type Value interface {
 	Typename() string
 	String() string
 	Meta(ctx *Context) *Map
-	Give() Value
 	Take() Value
 	Copy() Value
 	CopyOnWrite()
@@ -147,6 +146,47 @@ func ValueAsIndex(value Value) (int, error) {
 		return 0, fmt.Errorf("integer %v is outside the indexable integer range", value)
 	}
 	return int(truncated), nil
+}
+
+// Internal optimization allowing for a freshly-evaluated rvalue to be directly
+// moved into a store (a la std::move) without requiring an extra Copy()
+// operation:
+//
+//	let x = ["foo", "bar", "baz"]; # rvalue stored in the environment
+//	v[0] = {"abc": 123};           # rvalue stored in a container
+//	m["foo"] = bar;                # lvalue copied into a container
+//
+// If the provided argument is a free value, then that value is returned
+// verbatim ready to have its ownership transferred via a Take() operation.
+//
+// If the provided argument is an owned value then it is copied, ensuring that
+// the invariant of at most one owner per value is upheld.
+//
+// Callers must guarantee that the provided argument is relinquished as part of
+// the function invocation. Since it is unknown whether the value returned is
+// the same as the input argument or a copy, invoking moveOrCopy() MUST be
+// treated strictly as if the value was moved and not copied, otherwise there
+// is the possibility that the original value and the moveOrCopy()-ed result
+// could alias.
+func moveOrCopy(value Value) Value {
+	switch v := value.(type) {
+	case *Vector:
+		if v.state == containerStateFree && (v.data == nil || v.data.refs == 0) {
+			return value // move
+		}
+	case *Map:
+		if v.state == containerStateFree && (v.data == nil || v.data.refs == 0) {
+			return value // move
+		}
+	case *Set:
+		if v.state == containerStateFree && (v.data == nil || v.data.refs == 0) {
+			return value // move
+		}
+	}
+
+	// immutable values => Copy() returning immutable identity
+	//   mutable values => Copy() returning mutable value with unique data
+	return value.Copy()
 }
 
 type CombEncoder struct {
@@ -719,10 +759,6 @@ func (self *Null) Meta(ctx *Context) *Map {
 	return nil
 }
 
-func (self *Null) Give() Value {
-	return self // immutable value
-}
-
 func (self *Null) Take() Value {
 	return self // immutable value
 }
@@ -777,10 +813,6 @@ func (self *Boolean) String() string {
 
 func (self *Boolean) Meta(ctx *Context) *Map {
 	return ctx.booleanMeta
-}
-
-func (self *Boolean) Give() Value {
-	return self // immutable value
 }
 
 func (self *Boolean) Take() Value {
@@ -859,10 +891,6 @@ func (self *Number) Meta(ctx *Context) *Map {
 	return ctx.numberMeta
 }
 
-func (self *Number) Give() Value {
-	return self // immutable value
-}
-
 func (self *Number) Take() Value {
 	return self // immutable value
 }
@@ -928,10 +956,6 @@ func (self *String) Meta(ctx *Context) *Map {
 	return ctx.stringMeta
 }
 
-func (self *String) Give() Value {
-	return self // immutable value
-}
-
 func (self *String) Take() Value {
 	return self // immutable value
 }
@@ -986,10 +1010,6 @@ func (self *Regexp) String() string {
 
 func (self *Regexp) Meta(ctx *Context) *Map {
 	return ctx.regexpMeta
-}
-
-func (self *Regexp) Give() Value {
-	return self // immutable value
 }
 
 func (self *Regexp) Take() Value {
@@ -1073,21 +1093,6 @@ func (self *Vector) String() string {
 
 func (self *Vector) Meta(ctx *Context) *Map {
 	return ctx.vectorMeta
-}
-
-func (self *Vector) Give() Value {
-	switch self.state {
-	case containerStateFree:
-		// already free.
-	case containerStateOwned:
-		// owned -> free
-		self.state = containerStateFree
-	case containerStateFrozen:
-		// immutable value
-	default:
-		panic("unreachable")
-	}
-	return self
 }
 
 func (self *Vector) Take() Value {
@@ -1285,7 +1290,7 @@ func (self *Vector) Remove(index int) (Value, error) {
 
 	element := self.data.elements[index]
 	self.data.elements = slices.Delete(self.data.elements, index, index+1)
-	return element.Give(), nil
+	return element.Copy(), nil
 }
 
 func (self *Vector) Push(value Value) error {
@@ -1317,7 +1322,7 @@ func (self *Vector) Pop() (Value, error) {
 
 	element := self.data.elements[len(self.data.elements)-1]
 	self.data.elements = self.data.elements[:len(self.data.elements)-1]
-	return element.Give(), nil
+	return element.Copy(), nil
 }
 
 type MapPair struct {
@@ -1469,21 +1474,6 @@ func (self *Map) String() string {
 
 func (self *Map) Meta(ctx *Context) *Map {
 	return self.meta
-}
-
-func (self *Map) Give() Value {
-	switch self.state {
-	case containerStateFree:
-		// already free.
-	case containerStateOwned:
-		// owned -> free
-		self.state = containerStateFree
-	case containerStateFrozen:
-		// immutable value
-	default:
-		panic("unreachable")
-	}
-	return self
 }
 
 func (self *Map) Take() Value {
@@ -1872,21 +1862,6 @@ func (self *Set) Meta(ctx *Context) *Map {
 	return ctx.setMeta
 }
 
-func (self *Set) Give() Value {
-	switch self.state {
-	case containerStateFree:
-		// already free.
-	case containerStateOwned:
-		// owned -> free
-		self.state = containerStateFree
-	case containerStateFrozen:
-		// immutable value
-	default:
-		panic("unreachable")
-	}
-	return self
-}
-
 func (self *Set) Take() Value {
 	switch self.state {
 	case containerStateFree:
@@ -2136,10 +2111,6 @@ func (self *Reference) Meta(ctx *Context) *Map {
 	return ctx.referenceMeta
 }
 
-func (self *Reference) Give() Value {
-	return self // immutable value
-}
-
 func (self *Reference) Take() Value {
 	return self // immutable value
 }
@@ -2209,10 +2180,6 @@ func (self *Function) Meta(ctx *Context) *Map {
 	return ctx.functionMeta
 }
 
-func (self *Function) Give() Value {
-	return self // immutable value
-}
-
 func (self *Function) Take() Value {
 	return self // immutable value
 }
@@ -2268,10 +2235,6 @@ func (self *Builtin) String() string {
 
 func (self *Builtin) Meta(ctx *Context) *Map {
 	return ctx.functionMeta
-}
-
-func (self *Builtin) Give() Value {
-	return self // immutable value
 }
 
 func (self *Builtin) Take() Value {
@@ -2336,10 +2299,6 @@ func (self *External) String() string {
 
 func (self *External) Meta(ctx *Context) *Map {
 	return self.meta
-}
-
-func (self *External) Give() Value {
-	return self // immutable value
 }
 
 func (self *External) Take() Value {
@@ -3718,7 +3677,7 @@ func (self *AstExpressionVector) Eval(ctx *Context, env *Environment) (Value, er
 		if err != nil {
 			return nil, err
 		}
-		elements = append(elements, value.Copy())
+		elements = append(elements, moveOrCopy(value))
 	}
 	return ctx.NewVector(elements), nil
 }
@@ -3761,7 +3720,7 @@ func (self *AstExpressionMap) Eval(ctx *Context, env *Environment) (Value, error
 		if err != nil {
 			return nil, err
 		}
-		pairs = append(pairs, MapPair{k.Copy(), v.Copy()})
+		pairs = append(pairs, MapPair{moveOrCopy(k), moveOrCopy(v)})
 	}
 	value, err := ctx.NewMap(pairs)
 	if err != nil {
@@ -3801,7 +3760,7 @@ func (self *AstExpressionSet) Eval(ctx *Context, env *Environment) (Value, error
 		if err != nil {
 			return nil, err
 		}
-		elements = append(elements, value.Copy())
+		elements = append(elements, moveOrCopy(value))
 	}
 	result, err := ctx.NewSet(elements)
 	if err != nil {
@@ -5263,7 +5222,7 @@ func (self *AstExpressionFunctionCall) Eval(ctx *Context, env *Environment) (Val
 		if err != nil {
 			return nil, err
 		}
-		arguments = append(arguments, result.Copy())
+		arguments = append(arguments, moveOrCopy(result))
 	}
 
 	return Call(ctx, self.Location, function, arguments)
@@ -5367,7 +5326,7 @@ func (self *AstStatementLet) Eval(ctx *Context, env *Environment) (ControlFlow, 
 		return nil, error
 	}
 
-	env.Let(self.Identifier.Name.data, value.Copy())
+	env.Let(self.Identifier.Name.data, moveOrCopy(value))
 
 	return nil, nil
 }
@@ -5499,7 +5458,7 @@ func (self *AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, 
 				}
 				return nil, err
 			}
-			loopEnv.Let(self.IdentifierK.Name.data, iterated.Copy())
+			loopEnv.Let(self.IdentifierK.Name.data, moveOrCopy(iterated))
 			result, err := self.Block.Eval(ctx, loopEnv)
 			if err != nil {
 				return nil, err
@@ -6083,7 +6042,7 @@ func (self *AstStatementAssignment) Eval(ctx *Context, env *Environment) (Contro
 			return nil, err
 		}
 
-		err = env.Set(lhsIdentifier.Name.data, rhs.Copy())
+		err = env.Set(lhsIdentifier.Name.data, moveOrCopy(rhs))
 		if err != nil {
 			return nil, NewError(self.Location, ctx.NewString(err.Error()))
 		}
@@ -6144,7 +6103,7 @@ func (self *AstStatementAssignment) Eval(ctx *Context, env *Environment) (Contro
 			)
 		}
 
-		err = storeVector.Set(index, rhs.Copy())
+		err = storeVector.Set(index, moveOrCopy(rhs))
 		if err != nil {
 			return NewError(
 				self.Location,
@@ -6156,7 +6115,7 @@ func (self *AstStatementAssignment) Eval(ctx *Context, env *Environment) (Contro
 	}
 
 	assignMap := func(storeMap *Map) error {
-		err := storeMap.Insert(field.Copy(), rhs.Copy())
+		err := storeMap.Insert(moveOrCopy(field), moveOrCopy(rhs))
 		if err != nil {
 			return NewError(
 				self.Location,
