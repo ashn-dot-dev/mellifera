@@ -1111,3 +1111,120 @@ func TestExternalCombEncode(t *testing.T) {
 	AssertNe(t, err, nil)
 	AssertEq(t, "invalid comb value external(42)", err.Error())
 }
+
+func TestBuiltinJsonEncodeDeterministic(t *testing.T) {
+	ctx := NewContext()
+
+	// Build an ordered map with known key order
+	pairs := []MapPair{
+		{ctx.NewString("z"), ctx.NewNumber(1)},
+		{ctx.NewString("a"), ctx.NewNumber(2)},
+		{ctx.NewString("m"), ctx.NewNumber(3)},
+		{ctx.NewString("b"), ctx.NewNumber(4)},
+	}
+	m, err := ctx.NewMap(pairs)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	fn := BuiltinJsonEncode(ctx).(*Builtin)
+	encoded, err := fn.impl(ctx, []Value{m})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	first := encoded.(*String).data
+
+	// Encode multiple times — all should produce identical output
+	for i := 0; i < 50; i++ {
+		encoded, err := fn.impl(ctx, []Value{m})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if encoded.(*String).data != first {
+			t.Fatalf("non-deterministic json::encode at iteration %d: got %s, expected %s", i, encoded.(*String).data, first)
+		}
+	}
+
+	// The output should preserve insertion order
+	if !strings.Contains(first, `"z":1,"a":2,"m":3,"b":4`) {
+		t.Fatalf("json::encode did not preserve insertion order: %s", first)
+	}
+}
+
+func TestBuiltinJsonDecodeDeterministic(t *testing.T) {
+	ctx := NewContext()
+
+	input := `{"foo": 123, "bar": 456, "qux": 789, "aaa": 0}`
+	decodedFn := BuiltinJsonDecode(ctx).(*Builtin)
+
+	// Decode multiple times — all should produce identical maps with identical key order
+	var firstPairs []MapPair
+	for i := 0; i < 50; i++ {
+		result, err := decodedFn.impl(ctx, []Value{ctx.NewString(input)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		m, ok := result.(*Map)
+		if !ok {
+			t.Fatalf("expected *Map, got %T", result)
+		}
+		pairs := m.Pairs()
+		if i == 0 {
+			firstPairs = pairs
+		} else {
+			if len(pairs) != len(firstPairs) {
+				t.Fatalf("iteration %d: map length changed: got %d, expected %d", i, len(pairs), len(firstPairs))
+			}
+			for j, p := range pairs {
+				if firstPairs[j].Key.String() != p.Key.String() || firstPairs[j].Value.String() != p.Value.String() {
+					t.Fatalf("iteration %d pair %d: got (%s: %s), expected (%s: %s)",
+						i, j, p.Key.String(), p.Value.String(), firstPairs[j].Key.String(), firstPairs[j].Value.String())
+				}
+			}
+		}
+	}
+
+	// First pair should be "foo: 123" (document order)
+	if len(firstPairs) > 0 && firstPairs[0].Key.String() != `"foo"` {
+		t.Fatalf("json::decode did not preserve document key order: first key is %s, expected \"foo\"", firstPairs[0].Key.String())
+	}
+}
+
+func TestBuiltinJsonRoundtripDeterministic(t *testing.T) {
+	ctx := NewContext()
+
+	input := `{"zulu": 999, "alpha": "hello", "mike": [1, 2, 3], "beta": {"nested": true}}`
+
+	// Decode
+	decodedFn := BuiltinJsonDecode(ctx).(*Builtin)
+	decoded, err := decodedFn.impl(ctx, []Value{ctx.NewString(input)})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Encode back
+	encodedFn := BuiltinJsonEncode(ctx).(*Builtin)
+	encoded, err := encodedFn.impl(ctx, []Value{decoded})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	result := encoded.(*String).data
+
+	// The output should have keys in insertion order (same as document order)
+	if !strings.Contains(result, `"zulu":999`) || !strings.Contains(result, `"alpha":"hello"`) || !strings.Contains(result, `"mike":[1,2,3]`) || !strings.Contains(result, `"beta":{"nested":true}`) {
+		t.Fatalf("roundtrip did not preserve key order: %s", result)
+	}
+
+	// Roundtrip should be deterministic — run multiple times
+	for i := 0; i < 20; i++ {
+		enc, err := encodedFn.impl(ctx, []Value{decoded})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if enc.(*String).data != result {
+			t.Fatalf("roundtrip non-deterministic at iteration %d: got %s, expected %s", i, enc.(*String).data, result)
+		}
+	}
+}

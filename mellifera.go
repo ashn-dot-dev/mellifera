@@ -9781,12 +9781,74 @@ func jsonDecode(ctx *Context, j any) (Value, error) {
 	return nil, fmt.Errorf("cannot JSON-decode type %T", *jp)
 }
 
+func jsonDecodeFromTokens(ctx *Context, dec *json.Decoder) (Value, error) {
+	t, err := dec.Token()
+	if err != nil {
+		return nil, err
+	}
+
+	if t == nil {
+		return ctx.NewNull(), nil
+	}
+
+	switch v := t.(type) {
+	case bool:
+		return ctx.NewBoolean(v), nil
+	case float64:
+		return ctx.NewNumber(v), nil
+	case string:
+		return ctx.NewString(v), nil
+	case json.Delim:
+		switch v {
+		case '[':
+			elements := []Value{}
+			for dec.More() {
+				element, err := jsonDecodeFromTokens(ctx, dec)
+				if err != nil {
+					return nil, err
+				}
+				elements = append(elements, element)
+			}
+			// consume the closing ']'
+			if _, err := dec.Token(); err != nil {
+				return nil, err
+			}
+			return ctx.NewVector(elements), nil
+		case '{':
+			pairs := []MapPair{}
+			for dec.More() {
+				keyToken, err := dec.Token()
+				if err != nil {
+					return nil, err
+				}
+				keyStr, ok := keyToken.(string)
+				if !ok {
+					return nil, fmt.Errorf("expected string key in JSON object")
+				}
+				key := ctx.NewString(keyStr)
+				value, err := jsonDecodeFromTokens(ctx, dec)
+				if err != nil {
+					return nil, err
+				}
+				pairs = append(pairs, MapPair{key, value})
+			}
+			// consume the closing '}'
+			if _, err := dec.Token(); err != nil {
+				return nil, err
+			}
+			return ctx.NewMap(pairs)
+		}
+	}
+
+	return nil, fmt.Errorf("cannot JSON-decode type %T", t)
+}
+
 func BuiltinJsonDecode(ctx *Context) Value {
 	return ctx.NewBuiltin("json::decode", []Type{TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
 		encoded := arguments[0].(*String)
 
-		var j any = new(any)
-		err := json.Unmarshal([]byte(encoded.data), &j)
+		dec := json.NewDecoder(strings.NewReader(encoded.data))
+		decoded, err := jsonDecodeFromTokens(ctx, dec)
 		if err != nil {
 			if e, ok := err.(*json.SyntaxError); ok && len(encoded.data) >= 1 {
 				if strings.HasPrefix(strings.ToLower(encoded.data[e.Offset-1:]), "nan") {
@@ -9798,12 +9860,46 @@ func BuiltinJsonDecode(ctx *Context) Value {
 			}
 			return nil, NewError(nil, ctx.NewStringf("cannot JSON-decode string %v", encoded))
 		}
-		decoded, err := jsonDecode(ctx, j)
-		if err != nil {
-			return nil, NewError(nil, ctx.NewString(err.Error()))
+
+		// Check for trailing data after the first JSON value
+		if dec.More() {
+			return nil, NewError(nil, ctx.NewString("cannot JSON-decode trailing data"))
 		}
+
 		return decoded, nil
 	})
+}
+
+// orderedMapMarshaler preserves key order when marshaling JSON,
+// solving the non-deterministic map iteration of encoding/json.
+type orderedMapMarshaler []orderedMapEntry
+
+type orderedMapEntry struct {
+	Key   string
+	Value any
+}
+
+func (m orderedMapMarshaler) MarshalJSON() ([]byte, error) {
+	var buf strings.Builder
+	buf.WriteByte('{')
+	for i, entry := range m {
+		if i > 0 {
+			buf.WriteByte(',')
+		}
+		keyBytes, err := json.Marshal(entry.Key)
+		if err != nil {
+			return nil, err
+		}
+		buf.Write(keyBytes)
+		buf.WriteByte(':')
+		valBytes, err := json.Marshal(entry.Value)
+		if err != nil {
+			return nil, err
+		}
+		buf.Write(valBytes)
+	}
+	buf.WriteByte('}')
+	return []byte(buf.String()), nil
 }
 
 func jsonEncode(value Value) (any, error) {
@@ -9845,7 +9941,7 @@ func jsonEncode(value Value) (any, error) {
 	}
 
 	if x, ok := value.(*Map); ok {
-		result := make(map[string]any)
+		result := orderedMapMarshaler{}
 		for _, pair := range x.Pairs() {
 			_, ok := pair.Key.(*String)
 			if !ok {
@@ -9866,7 +9962,7 @@ func jsonEncode(value Value) (any, error) {
 				return nil, fmt.Errorf("unexpected string JSON-encoding %v", ks)
 			}
 
-			result[ks] = v
+			result = append(result, orderedMapEntry{ks, v})
 		}
 		return result, nil
 	}
