@@ -9,7 +9,7 @@ let counter = type {
             .max: max
         };
     },
-    "next": function(self) {
+    "next": function.&(self) {
         if self.*.cur > self.*.max {
             error null; # end-of-iteration
         }
@@ -22,9 +22,14 @@ println($`vector::init(counter::init(5)) is {vector::init(counter::init(5))}`);
 
 print("\n");
 
+let bad = type {
+    "next": function(self) { }
+};
+
 try { vector::init(null); } catch err { println($`vector::init(null) produces the error {repr(err)}`); }
 try { vector::init(123); } catch err { println($`vector::init(123) produces the error {repr(err)}`); }
 try { vector::init("foo"); } catch err { println($`vector::init("foo") produces the error {repr(err)}`); }
+try { vector::init(new bad Map{}); } catch err { println($`vector::init(new bad Map{{}}) produces the error {repr(err)}`); }
 ################################################################################
 # vector::init([123, 456, 789]) is [123, 456, 789]
 # vector::init({"foo": 123, "bar": 456, "baz": 789}) is [["foo", 123], ["bar", 456], ["baz", 789]]
@@ -34,3 +39,4 @@ try { vector::init("foo"); } catch err { println($`vector::init("foo") produces 
 # vector::init(null) produces the error "cannot convert value null to vector"
 # vector::init(123) produces the error "cannot convert value 123 to vector"
 # vector::init("foo") produces the error "cannot convert value \"foo\" to vector"
+# vector::init(new bad Map{}) produces the error "iterator next must receive self by reference (declared with function.&(self))"

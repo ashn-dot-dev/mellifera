@@ -346,6 +346,13 @@ println($`r after m was updated with r["foo"] = null is {r} and r.* is {r.*}`); 
 # Mellifera supports first-class functions, defined using the function keyword.
 function(a, b) { return a + b; };
 
+# A function declared with function.&() will expect its first parameter to be
+# passed by reference (relevant for method calls discussed later).
+let inc = function.&(obj) { obj.n = obj.n + 1; };
+let foo = {"n": 0}; # foo is {"n": 0}
+println($`foo is {foo}`);
+inc(foo.&);
+println($`foo after being passed to {inc} by reference is {foo}`); # foo after being passed to inc@[overview.mf, line XXX] by reference is {"n": 1}
 # Functions close over their environment.
 let n = 3;
 let addn = function(x) {
@@ -531,7 +538,7 @@ let fizzbuzzer = type extends iterator {
     .init = function(n, max) {
         return new fizzbuzzer {"n": n, "max": max};
     },
-    .next = function(self) {
+    .next = function.&(self) {
         let n = self.n;
         if n > self.max {
             error null; # error null signals end-of-iteration
@@ -842,7 +849,8 @@ println($`vec2.init is {vec2.init}`); # vec2.init is vec2::init@[overview.mf, li
 # However, there is one major difference between the :: operator and the .
 # operator: when invoking a function call on a function accessed using the .
 # operator, a reference to the value on the left hand side of the . operator is
-# implicitly passed to the invoked function.
+# implicitly passed to the invoked function if the function was defined to take
+# a self parameter by reference with the function.&() syntax.
 try {
     vec2.init(3, 4); # arguments passed to the init function are vec2.&, 3, and 4
 }
@@ -879,7 +887,7 @@ println($`v after v.push("foo") is {v}`); # v after v.push("foo") is [123, 456, 
 # `typeof` everywhere in order to actually get to the generic functions we want
 # to call.
 let print_count = function(value) {
-    let count = typeof(value)::count(value.&); # YUCK!!!
+    let count = typeof(value)::count(value); # YUCK!!!
     println($`{repr(value)} has an element count of {count}`);
 };
 print_count(["foo", "bar", "baz"]); # ["foo", "bar", "baz"] has an element count of 3
@@ -920,7 +928,7 @@ let count_by_threes = type extends iterator {
             .end = end,
         };
     },
-    .next = function(self) {
+    .next = function.&(self) {
         if self.cur >= self.end {
             error null; # error null signals end-of-iteration
         }

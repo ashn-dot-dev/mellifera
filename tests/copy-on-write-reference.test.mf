@@ -201,7 +201,7 @@ print("\n");
 
 # reference escaping from a function
 let T = type {
-    .ref = function(self) {
+    .ref = function.&(self) {
         return self;
     },
 };
@@ -216,7 +216,7 @@ print("\n");
 
 # reference captured by an enclosing function
 let T = type {
-    .fn = function(self) {
+    .fn = function.&(self) {
         return function() {
             self["abc"] = "bar";
         };

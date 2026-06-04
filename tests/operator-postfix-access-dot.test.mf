@@ -36,7 +36,7 @@ try { dumpln(x.fixed); } catch err { dumpln(err); }
 
 print("\n");
 
-let meta = type {"f": function(self, value) { self.*.value = value; }};
+let meta = type {"f": function.&(self, value) { self.*.value = value; }};
 let x = new meta Map{"value": "foo"};
 dumpln(x);
 x.f("bar");
@@ -45,7 +45,7 @@ dumpln(x);
 print("\n");
 
 # Implicit dereference testing.
-let meta = type {"f": function(self, value) { self.value = value; }};
+let meta = type {"f": function.&(self, value) { self.value = value; }};
 let x = new meta Map{"value": "foo"};
 let y = x.&;
 dumpln(x);

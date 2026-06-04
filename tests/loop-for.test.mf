@@ -107,7 +107,7 @@ let fizzbuzzer = type {
     "init": function(n, max) {
         return new fizzbuzzer {"n": n, "max": max};
     },
-    "next": function(self) {
+    "next": function.&(self) {
         let n = self.*.n;
         if n > self.*.max {
             error null;
@@ -189,7 +189,7 @@ let T = type extends iterator {
     .init = function(end) {
         return new T {"i": 0, "end": end};
     },
-    .next = function(self) {
+    .next = function.&(self) {
         let i = self.i;
         if i >= self.end {
             error null;

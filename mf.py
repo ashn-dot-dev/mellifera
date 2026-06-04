@@ -10,6 +10,7 @@ from types import ModuleType
 from typing import (
     Any,
     Callable,
+    ClassVar,
     Iterable,
     Optional,
     SupportsFloat,
@@ -1055,12 +1056,24 @@ class Reference(Value):
 
     @staticmethod
     def new(data: Value) -> "Reference":
+        Reference.mark_referenced(data)
         return Reference(data, _REFERENCE_META)
 
+    # Increment the underlying shared data held by this value to signal that an
+    # additional holds an access path to that data through a reference.
     @staticmethod
     def mark_referenced(value: Value) -> None:
         if isinstance(value, (Vector, Map, Set)):
             value.data.refs += 1
+
+    # Decrement the underlying shared data held by this value. This operation
+    # is only valid when it is known that the referenced value was previously
+    # marked with mark_referenced() and actual reference to that value is
+    # *guaranteed* to be non-escaping.
+    @staticmethod
+    def unmark_referenced(value: Value) -> None:
+        if isinstance(value, (Vector, Map, Set)):
+            value.data.refs -= 1
 
     def __hash__(self):
         return hash(id(self.data))
@@ -1142,6 +1155,10 @@ class Function(Value):
 @dataclass
 class Builtin(Value):
     meta: Optional["Map"] = None
+    # Whether the builtin takes an implicit `self` argument by reference. When
+    # True, the `self` argument *must* not escap, as the Mellifera runtime
+    # treats the self reference as temporary.
+    self_by_reference: ClassVar[bool] = False
 
     def __post_init__(self):
         if self.meta is None:
@@ -1220,9 +1237,13 @@ class Builtin(Value):
             # checking purposes, as the difference between these types is
             # opaque to the end-user.
             return (argument, argument.data)  # type: ignore
-        if not (isinstance(argument, Reference) and isinstance(argument.data, ty)):
+        if not isinstance(argument, Reference):
             raise Exception(
                 f"expected reference to {ty.typename()} value for argument {index}, received {typename(argument)}"
+            )
+        if not isinstance(argument.data, ty):
+            raise Exception(
+                f"expected reference to {ty.typename()} value for argument {index}, received reference to {typename(argument.data)}"
             )
         return (argument, argument.data)
 
@@ -2271,7 +2292,11 @@ class AstExpressionTemplate(AstExpression):
                 return result
             metafunction = result.metafunction(CONST_STRING_INTO_STRING)
             if metafunction is not None:
-                result = call(element.location, metafunction, [Reference.new(result)])
+                result = call(
+                    element.location,
+                    metafunction,
+                    [callable_self_argument(result, metafunction)],
+                )
                 if isinstance(result, Error):
                     return result
                 if not isinstance(result, String):
@@ -2529,6 +2554,7 @@ class AstExpressionFunction(AstExpression):
     parameters: list[AstIdentifier]
     body: "AstBlock"
     name: Optional[String] = None
+    self_by_reference: bool = False
 
     def into_value(self) -> Value:
         return Map.new(
@@ -2542,6 +2568,7 @@ class AstExpressionFunction(AstExpression):
                 ),
                 String.new("body"): self.body.into_value(),
                 String.new("name"): copy(self.name) if self.name is not None else null,
+                String.new("self_by_reference"): Boolean.new(self.self_by_reference),
             }
         )
 
@@ -3373,13 +3400,22 @@ class AstExpressionFunctionCall(AstExpression):
 
     def eval(self, env: Environment) -> Union[Value, Error]:
         self_argument: Optional[Value] = None
+        # Values whose mark must be released after a by-reference builtin call
+        # (the borrowed self reference does not escape; see below).
+        releases: list[Value] = list()
         if isinstance(self.function, AstExpressionAccessDot):
             # Special case when dot access is used for a function call. An
-            # implicit `self` argument is passed by reference to the function.
-            store = eval_lvalue(self.function.store, env, True)
+            # implicit `self` argument is passed to the function, either by
+            # value or by reference, depending on whether the function was
+            # declared with:
+            #
+            #   function(self) { ... }   # pass by value
+            #   function.&(self) { ... } # pass by reference
+            chain: list[Value] = []
+            store = eval_lvalue(self.function.store, env, chain)
             if isinstance(store, Error):
                 return store
-            self_argument = Reference.new(store)
+            store_is_self_reference = False
             # When making a function call using dot access syntax, perform
             # function lookup using the value's metamap *before* looking at the
             # fields of the value itself. This is done so that expressions such
@@ -3409,7 +3445,7 @@ class AstExpressionFunctionCall(AstExpression):
                     and isinstance(store, Reference)
                     and store.data.meta is not None
                 ):
-                    self_argument = store
+                    store_is_self_reference = True
                     function = store.data.meta[self.function.field.name]
             except (NotImplementedError, IndexError, KeyError):
                 function = None
@@ -3418,6 +3454,47 @@ class AstExpressionFunctionCall(AstExpression):
                     self.location,
                     f"invalid method access with name {self.function.field.name}",
                 )
+
+            # Construct the implicit `self` argument, which is either going to
+            # be the lhs store by copy (value -> pass by value), the lhs store
+            # by new reference (value.& -> pass by reference), the dereferenced
+            # lhs store by copy (value.* -> pass by value), or a passthrough of
+            # the existing reference (pass by reference).
+            if callable_self_is_passed_by_reference(function):
+                self_is_builtin = isinstance(function, Builtin)
+
+                if self_is_builtin and not store_is_self_reference:
+                    # Perform a copy-on-write operation ahead of the call so
+                    # that the temporary self reference is guaranteed to
+                    # reference unique data.
+                    store.cow()
+
+                for value in chain:
+                    Reference.mark_referenced(value)
+                if store_is_self_reference:
+                    # Reference passthrough (auto-deref)
+                    self_argument = store
+                else:
+                    # value.& -> pass by reference
+                    self_argument = Reference.new(store)
+
+                # Builtins created with self_by_reference=True allow for an
+                # explicit optimization where the `self` reference can be
+                # treated as a non-escaping temporary, allowing marked values
+                # in the access chain to be unmarked after the built-in
+                # function returns.
+                if self_is_builtin:
+                    releases = list(chain)
+                    if not store_is_self_reference:
+                        releases.append(store)
+            else:
+                if store_is_self_reference:
+                    # value.* -> pass by value (auto-deref)
+                    assert isinstance(store, Reference)
+                    self_argument = copy(store.data)
+                else:
+                    # value -> pass by value
+                    self_argument = copy(store)
         else:
             result = self.function.eval(env)
             if isinstance(result, Error):
@@ -3427,12 +3504,16 @@ class AstExpressionFunctionCall(AstExpression):
         arguments: list[Value] = list()
         if self_argument is not None:
             arguments.append(self_argument)
-        for argument in self.arguments:
-            result = argument.eval(env)
-            if isinstance(result, Error):
-                return result
-            arguments.append(copy(result))
-        return call(self.location, function, arguments)
+        try:
+            for argument in self.arguments:
+                result = argument.eval(env)
+                if isinstance(result, Error):
+                    return result
+                arguments.append(copy(result))
+            return call(self.location, function, arguments)
+        finally:
+            for value in releases:
+                Reference.unmark_referenced(value)
 
 
 @final
@@ -3644,9 +3725,12 @@ class AstExpressionMkref(AstExpression):
         )
 
     def eval(self, env: Environment) -> Union[Value, Error]:
-        result = eval_lvalue(self.lhs, env, True)
+        chain: list[Value] = []
+        result = eval_lvalue(self.lhs, env, chain)
         if isinstance(result, Error):
             return result
+        for value in chain:
+            Reference.mark_referenced(value)
         return Reference.new(result)
 
 
@@ -3872,6 +3956,11 @@ class AstStatementFor(AstStatement):
                 return Error(
                     self.location,
                     f"cannot use a key-reference over iterator {quote(typename(collection))}",
+                )
+            if not callable_self_is_passed_by_reference(metafunction):
+                return Error(
+                    self.location,
+                    "iterator next must receive self by reference (declared with function.&(self))",
                 )
             reference = Reference.new(collection)
             while True:
@@ -4141,7 +4230,7 @@ class AstStatementError(AstStatement):
         result = self.expression.eval(env)
         if isinstance(result, Error):
             return result
-        return Error(self.location, result)
+        return Error(self.location, copy(result))
 
 
 @final
@@ -4171,7 +4260,7 @@ class AstStatementReturn(AstStatement):
         result = self.expression.eval(env)
         if isinstance(result, Error):
             return result
-        return Return(result)
+        return Return(copy(result))
 
 
 # The eval_lvalue() function is similar to the eval() method associated with
@@ -4182,22 +4271,19 @@ class AstStatementReturn(AstStatement):
 # access operation, so that modification of nested values will not mutate
 # shared objects pointed to by semantically separate values.
 #
-# If the mark_ref argument is true, then Referece.mark_referenced() will be
-# invoked on each inner store value as a means to recursively mark each value
-# in an access expression chain as referenced. This ensures that no two
-# semantically separate values can accidentally share underlying data through a
-# reference.
+# If `chain` is not None, then each value in the post-copy-on-write access
+# chain to the evaluated value will be recorded by appending to `chain`.
 def eval_lvalue(
-    expr: AstExpression, env: Environment, mark_ref: bool = False
+    expr: AstExpression, env: Environment, chain: Optional[list[Value]] = None
 ) -> Union[Value, Error]:
     field: Value
     if isinstance(expr, AstExpressionAccessIndex):
-        inner_store = eval_lvalue(expr.store, env, mark_ref)
+        inner_store = eval_lvalue(expr.store, env, chain)
         if isinstance(inner_store, Error):
             return inner_store
         inner_store.cow()
-        if mark_ref:
-            Reference.mark_referenced(inner_store)
+        if chain is not None:
+            chain.append(inner_store)
 
         field_eval = expr.field.eval(env)
         if isinstance(field_eval, Error):
@@ -4232,8 +4318,8 @@ def eval_lvalue(
         if isinstance(inner_store, Reference):
             store_deref = inner_store.data
             store_deref.cow()
-            if mark_ref:
-                Reference.mark_referenced(store_deref)
+            if chain is not None:
+                chain.append(store_deref)
             if isinstance(store_deref, Vector):
                 return access_vector(store_deref)
             if isinstance(store_deref, Map):
@@ -4249,12 +4335,12 @@ def eval_lvalue(
         )
 
     if isinstance(expr, AstExpressionAccessScope):
-        inner_store = eval_lvalue(expr.store, env, mark_ref)
+        inner_store = eval_lvalue(expr.store, env, chain)
         if isinstance(inner_store, Error):
             return inner_store
         inner_store.cow()
-        if mark_ref:
-            Reference.mark_referenced(inner_store)
+        if chain is not None:
+            chain.append(inner_store)
         field = expr.field.name
 
         def access_map(store: Map):
@@ -4268,8 +4354,8 @@ def eval_lvalue(
         if isinstance(inner_store, Reference):
             store_deref = inner_store.data
             store_deref.cow()
-            if mark_ref:
-                Reference.mark_referenced(store_deref)
+            if chain is not None:
+                chain.append(store_deref)
             if isinstance(store_deref, Map):
                 return access_map(store_deref)
             return Error(
@@ -4283,12 +4369,12 @@ def eval_lvalue(
         )
 
     if isinstance(expr, AstExpressionAccessDot):
-        inner_store = eval_lvalue(expr.store, env, mark_ref)
+        inner_store = eval_lvalue(expr.store, env, chain)
         if isinstance(inner_store, Error):
             return inner_store
         inner_store.cow()
-        if mark_ref:
-            Reference.mark_referenced(inner_store)
+        if chain is not None:
+            chain.append(inner_store)
 
         field = expr.field.name
 
@@ -4303,8 +4389,8 @@ def eval_lvalue(
         if isinstance(inner_store, Reference):
             store_deref = inner_store.data
             store_deref.cow()
-            if mark_ref:
-                Reference.mark_referenced(store_deref)
+            if chain is not None:
+                chain.append(store_deref)
             if isinstance(store_deref, Map):
                 return access_map(store_deref)
             return Error(
@@ -4781,6 +4867,10 @@ class Parser:
 
     def parse_expression_function(self) -> AstExpressionFunction:
         location = self._expect_current(TokenKind.FUNCTION).location
+        self_by_reference = False
+        if self._check_current(TokenKind.MKREF):
+            self._advance_token()
+            self_by_reference = True
         self._expect_current(TokenKind.LPAREN)
         parameters: list[AstIdentifier] = list()
         while not self._check_current(TokenKind.RPAREN):
@@ -4796,7 +4886,14 @@ class Parser:
                         parameters[j].location,
                         f"duplicate function parameter {quote(parameters[i].name.runes)}",
                     )
-        return AstExpressionFunction(location, parameters, body)
+        if self_by_reference and len(parameters) == 0:
+            raise ParseError(
+                location,
+                "function takes self by reference, but has no parameters",
+            )
+        return AstExpressionFunction(
+            location, parameters, body, None, self_by_reference
+        )
 
     def parse_expression_grouped(self) -> AstExpressionGrouped:
         location = self._expect_current(TokenKind.LPAREN).location
@@ -5174,11 +5271,43 @@ class Parser:
         )
 
 
+# Reports whether a callable's implicit `self` argument is passed by reference
+# in a function call with a dot access expression as the left hand side of that
+# expression.
+#
+# function(self) { ... }   # pass by value
+# function.&(self) { ... } # pass by reference
+def callable_self_is_passed_by_reference(function: Value) -> bool:
+    if isinstance(function, Function):
+        return function.ast.self_by_reference
+    if isinstance(function, Builtin):
+        return function.self_by_reference
+    return False
+
+
+# Returns a callable's implicit `self` argument in a function call with a dot
+# access expression as the left hand side of that expression.
+#
+# function(self) { ... }   # self argument is a value
+# function.&(self) { ... } # self argument is a reference
+def callable_self_argument(store: Value, function: Value) -> Value:
+    if callable_self_is_passed_by_reference(function):
+        return Reference.new(store)
+    return copy(store)
+
+
 def call(
     location: Optional[SourceLocation],
     callable: Value,
     arguments: list[Value],
 ) -> Union[Value, Error]:
+    if len(arguments) > 0 and callable_self_is_passed_by_reference(callable):
+        if not isinstance(arguments[0], Reference):
+            return Error(
+                location,
+                f"invalid function self argument (expected reference, received {typename(arguments[0])})",
+            )
+
     if isinstance(callable, Function):
         if len(arguments) != len(callable.ast.parameters):
             return Error(
@@ -5242,7 +5371,7 @@ def ReferenceTo(type: Type[Value]) -> ReferenceType:
 # def builtin_vector_slice(
 #     self: Reference, vector: Vector, bgn: Number, end: Number
 # ) -> Union[Value, Error]: ...
-def builtin(nameof: str, args: Optional[list] = None):
+def builtin(nameof: str, args: Optional[list] = None, self_by_reference: bool = False):
     def decorator(func: Callable) -> Type[Builtin]:
         class GeneratedBuiltin(Builtin):
             name = nameof
@@ -5270,6 +5399,7 @@ def builtin(nameof: str, args: Optional[list] = None):
                 return func(*processed_args)
 
         GeneratedBuiltin.__name__ = f"Builtin_{func.__name__}"
+        GeneratedBuiltin.self_by_reference = self_by_reference
         return GeneratedBuiltin
 
     return decorator
@@ -5361,25 +5491,23 @@ def builtin_number_init(value: Value) -> Union[Value, Error]:
     return Error(None, f"cannot convert value {value} to number")
 
 
-@builtin("number::is_nan", [ReferenceTo(Number)])
-def builtin_number_is_nan(self: Reference, number: Number) -> Union[Value, Error]:
+@builtin("number::is_nan", [Number])
+def builtin_number_is_nan(number: Number) -> Union[Value, Error]:
     return Boolean.new(math.isnan(number.data))
 
 
-@builtin("number::is_inf", [ReferenceTo(Number)])
-def builtin_number_is_inf(self: Reference, number: Number) -> Union[Value, Error]:
+@builtin("number::is_inf", [Number])
+def builtin_number_is_inf(number: Number) -> Union[Value, Error]:
     return Boolean.new(math.isinf(number.data))
 
 
-@builtin("number::is_integer", [ReferenceTo(Number)])
-def builtin_number_is_integer(self: Reference, number: Number) -> Union[Value, Error]:
+@builtin("number::is_integer", [Number])
+def builtin_number_is_integer(number: Number) -> Union[Value, Error]:
     return Boolean.new(float(number.data).is_integer())
 
 
-@builtin("number::fixed", [ReferenceTo(Number), Number])
-def builtin_number_fixed(
-    self: Reference, number: Number, precision: Number
-) -> Union[Value, Error]:
+@builtin("number::fixed", [Number, Number])
+def builtin_number_fixed(number: Number, precision: Number) -> Union[Value, Error]:
     try:
         precision_integer = precision.as_safe_integer()
     except Exception as e:
@@ -5389,29 +5517,29 @@ def builtin_number_fixed(
     return Number.new(round(float(number.data), ndigits=precision_integer))
 
 
-@builtin("number::trunc", [ReferenceTo(Number)])
-def builtin_number_trunc(self: Reference, number: Number) -> Union[Value, Error]:
+@builtin("number::trunc", [Number])
+def builtin_number_trunc(number: Number) -> Union[Value, Error]:
     if math.isnan(number.data) or math.isinf(number.data):
         return copy(number)
     return Number.new(math.trunc(float(number.data)))
 
 
-@builtin("number::round", [ReferenceTo(Number)])
-def builtin_number_round(self: Reference, number: Number) -> Union[Value, Error]:
+@builtin("number::round", [Number])
+def builtin_number_round(number: Number) -> Union[Value, Error]:
     if math.isnan(number.data) or math.isinf(number.data):
         return copy(number)
     return Number.new(round(float(number.data)))
 
 
-@builtin("number::floor", [ReferenceTo(Number)])
-def builtin_number_floor(self: Reference, number: Number) -> Union[Value, Error]:
+@builtin("number::floor", [Number])
+def builtin_number_floor(number: Number) -> Union[Value, Error]:
     if math.isnan(number.data) or math.isinf(number.data):
         return copy(number)
     return Number.new(math.floor(float(number.data)))
 
 
-@builtin("number::ceil", [ReferenceTo(Number)])
-def builtin_number_ceil(self: Reference, number: Number) -> Union[Value, Error]:
+@builtin("number::ceil", [Number])
+def builtin_number_ceil(number: Number) -> Union[Value, Error]:
     if math.isnan(number.data) or math.isinf(number.data):
         return copy(number)
     return Number.new(math.ceil(float(number.data)))
@@ -5421,7 +5549,7 @@ def builtin_number_ceil(self: Reference, number: Number) -> Union[Value, Error]:
 def builtin_string_init(value: Value) -> Union[Value, Error]:
     metafunction = value.metafunction(CONST_STRING_INTO_STRING)
     if metafunction is not None:
-        result = call(None, metafunction, [Reference.new(value)])
+        result = call(None, metafunction, [callable_self_argument(value, metafunction)])
         if isinstance(result, Error):
             return result
         if not isinstance(result, String):
@@ -5435,75 +5563,65 @@ def builtin_string_init(value: Value) -> Union[Value, Error]:
     return String.new(str(value))
 
 
-@builtin("string::bytes", [ReferenceTo(String)])
-def builtin_string_bytes(self: Reference, string: String) -> Union[Value, Error]:
+@builtin("string::bytes", [String])
+def builtin_string_bytes(string: String) -> Union[Value, Error]:
     return Vector.new([String.new(bytes([byte])) for byte in string.bytes])
 
 
-@builtin("string::runes", [ReferenceTo(String)])
-def builtin_string_runes(self: Reference, string: String) -> Union[Value, Error]:
+@builtin("string::runes", [String])
+def builtin_string_runes(string: String) -> Union[Value, Error]:
     return Vector.new([String.new(rune) for rune in string.runes])
 
 
-@builtin("string::count", [ReferenceTo(String)])
-def builtin_string_count(self: Reference, string: String) -> Union[Value, Error]:
+@builtin("string::count", [String])
+def builtin_string_count(string: String) -> Union[Value, Error]:
     return Number.new(len(string.bytes))
 
 
-@builtin("string::is_empty", [ReferenceTo(String)])
-def builtin_string_is_empty(self: Reference, string: String) -> Union[Value, Error]:
+@builtin("string::is_empty", [String])
+def builtin_string_is_empty(string: String) -> Union[Value, Error]:
     return Boolean.new(len(string.bytes) == 0)
 
 
-@builtin("string::contains", [ReferenceTo(String), String])
-def builtin_string_contains(
-    self: Reference, string: String, target: String
-) -> Union[Value, Error]:
+@builtin("string::contains", [String, String])
+def builtin_string_contains(string: String, target: String) -> Union[Value, Error]:
     return Boolean.new(target.bytes in string.bytes)
 
 
-@builtin("string::starts_with", [ReferenceTo(String), String])
-def builtin_string_starts_with(
-    self: Reference, string: String, target: String
-) -> Union[Value, Error]:
+@builtin("string::starts_with", [String, String])
+def builtin_string_starts_with(string: String, target: String) -> Union[Value, Error]:
     return Boolean.new(string.bytes.startswith(target.bytes))
 
 
-@builtin("string::ends_with", [ReferenceTo(String), String])
-def builtin_string_ends_with(
-    self: Reference, string: String, target: String
-) -> Union[Value, Error]:
+@builtin("string::ends_with", [String, String])
+def builtin_string_ends_with(string: String, target: String) -> Union[Value, Error]:
     return Boolean.new(string.bytes.endswith(target.bytes))
 
 
-@builtin("string::trim", [ReferenceTo(String)])
-def builtin_string_trim(self: Reference, string: String) -> Union[Value, Error]:
+@builtin("string::trim", [String])
+def builtin_string_trim(string: String) -> Union[Value, Error]:
     return String.new(string.bytes.strip())
 
 
-@builtin("string::find", [ReferenceTo(String), String])
-def builtin_string_find(
-    self: Reference, string: String, target: String
-) -> Union[Value, Error]:
+@builtin("string::find", [String, String])
+def builtin_string_find(string: String, target: String) -> Union[Value, Error]:
     found = string.bytes.find(target.bytes)
     if found == -1:
         return null
     return Number.new(found)
 
 
-@builtin("string::rfind", [ReferenceTo(String), String])
-def builtin_string_rfind(
-    self: Reference, string: String, target: String
-) -> Union[Value, Error]:
+@builtin("string::rfind", [String, String])
+def builtin_string_rfind(string: String, target: String) -> Union[Value, Error]:
     found = string.bytes.rfind(target.bytes)
     if found == -1:
         return null
     return Number.new(found)
 
 
-@builtin("string::slice", [ReferenceTo(String), Number, Number])
+@builtin("string::slice", [String, Number, Number])
 def builtin_string_slice(
-    self: Reference, string: String, bgn: Number, end: Number
+    string: String, bgn: Number, end: Number
 ) -> Union[Value, Error]:
     try:
         bgn_index = bgn.as_index()
@@ -5538,20 +5656,16 @@ def builtin_string_slice(
     return String.new(string.bytes[bgn_index:end_index])
 
 
-@builtin("string::split", [ReferenceTo(String), String])
-def builtin_string_split(
-    self: Reference, string: String, target: String
-) -> Union[Value, Error]:
+@builtin("string::split", [String, String])
+def builtin_string_split(string: String, target: String) -> Union[Value, Error]:
     if len(target.bytes) == 0:
         return Vector.new([String.new(r) for r in string.runes])
     split = string.bytes.split(target.bytes)
     return Vector.new([String.new(x) for x in split])
 
 
-@builtin("string::join", [ReferenceTo(String), Vector])
-def builtin_string_join(
-    self: Reference, string: String, vector: Vector
-) -> Union[Value, Error]:
+@builtin("string::join", [String, Vector])
+def builtin_string_join(string: String, vector: Vector) -> Union[Value, Error]:
     data = bytes()
     for index, value in enumerate(vector.data):
         if not isinstance(value, String):
@@ -5565,10 +5679,8 @@ def builtin_string_join(
     return String.new(data)
 
 
-@builtin("string::cut", [ReferenceTo(String), String])
-def builtin_string_cut(
-    self: Reference, string: String, target: String
-) -> Union[Value, Error]:
+@builtin("string::cut", [String, String])
+def builtin_string_cut(string: String, target: String) -> Union[Value, Error]:
     found = string.bytes.find(target.bytes)
     if found == -1:
         return null
@@ -5582,25 +5694,25 @@ def builtin_string_cut(
     )
 
 
-@builtin("string::replace", [ReferenceTo(String), String, String])
+@builtin("string::replace", [String, String, String])
 def builtin_string_replace(
-    self: Reference, string: String, target: String, replacement: String
+    string: String, target: String, replacement: String
 ) -> Union[Value, Error]:
     return String.new(string.bytes.replace(target.bytes, replacement.bytes))
 
 
-@builtin("string::to_title", [ReferenceTo(String)])
-def builtin_string_to_title(self: Reference, string: String) -> Union[Value, Error]:
+@builtin("string::to_title", [String])
+def builtin_string_to_title(string: String) -> Union[Value, Error]:
     return String.new(string.runes.title())
 
 
-@builtin("string::to_upper", [ReferenceTo(String)])
-def builtin_string_to_upper(self: Reference, string: String) -> Union[Value, Error]:
+@builtin("string::to_upper", [String])
+def builtin_string_to_upper(string: String) -> Union[Value, Error]:
     return String.new(string.runes.upper())
 
 
-@builtin("string::to_lower", [ReferenceTo(String)])
-def builtin_string_to_lower(self: Reference, string: String) -> Union[Value, Error]:
+@builtin("string::to_lower", [String])
+def builtin_string_to_lower(string: String) -> Union[Value, Error]:
     return String.new(string.runes.lower())
 
 
@@ -5609,16 +5721,14 @@ def builtin_regexp_init(string: String) -> Union[Value, Error]:
     return Regexp.new(string.bytes)
 
 
-@builtin("regexp::split", [ReferenceTo(Regexp), String])
-def builtin_regexp_split(
-    self: Reference, regexp: Regexp, text: String
-) -> Union[Value, Error]:
+@builtin("regexp::split", [Regexp, String])
+def builtin_regexp_split(regexp: Regexp, text: String) -> Union[Value, Error]:
     return Vector.new([String.new(x) for x in regexp.pattern.split(text.bytes)])
 
 
-@builtin("regexp::replace", [ReferenceTo(Regexp), String, String])
+@builtin("regexp::replace", [Regexp, String, String])
 def builtin_regexp_replace(
-    self: Reference, regexp: Regexp, text: String, replacement: String
+    regexp: Regexp, text: String, replacement: String
 ) -> Union[Value, Error]:
     return String.new(regexp.pattern.sub(replacement.bytes, text.bytes))
 
@@ -5626,6 +5736,11 @@ def builtin_regexp_replace(
 @builtin("vector::init", [Value])
 def builtin_vector_init(value: Value) -> Union[Value, Error]:
     if metafunction := value.metafunction(CONST_STRING_NEXT):
+        if not callable_self_is_passed_by_reference(metafunction):
+            return Error(
+                None,
+                "iterator next must receive self by reference (declared with function.&(self))",
+            )
         reference = Reference.new(value)
         elements: list[Value] = list()
         while True:
@@ -5647,27 +5762,23 @@ def builtin_vector_init(value: Value) -> Union[Value, Error]:
     return Error(None, f"cannot convert value {value} to vector")
 
 
-@builtin("vector::count", [ReferenceTo(Vector)])
-def builtin_vector_count(self: Reference, vector: Vector) -> Union[Value, Error]:
+@builtin("vector::count", [Vector])
+def builtin_vector_count(vector: Vector) -> Union[Value, Error]:
     return Number.new(len(vector.data))
 
 
-@builtin("vector::is_empty", [ReferenceTo(Vector)])
-def builtin_vector_is_empty(self: Reference, vector: Vector) -> Union[Value, Error]:
+@builtin("vector::is_empty", [Vector])
+def builtin_vector_is_empty(vector: Vector) -> Union[Value, Error]:
     return Boolean.new(len(vector.data) == 0)
 
 
-@builtin("vector::contains", [ReferenceTo(Vector), Value])
-def builtin_vector_contains(
-    self: Reference, vector: Vector, target: Value
-) -> Union[Value, Error]:
+@builtin("vector::contains", [Vector, Value])
+def builtin_vector_contains(vector: Vector, target: Value) -> Union[Value, Error]:
     return Boolean.new(target in vector)
 
 
-@builtin("vector::any", [ReferenceTo(Vector), Function])
-def builtin_vector_any(
-    self: Reference, vector: Vector, function: Function
-) -> Union[Value, Error]:
+@builtin("vector::any", [Vector, Function])
+def builtin_vector_any(vector: Vector, function: Function) -> Union[Value, Error]:
     for element in vector.data:
         result = call(None, function, [copy(element)])
         if isinstance(result, Error):
@@ -5682,10 +5793,8 @@ def builtin_vector_any(
     return Boolean.new(False)
 
 
-@builtin("vector::all", [ReferenceTo(Vector), Function])
-def builtin_vector_all(
-    self: Reference, vector: Vector, function: Function
-) -> Union[Value, Error]:
+@builtin("vector::all", [Vector, Function])
+def builtin_vector_all(vector: Vector, function: Function) -> Union[Value, Error]:
     for element in vector.data:
         result = call(None, function, [copy(element)])
         if isinstance(result, Error):
@@ -5700,10 +5809,8 @@ def builtin_vector_all(
     return Boolean.new(True)
 
 
-@builtin("vector::map", [ReferenceTo(Vector), Function])
-def builtin_vector_map(
-    self: Reference, vector: Vector, function: Function
-) -> Union[Value, Error]:
+@builtin("vector::map", [Vector, Function])
+def builtin_vector_map(vector: Vector, function: Function) -> Union[Value, Error]:
     mapped = []
     for element in vector.data:
         result = call(None, function, [copy(element)])
@@ -5713,10 +5820,8 @@ def builtin_vector_map(
     return Vector.new(mapped)
 
 
-@builtin("vector::filter", [ReferenceTo(Vector), Function])
-def builtin_vector_filter(
-    self: Reference, vector: Vector, function: Function
-) -> Union[Value, Error]:
+@builtin("vector::filter", [Vector, Function])
+def builtin_vector_filter(vector: Vector, function: Function) -> Union[Value, Error]:
     filtered = []
     for element in vector.data:
         result = call(None, function, [copy(element)])
@@ -5732,27 +5837,23 @@ def builtin_vector_filter(
     return Vector.new(filtered)
 
 
-@builtin("vector::find", [ReferenceTo(Vector), Value])
-def builtin_vector_find(
-    self: Reference, vector: Vector, target: Value
-) -> Union[Value, Error]:
+@builtin("vector::find", [Vector, Value])
+def builtin_vector_find(vector: Vector, target: Value) -> Union[Value, Error]:
     for index, value in enumerate(vector.data):
         if value == target:
             return Number.new(index)
     return null
 
 
-@builtin("vector::rfind", [ReferenceTo(Vector), Value])
-def builtin_vector_rfind(
-    self: Reference, vector: Vector, target: Value
-) -> Union[Value, Error]:
+@builtin("vector::rfind", [Vector, Value])
+def builtin_vector_rfind(vector: Vector, target: Value) -> Union[Value, Error]:
     for index, value in reversed(list(enumerate(vector.data))):
         if value == target:
             return Number.new(index)
     return null
 
 
-@builtin("vector::push", [ReferenceTo(Vector), Value])
+@builtin("vector::push", [ReferenceTo(Vector), Value], self_by_reference=True)
 def builtin_vector_push(
     self: Reference, vector: Vector, value: Value
 ) -> Union[Value, Error]:
@@ -5763,7 +5864,7 @@ def builtin_vector_push(
     return null
 
 
-@builtin("vector::pop", [ReferenceTo(Vector)])
+@builtin("vector::pop", [ReferenceTo(Vector)], self_by_reference=True)
 def builtin_vector_pop(self: Reference, vector: Vector) -> Union[Value, Error]:
     if len(vector.data) == 0:
         return Error(None, "attempted vector::pop on an empty vector")
@@ -5773,7 +5874,7 @@ def builtin_vector_pop(self: Reference, vector: Vector) -> Union[Value, Error]:
         return Error(None, f"invalid vector::pop operation ({e})")
 
 
-@builtin("vector::insert", [ReferenceTo(Vector), Number, Value])
+@builtin("vector::insert", [ReferenceTo(Vector), Number, Value], self_by_reference=True)
 def builtin_vector_insert(
     self: Reference, vector: Vector, index: Number, value: Value
 ) -> Union[Value, Error]:
@@ -5795,7 +5896,7 @@ def builtin_vector_insert(
     return null
 
 
-@builtin("vector::remove", [ReferenceTo(Vector), Number])
+@builtin("vector::remove", [ReferenceTo(Vector), Number], self_by_reference=True)
 def builtin_vector_remove(
     self: Reference, vector: Vector, index: Number
 ) -> Union[Value, Error]:
@@ -5816,9 +5917,9 @@ def builtin_vector_remove(
         return Error(None, f"invalid vector::remove operation ({str(e)})")
 
 
-@builtin("vector::slice", [ReferenceTo(Vector), Number, Number])
+@builtin("vector::slice", [Vector, Number, Number])
 def builtin_vector_slice(
-    self: Reference, vector: Vector, bgn: Number, end: Number
+    vector: Vector, bgn: Number, end: Number
 ) -> Union[Value, Error]:
     try:
         bgn_index = bgn.as_index()
@@ -5856,8 +5957,8 @@ def builtin_vector_slice(
     return Vector.new(SharedVectorData(underlying[bgn_index:end_index]))
 
 
-@builtin("vector::reversed", [ReferenceTo(Vector)])
-def builtin_vector_reversed(self: Reference, vector: Vector) -> Union[Value, Error]:
+@builtin("vector::reversed", [Vector])
+def builtin_vector_reversed(vector: Vector) -> Union[Value, Error]:
     # Copy underlying data as the update will alter all Python objects
     # holding references to the underlying `SharedVectorData` object.
     underlying = copy(vector.data)
@@ -5905,13 +6006,10 @@ def builtin_vector_sorted():
         return result;
     };
     return function(self) {
-        if not ty::is_reference(self) {
-            error $"expected reference to vector value for argument 0, received {typename(self)}";
+        if not ty::is_vector(self) {
+            error $"expected vector value for argument 0, received {typename(self)}";
         }
-        if not ty::is_vector(self.*) {
-            error $"expected reference to vector value for argument 0, received reference to {typename(self.*)}";
-        }
-        try { return sort(self.*); } catch err { error err; }
+        try { return sort(self); } catch err { error err; }
     };
     """
 
@@ -5959,13 +6057,10 @@ def builtin_vector_sorted_by():
         return result;
     };
     return function(self, compare) {
-        if not ty::is_reference(self) {
-            error $"expected reference to vector value for argument 0, received {typename(self)}";
+        if not ty::is_vector(self) {
+            error $"expected vector value for argument 0, received {typename(self)}";
         }
-        if not ty::is_vector(self.*) {
-            error $"expected reference to vector value for argument 0, received reference to {typename(self.*)}";
-        }
-        try { return sort(self.*, compare); } catch err { error err; }
+        try { return sort(self, compare); } catch err { error err; }
     };
     """
 
@@ -5975,7 +6070,7 @@ def builtin_vector_into_iterator():
     return """
     return function(self) {
         let vector_iterator = type extends iterator {
-            .next = function(self) {
+            .next = function.&(self) {
                 if self.index >= self.vector.*.count() {
                     return iterator::eoi();
                 }
@@ -5985,31 +6080,29 @@ def builtin_vector_into_iterator():
             },
         };
         return new vector_iterator {
-            .vector = self,
+            .vector = self.&,
             .index = 0,
         };
     };
     """
 
 
-@builtin("map::count", [ReferenceTo(Map)])
-def builtin_map_count(self: Reference, map: Map) -> Union[Value, Error]:
+@builtin("map::count", [Map])
+def builtin_map_count(map: Map) -> Union[Value, Error]:
     return Number.new(len(map.data))
 
 
-@builtin("map::is_empty", [ReferenceTo(Map)])
-def builtin_map_is_empty(self: Reference, map: Map) -> Union[Value, Error]:
+@builtin("map::is_empty", [Map])
+def builtin_map_is_empty(map: Map) -> Union[Value, Error]:
     return Boolean.new(len(map.data) == 0)
 
 
-@builtin("map::contains", [ReferenceTo(Map), Value])
-def builtin_map_contains(
-    self: Reference, map: Map, target: Value
-) -> Union[Value, Error]:
+@builtin("map::contains", [Map, Value])
+def builtin_map_contains(map: Map, target: Value) -> Union[Value, Error]:
     return Boolean.new(target in map)
 
 
-@builtin("map::insert", [ReferenceTo(Map), Value, Value])
+@builtin("map::insert", [ReferenceTo(Map), Value, Value], self_by_reference=True)
 def builtin_map_insert(
     self: Reference, map: Map, k: Value, v: Value
 ) -> Union[Value, Error]:
@@ -6021,7 +6114,7 @@ def builtin_map_insert(
     return null
 
 
-@builtin("map::remove", [ReferenceTo(Map), Value])
+@builtin("map::remove", [ReferenceTo(Map), Value], self_by_reference=True)
 def builtin_map_remove(self: Reference, map: Map, k: Value) -> Union[Value, Error]:
     try:
         value = copy(map[k])
@@ -6036,18 +6129,18 @@ def builtin_map_remove(self: Reference, map: Map, k: Value) -> Union[Value, Erro
         return Error(None, f"invalid map::remove operation ({str(e)})")
 
 
-@builtin("map::keys", [ReferenceTo(Map)])
-def builtin_map_keys(self: Reference, map: Map) -> Union[Value, Error]:
+@builtin("map::keys", [Map])
+def builtin_map_keys(map: Map) -> Union[Value, Error]:
     return Vector.new([copy(k) for k in map.data.keys()])
 
 
-@builtin("map::values", [ReferenceTo(Map)])
-def builtin_map_values(self: Reference, map: Map) -> Union[Value, Error]:
+@builtin("map::values", [Map])
+def builtin_map_values(map: Map) -> Union[Value, Error]:
     return Vector.new([copy(v) for v in map.data.values()])
 
 
-@builtin("map::pairs", [ReferenceTo(Map)])
-def builtin_map_pairs(self: Reference, map: Map) -> Union[Value, Error]:
+@builtin("map::pairs", [Map])
+def builtin_map_pairs(map: Map) -> Union[Value, Error]:
     return Vector.new(
         [
             Map.new(
@@ -6065,7 +6158,6 @@ def builtin_map_pairs(self: Reference, map: Map) -> Union[Value, Error]:
 def builtin_map_union():
     return """
     return function(a, b) {
-        try { a = a.*; } catch { } # &map -> map
         if not ty::is_map(a) or not ty::is_map(b) {
             error $"attempted map::union of values {repr(a)} and {repr(b)}";
         }
@@ -6082,24 +6174,22 @@ def builtin_map_union():
     """
 
 
-@builtin("set::count", [ReferenceTo(Set)])
-def builtin_set_count(self: Reference, set: Set) -> Union[Value, Error]:
+@builtin("set::count", [Set])
+def builtin_set_count(set: Set) -> Union[Value, Error]:
     return Number.new(len(set.data))
 
 
-@builtin("set::is_empty", [ReferenceTo(Set)])
-def builtin_set_is_empty(self: Reference, set: Set) -> Union[Value, Error]:
+@builtin("set::is_empty", [Set])
+def builtin_set_is_empty(set: Set) -> Union[Value, Error]:
     return Boolean.new(len(set.data) == 0)
 
 
-@builtin("set::contains", [ReferenceTo(Set), Value])
-def builtin_set_contains(
-    self: Reference, set: Set, target: Value
-) -> Union[Value, Error]:
+@builtin("set::contains", [Set, Value])
+def builtin_set_contains(set: Set, target: Value) -> Union[Value, Error]:
     return Boolean.new(target in set)
 
 
-@builtin("set::insert", [ReferenceTo(Set), Value])
+@builtin("set::insert", [ReferenceTo(Set), Value], self_by_reference=True)
 def builtin_set_insert(
     self: Reference, set: Set, element: Value
 ) -> Union[Value, Error]:
@@ -6110,13 +6200,13 @@ def builtin_set_insert(
     return null
 
 
-@builtin("set::remove", [ReferenceTo(Set), Value])
+@builtin("set::remove", [ReferenceTo(Set), Value], self_by_reference=True)
 def builtin_set_remove(
     self: Reference, set: Set, element: Value
 ) -> Union[Value, Error]:
     try:
         set.remove(element)
-        return null
+        return copy(element)
     except KeyError:
         return Error(
             None,
@@ -6252,7 +6342,7 @@ def builtin_dumpln(value: Value) -> Union[Value, Error]:
 def builtin_print(value: Value) -> Union[Value, Error]:
     metafunction = value.metafunction(CONST_STRING_INTO_STRING)
     if metafunction is not None:
-        result = call(None, metafunction, [Reference.new(value)])
+        result = call(None, metafunction, [callable_self_argument(value, metafunction)])
         if isinstance(result, Error):
             return result
         if not isinstance(result, String):
@@ -6272,7 +6362,7 @@ def builtin_print(value: Value) -> Union[Value, Error]:
 def builtin_println(value: Value) -> Union[Value, Error]:
     metafunction = value.metafunction(CONST_STRING_INTO_STRING)
     if metafunction is not None:
-        result = call(None, metafunction, [Reference.new(value)])
+        result = call(None, metafunction, [callable_self_argument(value, metafunction)])
         if isinstance(result, Error):
             return result
         if not isinstance(result, String):
@@ -6292,7 +6382,7 @@ def builtin_println(value: Value) -> Union[Value, Error]:
 def builtin_eprint(value: Value) -> Union[Value, Error]:
     metafunction = value.metafunction(CONST_STRING_INTO_STRING)
     if metafunction is not None:
-        result = call(None, metafunction, [Reference.new(value)])
+        result = call(None, metafunction, [callable_self_argument(value, metafunction)])
         if isinstance(result, Error):
             return result
         if not isinstance(result, String):
@@ -6312,7 +6402,7 @@ def builtin_eprint(value: Value) -> Union[Value, Error]:
 def builtin_eprintln(value: Value) -> Union[Value, Error]:
     metafunction = value.metafunction(CONST_STRING_INTO_STRING)
     if metafunction is not None:
-        result = call(None, metafunction, [Reference.new(value)])
+        result = call(None, metafunction, [callable_self_argument(value, metafunction)])
         if isinstance(result, Error):
             return result
         if not isinstance(result, String):
@@ -6341,7 +6431,7 @@ def builtin_range():
                 .end = end,
             };
         },
-        "next": function(self) {
+        "next": function.&(self) {
             if self.cur >= self.end {
                 error null; # end-of-iteration
             }
@@ -7123,17 +7213,17 @@ let iterator = type {
     .eoi = function() {
         error null; # end-of-iteration
     },
-    .next = function(self) {
+    .next = function.&(self) {
         error "unimplemented iterator::next";
     },
-    .count = function(self) {
+    .count = function.&(self) {
         let count = 0;
         for _ in self.* {
             count = count + 1;
         }
         return count;
     },
-    .contains = function(self, value) {
+    .contains = function.&(self, value) {
         for x in self.* {
             if x == value {
                 return true;
@@ -7141,7 +7231,7 @@ let iterator = type {
         }
         return false;
     },
-    .any = function(self, func) {
+    .any = function.&(self, func) {
         for x in self.* {
             let result = func(x);
             if not ty::is_boolean(result) {
@@ -7153,7 +7243,7 @@ let iterator = type {
         }
         return false;
     },
-    .all = function(self, func) {
+    .all = function.&(self, func) {
         for x in self.* {
             let result = func(x);
             if not ty::is_boolean(result) {
@@ -7165,9 +7255,9 @@ let iterator = type {
         }
         return true;
     },
-    .map = function(self, func) {
+    .map = function.&(self, func) {
         let map_iterator = type extends iterator {
-            .next = function(self) {
+            .next = function.&(self) {
                 return func(self.base.next());
             },
         };
@@ -7175,9 +7265,9 @@ let iterator = type {
             .base = self,
         };
     },
-    .filter = function(self, func) {
+    .filter = function.&(self, func) {
         let filter_iterator = type extends iterator {
-            .next = function(self) {
+            .next = function.&(self) {
                 while true {
                     let current = self.base.next();
                     let result = func(current);
@@ -7194,7 +7284,7 @@ let iterator = type {
             .base = self,
         };
     },
-    .into_vector = function(self) {
+    .into_vector = function.&(self) {
         let result = [];
         for x in self.* {
             result.push(x);

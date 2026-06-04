@@ -251,7 +251,7 @@ func BuiltinJsIsFunction(ctx *mellifera.Context) *mellifera.Builtin {
 }
 
 func BuiltinJsValueGet(ctx *mellifera.Context) *mellifera.Builtin {
-	return ctx.NewBuiltin("js::value::get", []mellifera.Type{
+	return ctx.NewBuiltinWithSelfByReference("js::value::get", []mellifera.Type{
 		mellifera.TRef(mellifera.TVal(mellifera.EXTERNAL)),
 		mellifera.TVal(mellifera.STRING),
 	}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
@@ -274,7 +274,7 @@ func BuiltinJsValueGet(ctx *mellifera.Context) *mellifera.Builtin {
 }
 
 func BuiltinJsValueSet(ctx *mellifera.Context) *mellifera.Builtin {
-	return ctx.NewBuiltin("js::value::set", []mellifera.Type{
+	return ctx.NewBuiltinWithSelfByReference("js::value::set", []mellifera.Type{
 		mellifera.TRef(mellifera.TVal(mellifera.EXTERNAL)),
 		mellifera.TVal(mellifera.STRING),
 		mellifera.TVal(mellifera.EXTERNAL),
@@ -304,7 +304,7 @@ func BuiltinJsValueSet(ctx *mellifera.Context) *mellifera.Builtin {
 }
 
 func BuiltinJsValueDelete(ctx *mellifera.Context) *mellifera.Builtin {
-	return ctx.NewBuiltin("js::value::delete", []mellifera.Type{
+	return ctx.NewBuiltinWithSelfByReference("js::value::delete", []mellifera.Type{
 		mellifera.TRef(mellifera.TVal(mellifera.EXTERNAL)),
 		mellifera.TVal(mellifera.STRING),
 	}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
@@ -327,7 +327,7 @@ func BuiltinJsValueDelete(ctx *mellifera.Context) *mellifera.Builtin {
 }
 
 func BuiltinJsValueGetIndex(ctx *mellifera.Context) *mellifera.Builtin {
-	return ctx.NewBuiltin("js::value::get_index", []mellifera.Type{
+	return ctx.NewBuiltinWithSelfByReference("js::value::get_index", []mellifera.Type{
 		mellifera.TRef(mellifera.TVal(mellifera.EXTERNAL)),
 		mellifera.TVal(mellifera.NUMBER),
 	}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
@@ -355,7 +355,7 @@ func BuiltinJsValueGetIndex(ctx *mellifera.Context) *mellifera.Builtin {
 }
 
 func BuiltinJsValueSetIndex(ctx *mellifera.Context) *mellifera.Builtin {
-	return ctx.NewBuiltin("js::value::set_index", []mellifera.Type{
+	return ctx.NewBuiltinWithSelfByReference("js::value::set_index", []mellifera.Type{
 		mellifera.TRef(mellifera.TVal(mellifera.EXTERNAL)),
 		mellifera.TVal(mellifera.NUMBER),
 		mellifera.TVal(mellifera.EXTERNAL),
@@ -390,7 +390,7 @@ func BuiltinJsValueSetIndex(ctx *mellifera.Context) *mellifera.Builtin {
 }
 
 func BuiltinJsValueCall(ctx *mellifera.Context) *mellifera.Builtin {
-	return ctx.NewBuiltin("js::value::call", []mellifera.Type{
+	return ctx.NewBuiltinWithSelfByReference("js::value::call", []mellifera.Type{
 		mellifera.TRef(mellifera.TVal(mellifera.EXTERNAL)),
 		mellifera.TVal(mellifera.STRING),
 		mellifera.TVal(mellifera.VECTOR),

@@ -189,6 +189,79 @@ func moveOrCopy(value Value) Value {
 	return value.Copy()
 }
 
+// Increment the underlying shared data held by this value to signal that an
+// additional holds an access path to that data through a reference.
+func markReferenced(value Value) {
+	switch v := value.(type) {
+	case *Vector:
+		if v.data == nil {
+			v.data = &vectorData{uses: 1}
+		}
+		v.data.refs += 1
+	case *Map:
+		if v.data == nil {
+			v.data = &mapData{uses: 1}
+		}
+		v.data.refs += 1
+	case *Set:
+		if v.data == nil {
+			v.data = &setData{uses: 1}
+		}
+		v.data.refs += 1
+	}
+}
+
+// Decrement the underlying shared data held by this value. This operation is
+// only valid when it is known that the referenced value was previously marked
+// with markReferenced() and actual reference to that value is *guaranteed* to
+// be non-escaping.
+func unmarkReferenced(value Value) {
+	switch v := value.(type) {
+	case *Vector:
+		if v.data != nil {
+			v.data.refs -= 1
+		}
+	case *Map:
+		if v.data != nil {
+			v.data.refs -= 1
+		}
+	case *Set:
+		if v.data != nil {
+			v.data.refs -= 1
+		}
+	}
+}
+
+// Reports whether a callable's implicit `self` argument is passed by reference
+// in function call with a dot access expression as the left hand side of that
+// expression.
+//
+// function(self) { ... }   # pass by value
+// function.&(self) { ... } # pass by reference
+func callableSelfIsPassedByReference(function Value) bool {
+	switch f := function.(type) {
+	case *Function:
+		return f.Ast.SelfByReference
+	case *Builtin:
+		return f.byRef
+	default:
+		return false
+	}
+}
+
+// Returns a callable's implicit `self` argument passed by reference in a
+// function in function call with a dot access expression as the left hand side
+// of that expression.
+//
+// function(self) { ... }   # self argument is a value
+// function.&(self) { ... } # self argument is a reference
+func (ctx *Context) callableSelfArgument(store Value, function Value) Value {
+	if callableSelfIsPassedByReference(function) {
+		return ctx.NewReference(store)
+	}
+	return store.Copy()
+}
+
 type CombEncoder struct {
 	w           io.Writer
 	err         error // Internal sticky error.
@@ -675,23 +748,6 @@ func (ctx *Context) NewSetOrPanic(elements []Value) *Set {
 	return result
 }
 
-func markReferenced(value Value) {
-	switch v := value.(type) {
-	case *Vector:
-		if v.data != nil {
-			v.data.refs += 1
-		}
-	case *Map:
-		if v.data != nil {
-			v.data.refs += 1
-		}
-	case *Set:
-		if v.data != nil {
-			v.data.refs += 1
-		}
-	}
-}
-
 func (ctx *Context) NewReference(value Value) *Reference {
 	markReferenced(value)
 	return &Reference{value}
@@ -702,7 +758,13 @@ func (ctx *Context) NewFunction(ast *AstExpressionFunction, env *Environment) *F
 }
 
 func (ctx *Context) NewBuiltin(name string, types []Type, impl func(*Context, []Value) (Value, error)) *Builtin {
-	return &Builtin{name, types, impl}
+	return &Builtin{name, types, impl, false}
+}
+
+// Takes an implicit `self` argument by reference. This `self` argument *must*
+// not escape, as the Mellifera runtime treats the self reference as temporary.
+func (ctx *Context) NewBuiltinWithSelfByReference(name string, types []Type, impl func(*Context, []Value) (Value, error)) *Builtin {
+	return &Builtin{name, types, impl, true}
 }
 
 func (ctx *Context) NewExternal(data any) *External {
@@ -1125,7 +1187,7 @@ func (self *Vector) Copy() Value {
 		// separate values created via copy.
 		elements := make([]Value, len(self.data.elements))
 		for i, element := range self.data.elements {
-			elements[i] = element.Copy()
+			elements[i] = element.Copy().Take()
 		}
 		return &Vector{
 			data: &vectorData{
@@ -1144,7 +1206,7 @@ func (self *Vector) CopyOnWrite() {
 		self.data.uses -= 1
 		elements := make([]Value, len(self.data.elements))
 		for i, element := range self.data.elements {
-			elements[i] = element.Copy()
+			elements[i] = element.Copy().Take()
 		}
 		self.data = &vectorData{
 			elements: elements,
@@ -1511,7 +1573,7 @@ func (self *Map) Copy() Value {
 		data := &mapData{uses: 1}
 		cur := self.data.head
 		for cur != nil {
-			data.Insert(cur.key.Copy(), cur.value.Copy())
+			data.Insert(cur.key.Copy().Take(), cur.value.Copy().Take())
 			cur = cur.next
 		}
 		return &Map{
@@ -1538,7 +1600,7 @@ func (self *Map) CopyOnWrite() {
 
 		cur := self.data.head
 		for cur != nil {
-			data.Insert(cur.key.Copy(), cur.value.Copy())
+			data.Insert(cur.key.Copy().Take(), cur.value.Copy().Take())
 			cur = cur.next
 		}
 		self.data = data
@@ -1893,7 +1955,7 @@ func (self *Set) Copy() Value {
 		data := &setData{uses: 1}
 		cur := self.data.head
 		for cur != nil {
-			data.Insert(cur.key.Copy())
+			data.Insert(cur.key.Copy().Take())
 			cur = cur.next
 		}
 		return &Set{data: data}
@@ -1912,7 +1974,7 @@ func (self *Set) CopyOnWrite() {
 
 		cur := self.data.head
 		for cur != nil {
-			data.Insert(cur.key.Copy())
+			data.Insert(cur.key.Copy().Take())
 			cur = cur.next
 		}
 		self.data = data
@@ -2223,6 +2285,7 @@ type Builtin struct {
 	name  string
 	types []Type
 	impl  func(*Context, []Value) (Value, error)
+	byRef bool
 }
 
 func (self *Builtin) Typename() string {
@@ -3484,7 +3547,7 @@ func (self *AstExpressionTemplate) Eval(ctx *Context, env *Environment) (Value, 
 		}
 
 		if metaFunction, ok := MetaFunction(ctx, value, ctx.constStringIntoString); ok {
-			result, err := Call(ctx, element.ExpressionLocation(), metaFunction, []Value{ctx.NewReference(value)})
+			result, err := Call(ctx, element.ExpressionLocation(), metaFunction, []Value{ctx.callableSelfArgument(value, metaFunction)})
 			if err != nil {
 				return nil, err
 			}
@@ -3774,10 +3837,11 @@ func (self *AstExpressionSet) Eval(ctx *Context, env *Environment) (Value, error
 }
 
 type AstExpressionFunction struct {
-	Location   *SourceLocation // Optional
-	Parameters []*AstIdentifier
-	Body       *AstBlock
-	Name       *String // optional
+	Location        *SourceLocation // Optional
+	Parameters      []*AstIdentifier
+	Body            *AstBlock
+	Name            *String // optional
+	SelfByReference bool
 }
 
 func (self AstExpressionFunction) ExpressionLocation() *SourceLocation {
@@ -3799,6 +3863,7 @@ func (self AstExpressionFunction) IntoValue(ctx *Context) Value {
 		{ctx.NewString("parameters"), parameters},
 		{ctx.NewString("body"), self.Body.IntoValue(ctx)},
 		{ctx.NewString("name"), name},
+		{ctx.NewString("self_by_reference"), ctx.NewBoolean(self.SelfByReference)},
 	})
 }
 
@@ -5095,9 +5160,13 @@ func (self AstExpressionMkref) IntoValue(ctx *Context) Value {
 }
 
 func (self *AstExpressionMkref) Eval(ctx *Context, env *Environment) (Value, error) {
-	value, err := evalLvalue(self.Lhs, ctx, env, true)
+	chain := []Value{}
+	value, err := evalLvalue(self.Lhs, ctx, env, &chain)
 	if err != nil {
 		return nil, err
+	}
+	for _, v := range chain {
+		markReferenced(v)
 	}
 	return ctx.NewReference(value), nil
 }
@@ -5161,16 +5230,22 @@ func (self AstExpressionFunctionCall) IntoValue(ctx *Context) Value {
 
 func (self *AstExpressionFunctionCall) Eval(ctx *Context, env *Environment) (Value, error) {
 	var function Value = nil
-	var selfArgument Value = nil
+	var callableSelfArgument Value = nil
 	var err error = nil
 	if accessDot, ok := self.Function.(*AstExpressionAccessDot); ok {
 		// Special case when dot access is used for a function call. An
-		// implicit `self` argument is passed by reference to the function.
-		store, err := evalLvalue(accessDot.Store, ctx, env, true)
+		// implicit `self` argument is passed to the function, either by value
+		// or by reference, depending on whether the function was declared
+		// with:
+		//
+		//	function(self) { ... }   # pass by value
+		//	function.&(self) { ... } # pass by reference
+		chain := []Value{}
+		store, err := evalLvalue(accessDot.Store, ctx, env, &chain)
 		if err != nil {
 			return nil, err
 		}
-		selfArgument = ctx.NewReference(store)
+		storeIsSelfReference := false
 
 		// When making a function call using dot access syntax, perform
 		// function lookup using the value's metamap *before* looking at the
@@ -5195,7 +5270,7 @@ func (self *AstExpressionFunctionCall) Eval(ctx *Context, env *Environment) (Val
 			// Implicit value dereference meta lookup.
 			if storeReference, ok := store.(*Reference); ok {
 				if meta := storeReference.data.Meta(ctx); meta != nil {
-					selfArgument = storeReference
+					storeIsSelfReference = true
 					function, _ = meta.Lookup(accessDot.Field.Name)
 				}
 			}
@@ -5206,6 +5281,57 @@ func (self *AstExpressionFunctionCall) Eval(ctx *Context, env *Environment) (Val
 				ctx.NewStringf("invalid method access with name %s", accessDot.Field.Name.data),
 			)
 		}
+
+		// Construct the implicit `self` argument, which is either going to be
+		// the lhs store by copy (value -> pass by value), the lhs store by new
+		// reference (value.& -> pass by reference), the dereferenced lhs store
+		// by copy (value.* -> pass by value), or a passthrough of the existing
+		// reference (pass by reference).
+		if callableSelfIsPassedByReference(function) {
+			_, selfIsBuiltin := function.(*Builtin)
+
+			if selfIsBuiltin && !storeIsSelfReference {
+				// Perform a copy-on-write operation ahead of the call so that
+				// the temporary self reference is guaranteed to reference
+				// unique data.
+				store.CopyOnWrite()
+			}
+
+			for _, value := range chain {
+				markReferenced(value)
+			}
+			if storeIsSelfReference {
+				// Reference passthrough (auto-deref)
+				callableSelfArgument = store
+			} else {
+				// value.& -> pass by reference
+				callableSelfArgument = ctx.NewReference(store)
+			}
+
+			// Builtins created with Context.NewBuiltinWithSelfByReference()
+			// allow for an explicit optimization where the `self` reference
+			// can be treated as a non-escaping temporary, allowing marked
+			// values in the access chain to be unmarked after the built-in
+			// function returns.
+			if selfIsBuiltin {
+				defer func() {
+					for _, value := range chain {
+						unmarkReferenced(value)
+					}
+					if !storeIsSelfReference {
+						unmarkReferenced(store)
+					}
+				}()
+			}
+		} else {
+			if storeIsSelfReference {
+				// value.* -> pass by value (auto-deref)
+				callableSelfArgument = store.(*Reference).data.Copy()
+			} else {
+				// value -> pass by value
+				callableSelfArgument = store.Copy()
+			}
+		}
 	} else {
 		function, err = self.Function.Eval(ctx, env)
 		if err != nil {
@@ -5214,8 +5340,8 @@ func (self *AstExpressionFunctionCall) Eval(ctx *Context, env *Environment) (Val
 	}
 
 	arguments := []Value{}
-	if selfArgument != nil {
-		arguments = append(arguments, selfArgument)
+	if callableSelfArgument != nil {
+		arguments = append(arguments, callableSelfArgument)
 	}
 	for _, argument := range self.Arguments {
 		result, err := argument.Eval(ctx, env)
@@ -5443,6 +5569,13 @@ func (self *AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, 
 			return nil, NewError(
 				self.Location,
 				ctx.NewStringf("cannot use a key-reference over iterator %s", quote(collection.Typename())),
+			)
+		}
+
+		if !callableSelfIsPassedByReference(metaFunction) {
+			return nil, NewError(
+				self.Location,
+				ctx.NewString("iterator next must receive self by reference (declared with function.&(self))"),
 			)
 		}
 		reference := ctx.NewReference(collection)
@@ -5789,7 +5922,7 @@ func (self *AstStatementError) Eval(ctx *Context, env *Environment) (ControlFlow
 	if err != nil {
 		return nil, err
 	}
-	return nil, NewError(self.Location, value)
+	return nil, NewError(self.Location, moveOrCopy(value))
 }
 
 type AstStatementReturn struct {
@@ -5823,7 +5956,7 @@ func (self *AstStatementReturn) Eval(ctx *Context, env *Environment) (ControlFlo
 	if err != nil {
 		return nil, err
 	}
-	return Return{self.Location, value}, nil
+	return Return{self.Location, moveOrCopy(value)}, nil
 }
 
 type AstStatementAssignment struct {
@@ -5853,19 +5986,17 @@ func (self AstStatementAssignment) IntoValue(ctx *Context) Value {
 // access operation, so that modification of nested values will not mutate
 // shared objects pointed to by semantically separate values.
 //
-// If the markRef argument is true, then markReferenced() will be invoked on
-// each inner store value as a means to recursively mark each value in an
-// access expression chain as referenced. This ensures that no two semantically
-// separate values can accidentally share underlying data through a reference.
-func evalLvalue(expr AstExpression, ctx *Context, env *Environment, markRef bool) (Value, error) {
+// If `chain` is not nil, then each value in the post-copy-on-write access
+// chain to the evaluated value will be recorded by appending to `*chain`.
+func evalLvalue(expr AstExpression, ctx *Context, env *Environment, chain *[]Value) (Value, error) {
 	if exprAccessIndex, ok := expr.(*AstExpressionAccessIndex); ok {
-		innerStore, err := evalLvalue(exprAccessIndex.Store, ctx, env, markRef)
+		innerStore, err := evalLvalue(exprAccessIndex.Store, ctx, env, chain)
 		if err != nil {
 			return nil, err
 		}
 		innerStore.CopyOnWrite()
-		if markRef {
-			markReferenced(innerStore)
+		if chain != nil {
+			*chain = append(*chain, innerStore)
 		}
 
 		field, err := exprAccessIndex.Field.Eval(ctx, env)
@@ -5913,8 +6044,8 @@ func evalLvalue(expr AstExpression, ctx *Context, env *Environment, markRef bool
 		if storeReference, ok := innerStore.(*Reference); ok {
 			storeDeref := storeReference.data
 			storeDeref.CopyOnWrite()
-			if markRef {
-				markReferenced(storeDeref)
+			if chain != nil {
+				*chain = append(*chain, storeDeref)
 			}
 
 			if storeDerefVector, ok := storeDeref.(*Vector); ok {
@@ -5936,13 +6067,13 @@ func evalLvalue(expr AstExpression, ctx *Context, env *Environment, markRef bool
 	}
 
 	if exprAccessScope, ok := expr.(*AstExpressionAccessScope); ok {
-		innerStore, err := evalLvalue(exprAccessScope.Store, ctx, env, markRef)
+		innerStore, err := evalLvalue(exprAccessScope.Store, ctx, env, chain)
 		if err != nil {
 			return nil, err
 		}
 		innerStore.CopyOnWrite()
-		if markRef {
-			markReferenced(innerStore)
+		if chain != nil {
+			*chain = append(*chain, innerStore)
 		}
 
 		field := exprAccessScope.Field.Name
@@ -5965,8 +6096,8 @@ func evalLvalue(expr AstExpression, ctx *Context, env *Environment, markRef bool
 		if storeReference, ok := innerStore.(*Reference); ok {
 			storeDeref := storeReference.data
 			storeDeref.CopyOnWrite()
-			if markRef {
-				markReferenced(storeDeref)
+			if chain != nil {
+				*chain = append(*chain, storeDeref)
 			}
 
 			if storeDerefMap, ok := storeDeref.(*Map); ok {
@@ -5985,13 +6116,13 @@ func evalLvalue(expr AstExpression, ctx *Context, env *Environment, markRef bool
 	}
 
 	if exprAccessDot, ok := expr.(*AstExpressionAccessDot); ok {
-		innerStore, err := evalLvalue(exprAccessDot.Store, ctx, env, markRef)
+		innerStore, err := evalLvalue(exprAccessDot.Store, ctx, env, chain)
 		if err != nil {
 			return nil, err
 		}
 		innerStore.CopyOnWrite()
-		if markRef {
-			markReferenced(innerStore)
+		if chain != nil {
+			*chain = append(*chain, innerStore)
 		}
 
 		field := exprAccessDot.Field.Name
@@ -6014,8 +6145,8 @@ func evalLvalue(expr AstExpression, ctx *Context, env *Environment, markRef bool
 		if storeReference, ok := innerStore.(*Reference); ok {
 			storeDeref := storeReference.data
 			storeDeref.CopyOnWrite()
-			if markRef {
-				markReferenced(storeDeref)
+			if chain != nil {
+				*chain = append(*chain, storeDeref)
 			}
 
 			if storeDerefMap, ok := storeDeref.(*Map); ok {
@@ -6058,7 +6189,7 @@ func (self *AstStatementAssignment) Eval(ctx *Context, env *Environment) (Contro
 	var err error
 
 	if lhsAccessIndex, ok := self.Lhs.(*AstExpressionAccessIndex); ok {
-		store, err = evalLvalue(lhsAccessIndex.Store, ctx, env, false)
+		store, err = evalLvalue(lhsAccessIndex.Store, ctx, env, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -6067,13 +6198,13 @@ func (self *AstStatementAssignment) Eval(ctx *Context, env *Environment) (Contro
 			return nil, err
 		}
 	} else if lhsAccessDot, ok := self.Lhs.(*AstExpressionAccessDot); ok {
-		store, err = evalLvalue(lhsAccessDot.Store, ctx, env, false)
+		store, err = evalLvalue(lhsAccessDot.Store, ctx, env, nil)
 		if err != nil {
 			return nil, err
 		}
 		field = lhsAccessDot.Field.Name
 	} else if lhsAccessScope, ok := self.Lhs.(*AstExpressionAccessScope); ok {
-		store, err = evalLvalue(lhsAccessScope.Store, ctx, env, false)
+		store, err = evalLvalue(lhsAccessScope.Store, ctx, env, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -6657,6 +6788,15 @@ func (self *Parser) ParseExpressionFunction() (AstExpression, error) {
 	}
 	location := token.Location
 
+	selfByReference := false
+	if self.checkCurrent(TOKEN_MKREF) {
+		_, err = self.advanceToken()
+		if err != nil {
+			return nil, err
+		}
+		selfByReference = true
+	}
+
 	_, err = self.expectCurrent(TOKEN_LPAREN)
 	if err != nil {
 		return nil, err
@@ -6696,8 +6836,14 @@ func (self *Parser) ParseExpressionFunction() (AstExpression, error) {
 			}
 		}
 	}
+	if selfByReference && len(parameters) == 0 {
+		return nil, ParseError{
+			Location: location,
+			why:      fmt.Sprintf("function takes self by reference, but has no parameters"),
+		}
+	}
 
-	return &AstExpressionFunction{location, parameters, body, nil}, nil
+	return &AstExpressionFunction{location, parameters, body, nil, selfByReference}, nil
 }
 
 func (self *Parser) ParseExpressionFreeze() (AstExpression, error) {
@@ -7549,6 +7695,15 @@ func (self *Parser) ParseStatementExpressionOrAssignment() (AstStatement, error)
 }
 
 func Call(ctx *Context, location *SourceLocation, callable Value, arguments []Value) (Value, error) {
+	if len(arguments) > 0 && callableSelfIsPassedByReference(callable) {
+		if _, ok := arguments[0].(*Reference); !ok {
+			return nil, NewError(
+				location,
+				ctx.NewStringf("invalid function self argument (expected reference, received %v)", arguments[0].Typename()),
+			)
+		}
+	}
+
 	if function, ok := callable.(*Function); ok {
 		if len(arguments) != len(function.Ast.Parameters) {
 			return nil, NewError(
@@ -7734,17 +7889,17 @@ let iterator = type {
     .eoi = function() {
         error null; # end-of-iteration
     },
-    .next = function(self) {
+    .next = function.&(self) {
         error "unimplemented iterator::next";
     },
-    .count = function(self) {
+    .count = function.&(self) {
         let count = 0;
         for _ in self.* {
             count = count + 1;
         }
         return count;
     },
-    .contains = function(self, value) {
+    .contains = function.&(self, value) {
         for x in self.* {
             if x == value {
                 return true;
@@ -7752,7 +7907,7 @@ let iterator = type {
         }
         return false;
     },
-    .any = function(self, func) {
+    .any = function.&(self, func) {
         for x in self.* {
             let result = func(x);
             if not ty::is_boolean(result) {
@@ -7764,7 +7919,7 @@ let iterator = type {
         }
         return false;
     },
-    .all = function(self, func) {
+    .all = function.&(self, func) {
         for x in self.* {
             let result = func(x);
             if not ty::is_boolean(result) {
@@ -7776,9 +7931,9 @@ let iterator = type {
         }
         return true;
     },
-    .map = function(self, func) {
+    .map = function.&(self, func) {
         let map_iterator = type extends iterator {
-            .next = function(self) {
+            .next = function.&(self) {
                 return func(self.base.next());
             },
         };
@@ -7786,9 +7941,9 @@ let iterator = type {
             .base = self,
         };
     },
-    .filter = function(self, func) {
+    .filter = function.&(self, func) {
         let filter_iterator = type extends iterator {
-            .next = function(self) {
+            .next = function.&(self) {
                 while true {
                     let current = self.base.next();
                     let result = func(current);
@@ -7805,7 +7960,7 @@ let iterator = type {
             .base = self,
         };
     },
-    .into_vector = function(self) {
+    .into_vector = function.&(self) {
         let result = [];
         for x in self.* {
             result.push(x);
@@ -7889,38 +8044,36 @@ func BuiltinNumberInit(ctx *Context) Value {
 }
 
 func BuiltinNumberIsNan(ctx *Context) Value {
-	return ctx.NewBuiltin("number::is_nan", []Type{TRef(TVal(NUMBER))}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*Number)
-		return ctx.NewBoolean(math.IsNaN(delf.data)), nil
+	return ctx.NewBuiltin("number::is_nan", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Number)
+
+		return ctx.NewBoolean(math.IsNaN(self.data)), nil
 	})
 }
 
 func BuiltinNumberIsInf(ctx *Context) Value {
-	return ctx.NewBuiltin("number::is_inf", []Type{TRef(TVal(NUMBER))}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*Number)
-		return ctx.NewBoolean(math.IsInf(delf.data, 0)), nil
+	return ctx.NewBuiltin("number::is_inf", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Number)
+
+		return ctx.NewBoolean(math.IsInf(self.data, 0)), nil
 	})
 }
 
 func BuiltinNumberIsInteger(ctx *Context) Value {
-	return ctx.NewBuiltin("number::is_integer", []Type{TRef(TVal(NUMBER))}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*Number)
+	return ctx.NewBuiltin("number::is_integer", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Number)
 
-		if math.IsInf(delf.data, 0) || math.IsNaN(delf.data) {
+		if math.IsInf(self.data, 0) || math.IsNaN(self.data) {
 			return ctx.NewBoolean(false), nil
 		}
 
-		return ctx.NewBoolean(math.Trunc(delf.data) == delf.data), nil
+		return ctx.NewBoolean(math.Trunc(self.data) == self.data), nil
 	})
 }
 
 func BuiltinNumberFixed(ctx *Context) Value {
-	return ctx.NewBuiltin("number::fixed", []Type{TRef(TVal(NUMBER)), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*Number)
+	return ctx.NewBuiltin("number::fixed", []Type{TVal(NUMBER), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Number)
 
 		precision, err := ValueAsSafeInteger(arguments[1])
 		if err != nil {
@@ -7930,45 +8083,45 @@ func BuiltinNumberFixed(ctx *Context) Value {
 			return nil, NewError(nil, ctx.NewStringf("expected non-negative integer, received %v", arguments[1]))
 		}
 
-		if math.IsNaN(delf.data) || math.IsInf(delf.data, 0) {
-			return delf, nil
+		if math.IsNaN(self.data) || math.IsInf(self.data, 0) {
+			return self, nil
 		}
 
 		factor := math.Pow(10.0, float64(precision))
-		fixed := math.Round(delf.data*factor) / float64(factor)
+		fixed := math.Round(self.data*factor) / float64(factor)
 		return ctx.NewNumber(fixed), nil
 	})
 }
 
 func BuiltinNumberTrunc(ctx *Context) Value {
-	return ctx.NewBuiltin("number::trunc", []Type{TRef(TVal(NUMBER))}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*Number)
-		return ctx.NewNumber(math.Trunc(delf.data)), nil
+	return ctx.NewBuiltin("number::trunc", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Number)
+
+		return ctx.NewNumber(math.Trunc(self.data)), nil
 	})
 }
 
 func BuiltinNumberRound(ctx *Context) Value {
-	return ctx.NewBuiltin("number::round", []Type{TRef(TVal(NUMBER))}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*Number)
-		return ctx.NewNumber(math.Round(delf.data)), nil
+	return ctx.NewBuiltin("number::round", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Number)
+
+		return ctx.NewNumber(math.Round(self.data)), nil
 	})
 }
 
 func BuiltinNumberFloor(ctx *Context) Value {
-	return ctx.NewBuiltin("number::floor", []Type{TRef(TVal(NUMBER))}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*Number)
-		return ctx.NewNumber(math.Floor(delf.data)), nil
+	return ctx.NewBuiltin("number::floor", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Number)
+
+		return ctx.NewNumber(math.Floor(self.data)), nil
 	})
 }
 
 func BuiltinNumberCeil(ctx *Context) Value {
-	return ctx.NewBuiltin("number::ceil", []Type{TRef(TVal(NUMBER))}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*Number)
-		return ctx.NewNumber(math.Ceil(delf.data)), nil
+	return ctx.NewBuiltin("number::ceil", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Number)
+
+		return ctx.NewNumber(math.Ceil(self.data)), nil
 	})
 }
 
@@ -7977,7 +8130,7 @@ func BuiltinStringInit(ctx *Context) Value {
 		value := arguments[0]
 
 		if metaFunction, ok := MetaFunction(ctx, value, ctx.constStringIntoString); ok {
-			result, err := Call(ctx, nil, metaFunction, []Value{ctx.NewReference(value)})
+			result, err := Call(ctx, nil, metaFunction, []Value{ctx.callableSelfArgument(value, metaFunction)})
 			if err != nil {
 				return nil, err
 			}
@@ -8000,12 +8153,11 @@ func BuiltinStringInit(ctx *Context) Value {
 }
 
 func BuiltinStringBytes(ctx *Context) Value {
-	return ctx.NewBuiltin("string::bytes", []Type{TRef(TVal(STRING))}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*String)
+	return ctx.NewBuiltin("string::bytes", []Type{TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*String)
 
 		vector := ctx.NewVector(nil)
-		bytes := []byte(delf.data)
+		bytes := []byte(self.data)
 		for i := range bytes {
 			err := vector.Push(ctx.NewString(string([]byte{bytes[i]})))
 			if err != nil {
@@ -8017,12 +8169,11 @@ func BuiltinStringBytes(ctx *Context) Value {
 }
 
 func BuiltinStringRunes(ctx *Context) Value {
-	return ctx.NewBuiltin("string::runes", []Type{TRef(TVal(STRING))}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*String)
+	return ctx.NewBuiltin("string::runes", []Type{TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*String)
 
 		vector := ctx.NewVector(nil)
-		for _, r := range delf.data {
+		for _, r := range self.data {
 			err := vector.Push(ctx.NewString(string(r)))
 			if err != nil {
 				return nil, NewError(nil, ctx.NewString(err.Error()))
@@ -8033,73 +8184,62 @@ func BuiltinStringRunes(ctx *Context) Value {
 }
 
 func BuiltinStringCount(ctx *Context) Value {
-	return ctx.NewBuiltin("string::count", []Type{TRef(TVal(STRING))}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*String)
+	return ctx.NewBuiltin("string::count", []Type{TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*String)
 
-		return ctx.NewNumber(float64(len(delf.data))), nil
+		return ctx.NewNumber(float64(len(self.data))), nil
 	})
 }
 
 func BuiltinStringIsEmpty(ctx *Context) Value {
-	return ctx.NewBuiltin("string::is_empty", []Type{TRef(TVal(STRING))}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*String)
+	return ctx.NewBuiltin("string::is_empty", []Type{TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*String)
 
-		return ctx.NewBoolean(len(delf.data) == 0), nil
+		return ctx.NewBoolean(len(self.data) == 0), nil
 	})
 }
 
 func BuiltinStringContains(ctx *Context) Value {
-	return ctx.NewBuiltin("string::contains", []Type{TRef(TVal(STRING)), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*String)
-
+	return ctx.NewBuiltin("string::contains", []Type{TVal(STRING), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*String)
 		target := arguments[1].(*String)
 
-		return ctx.NewBoolean(strings.Contains(delf.data, target.data)), nil
+		return ctx.NewBoolean(strings.Contains(self.data, target.data)), nil
 	})
 }
 
 func BuiltinStringStartsWith(ctx *Context) Value {
-	return ctx.NewBuiltin("string::starts_with", []Type{TRef(TVal(STRING)), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*String)
-
+	return ctx.NewBuiltin("string::starts_with", []Type{TVal(STRING), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*String)
 		target := arguments[1].(*String)
 
-		return ctx.NewBoolean(strings.HasPrefix(delf.data, target.data)), nil
+		return ctx.NewBoolean(strings.HasPrefix(self.data, target.data)), nil
 	})
 }
 
 func BuiltinStringEndsWith(ctx *Context) Value {
-	return ctx.NewBuiltin("string::ends_with", []Type{TRef(TVal(STRING)), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*String)
-
+	return ctx.NewBuiltin("string::ends_with", []Type{TVal(STRING), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*String)
 		target := arguments[1].(*String)
 
-		return ctx.NewBoolean(strings.HasSuffix(delf.data, target.data)), nil
+		return ctx.NewBoolean(strings.HasSuffix(self.data, target.data)), nil
 	})
 }
 
 func BuiltinStringTrim(ctx *Context) Value {
-	return ctx.NewBuiltin("string::trim", []Type{TRef(TVal(STRING))}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*String)
+	return ctx.NewBuiltin("string::trim", []Type{TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*String)
 
-		return ctx.NewString(strings.TrimSpace(delf.data)), nil
+		return ctx.NewString(strings.TrimSpace(self.data)), nil
 	})
 }
 
 func BuiltinStringFind(ctx *Context) Value {
-	return ctx.NewBuiltin("string::find", []Type{TRef(TVal(STRING)), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*String)
-
+	return ctx.NewBuiltin("string::find", []Type{TVal(STRING), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*String)
 		target := arguments[1].(*String)
 
-		found := strings.Index(delf.data, target.data)
+		found := strings.Index(self.data, target.data)
 		if found == -1 {
 			return ctx.NewNull(), nil
 		}
@@ -8109,13 +8249,11 @@ func BuiltinStringFind(ctx *Context) Value {
 }
 
 func BuiltinStringRfind(ctx *Context) Value {
-	return ctx.NewBuiltin("string::rfind", []Type{TRef(TVal(STRING)), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*String)
-
+	return ctx.NewBuiltin("string::rfind", []Type{TVal(STRING), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*String)
 		target := arguments[1].(*String)
 
-		found := strings.LastIndex(delf.data, target.data)
+		found := strings.LastIndex(self.data, target.data)
 		if found == -1 {
 			return ctx.NewNull(), nil
 		}
@@ -8125,17 +8263,16 @@ func BuiltinStringRfind(ctx *Context) Value {
 }
 
 func BuiltinStringSlice(ctx *Context) Value {
-	return ctx.NewBuiltin("string::slice", []Type{TRef(TVal(STRING)), TVal(NUMBER), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*String)
+	return ctx.NewBuiltin("string::slice", []Type{TVal(STRING), TVal(NUMBER), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*String)
 
 		bgn := arguments[1].(*Number)
 		bgn_index, err := ValueAsIndex(bgn)
 		if err != nil {
 			return nil, NewError(nil, ctx.NewStringf("attempted string::slice with invalid begin index %v (%s)", bgn, err.Error()))
 		}
-		if bgn_index > len(delf.data) {
-			return nil, NewError(nil, ctx.NewStringf("attempted string::slice with invalid begin index %v (string has a count of %v)", bgn, len(delf.data)))
+		if bgn_index > len(self.data) {
+			return nil, NewError(nil, ctx.NewStringf("attempted string::slice with invalid begin index %v (string has a count of %v)", bgn, len(self.data)))
 		}
 
 		end := arguments[2].(*Number)
@@ -8143,28 +8280,26 @@ func BuiltinStringSlice(ctx *Context) Value {
 		if err != nil {
 			return nil, NewError(nil, ctx.NewStringf("attempted string::slice with invalid end index %v (%s)", end, err.Error()))
 		}
-		if end_index > len(delf.data) {
-			return nil, NewError(nil, ctx.NewStringf("attempted string::slice with invalid end index %v (string has a count of %v)", end, len(delf.data)))
+		if end_index > len(self.data) {
+			return nil, NewError(nil, ctx.NewStringf("attempted string::slice with invalid end index %v (string has a count of %v)", end, len(self.data)))
 		}
 
 		if end_index < bgn_index {
 			return nil, NewError(nil, ctx.NewString("attempted string::slice with invalid indices (slice end is less than slice begin)"))
 		}
 
-		return ctx.NewString(delf.data[bgn_index:end_index]), nil
+		return ctx.NewString(self.data[bgn_index:end_index]), nil
 	})
 }
 
 func BuiltinStringSplit(ctx *Context) Value {
-	return ctx.NewBuiltin("string::split", []Type{TRef(TVal(STRING)), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*String)
-
+	return ctx.NewBuiltin("string::split", []Type{TVal(STRING), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*String)
 		target := arguments[1].(*String)
 
 		vector := ctx.NewVector(nil)
 		if len(target.data) == 0 {
-			for _, r := range delf.data {
+			for _, r := range self.data {
 				err := vector.Push(ctx.NewString(string(r)))
 				if err != nil {
 					return nil, NewError(nil, ctx.NewString(err.Error()))
@@ -8173,7 +8308,7 @@ func BuiltinStringSplit(ctx *Context) Value {
 			return vector, nil
 		}
 
-		split := strings.Split(delf.data, target.data)
+		split := strings.Split(self.data, target.data)
 		for i := range split {
 			err := vector.Push(ctx.NewString(split[i]))
 			if err != nil {
@@ -8185,10 +8320,8 @@ func BuiltinStringSplit(ctx *Context) Value {
 }
 
 func BuiltinStringJoin(ctx *Context) Value {
-	return ctx.NewBuiltin("string::join", []Type{TRef(TVal(STRING)), TVal(VECTOR)}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*String)
-
+	return ctx.NewBuiltin("string::join", []Type{TVal(STRING), TVal(VECTOR)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*String)
 		vector := arguments[1].(*Vector)
 
 		data := ""
@@ -8201,7 +8334,7 @@ func BuiltinStringJoin(ctx *Context) Value {
 				)
 			}
 			if index != 0 {
-				data += delf.data
+				data += self.data
 			}
 			data += string.data
 		}
@@ -8211,19 +8344,17 @@ func BuiltinStringJoin(ctx *Context) Value {
 }
 
 func BuiltinStringCut(ctx *Context) Value {
-	return ctx.NewBuiltin("string::cut", []Type{TRef(TVal(STRING)), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*String)
-
+	return ctx.NewBuiltin("string::cut", []Type{TVal(STRING), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*String)
 		target := arguments[1].(*String)
 
-		found := strings.Index(delf.data, target.data)
+		found := strings.Index(self.data, target.data)
 		if found == -1 {
 			return ctx.NewNull(), nil
 		}
 
-		prefix := ctx.NewString(delf.data[0:found])
-		suffix := ctx.NewString(delf.data[found+len(target.data):])
+		prefix := ctx.NewString(self.data[0:found])
+		suffix := ctx.NewString(self.data[found+len(target.data):])
 		result, err := ctx.NewMap([]MapPair{
 			{ctx.NewString("prefix"), prefix},
 			{ctx.NewString("suffix"), suffix},
@@ -8236,42 +8367,36 @@ func BuiltinStringCut(ctx *Context) Value {
 }
 
 func BuiltinStringReplace(ctx *Context) Value {
-	return ctx.NewBuiltin("string::replace", []Type{TRef(TVal(STRING)), TVal(STRING), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*String)
-
+	return ctx.NewBuiltin("string::replace", []Type{TVal(STRING), TVal(STRING), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*String)
 		target := arguments[1].(*String)
-
 		replacement := arguments[2].(*String)
 
-		return ctx.NewString(strings.ReplaceAll(delf.data, target.data, replacement.data)), nil
+		return ctx.NewString(strings.ReplaceAll(self.data, target.data, replacement.data)), nil
 	})
 }
 
 func BuiltinStringToTitle(ctx *Context) Value {
-	return ctx.NewBuiltin("string::to_title", []Type{TRef(TVal(STRING))}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*String)
+	return ctx.NewBuiltin("string::to_title", []Type{TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*String)
 
-		return ctx.NewString(strings.Title(strings.ToLower(delf.data))), nil
+		return ctx.NewString(strings.Title(strings.ToLower(self.data))), nil
 	})
 }
 
 func BuiltinStringToUpper(ctx *Context) Value {
-	return ctx.NewBuiltin("string::to_upper", []Type{TRef(TVal(STRING))}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*String)
+	return ctx.NewBuiltin("string::to_upper", []Type{TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*String)
 
-		return ctx.NewString(strings.ToUpper(delf.data)), nil
+		return ctx.NewString(strings.ToUpper(self.data)), nil
 	})
 }
 
 func BuiltinStringToLower(ctx *Context) Value {
-	return ctx.NewBuiltin("string::to_lower", []Type{TRef(TVal(STRING))}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*String)
+	return ctx.NewBuiltin("string::to_lower", []Type{TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*String)
 
-		return ctx.NewString(strings.ToLower(delf.data)), nil
+		return ctx.NewString(strings.ToLower(self.data)), nil
 	})
 }
 
@@ -8289,14 +8414,12 @@ func BuiltinRegexpInit(ctx *Context) Value {
 }
 
 func BuiltinRegexpSplit(ctx *Context) Value {
-	return ctx.NewBuiltin("regexp::split", []Type{TRef(TVal(REGEXP)), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*Regexp)
-
+	return ctx.NewBuiltin("regexp::split", []Type{TVal(REGEXP), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Regexp)
 		text := arguments[1].(*String)
 
 		result := ctx.NewVector(nil)
-		for _, s := range delf.data.Split(text.data, -1) {
+		for _, s := range self.data.Split(text.data, -1) {
 			err := result.Push(ctx.NewString(s))
 			if err != nil {
 				return nil, NewError(nil, ctx.NewString(err.Error()))
@@ -8308,15 +8431,12 @@ func BuiltinRegexpSplit(ctx *Context) Value {
 }
 
 func BuiltinRegexpReplace(ctx *Context) Value {
-	return ctx.NewBuiltin("regexp::replace", []Type{TRef(TVal(REGEXP)), TVal(STRING), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*Regexp)
-
+	return ctx.NewBuiltin("regexp::replace", []Type{TVal(REGEXP), TVal(STRING), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Regexp)
 		text := arguments[1].(*String)
-
 		replacement := arguments[2].(*String)
 
-		return ctx.NewString(delf.data.ReplaceAllLiteralString(text.data, replacement.data)), nil
+		return ctx.NewString(self.data.ReplaceAllLiteralString(text.data, replacement.data)), nil
 	})
 }
 
@@ -8325,6 +8445,9 @@ func BuiltinVectorInit(ctx *Context) Value {
 		value := arguments[0]
 
 		if metaFunction, ok := MetaFunction(ctx, value, ctx.constStringNext); ok {
+			if !callableSelfIsPassedByReference(metaFunction) {
+				return nil, NewError(nil, ctx.NewString("iterator next must receive self by reference (declared with function.&(self))"))
+			}
 			reference := ctx.NewReference(value)
 			result := ctx.NewVector(nil)
 			for {
@@ -8383,31 +8506,27 @@ func BuiltinVectorInit(ctx *Context) Value {
 }
 
 func BuiltinVectorCount(ctx *Context) Value {
-	return ctx.NewBuiltin("vector::count", []Type{TRef(TVal(VECTOR))}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*Vector)
+	return ctx.NewBuiltin("vector::count", []Type{TVal(VECTOR)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Vector)
 
-		return ctx.NewNumber(float64(delf.Count())), nil
+		return ctx.NewNumber(float64(self.Count())), nil
 	})
 }
 
 func BuiltinVectorIsEmpty(ctx *Context) Value {
-	return ctx.NewBuiltin("vector::is_empty", []Type{TRef(TVal(VECTOR))}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*Vector)
+	return ctx.NewBuiltin("vector::is_empty", []Type{TVal(VECTOR)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Vector)
 
-		return ctx.NewBoolean(delf.Count() == 0), nil
+		return ctx.NewBoolean(self.Count() == 0), nil
 	})
 }
 
 func BuiltinVectorContains(ctx *Context) Value {
-	return ctx.NewBuiltin("vector::contains", []Type{TRef(TVal(VECTOR)), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*Vector)
-
+	return ctx.NewBuiltin("vector::contains", []Type{TVal(VECTOR), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Vector)
 		target := arguments[1]
 
-		for _, element := range delf.Elements() {
+		for _, element := range self.Elements() {
 			if element.Equal(target) {
 				return ctx.NewBoolean(true), nil
 			}
@@ -8418,11 +8537,10 @@ func BuiltinVectorContains(ctx *Context) Value {
 }
 
 func BuiltinVectorAny(ctx *Context) Value {
-	return ctx.NewBuiltin("vector::any", []Type{TRef(TVal(VECTOR)), TVal(CALLABLE)}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*Vector)
+	return ctx.NewBuiltin("vector::any", []Type{TVal(VECTOR), TVal(CALLABLE)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Vector)
 
-		for _, element := range delf.Elements() {
+		for _, element := range self.Elements() {
 			result, err := Call(ctx, nil, arguments[1], []Value{element.Copy()})
 			if err != nil {
 				return nil, err
@@ -8443,11 +8561,10 @@ func BuiltinVectorAny(ctx *Context) Value {
 }
 
 func BuiltinVectorAll(ctx *Context) Value {
-	return ctx.NewBuiltin("vector::all", []Type{TRef(TVal(VECTOR)), TVal(CALLABLE)}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*Vector)
+	return ctx.NewBuiltin("vector::all", []Type{TVal(VECTOR), TVal(CALLABLE)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Vector)
 
-		for _, element := range delf.Elements() {
+		for _, element := range self.Elements() {
 			result, err := Call(ctx, nil, arguments[1], []Value{element.Copy()})
 			if err != nil {
 				return nil, err
@@ -8468,12 +8585,11 @@ func BuiltinVectorAll(ctx *Context) Value {
 }
 
 func BuiltinVectorMap(ctx *Context) Value {
-	return ctx.NewBuiltin("vector::map", []Type{TRef(TVal(VECTOR)), TVal(CALLABLE)}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*Vector)
+	return ctx.NewBuiltin("vector::map", []Type{TVal(VECTOR), TVal(CALLABLE)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Vector)
 
 		mapped := []Value{}
-		for _, element := range delf.Elements() {
+		for _, element := range self.Elements() {
 			result, err := Call(ctx, nil, arguments[1], []Value{element.Copy()})
 			if err != nil {
 				return nil, err
@@ -8487,12 +8603,11 @@ func BuiltinVectorMap(ctx *Context) Value {
 }
 
 func BuiltinVectorFilter(ctx *Context) Value {
-	return ctx.NewBuiltin("vector::filter", []Type{TRef(TVal(VECTOR)), TVal(CALLABLE)}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*Vector)
+	return ctx.NewBuiltin("vector::filter", []Type{TVal(VECTOR), TVal(CALLABLE)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Vector)
 
 		filtered := []Value{}
-		for _, element := range delf.Elements() {
+		for _, element := range self.Elements() {
 			result, err := Call(ctx, nil, arguments[1], []Value{element.Copy()})
 			if err != nil {
 				return nil, err
@@ -8513,13 +8628,11 @@ func BuiltinVectorFilter(ctx *Context) Value {
 }
 
 func BuiltinVectorFind(ctx *Context) Value {
-	return ctx.NewBuiltin("vector::find", []Type{TRef(TVal(VECTOR)), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*Vector)
-
+	return ctx.NewBuiltin("vector::find", []Type{TVal(VECTOR), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Vector)
 		target := arguments[1]
 
-		elements := delf.Elements()
+		elements := self.Elements()
 		for index := range elements {
 			if elements[index].Equal(target) {
 				return ctx.NewNumber(float64(index)), nil
@@ -8531,13 +8644,11 @@ func BuiltinVectorFind(ctx *Context) Value {
 }
 
 func BuiltinVectorRfind(ctx *Context) Value {
-	return ctx.NewBuiltin("vector::rfind", []Type{TRef(TVal(VECTOR)), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*Vector)
-
+	return ctx.NewBuiltin("vector::rfind", []Type{TVal(VECTOR), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Vector)
 		target := arguments[1]
 
-		elements := delf.Elements()
+		elements := self.Elements()
 		for i := range elements {
 			index := len(elements) - i - 1
 			if elements[index].Equal(target) {
@@ -8550,7 +8661,7 @@ func BuiltinVectorRfind(ctx *Context) Value {
 }
 
 func BuiltinVectorPush(ctx *Context) Value {
-	return ctx.NewBuiltin("vector::push", []Type{TRef(TVal(VECTOR)), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+	return ctx.NewBuiltinWithSelfByReference("vector::push", []Type{TRef(TVal(VECTOR)), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Vector)
 
@@ -8564,7 +8675,7 @@ func BuiltinVectorPush(ctx *Context) Value {
 }
 
 func BuiltinVectorPop(ctx *Context) Value {
-	return ctx.NewBuiltin("vector::pop", []Type{TRef(TVal(VECTOR))}, func(ctx *Context, arguments []Value) (Value, error) {
+	return ctx.NewBuiltinWithSelfByReference("vector::pop", []Type{TRef(TVal(VECTOR))}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Vector)
 
@@ -8582,7 +8693,7 @@ func BuiltinVectorPop(ctx *Context) Value {
 }
 
 func BuiltinVectorInsert(ctx *Context) Value {
-	return ctx.NewBuiltin("vector::insert", []Type{TRef(TVal(VECTOR)), TVal(NUMBER), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+	return ctx.NewBuiltinWithSelfByReference("vector::insert", []Type{TRef(TVal(VECTOR)), TVal(NUMBER), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Vector)
 
@@ -8605,7 +8716,7 @@ func BuiltinVectorInsert(ctx *Context) Value {
 }
 
 func BuiltinVectorRemove(ctx *Context) Value {
-	return ctx.NewBuiltin("vector::remove", []Type{TRef(TVal(VECTOR)), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+	return ctx.NewBuiltinWithSelfByReference("vector::remove", []Type{TRef(TVal(VECTOR)), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Vector)
 
@@ -8628,17 +8739,16 @@ func BuiltinVectorRemove(ctx *Context) Value {
 }
 
 func BuiltinVectorSlice(ctx *Context) Value {
-	return ctx.NewBuiltin("vector::slice", []Type{TRef(TVal(VECTOR)), TVal(NUMBER), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*Vector)
+	return ctx.NewBuiltin("vector::slice", []Type{TVal(VECTOR), TVal(NUMBER), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Vector)
 
 		bgn := arguments[1].(*Number)
 		bgn_index, err := ValueAsIndex(bgn)
 		if err != nil {
 			return nil, NewError(nil, ctx.NewStringf("attempted vector::slice with invalid begin index %v (%s)", bgn, err.Error()))
 		}
-		if bgn_index > delf.Count() {
-			return nil, NewError(nil, ctx.NewStringf("attempted vector::slice with invalid begin index %v (vector has a count of %v)", bgn, delf.Count()))
+		if bgn_index > self.Count() {
+			return nil, NewError(nil, ctx.NewStringf("attempted vector::slice with invalid begin index %v (vector has a count of %v)", bgn, self.Count()))
 		}
 
 		end := arguments[2].(*Number)
@@ -8646,8 +8756,8 @@ func BuiltinVectorSlice(ctx *Context) Value {
 		if err != nil {
 			return nil, NewError(nil, ctx.NewStringf("attempted vector::slice with invalid end index %v (%s)", end, err.Error()))
 		}
-		if end_index > delf.Count() {
-			return nil, NewError(nil, ctx.NewStringf("attempted vector::slice with invalid end index %v (vector has a count of %v)", end, delf.Count()))
+		if end_index > self.Count() {
+			return nil, NewError(nil, ctx.NewStringf("attempted vector::slice with invalid end index %v (vector has a count of %v)", end, self.Count()))
 		}
 
 		if end_index < bgn_index {
@@ -8656,7 +8766,7 @@ func BuiltinVectorSlice(ctx *Context) Value {
 
 		result := ctx.NewVector(nil)
 		for i := bgn_index; i < end_index; i++ {
-			err := result.Push(delf.Get(i).Copy())
+			err := result.Push(self.Get(i).Copy())
 			if err != nil {
 				return nil, NewError(nil, ctx.NewString(err.Error()))
 			}
@@ -8667,12 +8777,11 @@ func BuiltinVectorSlice(ctx *Context) Value {
 }
 
 func BuiltinVectorReversed(ctx *Context) Value {
-	return ctx.NewBuiltin("vector::reversed", []Type{TRef(TVal(VECTOR))}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*Vector)
+	return ctx.NewBuiltin("vector::reversed", []Type{TVal(VECTOR)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Vector)
 
 		elements := []Value{}
-		for _, element := range delf.Elements() {
+		for _, element := range self.Elements() {
 			elements = append(elements, element.Copy())
 		}
 		slices.Reverse(elements)
@@ -8720,17 +8829,14 @@ let sort = function(x) {
 	return result;
 };
 return function(self) {
-	if not ty::is_reference(self) {
-		error $"expected reference to vector value for argument 0, received {typename(self)}";
+	if not ty::is_vector(self) {
+		error $"expected vector value for argument 0, received {typename(self)}";
 	}
-	if not ty::is_vector(self.*) {
-		error $"expected reference to vector value for argument 0, received reference to {typename(self.*)}";
-	}
-	try { return sort(self.*); } catch err { error err; }
+	try { return sort(self); } catch err { error err; }
 };
 `)
 
-	return ctx.NewBuiltin("vector::sorted", []Type{TRef(TVal(VECTOR))}, func(ctx *Context, arguments []Value) (Value, error) {
+	return ctx.NewBuiltin("vector::sorted", []Type{TVal(VECTOR)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return Call(ctx, nil, function, arguments)
 	})
 }
@@ -8777,17 +8883,14 @@ let sort = function(x, compare) {
 	return result;
 };
 return function(self, compare) {
-	if not ty::is_reference(self) {
-		error $"expected reference to vector value for argument 0, received {typename(self)}";
+	if not ty::is_vector(self) {
+		error $"expected vector value for argument 0, received {typename(self)}";
 	}
-	if not ty::is_vector(self.*) {
-		error $"expected reference to vector value for argument 0, received reference to {typename(self.*)}";
-	}
-	try { return sort(self.*, compare); } catch err { error err; }
+	try { return sort(self, compare); } catch err { error err; }
 };
 `)
 
-	return ctx.NewBuiltin("vector::sorted_by", []Type{TRef(TVal(VECTOR)), TVal(CALLABLE)}, func(ctx *Context, arguments []Value) (Value, error) {
+	return ctx.NewBuiltin("vector::sorted_by", []Type{TVal(VECTOR), TVal(CALLABLE)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return Call(ctx, nil, function, arguments)
 	})
 }
@@ -8796,7 +8899,7 @@ func BuiltinVectorIntoIterator(ctx *Context) Value {
 	function := ctx.NewValueFromSourceOrPanic("vector::into_iterator", `
 return function(self) {
 	let vector_iterator = type extends iterator {
-		.next = function(self) {
+		.next = function.&(self) {
 			if self.index >= self.vector.*.count() {
 				return iterator::eoi();
 			}
@@ -8806,50 +8909,46 @@ return function(self) {
 		},
 	};
 	return new vector_iterator {
-		.vector = self,
+		.vector = self.&,
 		.index = 0,
 	};
 };
 	`)
 
-	return ctx.NewBuiltin("vector::into_iterator", []Type{TRef(TVal(VECTOR))}, func(ctx *Context, arguments []Value) (Value, error) {
+	return ctx.NewBuiltin("vector::into_iterator", []Type{TVal(VECTOR)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return Call(ctx, nil, function, arguments)
 	})
 }
 
 func BuiltinMapCount(ctx *Context) Value {
-	return ctx.NewBuiltin("map::count", []Type{TRef(TVal(MAP))}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*Map)
+	return ctx.NewBuiltin("map::count", []Type{TVal(MAP)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Map)
 
-		return ctx.NewNumber(float64(delf.Count())), nil
+		return ctx.NewNumber(float64(self.Count())), nil
 	})
 }
 
 func BuiltinMapIsEmpty(ctx *Context) Value {
-	return ctx.NewBuiltin("map::is_empty", []Type{TRef(TVal(MAP))}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*Map)
+	return ctx.NewBuiltin("map::is_empty", []Type{TVal(MAP)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Map)
 
-		return ctx.NewBoolean(delf.Count() == 0), nil
+		return ctx.NewBoolean(self.Count() == 0), nil
 	})
 }
 
 func BuiltinMapContains(ctx *Context) Value {
-	return ctx.NewBuiltin("map::contains", []Type{TRef(TVal(MAP)), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*Map)
-
+	return ctx.NewBuiltin("map::contains", []Type{TVal(MAP), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Map)
 		target := arguments[1]
 
-		_, ok := delf.Lookup(target)
+		_, ok := self.Lookup(target)
 
 		return ctx.NewBoolean(ok), nil
 	})
 }
 
 func BuiltinMapInsert(ctx *Context) Value {
-	return ctx.NewBuiltin("map::insert", []Type{TRef(TVal(MAP)), TVal(ANY), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+	return ctx.NewBuiltinWithSelfByReference("map::insert", []Type{TRef(TVal(MAP)), TVal(ANY), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Map)
 
@@ -8866,7 +8965,7 @@ func BuiltinMapInsert(ctx *Context) Value {
 }
 
 func BuiltinMapRemove(ctx *Context) Value {
-	return ctx.NewBuiltin("map::remove", []Type{TRef(TVal(MAP)), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+	return ctx.NewBuiltinWithSelfByReference("map::remove", []Type{TRef(TVal(MAP)), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Map)
 
@@ -8887,11 +8986,10 @@ func BuiltinMapRemove(ctx *Context) Value {
 }
 
 func BuiltinMapKeys(ctx *Context) Value {
-	return ctx.NewBuiltin("map::keys", []Type{TRef(TVal(MAP))}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*Map)
+	return ctx.NewBuiltin("map::keys", []Type{TVal(MAP)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Map)
 
-		pairs := delf.Pairs()
+		pairs := self.Pairs()
 		result := ctx.NewVector(nil)
 		for _, pair := range pairs {
 			err := result.Push(pair.Key.Copy())
@@ -8905,11 +9003,10 @@ func BuiltinMapKeys(ctx *Context) Value {
 }
 
 func BuiltinMapValues(ctx *Context) Value {
-	return ctx.NewBuiltin("map::values", []Type{TRef(TVal(MAP))}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*Map)
+	return ctx.NewBuiltin("map::values", []Type{TVal(MAP)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Map)
 
-		pairs := delf.Pairs()
+		pairs := self.Pairs()
 		result := ctx.NewVector(nil)
 		for _, pair := range pairs {
 			err := result.Push(pair.Value.Copy())
@@ -8923,11 +9020,10 @@ func BuiltinMapValues(ctx *Context) Value {
 }
 
 func BuiltinMapPairs(ctx *Context) Value {
-	return ctx.NewBuiltin("map::pairs", []Type{TRef(TVal(MAP))}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*Map)
+	return ctx.NewBuiltin("map::pairs", []Type{TVal(MAP)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Map)
 
-		pairs := delf.Pairs()
+		pairs := self.Pairs()
 		result := ctx.NewVector(nil)
 		for _, pair := range pairs {
 			pair, err := ctx.NewMap([]MapPair{
@@ -8950,7 +9046,6 @@ func BuiltinMapPairs(ctx *Context) Value {
 func BuiltinMapUnion(ctx *Context) Value {
 	function := ctx.NewValueFromSourceOrPanic("map::union", `
 return function(a, b) {
-	try { a = a.*; } catch { } # &map -> map
 	if not ty::is_map(a) or not ty::is_map(b) {
 		error $"attempted map::union of values {repr(a)} and {repr(b)}";
 	}
@@ -8972,44 +9067,39 @@ return function(a, b) {
 }
 
 func BuiltinSetCount(ctx *Context) Value {
-	return ctx.NewBuiltin("set::count", []Type{TRef(TVal(SET))}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*Set)
+	return ctx.NewBuiltin("set::count", []Type{TVal(SET)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Set)
 
-		return ctx.NewNumber(float64(delf.Count())), nil
+		return ctx.NewNumber(float64(self.Count())), nil
 	})
 }
 
 func BuiltinSetIsEmpty(ctx *Context) Value {
-	return ctx.NewBuiltin("set::is_empty", []Type{TRef(TVal(SET))}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*Set)
+	return ctx.NewBuiltin("set::is_empty", []Type{TVal(SET)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Set)
 
-		return ctx.NewBoolean(delf.Count() == 0), nil
+		return ctx.NewBoolean(self.Count() == 0), nil
 	})
 }
 
 func BuiltinSetContains(ctx *Context) Value {
-	return ctx.NewBuiltin("set::contains", []Type{TRef(TVal(SET)), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*Set)
-
+	return ctx.NewBuiltin("set::contains", []Type{TVal(SET), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Set)
 		target := arguments[1]
 
-		_, ok := delf.Lookup(target)
+		_, ok := self.Lookup(target)
 
 		return ctx.NewBoolean(ok), nil
 	})
 }
 
 func BuiltinSetInsert(ctx *Context) Value {
-	return ctx.NewBuiltin("set::insert", []Type{TRef(TVal(SET)), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+	return ctx.NewBuiltinWithSelfByReference("set::insert", []Type{TRef(TVal(SET)), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Set)
+		element := arguments[1]
 
-		k := arguments[1]
-
-		err := delf.Insert(k)
+		err := delf.Insert(element)
 		if err != nil {
 			return nil, NewError(nil, ctx.NewStringf("invalid set::insert operation (%s)", err.Error()))
 		}
@@ -9019,18 +9109,17 @@ func BuiltinSetInsert(ctx *Context) Value {
 }
 
 func BuiltinSetRemove(ctx *Context) Value {
-	return ctx.NewBuiltin("set::remove", []Type{TRef(TVal(SET)), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+	return ctx.NewBuiltinWithSelfByReference("set::remove", []Type{TRef(TVal(SET)), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Reference)
 		delf := self.data.(*Set)
+		element := arguments[1]
 
-		k := arguments[1]
-
-		lookup, ok := delf.Lookup(k)
+		lookup, ok := delf.Lookup(element)
 		if !ok {
-			return nil, NewError(nil, ctx.NewStringf("attempted set::remove on a set without element %v", k))
+			return nil, NewError(nil, ctx.NewStringf("attempted set::remove on a set without element %v", element))
 		}
 
-		err := delf.Remove(k)
+		err := delf.Remove(element)
 		if err != nil {
 			return nil, NewError(nil, ctx.NewStringf("invalid set::remove operation (%s)", err.Error()))
 		}
@@ -9209,7 +9298,7 @@ func BuiltinDumpln(ctx *Context) Value {
 func BuiltinPrint(ctx *Context) Value {
 	return ctx.NewBuiltin("print", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		if metaFunction, ok := MetaFunction(ctx, arguments[0], ctx.constStringIntoString); ok {
-			result, err := Call(ctx, nil, metaFunction, []Value{ctx.NewReference(arguments[0])})
+			result, err := Call(ctx, nil, metaFunction, []Value{ctx.callableSelfArgument(arguments[0], metaFunction)})
 			if err != nil {
 				return nil, err
 			}
@@ -9237,7 +9326,7 @@ func BuiltinPrint(ctx *Context) Value {
 func BuiltinPrintln(ctx *Context) Value {
 	return ctx.NewBuiltin("println", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		if metaFunction, ok := MetaFunction(ctx, arguments[0], ctx.constStringIntoString); ok {
-			result, err := Call(ctx, nil, metaFunction, []Value{ctx.NewReference(arguments[0])})
+			result, err := Call(ctx, nil, metaFunction, []Value{ctx.callableSelfArgument(arguments[0], metaFunction)})
 			if err != nil {
 				return nil, err
 			}
@@ -9265,7 +9354,7 @@ func BuiltinPrintln(ctx *Context) Value {
 func BuiltinEprint(ctx *Context) Value {
 	return ctx.NewBuiltin("eprint", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		if metaFunction, ok := MetaFunction(ctx, arguments[0], ctx.constStringIntoString); ok {
-			result, err := Call(ctx, nil, metaFunction, []Value{ctx.NewReference(arguments[0])})
+			result, err := Call(ctx, nil, metaFunction, []Value{ctx.callableSelfArgument(arguments[0], metaFunction)})
 			if err != nil {
 				return nil, err
 			}
@@ -9293,7 +9382,7 @@ func BuiltinEprint(ctx *Context) Value {
 func BuiltinEprintln(ctx *Context) Value {
 	return ctx.NewBuiltin("eprintln", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		if metaFunction, ok := MetaFunction(ctx, arguments[0], ctx.constStringIntoString); ok {
-			result, err := Call(ctx, nil, metaFunction, []Value{ctx.NewReference(arguments[0])})
+			result, err := Call(ctx, nil, metaFunction, []Value{ctx.callableSelfArgument(arguments[0], metaFunction)})
 			if err != nil {
 				return nil, err
 			}
@@ -9330,7 +9419,7 @@ let range_iterator = type extends iterator {
 			.end = end,
 		};
 	},
-	"next": function(self) {
+	"next": function.&(self) {
 		if self.cur >= self.end {
 			error null; # end-of-iteration
 		}

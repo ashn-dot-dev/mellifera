@@ -88,7 +88,7 @@
 
 <identifier> ::= /[a-zA-Z_]\w*/
 
-<function> ::= "function" "(" (<identifier> ("," <identifier>)*)? ")" <block>
+<function> ::= "function" ".&"? "(" (<identifier> ("," <identifier>)*)? ")" <block>
 
 <set> ::= "Set" "{" "}"
         | "Set"? "{" (<expression> ("," <expression>)* ","?)? "}"

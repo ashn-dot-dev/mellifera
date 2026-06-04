@@ -2,10 +2,10 @@ try {
     fs::read("/path/to/file/that/does/not/exist.txt");
 }
 catch err {
-    println($"error: {err}");
+    eprintln($"error: {err}");
 }
 
-print("\n");
+eprint("\n");
 
 let g = function() {
     let f = function() {

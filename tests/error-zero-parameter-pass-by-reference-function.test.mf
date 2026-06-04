@@ -1,0 +1,3 @@
+function.&(){};
+################################################################################
+# [error-zero-parameter-pass-by-reference-function.test.mf, line 1] error: function takes self by reference, but has no parameters

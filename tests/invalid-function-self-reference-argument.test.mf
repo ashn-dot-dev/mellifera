@@ -1,0 +1,4 @@
+let f = function.&(self) { dumpln(self.*); };
+f(123);
+################################################################################
+# [invalid-function-self-reference-argument.test.mf, line 2] error: invalid function self argument (expected reference, received number)

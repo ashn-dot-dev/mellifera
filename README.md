@@ -214,7 +214,7 @@ let fizzbuzzer = type extends iterator {
     .init = function(n, max) {
         return new fizzbuzzer {"n": n, "max": max};
     },
-    .next = function(self) {
+    .next = function.&(self) {
         let n = self.n;
         if n > self.max {
             error null; # error null signals end-of-iteration
@@ -267,10 +267,10 @@ try {
     fs::read("/path/to/file/that/does/not/exist.txt");
 }
 catch err {
-    println($"error: {err}");
+    eprintln($"error: {err}");
 }
 
-print("\n");
+eprint("\n");
 
 let g = function() {
     let f = function() {

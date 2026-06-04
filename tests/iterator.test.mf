@@ -9,7 +9,7 @@ let counter = type map::union(iterator, {
             .max = max,
         };
     },
-    .next = function(self) {
+    .next = function.&(self) {
         if self.*.current > self.*.max {
             # iterator::eoi() will error, but we still use a return statement
             # for visual clarity to indicate that control is being returned.
