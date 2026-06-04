@@ -9726,61 +9726,6 @@ func BuiltinHtmlEscape(ctx *Context) Value {
 	})
 }
 
-func jsonDecode(ctx *Context, j any) (Value, error) {
-	if j == nil {
-		return ctx.NewNull(), nil
-	}
-
-	// Normalize input so that we are always handling a *any as if jsonDecode
-	// was passed pointer directly returned from json.Unmarshal.
-	jp, ok := j.(*any)
-	if !ok {
-		jp = &j
-	}
-
-	if x, ok := (*jp).(bool); ok {
-		return ctx.NewBoolean(x), nil
-	}
-
-	if x, ok := (*jp).(float64); ok {
-		return ctx.NewNumber(x), nil
-	}
-
-	if x, ok := (*jp).(string); ok {
-		return ctx.NewString(x), nil
-	}
-
-	if x, ok := (*jp).([]any); ok {
-		elements := []Value{}
-		for _, ej := range x {
-			element, err := jsonDecode(ctx, ej)
-			if err != nil {
-				return nil, err
-			}
-			elements = append(elements, element)
-		}
-		return ctx.NewVector(elements), nil
-	}
-
-	if x, ok := (*jp).(map[string]any); ok {
-		pairs := []MapPair{}
-		for kj, vj := range x {
-			k, err := jsonDecode(ctx, kj)
-			if err != nil {
-				return nil, err
-			}
-			v, err := jsonDecode(ctx, vj)
-			if err != nil {
-				return nil, err
-			}
-			pairs = append(pairs, MapPair{k, v})
-		}
-		return ctx.NewMap(pairs)
-	}
-
-	return nil, fmt.Errorf("cannot JSON-decode type %T", *jp)
-}
-
 func jsonDecodeFromTokens(ctx *Context, dec *json.Decoder) (Value, error) {
 	t, err := dec.Token()
 	if err != nil {
@@ -9863,7 +9808,7 @@ func BuiltinJsonDecode(ctx *Context) Value {
 
 		// Check for trailing data after the first JSON value
 		if dec.More() {
-			return nil, NewError(nil, ctx.NewString("cannot JSON-decode trailing data"))
+			return nil, NewError(nil, ctx.NewStringf("cannot JSON-decode string %v", encoded))
 		}
 
 		return decoded, nil

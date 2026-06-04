@@ -72,4 +72,4 @@ try { json::decode("{}extra"); } catch err { println($"error: {err}"); } # extra
 # error: cannot JSON-decode string "Na"
 # error: cannot JSON-decode string "I"
 # error: cannot JSON-decode string "In"
-# error: cannot JSON-decode trailing data
+# error: cannot JSON-decode string "{}extra"
