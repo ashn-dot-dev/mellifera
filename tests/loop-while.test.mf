@@ -3,9 +3,28 @@ while x <= 5 {
     println($`x is {x}`);
     x = x + 1;
 }
+
+print("\n");
+
+# Validate the while loops close over a new environment with every execution of
+# the loop body.
+let fns = [];
+let i = 0;
+while i < 3 {
+    let n = i;
+    fns.push(function() { return n; });
+    i = i + 1;
+}
+for f in fns {
+    println(f());
+}
 ################################################################################
 # x is 1
 # x is 2
 # x is 3
 # x is 4
 # x is 5
+#
+# 0
+# 1
+# 2

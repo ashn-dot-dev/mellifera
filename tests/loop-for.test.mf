@@ -142,6 +142,70 @@ try {
 } catch err {
     dumpln(err);
 }
+
+print("\n");
+
+# Validate the for loops close over a new environment with every execution of
+# the loop body.
+
+println("integer for-loop closures");
+let fns = [];
+for i in 3 {
+    fns.push(function() { return i; });
+}
+for f in fns {
+    println(f());
+}
+
+println("vector for-loop closures");
+let fns = [];
+for i in [0, 1, 2] {
+    fns.push(function() { return i; });
+}
+for f in fns {
+    println(f());
+}
+
+println("vector for-loop closures");
+let fns = [];
+for i in {0: null, 1: null, 2: null} {
+    fns.push(function() { return i; });
+}
+for f in fns {
+    println(f());
+}
+
+println("set for-loop closures");
+let fns = [];
+for i in {0, 1, 2} {
+    fns.push(function() { return i; });
+}
+for f in fns {
+    println(f());
+}
+
+println("iterator for-loop closures");
+let T = type extends iterator {
+    .init = function(end) {
+        return new T {"i": 0, "end": end};
+    },
+    .next = function(self) {
+        let i = self.i;
+        if i >= self.end {
+            error null;
+        }
+        self.i = self.i + 1;
+        return i;
+    },
+};
+let fns = [];
+for i in T::init(3) {
+    fns.push(function() { return i; });
+}
+for f in fns {
+    println(f());
+}
+
 ################################################################################
 # x is 0
 # x is 1
@@ -195,3 +259,24 @@ try {
 #
 # "cannot use a key-reference over iterator `fizzbuzzer`"
 # "attempted key-value iteration over iterator `fizzbuzzer`"
+#
+# integer for-loop closures
+# 0
+# 1
+# 2
+# vector for-loop closures
+# 0
+# 1
+# 2
+# vector for-loop closures
+# 0
+# 1
+# 2
+# set for-loop closures
+# 0
+# 1
+# 2
+# iterator for-loop closures
+# 0
+# 1
+# 2

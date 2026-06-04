@@ -5432,8 +5432,6 @@ func (self *AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, 
 		collection = collection.Copy()
 	}
 
-	loopEnv := NewEnvironment(env)
-
 	if metaFunction, ok := MetaFunction(ctx, collection, ctx.constStringNext); ok {
 		if self.IdentifierV != nil {
 			return nil, NewError(
@@ -5458,6 +5456,7 @@ func (self *AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, 
 				}
 				return nil, err
 			}
+			loopEnv := NewEnvironment(env)
 			loopEnv.Let(self.IdentifierK.Name.data, moveOrCopy(iterated))
 			result, err := self.Block.Eval(ctx, loopEnv)
 			if err != nil {
@@ -5494,6 +5493,7 @@ func (self *AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, 
 			)
 		}
 		for i := range collectionInteger {
+			loopEnv := NewEnvironment(env)
 			loopEnv.Let(self.IdentifierK.Name.data, ctx.NewNumber(float64(i)))
 			result, err := self.Block.Eval(ctx, loopEnv)
 			if err != nil {
@@ -5528,6 +5528,7 @@ func (self *AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, 
 			} else {
 				k = x.Copy()
 			}
+			loopEnv := NewEnvironment(env)
 			loopEnv.Let(self.IdentifierK.Name.data, k)
 			result, err := self.Block.Eval(ctx, loopEnv)
 			if err != nil {
@@ -5555,6 +5556,7 @@ func (self *AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, 
 		// iteration.
 		pairs := collectionMap.Pairs()
 		for _, pair := range pairs {
+			loopEnv := NewEnvironment(env)
 			loopEnv.Let(self.IdentifierK.Name.data, pair.Key.Copy())
 			if self.IdentifierV != nil {
 				var v Value = nil
@@ -5593,6 +5595,7 @@ func (self *AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, 
 			)
 		}
 		for _, element := range collectionSet.Elements() {
+			loopEnv := NewEnvironment(env)
 			loopEnv.Let(self.IdentifierK.Name.data, element.Copy())
 			result, err := self.Block.Eval(ctx, loopEnv)
 			if err != nil {

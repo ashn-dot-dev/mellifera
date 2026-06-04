@@ -3862,7 +3862,6 @@ class AstStatementFor(AstStatement):
             # modifcation of that original collection during iteration.
             collection = copy(collection)
 
-        loop_env = Environment(env)
         if metafunction := collection.metafunction(CONST_STRING_NEXT):
             if self.identifier_v is not None:
                 return Error(
@@ -3881,6 +3880,7 @@ class AstStatementFor(AstStatement):
                     if isinstance(iterated.value, Null):
                         break  # end-of-iteration
                     return iterated
+                loop_env = Environment(env)
                 loop_env.let(self.identifier_k.name, copy(iterated))
                 result = self.block.eval(loop_env)
                 if isinstance(result, Return):
@@ -3912,6 +3912,7 @@ class AstStatementFor(AstStatement):
             except Exception as e:
                 return Error(self.location, str(e))
             for i in range(collection_integer):
+                loop_env = Environment(env)
                 loop_env.let(self.identifier_k.name, Number.new(i))
                 result = self.block.eval(loop_env)
                 if isinstance(result, Return):
@@ -3929,6 +3930,7 @@ class AstStatementFor(AstStatement):
                     f"attempted key-value iteration over type {quote(typename(collection))}",
                 )
             for x in list(collection.data):
+                loop_env = Environment(env)
                 loop_env.let(
                     self.identifier_k.name,
                     Reference.new(x) if self.k_is_reference else copy(x),
@@ -3949,6 +3951,7 @@ class AstStatementFor(AstStatement):
                     f"cannot use a key-reference over type {quote(typename(collection))}",
                 )
             for k, v in dict(collection.data).items():
+                loop_env = Environment(env)
                 loop_env.let(self.identifier_k.name, copy(k))
                 if self.identifier_v is not None:
                     loop_env.let(
@@ -3976,6 +3979,7 @@ class AstStatementFor(AstStatement):
                     f"cannot use a key-reference over type {quote(typename(collection))}",
                 )
             for x in dict(collection.data).keys():
+                loop_env = Environment(env)
                 loop_env.let(self.identifier_k.name, copy(x))
                 result = self.block.eval(loop_env)
                 if isinstance(result, Return):
