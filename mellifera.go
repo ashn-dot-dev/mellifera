@@ -2976,7 +2976,7 @@ func (self *Lexer) lexTemplate() (Token, error) {
 			if parser.currentToken.Kind != TOKEN_RBRACE {
 				return ParseError{
 					Location: location,
-					why:      fmt.Sprintf("expected `}}` to close template expression, found %s", quote(parser.currentToken.Kind)),
+					why:      fmt.Sprintf("expected `}` to close template expression, found %s", quote(parser.currentToken.Kind)),
 				}
 			}
 			self.position += strings.LastIndex(self.remaining(), lexer.remaining())
