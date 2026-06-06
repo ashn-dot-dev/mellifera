@@ -136,6 +136,12 @@ class SharedVectorData(UserList["Value"]):
     def __init__(self, data: Optional[Iterable["Value"]] = None):
         self.uses: int = 0
         self.refs: int = 0
+        if data is not None:
+            for element in data:
+                if isinstance(element, Reference):
+                    raise Exception(
+                        f"invalid vector construction with element {element}"
+                    )
         super().__init__(data)
 
     def __copy__(self) -> "SharedVectorData":
@@ -147,15 +153,17 @@ class SharedMapData(UserDict["Value", "Value"]):
         self.uses: int = 0
         self.refs: int = 0
         if data is not None:
-            for key in data.keys():
-                if isinstance(key, Number) and math.isnan(key.data):
-                    raise Exception("invalid NaN map key")
+            for key, value in data.items():
+                if (
+                    isinstance(key, Number)
+                    and math.isnan(key.data)
+                    or isinstance(key, Reference)
+                    or isinstance(value, Reference)
+                ):
+                    raise Exception(
+                        f"invalid map construction with key {key} and value {value}"
+                    )
         super().__init__(data)
-
-    def __setitem__(self, key: "Value", value: "Value") -> None:
-        if isinstance(key, Number) and math.isnan(key.data):
-            raise Exception("invalid NaN map key")
-        super().__setitem__(key, value)
 
     def __copy__(self) -> "SharedMapData":
         return SharedMapData({copy(k): copy(v) for k, v in self.data.items()})
@@ -167,15 +175,17 @@ class SharedSetData(UserDict["Value", None]):
         self.refs: int = 0
         if data is not None:
             for element in data:
-                if isinstance(element, Number) and math.isnan(element.data):
-                    raise Exception("invalid NaN set element")
+                if (
+                    isinstance(element, Number)
+                    and math.isnan(element.data)
+                    or isinstance(element, Reference)
+                ):
+                    raise Exception(f"invalid set construction with element {element}")
             super().__init__({k: None for k in data})
         else:
             super().__init__()
 
     def __setitem__(self, element: "Value", value: None) -> None:
-        if isinstance(element, Number) and math.isnan(element.data):
-            raise Exception("invalid NaN set element")
         super().__setitem__(element, None)
 
     def insert(self, element: "Value") -> None:
@@ -592,10 +602,6 @@ class Vector(Value):
         self.data.uses += 1
         self.meta = meta
 
-    def __del__(self):
-        assert self.data.uses >= 1
-        self.data.uses -= 1
-
     def __hash__(self):
         result = 0
         for element in self.data:
@@ -644,6 +650,10 @@ class Vector(Value):
     def __setitem__(self, key: Value, value: Value) -> None:
         if self.is_immutable():
             raise Exception(f"attempted to modify immutable vector {self}")
+        if isinstance(value, Reference):
+            raise Exception(
+                f"attempted vector element assignment with element type reference to {value.data.typename()}"
+            )
         if not isinstance(key, Number):
             raise KeyError(f"attempted vector access using non-number key {key}")
         index = float(key.data)
@@ -681,6 +691,10 @@ class Vector(Value):
     def insert(self, index: int, value: Value) -> None:
         if self.is_immutable():
             raise Exception(f"attempted to modify immutable vector {self}")
+        if isinstance(value, Reference):
+            raise Exception(
+                f"attempted vector element insert with element type reference to {value.data.typename()}"
+            )
         self.cow()  # copy-on-write
         self.data.insert(index, value)
 
@@ -693,6 +707,10 @@ class Vector(Value):
     def push(self, value: Value) -> None:
         if self.is_immutable():
             raise Exception(f"attempted to modify immutable vector {self}")
+        if isinstance(value, Reference):
+            raise Exception(
+                f"attempted vector element push with element type reference to {value.data.typename()}"
+            )
         self.cow()  # copy-on-write
         self.data.append(value)
 
@@ -786,10 +804,6 @@ class Map(Value):
         self.meta = meta
         self.name = name
 
-    def __del__(self):
-        assert self.data.uses >= 1
-        self.data.uses -= 1
-
     def __hash__(self):
         result = 0
         for key, value in self.data.items():
@@ -849,6 +863,14 @@ class Map(Value):
     def __setitem__(self, key: Value, value: Value) -> None:
         if self.is_immutable():
             raise Exception(f"attempted to modify immutable map {self}")
+        if isinstance(key, Reference):
+            raise Exception(
+                f"attempted map insert with key type reference to {key.data.typename()}"
+            )
+        if isinstance(value, Reference):
+            raise Exception(
+                f"attempted map insert with value type reference to {value.data.typename()}"
+            )
         if isinstance(key, Number) and math.isnan(key.data):
             raise Exception("invalid NaN map key")
         if self.data.uses > 1:
@@ -869,6 +891,10 @@ class Map(Value):
     def __delitem__(self, key: Value) -> None:
         if self.is_immutable():
             raise Exception(f"attempted to modify immutable map {self}")
+        if isinstance(key, Reference):
+            raise Exception(
+                f"attempted map remove with key type reference to {key.data.typename()}"
+            )
         if self.data.uses > 1:
             self.data.uses -= 1
             self.data = copy(self.data)  # copy-on-write
@@ -942,10 +968,6 @@ class Set(Value):
         self.data.uses += 1
         self.meta = meta
 
-    def __del__(self):
-        assert self.data.uses >= 1
-        self.data.uses -= 1
-
     def __hash__(self):
         result = 0
         for element in self.data.keys():
@@ -996,6 +1018,10 @@ class Set(Value):
     def insert(self, element: "Value") -> None:
         if self.is_immutable():
             raise Exception(f"attempted to modify immutable set {self}")
+        if isinstance(element, Reference):
+            raise Exception(
+                f"attempted set insert with element type reference to {element.data.typename()}"
+            )
         if isinstance(element, Number) and math.isnan(element.data):
             raise Exception("invalid NaN set element")
         if self.data.uses > 1:
@@ -1007,6 +1033,10 @@ class Set(Value):
     def remove(self, element: "Value") -> None:
         if self.is_immutable():
             raise Exception(f"attempted to modify immutable set {self}")
+        if isinstance(element, Reference):
+            raise Exception(
+                f"attempted set remove with element type reference to {element.data.typename()}"
+            )
         if self.data.uses > 1:
             self.data.uses -= 1
             self.data = copy(self.data)  # copy-on-write
@@ -1056,6 +1086,7 @@ class Reference(Value):
 
     @staticmethod
     def new(data: Value) -> "Reference":
+        data.cow()
         Reference.mark_referenced(data)
         return Reference(data, _REFERENCE_META)
 
@@ -2042,11 +2073,18 @@ class Environment:
         self.outer: Optional["Environment"] = outer
         self.store: dict[String, Value] = dict()
         self.match = None
+        self.refs: int = outer.refs if outer is not None else 0
 
     def let(self, name: String, value: Value) -> None:
+        if isinstance(value, Reference):
+            self.refs += 1
         self.store[name] = value
 
     def set(self, name: String, value: Value) -> None:
+        # References *should* only ever be introduced to a lexical scope via a
+        # call to Environment.let() from within the Mellifera runtime.
+        if isinstance(value, Reference):
+            raise Exception("attempted assignment with a reference value")
         env: Optional[Environment] = self
         while env is not None:
             if name in env.store:
@@ -2292,11 +2330,7 @@ class AstExpressionTemplate(AstExpression):
                 return result
             metafunction = result.metafunction(CONST_STRING_INTO_STRING)
             if metafunction is not None:
-                result = call(
-                    element.location,
-                    metafunction,
-                    [callable_self_argument(result, metafunction)],
-                )
+                result = call_meta_with_self(element.location, metafunction, result)
                 if isinstance(result, Error):
                     return result
                 if not isinstance(result, String):
@@ -2468,13 +2502,16 @@ class AstExpressionVector(AstExpression):
         )
 
     def eval(self, env: Environment) -> Union[Value, Error]:
-        elements = SharedVectorData()
-        for x in self.elements:
-            result = x.eval(env)
-            if isinstance(result, Error):
-                return result
-            elements.append(copy(result))
-        return Vector.new(elements)
+        try:
+            elements = list()
+            for x in self.elements:
+                result = x.eval(env)
+                if isinstance(result, Error):
+                    return result
+                elements.append(copy(result))
+            return Vector.new(elements)
+        except Exception as e:
+            return Error(self.location, str(e))
 
 
 @final
@@ -2501,7 +2538,7 @@ class AstExpressionMap(AstExpression):
 
     def eval(self, env: Environment) -> Union[Value, Error]:
         try:
-            elements = SharedMapData()
+            elements = dict()
             for k, v in self.elements:
                 k_result = k.eval(env)
                 if isinstance(k_result, Error):
@@ -2536,12 +2573,12 @@ class AstExpressionSet(AstExpression):
 
     def eval(self, env: Environment) -> Union[Value, Error]:
         try:
-            elements = SharedSetData()
+            elements = list()
             for x in self.elements:
                 result = x.eval(env)
                 if isinstance(result, Error):
                     return result
-                elements.insert(copy(result))
+                elements.append(copy(result))
             return Set.new(elements)
         except Exception as e:
             return Error(self.location, str(e))
@@ -2573,6 +2610,8 @@ class AstExpressionFunction(AstExpression):
         )
 
     def eval(self, env: Environment) -> Union[Value, Error]:
+        if env.refs > 0:
+            return Error(self.location, "function closes over a reference value")
         return Function.new(self, env)
 
 
@@ -2635,7 +2674,7 @@ class AstExpressionType(AstExpression):
                 and extends.name is not None
             ):
                 return Error(
-                    self.expression.location,
+                    self.extends.location,
                     f"expected map value created with the {quote(TokenKind.TYPE)} keyword, received {extends}",
                 )
 
@@ -3400,9 +3439,7 @@ class AstExpressionFunctionCall(AstExpression):
 
     def eval(self, env: Environment) -> Union[Value, Error]:
         self_argument: Optional[Value] = None
-        # Values whose mark must be released after a by-reference builtin call
-        # (the borrowed self reference does not escape; see below).
-        releases: list[Value] = list()
+        referenced: list[Value] = list()
         if isinstance(self.function, AstExpressionAccessDot):
             # Special case when dot access is used for a function call. An
             # implicit `self` argument is passed to the function, either by
@@ -3461,14 +3498,6 @@ class AstExpressionFunctionCall(AstExpression):
             # lhs store by copy (value.* -> pass by value), or a passthrough of
             # the existing reference (pass by reference).
             if callable_self_is_passed_by_reference(function):
-                self_is_builtin = isinstance(function, Builtin)
-
-                if self_is_builtin and not store_is_self_reference:
-                    # Perform a copy-on-write operation ahead of the call so
-                    # that the temporary self reference is guaranteed to
-                    # reference unique data.
-                    store.cow()
-
                 for value in chain:
                     Reference.mark_referenced(value)
                 if store_is_self_reference:
@@ -3478,15 +3507,12 @@ class AstExpressionFunctionCall(AstExpression):
                     # value.& -> pass by reference
                     self_argument = Reference.new(store)
 
-                # Builtins created with self_by_reference=True allow for an
-                # explicit optimization where the `self` reference can be
-                # treated as a non-escaping temporary, allowing marked values
-                # in the access chain to be unmarked after the built-in
-                # function returns.
-                if self_is_builtin:
-                    releases = list(chain)
-                    if not store_is_self_reference:
-                        releases.append(store)
+                # The implicit `self` reference is guaranteed not to escape the
+                # lexical environment of the callee, and can be safely unmarked
+                # after control returns from the invoked function.
+                referenced.extend(chain)
+                if not store_is_self_reference:
+                    referenced.append(store)
             else:
                 if store_is_self_reference:
                     # value.* -> pass by value (auto-deref)
@@ -3506,13 +3532,25 @@ class AstExpressionFunctionCall(AstExpression):
             arguments.append(self_argument)
         try:
             for argument in self.arguments:
+                # Arguments passed by reference with the .& operator are
+                # guaranteed not to escape the lexical environment of the
+                # callee, and can be safely unmarked after control returns from
+                # the invoked function.
+                if isinstance(argument, AstExpressionMkref):
+                    mkref_result = argument.eval_(env)
+                    if isinstance(mkref_result, Error):
+                        return mkref_result
+                    reference, marked = mkref_result
+                    referenced.extend(marked)
+                    arguments.append(reference)
+                    continue
                 result = argument.eval(env)
                 if isinstance(result, Error):
                     return result
                 arguments.append(copy(result))
             return call(self.location, function, arguments)
         finally:
-            for value in releases:
+            for value in referenced:
                 Reference.unmark_referenced(value)
 
 
@@ -3724,14 +3762,39 @@ class AstExpressionMkref(AstExpression):
             }
         )
 
-    def eval(self, env: Environment) -> Union[Value, Error]:
+    # Returns the constructed reference value as well as the full list of
+    # values marked as referenced (access chain plus the returned referenced
+    # value). The caller may chose to unmark the list of values at the end of
+    # the current lexical scope.
+    def eval_(self, env: Environment) -> Union[tuple[Reference, list[Value]], Error]:
         chain: list[Value] = []
         result = eval_lvalue(self.lhs, env, chain)
         if isinstance(result, Error):
             return result
+        marked: list[Value] = []
         for value in chain:
             Reference.mark_referenced(value)
-        return Reference.new(result)
+            marked.append(value)
+        marked.append(result)
+        return (Reference.new(result), marked)
+
+    def eval(self, env: Environment) -> Union[Value, Error]:
+        # References may only be constructed at specific points in a program:
+        #
+        # + From an implicit reference to self created when calling a function
+        #   declared with function.&(self, args...) { ... } => foo.fn(bar)
+        # + With the reference operator .& applied to function argument at the
+        #   call site of an arbitrary function invocation => fn(foo.&, bar, baz.&)
+        # + A key reference or value reference declared as an iteration variable
+        #   in a for-loop => for k.& in x { ... } and for k, v.& in x { ... }
+        #
+        # Each of these places has dedicated syntax that is explicitly parsed
+        # as a special case, and evaluated by the interpreter using the
+        # internal AstExpressionMkref.eval_() method.
+        return Error(
+            self.location,
+            "invalid reference operator use",
+        )
 
 
 @final
@@ -3853,6 +3916,11 @@ class AstStatementLet(AstStatement):
         result = self.expression.eval(env)
         if isinstance(result, Error):
             return result
+        if isinstance(result, Reference):
+            return Error(
+                self.location,
+                f"attempted assignment statement with type reference to {typename(result)}",
+            )
         env.let(self.identifier.name, copy(result))
         return None
 
@@ -3933,6 +4001,7 @@ class AstStatementFor(AstStatement):
         collection = self.collection.eval(env)
         if isinstance(collection, Error):
             return collection
+        collection_marked = False
         if self.k_is_reference or self.v_is_reference:
             # Reference iteration aliases elements from the original
             # collection. The collection is specifically *not* copied here,
@@ -3940,151 +4009,161 @@ class AstStatementFor(AstStatement):
             # original collection.
             collection.cow()
             Reference.mark_referenced(collection)
+            collection_marked = True
         else:
             # Value iteration iterates over copies of each element, so we
             # iterate over a shallow copy of the collection to allow
             # modifcation of that original collection during iteration.
             collection = copy(collection)
 
-        if metafunction := collection.metafunction(CONST_STRING_NEXT):
-            if self.identifier_v is not None:
-                return Error(
-                    self.location,
-                    f"attempted key-value iteration over iterator {quote(typename(collection))}",
-                )
-            if self.k_is_reference:
-                return Error(
-                    self.location,
-                    f"cannot use a key-reference over iterator {quote(typename(collection))}",
-                )
-            if not callable_self_is_passed_by_reference(metafunction):
-                return Error(
-                    self.location,
-                    "iterator next must receive self by reference (declared with function.&(self))",
-                )
-            reference = Reference.new(collection)
-            while True:
-                iterated = call(self.location, metafunction, [reference])
-                if isinstance(iterated, Error):
-                    if isinstance(iterated.value, Null):
-                        break  # end-of-iteration
-                    return iterated
-                loop_env = Environment(env)
-                loop_env.let(self.identifier_k.name, copy(iterated))
-                result = self.block.eval(loop_env)
-                if isinstance(result, Return):
-                    return result
-                if isinstance(result, Break):
-                    return None
-                if isinstance(result, Continue):
-                    continue
-                if isinstance(result, Error):
-                    return result
-        elif isinstance(collection, Number):
-            if self.identifier_v is not None:
-                return Error(
-                    self.location,
-                    f"attempted key-value iteration over type {quote(typename(collection))}",
-                )
-            if self.k_is_reference:
-                return Error(
-                    self.location,
-                    f"cannot use a key-reference over type {quote(typename(collection))}",
-                )
-            if not float(collection.data).is_integer():
-                return Error(
-                    self.location,
-                    f"attempted iteration over non-integer number {quote(collection)}",
-                )
-            try:
-                collection_integer = collection.as_index()
-            except Exception as e:
-                return Error(self.location, str(e))
-            for i in range(collection_integer):
-                loop_env = Environment(env)
-                loop_env.let(self.identifier_k.name, Number.new(i))
-                result = self.block.eval(loop_env)
-                if isinstance(result, Return):
-                    return result
-                if isinstance(result, Break):
-                    return None
-                if isinstance(result, Continue):
-                    continue
-                if isinstance(result, Error):
-                    return result
-        elif isinstance(collection, Vector):
-            if self.identifier_v is not None:
-                return Error(
-                    self.location,
-                    f"attempted key-value iteration over type {quote(typename(collection))}",
-                )
-            for x in list(collection.data):
-                loop_env = Environment(env)
-                loop_env.let(
-                    self.identifier_k.name,
-                    Reference.new(x) if self.k_is_reference else copy(x),
-                )
-                result = self.block.eval(loop_env)
-                if isinstance(result, Return):
-                    return result
-                if isinstance(result, Break):
-                    return None
-                if isinstance(result, Continue):
-                    continue
-                if isinstance(result, Error):
-                    return result
-        elif isinstance(collection, Map):
-            if self.k_is_reference:
-                return Error(
-                    self.location,
-                    f"cannot use a key-reference over type {quote(typename(collection))}",
-                )
-            for k, v in dict(collection.data).items():
-                loop_env = Environment(env)
-                loop_env.let(self.identifier_k.name, copy(k))
+        try:
+            if metafunction := collection.metafunction(CONST_STRING_NEXT):
                 if self.identifier_v is not None:
-                    loop_env.let(
-                        self.identifier_v.name,
-                        Reference.new(v) if self.v_is_reference else copy(v),
+                    return Error(
+                        self.location,
+                        f"attempted key-value iteration over iterator {quote(typename(collection))}",
                     )
-                result = self.block.eval(loop_env)
-                if isinstance(result, Return):
-                    return result
-                if isinstance(result, Break):
-                    return None
-                if isinstance(result, Continue):
-                    continue
-                if isinstance(result, Error):
-                    return result
-        elif isinstance(collection, Set):
-            if self.identifier_v is not None:
+                if self.k_is_reference:
+                    return Error(
+                        self.location,
+                        f"cannot use a key-reference over iterator {quote(typename(collection))}",
+                    )
+                if not callable_self_is_passed_by_reference(metafunction):
+                    return Error(
+                        self.location,
+                        "iterator next must receive self by reference (declared with function.&(self))",
+                    )
+                reference = Reference.new(collection)
+                collection_marked = True
+                while True:
+                    iterated = call(self.location, metafunction, [reference])
+                    if isinstance(iterated, Error):
+                        if isinstance(iterated.value, Null):
+                            break  # end-of-iteration
+                        return iterated
+                    loop_env = Environment(env)
+                    loop_env.let(self.identifier_k.name, copy(iterated))
+                    result = self.block.eval(loop_env)
+                    if isinstance(result, Return):
+                        return result
+                    if isinstance(result, Break):
+                        return None
+                    if isinstance(result, Continue):
+                        continue
+                    if isinstance(result, Error):
+                        return result
+            elif isinstance(collection, Number):
+                if self.identifier_v is not None:
+                    return Error(
+                        self.location,
+                        f"attempted key-value iteration over type {quote(typename(collection))}",
+                    )
+                if self.k_is_reference:
+                    return Error(
+                        self.location,
+                        f"cannot use a key-reference over type {quote(typename(collection))}",
+                    )
+                if not float(collection.data).is_integer():
+                    return Error(
+                        self.location,
+                        f"attempted iteration over non-integer number {quote(collection)}",
+                    )
+                try:
+                    collection_integer = collection.as_index()
+                except Exception as e:
+                    return Error(self.location, str(e))
+                for i in range(collection_integer):
+                    loop_env = Environment(env)
+                    loop_env.let(self.identifier_k.name, Number.new(i))
+                    result = self.block.eval(loop_env)
+                    if isinstance(result, Return):
+                        return result
+                    if isinstance(result, Break):
+                        return None
+                    if isinstance(result, Continue):
+                        continue
+                    if isinstance(result, Error):
+                        return result
+            elif isinstance(collection, Vector):
+                if self.identifier_v is not None:
+                    return Error(
+                        self.location,
+                        f"attempted key-value iteration over type {quote(typename(collection))}",
+                    )
+                for x in list(collection.data):
+                    loop_env = Environment(env)
+                    if self.k_is_reference:
+                        loop_env.let(self.identifier_k.name, Reference.new(x))
+                    else:
+                        loop_env.let(self.identifier_k.name, copy(x))
+                    result = self.block.eval(loop_env)
+                    if self.k_is_reference:
+                        Reference.unmark_referenced(x)
+                    if isinstance(result, Return):
+                        return result
+                    if isinstance(result, Break):
+                        return None
+                    if isinstance(result, Continue):
+                        continue
+                    if isinstance(result, Error):
+                        return result
+            elif isinstance(collection, Map):
+                if self.k_is_reference:
+                    return Error(
+                        self.location,
+                        f"cannot use a key-reference over type {quote(typename(collection))}",
+                    )
+                for k, v in dict(collection.data).items():
+                    loop_env = Environment(env)
+                    loop_env.let(self.identifier_k.name, copy(k))
+                    if self.identifier_v is not None:
+                        if self.v_is_reference:
+                            loop_env.let(self.identifier_v.name, Reference.new(v))
+                        else:
+                            loop_env.let(self.identifier_v.name, copy(v))
+                    result = self.block.eval(loop_env)
+                    if self.v_is_reference:
+                        Reference.unmark_referenced(v)
+                    if isinstance(result, Return):
+                        return result
+                    if isinstance(result, Break):
+                        return None
+                    if isinstance(result, Continue):
+                        continue
+                    if isinstance(result, Error):
+                        return result
+            elif isinstance(collection, Set):
+                if self.identifier_v is not None:
+                    return Error(
+                        self.location,
+                        f"attempted key-value iteration over type {quote(typename(collection))}",
+                    )
+                if self.k_is_reference:
+                    return Error(
+                        self.location,
+                        f"cannot use a key-reference over type {quote(typename(collection))}",
+                    )
+                for x in dict(collection.data).keys():
+                    loop_env = Environment(env)
+                    loop_env.let(self.identifier_k.name, copy(x))
+                    result = self.block.eval(loop_env)
+                    if isinstance(result, Return):
+                        return result
+                    if isinstance(result, Break):
+                        return None
+                    if isinstance(result, Continue):
+                        continue
+                    if isinstance(result, Error):
+                        return result
+            else:
                 return Error(
                     self.location,
-                    f"attempted key-value iteration over type {quote(typename(collection))}",
+                    f"attempted iteration over type {quote(typename(collection))}",
                 )
-            if self.k_is_reference:
-                return Error(
-                    self.location,
-                    f"cannot use a key-reference over type {quote(typename(collection))}",
-                )
-            for x in dict(collection.data).keys():
-                loop_env = Environment(env)
-                loop_env.let(self.identifier_k.name, copy(x))
-                result = self.block.eval(loop_env)
-                if isinstance(result, Return):
-                    return result
-                if isinstance(result, Break):
-                    return None
-                if isinstance(result, Continue):
-                    continue
-                if isinstance(result, Error):
-                    return result
-        else:
-            return Error(
-                self.location,
-                f"attempted iteration over type {quote(typename(collection))}",
-            )
-        return None
+            return None
+        finally:
+            if collection_marked:
+                Reference.unmark_referenced(collection)
 
 
 @final
@@ -4230,6 +4309,11 @@ class AstStatementError(AstStatement):
         result = self.expression.eval(env)
         if isinstance(result, Error):
             return result
+        if isinstance(result, Reference):
+            return Error(
+                self.location,
+                f"attempted error statement with type reference to {typename(result)}",
+            )
         return Error(self.location, copy(result))
 
 
@@ -4260,6 +4344,11 @@ class AstStatementReturn(AstStatement):
         result = self.expression.eval(env)
         if isinstance(result, Error):
             return result
+        if isinstance(result, Reference):
+            return Error(
+                self.location,
+                f"attempted return statement with type reference to {typename(result)}",
+            )
         return Return(copy(result))
 
 
@@ -4432,6 +4521,11 @@ class AstStatementAssignment(AstStatement):
             rhs = self.rhs.eval(env)
             if isinstance(rhs, Error):
                 return rhs
+            if isinstance(rhs, Reference):
+                return Error(
+                    self.location,
+                    f"attempted assignment statement with type reference to {rhs.data.typename()}",
+                )
             try:
                 env.set(self.lhs.name, copy(rhs))
             except Exception as e:
@@ -4650,7 +4744,6 @@ class Parser:
         self._register_led(TokenKind.LBRACKET, Parser.parse_expression_access_index)
         self._register_led(TokenKind.SCOPE, Parser.parse_expression_access_scope)
         self._register_led(TokenKind.DOT, Parser.parse_expression_access_dot)
-        self._register_led(TokenKind.MKREF, Parser.parse_expression_mkref)
         self._register_led(TokenKind.DEREF, Parser.parse_expression_deref)
 
     def _identifier(self, name: str) -> String:
@@ -5040,7 +5133,11 @@ class Parser:
                 self._expect_current(TokenKind.COMMA)
             if self._check_current(TokenKind.RPAREN):
                 break
-            arguments.append(self.parse_expression())
+            expression = self.parse_expression()
+            if self._check_current(TokenKind.MKREF):
+                mkref_location = self._expect_current(TokenKind.MKREF).location
+                expression = AstExpressionMkref(mkref_location, expression)
+            arguments.append(expression)
         self._expect_current(TokenKind.RPAREN)
         return AstExpressionFunctionCall(location, lhs, arguments)
 
@@ -5285,15 +5382,17 @@ def callable_self_is_passed_by_reference(function: Value) -> bool:
     return False
 
 
-# Returns a callable's implicit `self` argument in a function call with a dot
-# access expression as the left hand side of that expression.
-#
-# function(self) { ... }   # self argument is a value
-# function.&(self) { ... } # self argument is a reference
-def callable_self_argument(store: Value, function: Value) -> Value:
-    if callable_self_is_passed_by_reference(function):
-        return Reference.new(store)
-    return copy(store)
+# Invokes the provided metafunction, passing an implicit copy or reference
+# `self` to the metafunction. Effectively a utility function for the common
+# pattern of calling value.into_string() or a similarly-flavored callable.
+def call_meta_with_self(
+    location: Optional[SourceLocation], metafunction: Value, self: Value
+) -> Union[Value, Error]:
+    if not callable_self_is_passed_by_reference(metafunction):
+        return call(location, metafunction, [copy(self)])
+    result = call(location, metafunction, [Reference.new(self)])
+    Reference.unmark_referenced(self)
+    return result
 
 
 def call(
@@ -5549,7 +5648,7 @@ def builtin_number_ceil(number: Number) -> Union[Value, Error]:
 def builtin_string_init(value: Value) -> Union[Value, Error]:
     metafunction = value.metafunction(CONST_STRING_INTO_STRING)
     if metafunction is not None:
-        result = call(None, metafunction, [callable_self_argument(value, metafunction)])
+        result = call_meta_with_self(None, metafunction, value)
         if isinstance(result, Error):
             return result
         if not isinstance(result, String):
@@ -5742,15 +5841,18 @@ def builtin_vector_init(value: Value) -> Union[Value, Error]:
                 "iterator next must receive self by reference (declared with function.&(self))",
             )
         reference = Reference.new(value)
-        elements: list[Value] = list()
-        while True:
-            iterated = call(None, metafunction, [reference])
-            if isinstance(iterated, Error):
-                if isinstance(iterated.value, Null):
-                    break  # end-of-iteration
-                return iterated
-            elements.append(iterated)
-        return Vector.new([copy(x) for x in elements])
+        try:
+            elements: list[Value] = list()
+            while True:
+                iterated = call(None, metafunction, [reference])
+                if isinstance(iterated, Error):
+                    if isinstance(iterated.value, Null):
+                        break  # end-of-iteration
+                    return iterated
+                elements.append(iterated)
+            return Vector.new([copy(x) for x in elements])
+        finally:
+            Reference.unmark_referenced(value)
     if isinstance(value, Vector):
         return Vector.new([copy(x) for x in value.data])
     if isinstance(value, Map):
@@ -5962,7 +6064,7 @@ def builtin_vector_reversed(vector: Vector) -> Union[Value, Error]:
     # Copy underlying data as the update will alter all Python objects
     # holding references to the underlying `SharedVectorData` object.
     underlying = copy(vector.data)
-    return Vector.new(SharedVectorData(reversed(underlying)))
+    return Vector.new(SharedVectorData(list(reversed(underlying))))
 
 
 @builtin_from_source("vector::sorted")
@@ -6071,16 +6173,16 @@ def builtin_vector_into_iterator():
     return function(self) {
         let vector_iterator = type extends iterator {
             .next = function.&(self) {
-                if self.index >= self.vector.*.count() {
+                if self.index >= self.vector.count() {
                     return iterator::eoi();
                 }
-                let current = self.vector.*[self.index];
+                let current = self.vector[self.index];
                 self.index = self.index + 1;
                 return current;
             },
         };
         return new vector_iterator {
-            .vector = self.&,
+            .vector = self,
             .index = 0,
         };
     };
@@ -6342,7 +6444,7 @@ def builtin_dumpln(value: Value) -> Union[Value, Error]:
 def builtin_print(value: Value) -> Union[Value, Error]:
     metafunction = value.metafunction(CONST_STRING_INTO_STRING)
     if metafunction is not None:
-        result = call(None, metafunction, [callable_self_argument(value, metafunction)])
+        result = call_meta_with_self(None, metafunction, value)
         if isinstance(result, Error):
             return result
         if not isinstance(result, String):
@@ -6362,7 +6464,7 @@ def builtin_print(value: Value) -> Union[Value, Error]:
 def builtin_println(value: Value) -> Union[Value, Error]:
     metafunction = value.metafunction(CONST_STRING_INTO_STRING)
     if metafunction is not None:
-        result = call(None, metafunction, [callable_self_argument(value, metafunction)])
+        result = call_meta_with_self(None, metafunction, value)
         if isinstance(result, Error):
             return result
         if not isinstance(result, String):
@@ -6382,7 +6484,7 @@ def builtin_println(value: Value) -> Union[Value, Error]:
 def builtin_eprint(value: Value) -> Union[Value, Error]:
     metafunction = value.metafunction(CONST_STRING_INTO_STRING)
     if metafunction is not None:
-        result = call(None, metafunction, [callable_self_argument(value, metafunction)])
+        result = call_meta_with_self(None, metafunction, value)
         if isinstance(result, Error):
             return result
         if not isinstance(result, String):
@@ -6402,7 +6504,7 @@ def builtin_eprint(value: Value) -> Union[Value, Error]:
 def builtin_eprintln(value: Value) -> Union[Value, Error]:
     metafunction = value.metafunction(CONST_STRING_INTO_STRING)
     if metafunction is not None:
-        result = call(None, metafunction, [callable_self_argument(value, metafunction)])
+        result = call_meta_with_self(None, metafunction, value)
         if isinstance(result, Error):
             return result
         if not isinstance(result, String):
@@ -7255,7 +7357,7 @@ let iterator = type {
         }
         return true;
     },
-    .map = function.&(self, func) {
+    .map = function(self, func) {
         let map_iterator = type extends iterator {
             .next = function.&(self) {
                 return func(self.base.next());
@@ -7265,7 +7367,7 @@ let iterator = type {
             .base = self,
         };
     },
-    .filter = function.&(self, func) {
+    .filter = function(self, func) {
         let filter_iterator = type extends iterator {
             .next = function.&(self) {
                 while true {

@@ -5,7 +5,7 @@ try { dumpln( "foo"::foo                       ); } catch err { dumpln(err); }
 try { dumpln( ["foo", "bar"]::foo              ); } catch err { dumpln(err); }
 try { dumpln( Map{"foo": 123, "bar": 456}::foo ); } catch err { dumpln(err); }
 try { dumpln( Set{"foo", "bar"}::foo           ); } catch err { dumpln(err); }
-try { dumpln( 123.&::foo                       ); } catch err { dumpln(err); }
+try { function(ref){ ref::foo; }(123.&);          } catch err { dumpln(err); }
 try { dumpln( function(){}::foo                ); } catch err { dumpln(err); }
 try { dumpln( println::foo                     ); } catch err { dumpln(err); }
 

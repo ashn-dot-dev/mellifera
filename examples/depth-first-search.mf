@@ -5,16 +5,23 @@ let node = type {
     .into_string = function(self) {
         return self.name;
     },
+    .insert_child = function.&(self, node) {
+        self.children.insert(node.name);
+    },
 };
 
 let graph = type {
     .init = function(nodes) {
-        return new graph {"nodes": nodes};
+        let self = new graph {"nodes": Map{}};
+        for node in nodes {
+            self.nodes[node.name] = node;
+        }
+        return self;
     },
     .into_string = function(self) {
         let elements = [];
         for node in self.nodes {
-            elements.push(string::init(node.*));
+            elements.push(string::init(node));
         }
         return "{" + ", ".join(elements) + "}";
     },
@@ -29,13 +36,13 @@ let dfs = function(graph) {
             return;
         }
         visited.insert(node);
-        for child in node.*.children {
-            visit(child);
+        for name in node.children {
+            visit(graph.nodes[name]);
         }
-        ordered.insert(0, node.*);
+        ordered.insert(0, node);
     };
 
-    for node in graph.nodes {
+    for name, node in graph.nodes {
         visit(node);
     }
     return ordered;
@@ -54,14 +61,14 @@ let dfs_cycle_detecting = function(graph) {
             error $"cycle detected in graph {string::init(graph)}";
         }
         visiting.insert(node);
-        for child in node.*.children {
-            visit(child);
+        for name in node.children {
+            visit(graph.nodes[name]);
         }
         visited.insert(node);
-        ordered.insert(0, node.*);
+        ordered.insert(0, node);
     };
 
-    for node in graph.nodes {
+    for name, node in graph.nodes {
         visit(node);
     }
     return ordered;
@@ -80,18 +87,18 @@ let c = node::init("C");
 let d = node::init("D");
 let e = node::init("E");
 
-a.children.insert(c.&);
-a.children.insert(d.&);
+a.insert_child(c);
+a.insert_child(d);
 
-b.children.insert(c.&);
-b.children.insert(e.&);
+b.insert_child(c);
+b.insert_child(e);
 
-c.children.insert(d.&);
+c.insert_child(d);
 
-e.children.insert(a.&);
-e.children.insert(c.&);
+e.insert_child(a);
+e.insert_child(c);
 
-let ordered = dfs(graph::init({a.&, b.&, c.&, d.&, e.&}));
+let ordered = dfs(graph::init({a, b, c, d, e}));
 println("Ordered:");
 for x in ordered {
     println(x);
@@ -99,7 +106,7 @@ for x in ordered {
 
 # Validate that the cycle-detecting and non-cycle-detecting depth-first search
 # produce identical results for acyclic directed graphs.
-assert(ordered == dfs_cycle_detecting(graph::init({a.&, b.&, c.&, d.&, e.&})));
+assert(ordered == dfs_cycle_detecting(graph::init({a, b, c, d, e})));
 
 # +->W-->X--+
 # |  |   |  |
@@ -113,18 +120,18 @@ let x = node::init("X");
 let y = node::init("Y");
 let z = node::init("Z");
 
-w.children.insert(x.&);
-w.children.insert(y.&);
+w.insert_child(x);
+w.insert_child(y);
 
-x.children.insert(y.&);
-x.children.insert(z.&);
+x.insert_child(y);
+x.insert_child(z);
 
-y.children.insert(z.&);
+y.insert_child(z);
 
-z.children.insert(w.&);
+z.insert_child(w);
 
 try {
-    dfs_cycle_detecting(graph::init({w.&, x.&, y.&, z.&}));
+    dfs_cycle_detecting(graph::init({w, x, y, z}));
 }
 catch err {
     println($"error: {err}");

@@ -329,18 +329,18 @@ func TestRegexpInvalidText(t *testing.T) {
 
 func TestVectorConstructorNilElements(t *testing.T) {
 	ctx := NewContext()
-	vector := ctx.NewVector(nil)
+	vector := ctx.NewVectorOrPanic(nil)
 	AssertEq(t, 0, vector.Count())
 }
 
 func TestVectorConstructorNonNilElements(t *testing.T) {
 	ctx := NewContext()
 	{
-		vector := ctx.NewVector([]Value{})
+		vector := ctx.NewVectorOrPanic([]Value{})
 		AssertEq(t, 0, vector.Count())
 	}
 	{
-		vector := ctx.NewVector([]Value{
+		vector := ctx.NewVectorOrPanic([]Value{
 			ctx.NewString("foo"),
 			ctx.NewString("bar"),
 			ctx.NewString("baz"),
@@ -351,22 +351,22 @@ func TestVectorConstructorNonNilElements(t *testing.T) {
 
 func TestVectorTypename(t *testing.T) {
 	ctx := NewContext()
-	vector := ctx.NewVector(nil)
+	vector := ctx.NewVectorOrPanic(nil)
 	AssertEq(t, "vector", vector.Typename())
 }
 
 func TestVectorString(t *testing.T) {
 	ctx := NewContext()
 	{
-		vector := ctx.NewVector(nil)
+		vector := ctx.NewVectorOrPanic(nil)
 		AssertEq(t, "[]", vector.String())
 	}
 	{
-		vector := ctx.NewVector([]Value{})
+		vector := ctx.NewVectorOrPanic([]Value{})
 		AssertEq(t, "[]", vector.String())
 	}
 	{
-		vector := ctx.NewVector([]Value{
+		vector := ctx.NewVectorOrPanic([]Value{
 			ctx.NewString("foo"),
 			ctx.NewString("bar"),
 			ctx.NewString("baz"),
@@ -378,15 +378,15 @@ func TestVectorString(t *testing.T) {
 func TestVectorCopy(t *testing.T) {
 	ctx := NewContext()
 	{
-		vector := ctx.NewVector(nil)
+		vector := ctx.NewVectorOrPanic(nil)
 		AssertEq(t, vector.Count(), vector.Copy().(*Vector).Count())
 	}
 	{
-		vector := ctx.NewVector([]Value{})
+		vector := ctx.NewVectorOrPanic([]Value{})
 		AssertEq(t, vector.Count(), vector.Copy().(*Vector).Count())
 	}
 	{
-		vector := ctx.NewVector([]Value{
+		vector := ctx.NewVectorOrPanic([]Value{
 			ctx.NewString("foo"),
 			ctx.NewString("bar"),
 			ctx.NewString("baz"),
@@ -400,7 +400,7 @@ func TestVectorCopy(t *testing.T) {
 
 func TestVectorCopyOnWrite(t *testing.T) {
 	ctx := NewContext()
-	a := ctx.NewVector([]Value{
+	a := ctx.NewVectorOrPanic([]Value{
 		ctx.NewString("foo"),
 		ctx.NewString("bar"),
 		ctx.NewString("baz"),
@@ -429,7 +429,7 @@ func TestVectorCopyOnWrite(t *testing.T) {
 func TestVectorCombEncode(t *testing.T) {
 	ctx := NewContext()
 
-	empty := ctx.NewVector(nil)
+	empty := ctx.NewVectorOrPanic(nil)
 	{
 		var sb strings.Builder
 		e := NewCombEncoder(&sb)
@@ -446,13 +446,13 @@ func TestVectorCombEncode(t *testing.T) {
 		AssertEq(t, "[]", sb.String())
 	}
 
-	nonEmpty := ctx.NewVector([]Value{
+	nonEmpty := ctx.NewVectorOrPanic([]Value{
 		ctx.NewNull(),
 		ctx.NewBoolean(false),
 		ctx.NewNumber(123.456),
 		ctx.NewString("foo"),
-		ctx.NewVector(nil),
-		ctx.NewVector([]Value{
+		ctx.NewVectorOrPanic(nil),
+		ctx.NewVectorOrPanic([]Value{
 			ctx.NewString("foo"),
 			ctx.NewString("bar"),
 			ctx.NewString("baz"),
@@ -493,10 +493,10 @@ func TestVectorCombEncode(t *testing.T) {
 ]`, sb.String())
 	}
 
-	deeplyNested := ctx.NewVector([]Value{
-		ctx.NewVector([]Value{
-			ctx.NewVector([]Value{
-				ctx.NewVector([]Value{
+	deeplyNested := ctx.NewVectorOrPanic([]Value{
+		ctx.NewVectorOrPanic([]Value{
+			ctx.NewVectorOrPanic([]Value{
+				ctx.NewVectorOrPanic([]Value{
 					ctx.NewString("foo"),
 				}),
 			}),
@@ -546,13 +546,13 @@ func TestMapConstructorNonNilElements(t *testing.T) {
 		m := ctx.NewMapOrPanic([]MapPair{
 			{ctx.NewNumber(123.456), ctx.NewString("abc")},
 			{ctx.NewString("foo"), ctx.NewString("def")},
-			{ctx.NewVector(nil), ctx.NewString("hij")},
+			{ctx.NewVectorOrPanic(nil), ctx.NewString("hij")},
 		})
 		AssertEq(t, 3, m.Count())
 
 		AssertEq(t, m.Get(ctx.NewNumber(123.456)).Equal(ctx.NewString("abc")), true)
 		AssertEq(t, m.Get(ctx.NewString("foo")).Equal(ctx.NewString("def")), true)
-		AssertEq(t, m.Get(ctx.NewVector(nil)).Equal(ctx.NewString("hij")), true)
+		AssertEq(t, m.Get(ctx.NewVectorOrPanic(nil)).Equal(ctx.NewString("hij")), true)
 
 		AssertEq(t, m.Get(ctx.NewNull()), nil)
 		AssertEq(t, m.Get(ctx.NewNumber(456.123)), nil)
@@ -587,7 +587,7 @@ func TestMapString(t *testing.T) {
 		m := ctx.NewMapOrPanic([]MapPair{
 			{ctx.NewNumber(123.456), ctx.NewString("abc")},
 			{ctx.NewString("foo"), ctx.NewString("def")},
-			{ctx.NewVector(nil), ctx.NewString("hij")},
+			{ctx.NewVectorOrPanic(nil), ctx.NewString("hij")},
 		})
 		AssertEq(t, `{123.456: "abc", "foo": "def", []: "hij"}`, m.String())
 	}
@@ -607,13 +607,13 @@ func TestMapCopy(t *testing.T) {
 		m := ctx.NewMapOrPanic([]MapPair{
 			{ctx.NewNumber(123.456), ctx.NewString("abc")},
 			{ctx.NewString("foo"), ctx.NewString("def")},
-			{ctx.NewVector(nil), ctx.NewString("hij")},
+			{ctx.NewVectorOrPanic(nil), ctx.NewString("hij")},
 		})
 		AssertEq(t, m.Count(), m.Copy().(*Map).Count())
 
 		AssertEq(t, m.Copy().(*Map).Get(ctx.NewNumber(123.456)).Equal(ctx.NewString("abc")), true)
 		AssertEq(t, m.Copy().(*Map).Get(ctx.NewString("foo")).Equal(ctx.NewString("def")), true)
-		AssertEq(t, m.Copy().(*Map).Get(ctx.NewVector(nil)).Equal(ctx.NewString("hij")), true)
+		AssertEq(t, m.Copy().(*Map).Get(ctx.NewVectorOrPanic(nil)).Equal(ctx.NewString("hij")), true)
 
 		AssertEq(t, m.Copy().(*Map).Get(ctx.NewNull()), nil)
 		AssertEq(t, m.Copy().(*Map).Get(ctx.NewNumber(456.123)), nil)
@@ -625,7 +625,7 @@ func TestMapCopyOnWrite(t *testing.T) {
 	a := ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewNumber(123.456), ctx.NewString("abc")},
 		{ctx.NewString("foo"), ctx.NewString("def")},
-		{ctx.NewVector(nil), ctx.NewString("hij")},
+		{ctx.NewVectorOrPanic(nil), ctx.NewString("hij")},
 	})
 	b := a.Copy().(*Map)
 	AssertEq(t, a.Count(), b.Count())
@@ -641,11 +641,11 @@ func TestMapCopyOnWrite(t *testing.T) {
 
 	AssertEq(t, a.Get(ctx.NewNumber(123.456)).Equal(ctx.NewString("abc")), true)
 	AssertEq(t, a.Get(ctx.NewString("foo")).Equal(ctx.NewString("def")), true)
-	AssertEq(t, a.Get(ctx.NewVector(nil)).Equal(ctx.NewString("hij")), true)
+	AssertEq(t, a.Get(ctx.NewVectorOrPanic(nil)).Equal(ctx.NewString("hij")), true)
 
 	AssertEq(t, b.Get(ctx.NewNumber(123.456)).Equal(ctx.NewNull()), true)
 	AssertEq(t, b.Get(ctx.NewString("foo")).Equal(ctx.NewString("def")), true)
-	AssertEq(t, b.Get(ctx.NewVector(nil)).Equal(ctx.NewString("hij")), true)
+	AssertEq(t, b.Get(ctx.NewVectorOrPanic(nil)).Equal(ctx.NewString("hij")), true)
 
 	c := a.Copy().(*Map)
 	_ = c.Remove(ctx.NewString("foo"))
@@ -657,11 +657,11 @@ func TestMapCopyOnWrite(t *testing.T) {
 
 	AssertEq(t, a.Get(ctx.NewNumber(123.456)).Equal(ctx.NewString("abc")), true)
 	AssertEq(t, a.Get(ctx.NewString("foo")).Equal(ctx.NewString("def")), true)
-	AssertEq(t, a.Get(ctx.NewVector(nil)).Equal(ctx.NewString("hij")), true)
+	AssertEq(t, a.Get(ctx.NewVectorOrPanic(nil)).Equal(ctx.NewString("hij")), true)
 
 	AssertEq(t, c.Get(ctx.NewNumber(123.456)).Equal(ctx.NewString("abc")), true)
 	AssertEq(t, c.Get(ctx.NewString("foo")), nil)
-	AssertEq(t, c.Get(ctx.NewVector(nil)).Equal(ctx.NewString("hij")), true)
+	AssertEq(t, c.Get(ctx.NewVectorOrPanic(nil)).Equal(ctx.NewString("hij")), true)
 }
 
 func TestMapCombEncode(t *testing.T) {
@@ -773,7 +773,7 @@ func TestMapInsert(t *testing.T) {
 	a := ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewNumber(123.456), ctx.NewString("abc")},
 		{ctx.NewString("foo"), ctx.NewString("def")},
-		{ctx.NewVector(nil), ctx.NewString("hij")},
+		{ctx.NewVectorOrPanic(nil), ctx.NewString("hij")},
 	})
 	aInsertErr := a.Insert(ctx.NewString("xyz"), ctx.NewString("inserted"))
 	AssertEq(t, aInsertErr, nil)
@@ -782,7 +782,7 @@ func TestMapInsert(t *testing.T) {
 	b := ctx.NewMetaMapOrPanic("meta", []MapPair{
 		{ctx.NewNumber(123.456), ctx.NewString("abc")},
 		{ctx.NewString("foo"), ctx.NewString("def")},
-		{ctx.NewVector(nil), ctx.NewString("hij")},
+		{ctx.NewVectorOrPanic(nil), ctx.NewString("hij")},
 	})
 	bInsertErr := b.Insert(ctx.NewString("xyz"), ctx.NewString("inserted"))
 	AssertNe(t, bInsertErr, nil)
@@ -796,7 +796,7 @@ func TestMapRemove(t *testing.T) {
 	a := ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewNumber(123.456), ctx.NewString("abc")},
 		{ctx.NewString("foo"), ctx.NewString("def")},
-		{ctx.NewVector(nil), ctx.NewString("hij")},
+		{ctx.NewVectorOrPanic(nil), ctx.NewString("hij")},
 	})
 	aRemoveErr := a.Remove(ctx.NewString("foo"))
 	AssertEq(t, aRemoveErr, nil)
@@ -805,7 +805,7 @@ func TestMapRemove(t *testing.T) {
 	b := ctx.NewMetaMapOrPanic("meta", []MapPair{
 		{ctx.NewNumber(123.456), ctx.NewString("abc")},
 		{ctx.NewString("foo"), ctx.NewString("def")},
-		{ctx.NewVector(nil), ctx.NewString("hij")},
+		{ctx.NewVectorOrPanic(nil), ctx.NewString("hij")},
 	})
 	bRemoveErr := b.Remove(ctx.NewString("foo"))
 	AssertNe(t, bRemoveErr, nil)
@@ -832,13 +832,13 @@ func TestSetConstructorNonNilElements(t *testing.T) {
 		set := ctx.NewSetOrPanic([]Value{
 			ctx.NewNumber(123.456),
 			ctx.NewString("foo"),
-			ctx.NewVector(nil),
+			ctx.NewVectorOrPanic(nil),
 		})
 		AssertEq(t, 3, set.Count())
 
 		AssertEq(t, set.Get(ctx.NewNumber(123.456)).Equal(ctx.NewNumber(123.456)), true)
 		AssertEq(t, set.Get(ctx.NewString("foo")).Equal(ctx.NewString("foo")), true)
-		AssertEq(t, set.Get(ctx.NewVector(nil)).Equal(ctx.NewVector(nil)), true)
+		AssertEq(t, set.Get(ctx.NewVectorOrPanic(nil)).Equal(ctx.NewVectorOrPanic(nil)), true)
 
 		AssertEq(t, set.Get(ctx.NewNull()), nil)
 		AssertEq(t, set.Get(ctx.NewNumber(456.123)), nil)
@@ -865,7 +865,7 @@ func TestSetString(t *testing.T) {
 		set := ctx.NewSetOrPanic([]Value{
 			ctx.NewNumber(123.456),
 			ctx.NewString("foo"),
-			ctx.NewVector(nil),
+			ctx.NewVectorOrPanic(nil),
 		})
 		AssertEq(t, `{123.456, "foo", []}`, set.String())
 	}
@@ -885,13 +885,13 @@ func TestSetCopy(t *testing.T) {
 		set := ctx.NewSetOrPanic([]Value{
 			ctx.NewNumber(123.456),
 			ctx.NewString("foo"),
-			ctx.NewVector(nil),
+			ctx.NewVectorOrPanic(nil),
 		})
 		AssertEq(t, set.Count(), set.Copy().(*Set).Count())
 
 		AssertEq(t, set.Copy().(*Set).Get(ctx.NewNumber(123.456)).Equal(ctx.NewNumber(123.456)), true)
 		AssertEq(t, set.Copy().(*Set).Get(ctx.NewString("foo")).Equal(ctx.NewString("foo")), true)
-		AssertEq(t, set.Copy().(*Set).Get(ctx.NewVector(nil)).Equal(ctx.NewVector(nil)), true)
+		AssertEq(t, set.Copy().(*Set).Get(ctx.NewVectorOrPanic(nil)).Equal(ctx.NewVectorOrPanic(nil)), true)
 
 		AssertEq(t, set.Copy().(*Set).Get(ctx.NewNull()), nil)
 		AssertEq(t, set.Copy().(*Set).Get(ctx.NewNumber(456.123)), nil)
@@ -903,7 +903,7 @@ func TestSetCopyOnWrite(t *testing.T) {
 	a := ctx.NewSetOrPanic([]Value{
 		ctx.NewNumber(123.456),
 		ctx.NewString("foo"),
-		ctx.NewVector(nil),
+		ctx.NewVectorOrPanic(nil),
 	})
 	b := a.Copy().(*Set)
 	AssertEq(t, a.Count(), b.Count())
@@ -919,11 +919,11 @@ func TestSetCopyOnWrite(t *testing.T) {
 
 	AssertEq(t, a.Get(ctx.NewNumber(123.456)).Equal(ctx.NewNumber(123.456)), true)
 	AssertEq(t, a.Get(ctx.NewString("foo")).Equal(ctx.NewString("foo")), true)
-	AssertEq(t, a.Get(ctx.NewVector(nil)).Equal(ctx.NewVector(nil)), true)
+	AssertEq(t, a.Get(ctx.NewVectorOrPanic(nil)).Equal(ctx.NewVectorOrPanic(nil)), true)
 
 	AssertEq(t, b.Get(ctx.NewNumber(123.456)).Equal(ctx.NewNumber(123.456)), true)
 	AssertEq(t, b.Get(ctx.NewString("foo")).Equal(ctx.NewString("foo")), true)
-	AssertEq(t, b.Get(ctx.NewVector(nil)).Equal(ctx.NewVector(nil)), true)
+	AssertEq(t, b.Get(ctx.NewVectorOrPanic(nil)).Equal(ctx.NewVectorOrPanic(nil)), true)
 	AssertEq(t, b.Get(ctx.NewString("bar")).Equal(ctx.NewString("bar")), true)
 
 	c := a.Copy().(*Set)
@@ -936,11 +936,11 @@ func TestSetCopyOnWrite(t *testing.T) {
 
 	AssertEq(t, a.Get(ctx.NewNumber(123.456)).Equal(ctx.NewNumber(123.456)), true)
 	AssertEq(t, a.Get(ctx.NewString("foo")).Equal(ctx.NewString("foo")), true)
-	AssertEq(t, a.Get(ctx.NewVector(nil)).Equal(ctx.NewVector(nil)), true)
+	AssertEq(t, a.Get(ctx.NewVectorOrPanic(nil)).Equal(ctx.NewVectorOrPanic(nil)), true)
 
 	AssertEq(t, c.Get(ctx.NewNumber(123.456)).Equal(ctx.NewNumber(123.456)), true)
 	AssertEq(t, c.Get(ctx.NewString("foo")), nil)
-	AssertEq(t, c.Get(ctx.NewVector(nil)).Equal(ctx.NewVector(nil)), true)
+	AssertEq(t, c.Get(ctx.NewVectorOrPanic(nil)).Equal(ctx.NewVectorOrPanic(nil)), true)
 }
 
 func TestSetCombEncode(t *testing.T) {
@@ -1047,25 +1047,25 @@ func TestSetCombEncode(t *testing.T) {
 
 func TestReferenceTypename(t *testing.T) {
 	ctx := NewContext()
-	reference := ctx.NewReference(ctx.NewNumber(123.456))
+	reference := ctx.newReference(ctx.NewNumber(123.456))
 	AssertEq(t, "reference", reference.Typename())
 }
 
 func TestReferenceString(t *testing.T) {
 	ctx := NewContext()
-	reference := ctx.NewReference(ctx.NewNumber(123.456))
+	reference := ctx.newReference(ctx.NewNumber(123.456))
 	AssertEq(t, strings.HasPrefix(reference.String(), "reference@"), true)
 }
 
 func TestReferenceCopy(t *testing.T) {
 	ctx := NewContext()
-	reference := ctx.NewReference(ctx.NewNumber(123.456))
+	reference := ctx.newReference(ctx.NewNumber(123.456))
 	AssertEq(t, reference, reference.Copy().(*Reference))
 }
 
 func TestReferenceCombEncode(t *testing.T) {
 	ctx := NewContext()
-	reference := ctx.NewReference(ctx.NewNumber(123.456))
+	reference := ctx.newReference(ctx.NewNumber(123.456))
 	var sb strings.Builder
 	e := NewCombEncoder(&sb)
 	err := reference.CombEncode(e)

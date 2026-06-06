@@ -95,7 +95,7 @@ func JsValueIntoMelliferaValue(ctx *mellifera.Context, jsValue js.Value) (mellif
 				}
 				elements = append(elements, element)
 			}
-			return ctx.NewVector(elements), nil
+			return ctx.NewVectorOrPanic(elements), nil
 		}
 		pairs := []mellifera.MapPair{}
 		entries := js.Global().Get("Object").Call("entries", jsValue)

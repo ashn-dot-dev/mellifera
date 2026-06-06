@@ -61,7 +61,7 @@ Inf;
 #   \xMN => hexadecimal byte 0xMN
 println("hello\tworld"); # "hello	world"
 println("hello\x5Fworld"); # "hello_world"
-println("hello\xf0\x9f\x8d\x94world"); # "hello🐝world"
+println("hello\xf0\x9f\x90\x9dworld"); # "hello🐝world"
 
 # Strings enclosed in backticks, called raw strings, interpret their contents
 # verbatim without escaping.
@@ -308,41 +308,6 @@ for element in s {
                                             # element is "foo"
 }
 
-# Mellifera has an explicit reference type representing the location of a value
-# in memory. References are useful when you want to access a specific value,
-# such as a vector or a map, without creating a separate copy of that value.
-#
-# References are obtained by using the postfix .& operator on a value, and are
-# dereferenced using the postfix .* operator.
-123.&; # reference to the value 123
-{"foo": "bar"}.&; # reference to the value {"foo": "bar"}
-
-# References are most useful when you would like to keep track of a value that
-# is updated elsewhere.
-let m = {"foo": "bar"};
-let r = m.&; # reference to the value stored in m
-println($`m is {m}`); # m is {"foo": "bar"}
-println($`r is {r} and r.* is {r.*}`); # r is reference@0x140001de900 and r.* is {"foo": "bar"}
-m["foo"] = 123; # ...pretend that m is being updated from some external operation
-println($`m after being updated with m["foo"] = 123 is {m}`); # m after being updated with m["foo"] = 123 is {"foo": 123}
-println($`r after m was updated with m["foo"] = 123 is {r} and r.* is {r.*}`); # r after m was updated with m["foo"] = 123 is reference@0x140001de900 and r.* is {"foo": 123}
-
-# References can be used to update the referenced value directly.
-r.*["foo"] = 456;
-println($`m after being updated with r.*["foo"] = 456 is {m}`); # m after being updated with r.*["foo"] = 456 is {"foo": 456}
-println($`r after m was updated with r.*["foo"] = 456 is {r} and r.* is {r.*}`); # r after m was updated with r.*["foo"] = 456 is reference@0x140001de900 and r.* is {"foo": 456}
-
-# For convenience, accessing elements of a referenced value with:
-#
-#   reference.*[index]
-#
-# is equivalent to the following syntax, known as auto-dereferencing:
-#
-#   reference[index]
-r["foo"] = null;
-println($`m after being updated with r["foo"] = null is {m}`); # m after being updated with r["foo"] = null is {"foo": null}
-println($`r after m was updated with r["foo"] = null is {r} and r.* is {r.*}`); # r after m was updated with r["foo"] = null is reference@0x140001de900 and r.* is {"foo": null}
-
 # Mellifera supports first-class functions, defined using the function keyword.
 function(a, b) { return a + b; };
 
@@ -365,6 +330,39 @@ println($`addn(5) is {addn(5)}`); # addn(5) is 8
 let do_nothing = function() { };
 println($`do_nothing() is {do_nothing()}`); # do_nothing() is null
 
+# Mellifera has an explicit reference type representing the location of a value
+# in memory. References are useful when you want to access a specific value,
+# such as a vector or a map, without creating a separate copy of that value.
+#
+# References are obtained by using the postfix .& operator on a value in a
+# function call argument list, or within a for-loop variable declaration
+# (discussed in more detail later), and are dereferenced using the postfix .*
+# operator.
+let f = function(ref) {
+    println($`passed in reference is {ref}`);
+    ref.*["foo"] = "baz"; # mutate the referenced value
+};
+let m = {"foo": "bar"};
+println($`m before being passed to f() by reference is {m}`);
+f(m.&); # pass in a reference to the {"foo": "bar"}
+println($`m after being passed to f() by reference is {m}`);
+
+# For convenience, accessing elements of a referenced value with:
+#
+#   reference.*[index]
+#
+# is equivalent to the following syntax, known as auto-dereferencing:
+#
+#   reference[index]
+let f = function(ref) {
+    println($`passed in reference is {ref}`);
+    ref["foo"] = "baz"; # mutate the referenced value with auto dereferencing
+};
+let m = {"foo": "bar"};
+println($`m before being passed to f() by reference is {m}`);
+f(m.&); # pass in a reference to the {"foo": "bar"}
+println($`m after being passed to f() by reference is {m}`);
+
 println("==============================================");
 println("== Value Semantics and Structural Equality  ==");
 println("==============================================");
@@ -384,10 +382,10 @@ println("==============================================");
 # are considered to be equal if they have the same contents.
 
 let x = ["foo", {"bar": 123}, "baz"];
-println($`x is {x} with address {x.&}`); # x is ["foo", {"bar": 123}, "baz"] with address reference@0x140002000a0
+println($`x is {x}`); # x is ["foo", {"bar": 123}, "baz"]
 
 let y = x; # x is assigned to y by copy
-println($`y is {y} with address {y.&}`); # y is ["foo", {"bar": 123}, "baz"] with address reference@0x14000200140
+println($`y is {y}`); # y is ["foo", {"bar": 123}, "baz"]
 
 # x and y are separate values that are structurally equal.
 println($`x == y is {x == y}`); # x == y is true
@@ -403,17 +401,9 @@ println($`y is {y}`); # y is ["foo", {"bar": "xyz"}, "baz"]
 println($`x == y is {x == y}`); # x == y is false
 
 let z = ["foo", {"bar": "xyz"}, "baz"];
-println($`z is {z} with address {z.&}`); # z is ["foo", {"bar": "xyz"}, "baz"] with address reference@0x14000200370
+println($`z is {z}`); # z is ["foo", {"bar": "xyz"}, "baz"]
 # y and z are separate values that are structurally equal.
 println($`y == z is {y == z}`); # y == z is true
-
-# Copying an immutable value such as an integer will produce that same value
-# verbatim as a memory-saving optimization.
-let a = 123;
-println($`a is {a} with address {a.&}`); # a is 123 with address reference@0x140001d0bf0
-
-let b = a;
-println($`b is {b} with address {b.&}`); # b is 123 with address reference@0x140001d0bf0
 
 println("===================================");
 println("== If, Elif, and Else Statements ==");

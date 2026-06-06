@@ -241,7 +241,7 @@ func unmarkReferenced(value Value) {
 func callableSelfIsPassedByReference(function Value) bool {
 	switch f := function.(type) {
 	case *Function:
-		return f.Ast.SelfByReference
+		return f.ast.SelfByReference
 	case *Builtin:
 		return f.byRef
 	default:
@@ -249,17 +249,16 @@ func callableSelfIsPassedByReference(function Value) bool {
 	}
 }
 
-// Returns a callable's implicit `self` argument passed by reference in a
-// function in function call with a dot access expression as the left hand side
-// of that expression.
-//
-// function(self) { ... }   # self argument is a value
-// function.&(self) { ... } # self argument is a reference
-func (ctx *Context) callableSelfArgument(store Value, function Value) Value {
-	if callableSelfIsPassedByReference(function) {
-		return ctx.NewReference(store)
+// Invokes the provided metafunction, passing an implicit copy or reference
+// `self` to the metafunction. Effectively a utility function for the common
+// pattern of calling value.into_string() or a similarly-flavored callable.
+func (ctx *Context) callMetaWithSelf(location *SourceLocation, metaFunction Value, self Value) (Value, error) {
+	if !callableSelfIsPassedByReference(metaFunction) {
+		return Call(ctx, location, metaFunction, []Value{self.Copy()})
 	}
-	return store.Copy()
+	result, err := Call(ctx, location, metaFunction, []Value{ctx.newReference(self)})
+	unmarkReferenced(self)
+	return result, err
 }
 
 type CombEncoder struct {
@@ -637,22 +636,22 @@ func (ctx *Context) NewRegexp(text string) (*Regexp, error) {
 	return &Regexp{data}, nil
 }
 
-func (ctx *Context) NewVector(elements []Value) *Vector {
-	if elements == nil || len(elements) == 0 {
-		return &Vector{data: nil}
+func (ctx *Context) NewVector(elements []Value) (*Vector, error) {
+	result := &Vector{data: nil}
+	for _, element := range elements {
+		if err := result.Push(element); err != nil {
+			return nil, fmt.Errorf("invalid vector construction with element %v", element)
+		}
 	}
+	return result, nil
+}
 
-	owned := make([]Value, len(elements))
-	for i := range elements {
-		owned[i] = elements[i].Take()
+func (ctx *Context) NewVectorOrPanic(elements []Value) *Vector {
+	result, err := ctx.NewVector(elements)
+	if err != nil {
+		panic(err.Error())
 	}
-
-	return &Vector{
-		data: &vectorData{
-			elements: owned,
-			uses:     1,
-		},
-	}
+	return result
 }
 
 func (ctx *Context) NewMap(elements []MapPair) (*Map, error) {
@@ -672,7 +671,7 @@ func (ctx *Context) NewMap(elements []MapPair) (*Map, error) {
 	for _, element := range elements {
 		err := result.Insert(element.Key, element.Value)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("invalid map construction with key %v and value %v", element.Key, element.Value)
 		}
 	}
 	return result, nil
@@ -734,7 +733,7 @@ func (ctx *Context) NewSet(elements []Value) (*Set, error) {
 	for _, element := range elements {
 		err := result.Insert(element)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("invalid set construction with element %v", element)
 		}
 	}
 	return result, nil
@@ -748,12 +747,13 @@ func (ctx *Context) NewSetOrPanic(elements []Value) *Set {
 	return result
 }
 
-func (ctx *Context) NewReference(value Value) *Reference {
+func (ctx *Context) newReference(value Value) *Reference {
+	value.CopyOnWrite()
 	markReferenced(value)
 	return &Reference{value}
 }
 
-func (ctx *Context) NewFunction(ast *AstExpressionFunction, env *Environment) *Function {
+func (ctx *Context) newFunction(ast *AstExpressionFunction, env *Environment) *Function {
 	return &Function{ast, env}
 }
 
@@ -1317,6 +1317,10 @@ func (self *Vector) Set(index int, value Value) error {
 		return fmt.Errorf("attempted to modify immutable vector %v", self)
 	}
 
+	if valueReference, ok := value.(*Reference); ok {
+		return fmt.Errorf("attempted vector element assignment with element type reference to %v", valueReference.data.Typename())
+	}
+
 	self.CopyOnWrite()
 	self.data.elements[index] = value.Take()
 	return nil
@@ -1325,6 +1329,10 @@ func (self *Vector) Set(index int, value Value) error {
 func (self *Vector) Insert(index int, value Value) error {
 	if self.IsImmutable() {
 		return fmt.Errorf("attempted to modify immutable vector %v", self)
+	}
+
+	if valueReference, ok := value.(*Reference); ok {
+		return fmt.Errorf("attempted vector element insert with element type reference to %v", valueReference.data.Typename())
 	}
 
 	self.CopyOnWrite()
@@ -1358,6 +1366,10 @@ func (self *Vector) Remove(index int) (Value, error) {
 func (self *Vector) Push(value Value) error {
 	if self.IsImmutable() {
 		return fmt.Errorf("attempted to modify immutable vector %v", self)
+	}
+
+	if valueReference, ok := value.(*Reference); ok {
+		return fmt.Errorf("attempted vector element push with element type reference to %v", valueReference.data.Typename())
 	}
 
 	self.CopyOnWrite()
@@ -1756,6 +1768,14 @@ func (self *Map) Insert(key, value Value) error {
 		return fmt.Errorf("attempted to modify immutable map %v", self)
 	}
 
+	if keyReference, ok := key.(*Reference); ok {
+		return fmt.Errorf("attempted map insert with key type reference to %v", keyReference.data.Typename())
+	}
+
+	if valueReference, ok := value.(*Reference); ok {
+		return fmt.Errorf("attempted map insert with value type reference to %v", valueReference.data.Typename())
+	}
+
 	if keyNumber, ok := key.(*Number); ok {
 		if math.IsNaN(keyNumber.data) {
 			return errors.New("invalid NaN map key")
@@ -1776,6 +1796,10 @@ func (self *Map) Insert(key, value Value) error {
 func (self *Map) Remove(key Value) error {
 	if self.IsImmutable() {
 		return fmt.Errorf("attempted to modify immutable map %v", self)
+	}
+
+	if keyReference, ok := key.(*Reference); ok {
+		return fmt.Errorf("attempted map remove with key type reference to %v", keyReference.data.Typename())
 	}
 
 	if self.data == nil {
@@ -2122,6 +2146,10 @@ func (self *Set) Insert(value Value) error {
 		return fmt.Errorf("attempted to modify immutable set %v", self)
 	}
 
+	if valueReference, ok := value.(*Reference); ok {
+		return fmt.Errorf("attempted set insert with element type reference to %v", valueReference.data.Typename())
+	}
+
 	if valueNumber, ok := value.(*Number); ok {
 		if math.IsNaN(valueNumber.data) {
 			return errors.New("invalid NaN set element")
@@ -2142,6 +2170,10 @@ func (self *Set) Insert(value Value) error {
 func (self *Set) Remove(value Value) error {
 	if self.IsImmutable() {
 		return fmt.Errorf("attempted to modify immutable set %v", self)
+	}
+
+	if valueReference, ok := value.(*Reference); ok {
+		return fmt.Errorf("attempted set remove with element type reference to %v", valueReference.data.Typename())
 	}
 
 	if self.data == nil {
@@ -2213,8 +2245,8 @@ func (self *Reference) CombEncode(e *CombEncoder) error {
 }
 
 type Function struct {
-	Ast *AstExpressionFunction
-	Env *Environment
+	ast *AstExpressionFunction
+	env *Environment
 }
 
 func (self *Function) Typename() string {
@@ -2223,8 +2255,8 @@ func (self *Function) Typename() string {
 
 func (self *Function) String() string {
 	name := "function"
-	if self.Ast.Name != nil {
-		name = self.Ast.Name.data
+	if self.ast.Name != nil {
+		name = self.ast.Name.data
 	}
 	for _, r := range name {
 		if !(unicode.IsLetter(r) || unicode.IsDigit(r) || r == '_') {
@@ -2232,8 +2264,8 @@ func (self *Function) String() string {
 			break
 		}
 	}
-	if self.Ast.Location != nil {
-		return fmt.Sprintf("%s@[%v, line %v]", name, self.Ast.Location.File, self.Ast.Location.Line)
+	if self.ast.Location != nil {
+		return fmt.Sprintf("%s@[%v, line %v]", name, self.ast.Location.File, self.ast.Location.Line)
 	}
 	return name
 }
@@ -2263,7 +2295,7 @@ func (self *Function) IsImmutable() bool {
 }
 
 func (self *Function) Hash() uint64 {
-	return uint64(reflect.ValueOf(self.Ast).Pointer() + reflect.ValueOf(self.Env).Pointer())
+	return uint64(reflect.ValueOf(self.ast).Pointer() + reflect.ValueOf(self.env).Pointer())
 }
 
 func (self *Function) Equal(other Value) bool {
@@ -2271,7 +2303,7 @@ func (self *Function) Equal(other Value) bool {
 	if !ok {
 		return false
 	}
-	return reflect.ValueOf(self.Ast).Pointer() == reflect.ValueOf(othr.Ast).Pointer() && reflect.ValueOf(self.Env).Pointer() == reflect.ValueOf(othr.Env).Pointer()
+	return reflect.ValueOf(self.ast).Pointer() == reflect.ValueOf(othr.ast).Pointer() && reflect.ValueOf(self.env).Pointer() == reflect.ValueOf(othr.env).Pointer()
 }
 
 func (self *Function) CombEncode(e *CombEncoder) error {
@@ -3299,20 +3331,35 @@ type Environment struct {
 	outer *Environment // Optional
 	store map[string]Value
 	match *RegexpMatch // Optional
+	refs  int
 }
 
 func NewEnvironment(outer *Environment) *Environment {
+	refs := 0
+	if outer != nil {
+		refs = outer.refs
+	}
 	return &Environment{
 		outer: outer,
 		store: map[string]Value{},
+		refs:  refs,
 	}
 }
 
 func (self *Environment) Let(name string, value Value) {
+	if _, ok := value.(*Reference); ok {
+		self.refs += 1
+	}
 	self.store[name] = value.Take()
 }
 
 func (self *Environment) Set(name string, value Value) error {
+	// References *should* only ever be introduced to a lexical scope via a
+	// call to Environment.Let() from within the Mellifera runtime.
+	if _, ok := value.(*Reference); ok {
+		return errors.New("attempted assignment with a reference value")
+	}
+
 	env := self
 	for env != nil {
 		_, ok := env.store[name]
@@ -3435,7 +3482,7 @@ type AstProgram struct {
 }
 
 func (self AstProgram) IntoValue(ctx *Context) Value {
-	statements := ctx.NewVector(nil)
+	statements := ctx.NewVectorOrPanic(nil)
 	for _, statement := range self.Statements {
 		_ = statements.Push(statement.IntoValue(ctx))
 	}
@@ -3534,7 +3581,7 @@ func (self AstExpressionTemplate) IntoValue(ctx *Context) Value {
 	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
-		{ctx.NewString("template"), ctx.NewVector(elements)},
+		{ctx.NewString("template"), ctx.NewVectorOrPanic(elements)},
 	})
 }
 
@@ -3547,7 +3594,7 @@ func (self *AstExpressionTemplate) Eval(ctx *Context, env *Environment) (Value, 
 		}
 
 		if metaFunction, ok := MetaFunction(ctx, value, ctx.constStringIntoString); ok {
-			result, err := Call(ctx, element.ExpressionLocation(), metaFunction, []Value{ctx.callableSelfArgument(value, metaFunction)})
+			result, err := ctx.callMetaWithSelf(element.ExpressionLocation(), metaFunction, value)
 			if err != nil {
 				return nil, err
 			}
@@ -3729,7 +3776,7 @@ func (self AstExpressionVector) IntoValue(ctx *Context) Value {
 	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
-		{ctx.NewString("elements"), ctx.NewVector(elements)},
+		{ctx.NewString("elements"), ctx.NewVectorOrPanic(elements)},
 	})
 }
 
@@ -3742,7 +3789,14 @@ func (self *AstExpressionVector) Eval(ctx *Context, env *Environment) (Value, er
 		}
 		elements = append(elements, moveOrCopy(value))
 	}
-	return ctx.NewVector(elements), nil
+	value, err := ctx.NewVector(elements)
+	if err != nil {
+		return nil, NewError(
+			self.Location,
+			ctx.NewString(err.Error()),
+		)
+	}
+	return value, nil
 }
 
 type AstMapPair struct {
@@ -3763,12 +3817,12 @@ func (self AstExpressionMap) IntoValue(ctx *Context) Value {
 	elements := []Value{}
 	for _, element := range self.Elements {
 		elements = append(elements,
-			ctx.NewVector([]Value{element.Key.IntoValue(ctx), element.Value.IntoValue(ctx)}))
+			ctx.NewVectorOrPanic([]Value{element.Key.IntoValue(ctx), element.Value.IntoValue(ctx)}))
 	}
 	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
-		{ctx.NewString("elements"), ctx.NewVector(elements)},
+		{ctx.NewString("elements"), ctx.NewVectorOrPanic(elements)},
 	})
 }
 
@@ -3812,7 +3866,7 @@ func (self AstExpressionSet) IntoValue(ctx *Context) Value {
 	return ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("kind"), ctx.NewString(reflect.TypeOf(self).Name())},
 		{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, self.Location)},
-		{ctx.NewString("elements"), ctx.NewVector(elements)},
+		{ctx.NewString("elements"), ctx.NewVectorOrPanic(elements)},
 	})
 }
 
@@ -3849,7 +3903,7 @@ func (self AstExpressionFunction) ExpressionLocation() *SourceLocation {
 }
 
 func (self AstExpressionFunction) IntoValue(ctx *Context) Value {
-	parameters := ctx.NewVector(nil)
+	parameters := ctx.NewVectorOrPanic(nil)
 	for _, parameter := range self.Parameters {
 		_ = parameters.Push(parameter.IntoValue(ctx))
 	}
@@ -3868,7 +3922,13 @@ func (self AstExpressionFunction) IntoValue(ctx *Context) Value {
 }
 
 func (self *AstExpressionFunction) Eval(ctx *Context, env *Environment) (Value, error) {
-	return ctx.NewFunction(self, env), nil
+	if env.refs > 0 {
+		return nil, NewError(
+			self.Location,
+			ctx.NewString("function closes over a reference value"),
+		)
+	}
+	return ctx.newFunction(self, env), nil
 }
 
 type AstExpressionFreeze struct {
@@ -3934,7 +3994,7 @@ func (self *AstExpressionType) Eval(ctx *Context, env *Environment) (Value, erro
 		extendsMap, ok = extends.(*Map)
 		if !(ok && extendsMap.IsImmutable() && extendsMap.name != nil) {
 			return nil, NewError(
-				nil,
+				self.Extends.ExpressionLocation(),
 				ctx.NewStringf("expected map value created with the %s keyword, received %v", quote(TOKEN_TYPE), extends),
 			)
 		}
@@ -4721,7 +4781,7 @@ func (self *AstExpressionAdd) Eval(ctx *Context, env *Environment) (Value, error
 			for _, element := range rhsVector.Elements() {
 				elements = append(elements, element.Copy())
 			}
-			return ctx.NewVector(elements), nil
+			return ctx.NewVectorOrPanic(elements), nil
 		}
 	}
 
@@ -5159,16 +5219,42 @@ func (self AstExpressionMkref) IntoValue(ctx *Context) Value {
 	})
 }
 
-func (self *AstExpressionMkref) Eval(ctx *Context, env *Environment) (Value, error) {
+// Returns the constructed reference value as well as the full list of values
+// marked as referenced (access chain plus the returned referenced value). The
+// caller may chose to unmark the list of values at the end of the current
+// lexical scope.
+func (self *AstExpressionMkref) eval(ctx *Context, env *Environment) (*Reference, []Value, error) {
 	chain := []Value{}
 	value, err := evalLvalue(self.Lhs, ctx, env, &chain)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+	marked := []Value{}
 	for _, v := range chain {
 		markReferenced(v)
+		marked = append(marked, v)
 	}
-	return ctx.NewReference(value), nil
+	marked = append(marked, value)
+	return ctx.newReference(value), marked, nil
+}
+
+func (self *AstExpressionMkref) Eval(ctx *Context, env *Environment) (Value, error) {
+	// References may only be constructed at specific points in a program:
+	//
+	// + From an implicit reference to self created when calling a function
+	//   declared with function.&(self, args...) { ... } => foo.fn(bar)
+	// + With the reference operator .& applied to function argument at the
+	//   call site of an arbitrary function invocation => fn(foo.&, bar, baz.&)
+	// + A key reference or value reference declared as an iteration variable
+	//   in a for-loop => for k.& in x { ... } and for k, v.& in x { ... }
+	//
+	// Each of these places has dedicated syntax that is explicitly parsed as a
+	// special case, and evaluated by the interpreter using the internal
+	// AstExpressionMkref.eval() function.
+	return nil, NewError(
+		self.Location,
+		ctx.NewString("invalid reference operator use"),
+	)
 }
 
 type AstExpressionDeref struct {
@@ -5216,7 +5302,7 @@ func (self AstExpressionFunctionCall) ExpressionLocation() *SourceLocation {
 }
 
 func (self AstExpressionFunctionCall) IntoValue(ctx *Context) Value {
-	arguments := ctx.NewVector(nil)
+	arguments := ctx.NewVectorOrPanic(nil)
 	for _, argument := range self.Arguments {
 		_ = arguments.Push(argument.IntoValue(ctx))
 	}
@@ -5288,15 +5374,6 @@ func (self *AstExpressionFunctionCall) Eval(ctx *Context, env *Environment) (Val
 		// by copy (value.* -> pass by value), or a passthrough of the existing
 		// reference (pass by reference).
 		if callableSelfIsPassedByReference(function) {
-			_, selfIsBuiltin := function.(*Builtin)
-
-			if selfIsBuiltin && !storeIsSelfReference {
-				// Perform a copy-on-write operation ahead of the call so that
-				// the temporary self reference is guaranteed to reference
-				// unique data.
-				store.CopyOnWrite()
-			}
-
 			for _, value := range chain {
 				markReferenced(value)
 			}
@@ -5305,24 +5382,20 @@ func (self *AstExpressionFunctionCall) Eval(ctx *Context, env *Environment) (Val
 				callableSelfArgument = store
 			} else {
 				// value.& -> pass by reference
-				callableSelfArgument = ctx.NewReference(store)
+				callableSelfArgument = ctx.newReference(store)
 			}
 
-			// Builtins created with Context.NewBuiltinWithSelfByReference()
-			// allow for an explicit optimization where the `self` reference
-			// can be treated as a non-escaping temporary, allowing marked
-			// values in the access chain to be unmarked after the built-in
-			// function returns.
-			if selfIsBuiltin {
-				defer func() {
-					for _, value := range chain {
-						unmarkReferenced(value)
-					}
-					if !storeIsSelfReference {
-						unmarkReferenced(store)
-					}
-				}()
-			}
+			// The implicit `self` reference is guaranteed not to escape the
+			// lexical environment of the callee, and can be safely unmarked
+			// after control returns from the invoked function.
+			defer func() {
+				for _, value := range chain {
+					unmarkReferenced(value)
+				}
+				if !storeIsSelfReference {
+					unmarkReferenced(store)
+				}
+			}()
 		} else {
 			if storeIsSelfReference {
 				// value.* -> pass by value (auto-deref)
@@ -5343,7 +5416,28 @@ func (self *AstExpressionFunctionCall) Eval(ctx *Context, env *Environment) (Val
 	if callableSelfArgument != nil {
 		arguments = append(arguments, callableSelfArgument)
 	}
+
+	// Arguments passed by reference with the .& operator are guaranteed not to
+	// escape the lexical environment of the callee, and can be safely unmarked
+	// after control returns from the invoked function.
+	var referenced []Value
+	defer func() {
+		for _, value := range referenced {
+			unmarkReferenced(value)
+		}
+	}()
+
 	for _, argument := range self.Arguments {
+		if argumentMkref, ok := argument.(*AstExpressionMkref); ok {
+			reference, marked, err := argumentMkref.eval(ctx, env)
+			if err != nil {
+				return nil, err
+			}
+			referenced = append(referenced, marked...)
+			arguments = append(arguments, reference)
+			continue
+		}
+
 		result, err := argument.Eval(ctx, env)
 		if err != nil {
 			return nil, err
@@ -5360,7 +5454,7 @@ type AstBlock struct {
 }
 
 func (self AstBlock) IntoValue(ctx *Context) Value {
-	statements := ctx.NewVector(nil)
+	statements := ctx.NewVectorOrPanic(nil)
 	for _, statement := range self.Statements {
 		_ = statements.Push(statement.IntoValue(ctx))
 	}
@@ -5447,12 +5541,18 @@ func (self AstStatementLet) IntoValue(ctx *Context) Value {
 }
 
 func (self *AstStatementLet) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
-	value, error := self.Expression.Eval(ctx, env)
+	rhs, error := self.Expression.Eval(ctx, env)
 	if error != nil {
 		return nil, error
 	}
+	if rhsReference, ok := rhs.(*Reference); ok {
+		return nil, NewError(
+			self.Location,
+			ctx.NewStringf("attempted assignment statement with type reference to %v", rhsReference.data.Typename()),
+		)
+	}
 
-	env.Let(self.Identifier.Name.data, moveOrCopy(value))
+	env.Let(self.Identifier.Name.data, moveOrCopy(rhs))
 
 	return nil, nil
 }
@@ -5468,7 +5568,7 @@ func (self AstStatementIfElifElse) StatementLocation() *SourceLocation {
 }
 
 func (self AstStatementIfElifElse) IntoValue(ctx *Context) Value {
-	conditionals := ctx.NewVector(nil)
+	conditionals := ctx.NewVectorOrPanic(nil)
 	for _, conditional := range self.Conditionals {
 		_ = conditionals.Push(conditional.IntoValue(ctx))
 	}
@@ -5551,6 +5651,7 @@ func (self *AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, 
 		// collection.
 		collection.CopyOnWrite()
 		markReferenced(collection)
+		defer unmarkReferenced(collection)
 	} else {
 		// Value iteration iterates over copies of each element, so we iterate
 		// over a shallow copy of the collection to allow modifcation of that
@@ -5578,7 +5679,8 @@ func (self *AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, 
 				ctx.NewString("iterator next must receive self by reference (declared with function.&(self))"),
 			)
 		}
-		reference := ctx.NewReference(collection)
+		reference := ctx.newReference(collection)
+		defer unmarkReferenced(collection)
 		for {
 			iterated, err := Call(ctx, self.Location, metaFunction, []Value{reference})
 			if err != nil {
@@ -5657,13 +5759,16 @@ func (self *AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, 
 		for _, x := range snapshot {
 			var k Value = nil
 			if self.KIsReference {
-				k = ctx.NewReference(x)
+				k = ctx.newReference(x)
 			} else {
 				k = x.Copy()
 			}
 			loopEnv := NewEnvironment(env)
 			loopEnv.Let(self.IdentifierK.Name.data, k)
 			result, err := self.Block.Eval(ctx, loopEnv)
+			if self.KIsReference {
+				unmarkReferenced(x)
+			}
 			if err != nil {
 				return nil, err
 			}
@@ -5694,13 +5799,16 @@ func (self *AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, 
 			if self.IdentifierV != nil {
 				var v Value = nil
 				if self.VIsReference {
-					v = ctx.NewReference(pair.Value)
+					v = ctx.newReference(pair.Value)
 				} else {
 					v = pair.Value.Copy()
 				}
 				loopEnv.Let(self.IdentifierV.Name.data, v)
 			}
 			result, err := self.Block.Eval(ctx, loopEnv)
+			if self.VIsReference {
+				unmarkReferenced(pair.Value)
+			}
 			if err != nil {
 				return nil, err
 			}
@@ -5922,6 +6030,13 @@ func (self *AstStatementError) Eval(ctx *Context, env *Environment) (ControlFlow
 	if err != nil {
 		return nil, err
 	}
+	if valueReference, ok := value.(*Reference); ok {
+		return nil, NewError(
+			self.Location,
+			ctx.NewStringf("attempted error statement with type reference to %v", valueReference.data.Typename()),
+		)
+	}
+
 	return nil, NewError(self.Location, moveOrCopy(value))
 }
 
@@ -5956,6 +6071,13 @@ func (self *AstStatementReturn) Eval(ctx *Context, env *Environment) (ControlFlo
 	if err != nil {
 		return nil, err
 	}
+	if valueReference, ok := value.(*Reference); ok {
+		return nil, NewError(
+			self.Location,
+			ctx.NewStringf("attempted return statement with type reference to %v", valueReference.data.Typename()),
+		)
+	}
+
 	return Return{self.Location, moveOrCopy(value)}, nil
 }
 
@@ -6174,6 +6296,12 @@ func (self *AstStatementAssignment) Eval(ctx *Context, env *Environment) (Contro
 		rhs, err := self.Rhs.Eval(ctx, env)
 		if err != nil {
 			return nil, err
+		}
+		if rhsReference, ok := rhs.(*Reference); ok {
+			return nil, NewError(
+				self.Location,
+				ctx.NewStringf("attempted assignment statement with type reference to %v", rhsReference.data.Typename()),
+			)
 		}
 
 		err = env.Set(lhsIdentifier.Name.data, moveOrCopy(rhs))
@@ -6407,7 +6535,6 @@ func NewParser(lexer *Lexer) (Parser, error) {
 			TOKEN_LBRACKET: (*Parser).ParseExpressionAccessIndex,
 			TOKEN_SCOPE:    (*Parser).ParseExpressionAccessScope,
 			TOKEN_DOT:      (*Parser).ParseExpressionAccessDot,
-			TOKEN_MKREF:    (*Parser).ParseExpressionMkref,
 			TOKEN_DEREF:    (*Parser).ParseExpressionDeref,
 		},
 	}
@@ -7225,6 +7352,13 @@ func (self *Parser) ParseExpressionFunctionCall(lhs AstExpression) (AstExpressio
 		if err != nil {
 			return nil, err
 		}
+		if self.checkCurrent(TOKEN_MKREF) {
+			token, err = self.advanceToken()
+			if err != nil {
+				return nil, err
+			}
+			expression = &AstExpressionMkref{token.Location, expression}
+		}
 		arguments = append(arguments, expression)
 	}
 
@@ -7705,19 +7839,19 @@ func Call(ctx *Context, location *SourceLocation, callable Value, arguments []Va
 	}
 
 	if function, ok := callable.(*Function); ok {
-		if len(arguments) != len(function.Ast.Parameters) {
+		if len(arguments) != len(function.ast.Parameters) {
 			return nil, NewError(
 				location,
-				ctx.NewStringf("invalid function argument count (expected %v, received %v)", len(function.Ast.Parameters), len(arguments)),
+				ctx.NewStringf("invalid function argument count (expected %v, received %v)", len(function.ast.Parameters), len(arguments)),
 			)
 		}
 
-		env := NewEnvironment(function.Env)
-		for i, parameter := range function.Ast.Parameters {
+		env := NewEnvironment(function.env)
+		for i, parameter := range function.ast.Parameters {
 			env.Let(parameter.Name.data, arguments[i])
 		}
 
-		result, err := function.Ast.Body.Eval(ctx, env)
+		result, err := function.ast.Body.Eval(ctx, env)
 		if err != nil {
 			if e, ok := err.(Error); ok {
 				e.Trace = append(e.Trace, TraceElement{location, function.String()})
@@ -7931,7 +8065,7 @@ let iterator = type {
         }
         return true;
     },
-    .map = function.&(self, func) {
+    .map = function(self, func) {
         let map_iterator = type extends iterator {
             .next = function.&(self) {
                 return func(self.base.next());
@@ -7941,7 +8075,7 @@ let iterator = type {
             .base = self,
         };
     },
-    .filter = function.&(self, func) {
+    .filter = function(self, func) {
         let filter_iterator = type extends iterator {
             .next = function.&(self) {
                 while true {
@@ -8130,7 +8264,7 @@ func BuiltinStringInit(ctx *Context) Value {
 		value := arguments[0]
 
 		if metaFunction, ok := MetaFunction(ctx, value, ctx.constStringIntoString); ok {
-			result, err := Call(ctx, nil, metaFunction, []Value{ctx.callableSelfArgument(value, metaFunction)})
+			result, err := ctx.callMetaWithSelf(nil, metaFunction, value)
 			if err != nil {
 				return nil, err
 			}
@@ -8156,7 +8290,7 @@ func BuiltinStringBytes(ctx *Context) Value {
 	return ctx.NewBuiltin("string::bytes", []Type{TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*String)
 
-		vector := ctx.NewVector(nil)
+		vector := ctx.NewVectorOrPanic(nil)
 		bytes := []byte(self.data)
 		for i := range bytes {
 			err := vector.Push(ctx.NewString(string([]byte{bytes[i]})))
@@ -8172,7 +8306,7 @@ func BuiltinStringRunes(ctx *Context) Value {
 	return ctx.NewBuiltin("string::runes", []Type{TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*String)
 
-		vector := ctx.NewVector(nil)
+		vector := ctx.NewVectorOrPanic(nil)
 		for _, r := range self.data {
 			err := vector.Push(ctx.NewString(string(r)))
 			if err != nil {
@@ -8297,7 +8431,7 @@ func BuiltinStringSplit(ctx *Context) Value {
 		self := arguments[0].(*String)
 		target := arguments[1].(*String)
 
-		vector := ctx.NewVector(nil)
+		vector := ctx.NewVectorOrPanic(nil)
 		if len(target.data) == 0 {
 			for _, r := range self.data {
 				err := vector.Push(ctx.NewString(string(r)))
@@ -8418,7 +8552,7 @@ func BuiltinRegexpSplit(ctx *Context) Value {
 		self := arguments[0].(*Regexp)
 		text := arguments[1].(*String)
 
-		result := ctx.NewVector(nil)
+		result := ctx.NewVectorOrPanic(nil)
 		for _, s := range self.data.Split(text.data, -1) {
 			err := result.Push(ctx.NewString(s))
 			if err != nil {
@@ -8448,8 +8582,9 @@ func BuiltinVectorInit(ctx *Context) Value {
 			if !callableSelfIsPassedByReference(metaFunction) {
 				return nil, NewError(nil, ctx.NewString("iterator next must receive self by reference (declared with function.&(self))"))
 			}
-			reference := ctx.NewReference(value)
-			result := ctx.NewVector(nil)
+			reference := ctx.newReference(value)
+			defer unmarkReferenced(value)
+			result := ctx.NewVectorOrPanic(nil)
 			for {
 				iterated, err := Call(ctx, nil, metaFunction, []Value{reference})
 				if err != nil {
@@ -8469,7 +8604,7 @@ func BuiltinVectorInit(ctx *Context) Value {
 		}
 
 		if valueVector, ok := value.(*Vector); ok {
-			result := ctx.NewVector(nil)
+			result := ctx.NewVectorOrPanic(nil)
 			for _, element := range valueVector.Elements() {
 				err := result.Push(element.Copy())
 				if err != nil {
@@ -8480,9 +8615,9 @@ func BuiltinVectorInit(ctx *Context) Value {
 		}
 
 		if valueMap, ok := value.(*Map); ok {
-			result := ctx.NewVector(nil)
+			result := ctx.NewVectorOrPanic(nil)
 			for _, pair := range valueMap.Pairs() {
-				err := result.Push(ctx.NewVector([]Value{pair.Key.Copy(), pair.Value.Copy()}))
+				err := result.Push(ctx.NewVectorOrPanic([]Value{pair.Key.Copy(), pair.Value.Copy()}))
 				if err != nil {
 					return nil, NewError(nil, ctx.NewString(err.Error()))
 				}
@@ -8491,7 +8626,7 @@ func BuiltinVectorInit(ctx *Context) Value {
 		}
 
 		if valueSet, ok := value.(*Set); ok {
-			result := ctx.NewVector(nil)
+			result := ctx.NewVectorOrPanic(nil)
 			for _, element := range valueSet.Elements() {
 				err := result.Push(element.Copy())
 				if err != nil {
@@ -8598,7 +8733,7 @@ func BuiltinVectorMap(ctx *Context) Value {
 			mapped = append(mapped, result.Copy())
 		}
 
-		return ctx.NewVector(mapped), nil
+		return ctx.NewVectorOrPanic(mapped), nil
 	})
 }
 
@@ -8623,7 +8758,7 @@ func BuiltinVectorFilter(ctx *Context) Value {
 			}
 		}
 
-		return ctx.NewVector(filtered), nil
+		return ctx.NewVectorOrPanic(filtered), nil
 	})
 }
 
@@ -8764,7 +8899,7 @@ func BuiltinVectorSlice(ctx *Context) Value {
 			return nil, NewError(nil, ctx.NewString("attempted vector::slice with invalid indices (slice end is less than slice begin)"))
 		}
 
-		result := ctx.NewVector(nil)
+		result := ctx.NewVectorOrPanic(nil)
 		for i := bgn_index; i < end_index; i++ {
 			err := result.Push(self.Get(i).Copy())
 			if err != nil {
@@ -8785,7 +8920,7 @@ func BuiltinVectorReversed(ctx *Context) Value {
 			elements = append(elements, element.Copy())
 		}
 		slices.Reverse(elements)
-		return ctx.NewVector(elements), nil
+		return ctx.NewVectorOrPanic(elements), nil
 	})
 }
 
@@ -8900,16 +9035,16 @@ func BuiltinVectorIntoIterator(ctx *Context) Value {
 return function(self) {
 	let vector_iterator = type extends iterator {
 		.next = function.&(self) {
-			if self.index >= self.vector.*.count() {
+			if self.index >= self.vector.count() {
 				return iterator::eoi();
 			}
-			let current = self.vector.*[self.index];
+			let current = self.vector[self.index];
 			self.index = self.index + 1;
 			return current;
 		},
 	};
 	return new vector_iterator {
-		.vector = self.&,
+		.vector = self,
 		.index = 0,
 	};
 };
@@ -8990,7 +9125,7 @@ func BuiltinMapKeys(ctx *Context) Value {
 		self := arguments[0].(*Map)
 
 		pairs := self.Pairs()
-		result := ctx.NewVector(nil)
+		result := ctx.NewVectorOrPanic(nil)
 		for _, pair := range pairs {
 			err := result.Push(pair.Key.Copy())
 			if err != nil {
@@ -9007,7 +9142,7 @@ func BuiltinMapValues(ctx *Context) Value {
 		self := arguments[0].(*Map)
 
 		pairs := self.Pairs()
-		result := ctx.NewVector(nil)
+		result := ctx.NewVectorOrPanic(nil)
 		for _, pair := range pairs {
 			err := result.Push(pair.Value.Copy())
 			if err != nil {
@@ -9024,7 +9159,7 @@ func BuiltinMapPairs(ctx *Context) Value {
 		self := arguments[0].(*Map)
 
 		pairs := self.Pairs()
-		result := ctx.NewVector(nil)
+		result := ctx.NewVectorOrPanic(nil)
 		for _, pair := range pairs {
 			pair, err := ctx.NewMap([]MapPair{
 				{ctx.NewString("key"), pair.Key.Copy()},
@@ -9298,7 +9433,7 @@ func BuiltinDumpln(ctx *Context) Value {
 func BuiltinPrint(ctx *Context) Value {
 	return ctx.NewBuiltin("print", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		if metaFunction, ok := MetaFunction(ctx, arguments[0], ctx.constStringIntoString); ok {
-			result, err := Call(ctx, nil, metaFunction, []Value{ctx.callableSelfArgument(arguments[0], metaFunction)})
+			result, err := ctx.callMetaWithSelf(nil, metaFunction, arguments[0])
 			if err != nil {
 				return nil, err
 			}
@@ -9326,7 +9461,7 @@ func BuiltinPrint(ctx *Context) Value {
 func BuiltinPrintln(ctx *Context) Value {
 	return ctx.NewBuiltin("println", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		if metaFunction, ok := MetaFunction(ctx, arguments[0], ctx.constStringIntoString); ok {
-			result, err := Call(ctx, nil, metaFunction, []Value{ctx.callableSelfArgument(arguments[0], metaFunction)})
+			result, err := ctx.callMetaWithSelf(nil, metaFunction, arguments[0])
 			if err != nil {
 				return nil, err
 			}
@@ -9354,7 +9489,7 @@ func BuiltinPrintln(ctx *Context) Value {
 func BuiltinEprint(ctx *Context) Value {
 	return ctx.NewBuiltin("eprint", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		if metaFunction, ok := MetaFunction(ctx, arguments[0], ctx.constStringIntoString); ok {
-			result, err := Call(ctx, nil, metaFunction, []Value{ctx.callableSelfArgument(arguments[0], metaFunction)})
+			result, err := ctx.callMetaWithSelf(nil, metaFunction, arguments[0])
 			if err != nil {
 				return nil, err
 			}
@@ -9382,7 +9517,7 @@ func BuiltinEprint(ctx *Context) Value {
 func BuiltinEprintln(ctx *Context) Value {
 	return ctx.NewBuiltin("eprintln", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		if metaFunction, ok := MetaFunction(ctx, arguments[0], ctx.constStringIntoString); ok {
-			result, err := Call(ctx, nil, metaFunction, []Value{ctx.callableSelfArgument(arguments[0], metaFunction)})
+			result, err := ctx.callMetaWithSelf(nil, metaFunction, arguments[0])
 			if err != nil {
 				return nil, err
 			}
@@ -9850,7 +9985,7 @@ func jsonDecodeFromTokens(ctx *Context, dec *json.Decoder) (Value, error) {
 			if _, err := dec.Token(); err != nil {
 				return nil, err
 			}
-			return ctx.NewVector(elements), nil
+			return ctx.NewVectorOrPanic(elements), nil
 		case '{':
 			pairs := []MapPair{}
 			for dec.More() {

@@ -4,7 +4,7 @@ freeze true;
 freeze 123;
 freeze "foo";
 freeze r`foo`;
-freeze 123.&;
+function(ref){ freeze ref; }(123.&);
 freeze function(){};
 freeze println;
 

@@ -1,35 +1,29 @@
 # lvalue auto-deref (index notation)
 let m = {"foo": "bar"};
-let r = m.&;
-r["foo"] = "baz";
+function(r) { r["foo"] = "baz"; }(m.&);
 dumpln(m);
 
 # lvalue auto-deref (scope notation)
 let m = {"foo": "bar"};
-let r = m.&;
-r::foo = "baz";
+function(r) { r::foo = "baz"; }(m.&);
 dumpln(m);
 
 # lvalue auto-deref (dot notation)
 let m = {"foo": "bar"};
-let r = m.&;
-r.foo = "baz";
+function(r) { r.foo = "baz"; }(m.&);
 dumpln(m);
 
 # rvalue auto-deref (index notation)
 let m = {"foo": "bar"};
-let r = m.&;
-dumpln(r.foo);
+function(r) { dumpln(r.foo); }(m.&);
 
 # rvalue auto-deref (scope notation)
 let m = {"foo": "bar"};
-let r = m.&;
-dumpln(r::foo);
+function(r) { dumpln(r::foo); }(m.&);
 
 # rvalue auto-deref (dot notation)
 let m = {"foo": "bar"};
-let r = m.&;
-dumpln(r["foo"]);
+function(r) { dumpln(r["foo"]); }(m.&);
 ################################################################################
 # {"foo": "baz"}
 # {"foo": "baz"}

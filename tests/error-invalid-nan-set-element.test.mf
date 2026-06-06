@@ -1,5 +1,5 @@
 try { {NaN}; } catch err { dumpln(err); }
 try { let x = Set{}; x.insert(NaN); } catch err { dumpln(err); }
 ################################################################################
-# "invalid NaN set element"
+# "invalid set construction with element NaN"
 # "invalid set::insert operation (invalid NaN set element)"

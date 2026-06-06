@@ -6,53 +6,52 @@
 # and mutable copy behavior by comparing the reference address of each value
 # type after copy via assignment.
 
+let eq = function(x, y) { return x == y; };
+let ne = function(x, y) { return x != y; };
+
 let a = null;
 let b = a;
-assert(a.& == b.&);
+assert(eq(a.&, b.&));
 let c = null;
-assert(a.& == c.&); # all null values should use a single null object
-assert(null.& == null.&); # all null values should use a single null object
+assert(eq(a.&, c.&)); # all null values should use a single null object
+assert(eq(null.&, null.&)); # all null values should use a single null object
 
 let a = true;
 let b = a;
-assert(a.& == b.&);
+assert(eq(a.&, b.&));
 let c = true;
-assert(a.& == c.&); # all boolean values should use a single true/false object
-assert(true.& == true.&); # all boolean values should use a single true/false object
-assert(false.& == false.&); # all boolean values should use a single true/false object
+assert(eq(a.&, c.&)); # all boolean values should use a single true/false object
+assert(eq(true.&, true.&)); # all boolean values should use a single true/false object
+assert(eq(false.&, false.&)); # all boolean values should use a single true/false object
 
 let a = 123;
 let b = a;
-assert(a.& == b.&);
+assert(eq(a.&, b.&));
 
 let a = "foo";
 let b = a;
-assert(a.& == b.&);
+assert(eq(a.&, b.&));
 
 let a = r`foo`;
 let b = a;
-assert(a.& == b.&);
+assert(eq(a.&, b.&));
 
 let a = ["foo", "bar"];
 let b = a;
-assert(a.& != b.&);
+assert(ne(a.&, b.&));
 
 let a = {"foo": "bar"};
 let b = a;
-assert(a.& != b.&);
+assert(ne(a.&, b.&));
 
 let a = {"foo", "bar"};
 let b = a;
-assert(a.& != b.&);
-
-let a = 123.&;
-let b = a;
-assert(a.& == b.&);
+assert(ne(a.&, b.&));
 
 let a = function() { return 123; };
 let b = a;
-assert(a.& == b.&);
+assert(eq(a.&, b.&));
 
 let a = dump;
 let b = a;
-assert(a.& == b.&);
+assert(eq(a.&, b.&));

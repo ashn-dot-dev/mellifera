@@ -1,83 +1,44 @@
-# x and y are separate values, so x[0].& should only reference into x
-let x = [{"abc": "foo"}];
-let r = x[0].&; # assign reference r before copying vector x
-let y = x;
-r["abc"] = "bar";
-dumpln(x);
-dumpln(y);
-
-print("\n");
-
-# x and y are separate values, so x[0].& should only reference into x
+# a reference into x only aliases x, not y
 let x = [{"abc": "foo"}];
 let y = x;
-let r = x[0].&; # assign reference r after copying vector x
-r["abc"] = "bar";
+function(r) { r["abc"] = "bar"; }(x[0].&);
 dumpln(x);
 dumpln(y);
 
 print("\n");
 
-# x and y are separate values, so y[0].& should only reference into y
+# a reference into y only aliases y, not x
 let x = [{"abc": "foo"}];
 let y = x;
-let r = y[0].&; # assign reference r after copying vector y
-r["abc"] = "bar";
+function(r) { r["abc"] = "bar"; }(y[0].&);
 dumpln(x);
 dumpln(y);
 
 print("\n");
 
-# x and y are separate values, so x["a"].& should only reference into x
-let x = {"a": {"abc": "foo"}};
-let r = x["a"].&; # assign reference r before copying map x
-let y = x;
-r["abc"] = "bar";
-dumpln(x);
-dumpln(y);
-
-print("\n");
-
-# x and y are separate values, so x["a"].& should only reference into x
+# a reference into x only aliases x, not y
 let x = {"a": {"abc": "foo"}};
 let y = x;
-let r = x["a"].&; # assign reference r after copying map x
-r["abc"] = "bar";
+function(r) { r["abc"] = "bar"; }(x["a"].&);
 dumpln(x);
 dumpln(y);
 
 print("\n");
 
-# x and y are separate values, so y["a"].& should only reference into y
+# a reference into y only aliases y, not x
 let x = {"a": {"abc": "foo"}};
 let y = x;
-let r = y["a"].&; # assign reference r after copying map x
-r["abc"] = "bar";
+function(r) { r["abc"] = "bar"; }(y["a"].&);
 dumpln(x);
 dumpln(y);
-
-print("\n");
-
-# copy-on-write applied to a value with multiple references should be visible
-# to both references.
-let x = {"abc": "foo"};
-let y = x;
-let r1 = x.&;
-let r2 = x.&;
-r1["abc"] = "bar";
-dumpln(x);
-dumpln(y);
-dumpln(r1.*);
-dumpln(r2.*);
 
 print("\n");
 
 # a reference taken before multiple copies should not alias any of those copies
 let x = [{"abc": "foo"}];
-let r = x[0].&;
 let y = x;
 let z = x;
-r["abc"] = "bar";
+function(r) { r["abc"] = "bar"; }(x[0].&);
 dumpln(x);
 dumpln(y);
 dumpln(z);
@@ -87,8 +48,7 @@ print("\n");
 # deeply nested references should only reference their original value
 let x = {"a": {"b": {"abc": "foo"}}};
 let y = x;
-let r = x["a"]["b"].&;
-r["abc"] = "bar";
+function(r) { r["abc"] = "bar"; }(x["a"]["b"].&);
 dumpln(x);
 dumpln(y);
 
@@ -118,17 +78,6 @@ let y = x;
 x.a.b.push("baz");
 dumpln(x);
 dumpln(y);
-
-print("\n");
-
-# member function call returning a (copied) value that was originally referenced in a container
-let x = [["foo"]];
-let r = x[0].&;
-let v = x.pop();
-v.push("bar");
-dumpln(x);
-dumpln(v);
-dumpln(r.*);
 
 print("\n");
 
@@ -180,7 +129,6 @@ print("\n");
 
 # modifying a vector during iteration should not affect the iterated elements
 let v = [{"n": 123}];
-let snapshot = null;
 for x.& in v {
     x["n"] = x["n"] + 1;
     v.push({"n": "bar"});
@@ -196,61 +144,18 @@ for k, x.& in m {
     m.insert("c", {"n": "bar"});
 }
 dumpln(m);
-
-print("\n");
-
-# reference escaping from a function
-let T = type {
-    .ref = function.&(self) {
-        return self;
-    },
-};
-let x = {"data": new T {"abc": "foo"}};
-let r = x["data"].ref(); # r references x["data"]
-let y = x;
-r["abc"] = "bar";
-dumpln(x);
-dumpln(y);
-
-print("\n");
-
-# reference captured by an enclosing function
-let T = type {
-    .fn = function.&(self) {
-        return function() {
-            self["abc"] = "bar";
-        };
-    },
-};
-let x = {"data": new T {"abc": "foo"}};
-let f = x["data"].fn(); # f closes over a reference to x["data"]
-let y = x;
-f();
-dumpln(x);
-dumpln(y);
 ################################################################################
 # [{"abc": "bar"}]
 # [{"abc": "foo"}]
 #
-# [{"abc": "bar"}]
-# [{"abc": "foo"}]
-#
 # [{"abc": "foo"}]
 # [{"abc": "bar"}]
 #
 # {"a": {"abc": "bar"}}
 # {"a": {"abc": "foo"}}
 #
-# {"a": {"abc": "bar"}}
-# {"a": {"abc": "foo"}}
-#
 # {"a": {"abc": "foo"}}
 # {"a": {"abc": "bar"}}
-#
-# {"abc": "bar"}
-# {"abc": "foo"}
-# {"abc": "bar"}
-# {"abc": "bar"}
 #
 # [{"abc": "bar"}]
 # [{"abc": "foo"}]
@@ -268,10 +173,6 @@ dumpln(y);
 # {"a": {"b": ["foo", "bar", "baz"]}}
 # {"a": {"b": ["foo", "bar"]}}
 #
-# []
-# ["foo", "bar"]
-# ["foo"]
-#
 # [{"n": 124}, {"n": 457}]
 # [{"n": 123}, {"n": 456}]
 #
@@ -287,9 +188,3 @@ dumpln(y);
 # [{"n": 124}, {"n": "bar"}]
 #
 # {"a": {"n": 124}, "b": {"n": 457}, "c": {"n": "bar"}}
-#
-# {"data": {"abc": "bar"}}
-# {"data": {"abc": "foo"}}
-#
-# {"data": {"abc": "bar"}}
-# {"data": {"abc": "foo"}}

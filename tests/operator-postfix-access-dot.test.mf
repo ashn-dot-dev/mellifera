@@ -5,7 +5,7 @@ try { dumpln( "foo".foo                       ); } catch err { dumpln(err); }
 try { dumpln( ["foo", "bar"].foo              ); } catch err { dumpln(err); }
 try { dumpln( Map{"foo": 123, "bar": 456}.foo ); } catch err { dumpln(err); }
 try { dumpln( Set{"foo", "bar"}.foo           ); } catch err { dumpln(err); }
-try { dumpln( 123.&.foo                       ); } catch err { dumpln(err); }
+try { function(ref){ ref.foo; }(123.&);          } catch err { dumpln(err); }
 try { dumpln( function(){}.foo                ); } catch err { dumpln(err); }
 try { dumpln( println.foo                     ); } catch err { dumpln(err); }
 
@@ -47,30 +47,26 @@ print("\n");
 # Implicit dereference testing.
 let meta = type {"f": function.&(self, value) { self.value = value; }};
 let x = new meta Map{"value": "foo"};
-let y = x.&;
 dumpln(x);
-dumpln(y.value);
-dumpln(y.f);
+function(y) { dumpln(y.value); }(x.&);
+function(y) { dumpln(y.f); }(x.&);
 x.f("bar");
 dumpln(x);
-y.f("baz");
+function(y) { y.f("baz"); }(x.&);
 dumpln(x);
 
 print("\n");
 
 # Implicit dereference testing for invalid fields.
 let x = null;
-let y = x.&;
-try { y.nope; } catch err { dumpln(err); }
-try { y.nope = null; } catch err { dumpln(err); }
+try { function(y){ y.nope; }(x.&); } catch err { dumpln(err); }
+try { function(y){ y.nope = null; }(x.&); } catch err { dumpln(err); }
 let x = [];
-let y = x.&;
-try { y.nope; } catch err { dumpln(err); }
-try { y.nope = null; } catch err { dumpln(err); }
+try { function(y){ y.nope; }(x.&); } catch err { dumpln(err); }
+try { function(y){ y.nope = null; }(x.&); } catch err { dumpln(err); }
 let x = Map{};
-let y = x.&;
-try { y.nope; } catch err { dumpln(err); }
-try { y.nope = null; } catch err { dumpln(err); }
+try { function(y){ y.nope; }(x.&); } catch err { dumpln(err); }
+try { function(y){ y.nope = null; }(x.&); } catch err { dumpln(err); }
 ################################################################################
 # "invalid null access with field \"foo\""
 # "invalid boolean access with field \"foo\""

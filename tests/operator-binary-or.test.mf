@@ -1,13 +1,13 @@
-try { dumpln( null         or null         ); } catch err { dumpln(err); }
-try { dumpln( true         or true         ); } catch err { dumpln(err); }
-try { dumpln( 123          or 123          ); } catch err { dumpln(err); }
-try { dumpln( "foo"        or "foo"        ); } catch err { dumpln(err); }
-try { dumpln( []           or []           ); } catch err { dumpln(err); }
-try { dumpln( Map{}        or Map{}        ); } catch err { dumpln(err); }
-try { dumpln( Set{}        or Set{}        ); } catch err { dumpln(err); }
-try { dumpln( 123.&        or 123.&        ); } catch err { dumpln(err); }
-try { dumpln( function(){} or function(){} ); } catch err { dumpln(err); }
-try { dumpln( println      or println      ); } catch err { dumpln(err); }
+try { dumpln( null         or null          ); } catch err { dumpln(err); }
+try { dumpln( true         or true          ); } catch err { dumpln(err); }
+try { dumpln( 123          or 123           ); } catch err { dumpln(err); }
+try { dumpln( "foo"        or "foo"         ); } catch err { dumpln(err); }
+try { dumpln( []           or []            ); } catch err { dumpln(err); }
+try { dumpln( Map{}        or Map{}         ); } catch err { dumpln(err); }
+try { dumpln( Set{}        or Set{}         ); } catch err { dumpln(err); }
+try { function(a, b){ a or b; }(123.&, 123.&); } catch err { dumpln(err); }
+try { dumpln( function(){} or function(){}  ); } catch err { dumpln(err); }
+try { dumpln( println      or println       ); } catch err { dumpln(err); }
 
 print("\n");
 

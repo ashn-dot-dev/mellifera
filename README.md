@@ -116,8 +116,9 @@ y == z is true
 Unlike most scripting languages, in which reference semantics are the default
 way of assigning and passing around composite data, Mellifera uses value
 semantics with explicit references. One may obtain a reference to a value using
-the postfix `.&` operator, then later dereference that reference-value to get
-the original referenced value using the postfix `.*` operator.
+the postfix `.&` operator on function arguments, then later dereference that
+reference-value to get the original referenced value using the postfix `.*`
+operator.
 
 ```
 let pass_by_value = function(val) {

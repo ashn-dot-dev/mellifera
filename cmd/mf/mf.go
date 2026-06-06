@@ -12,7 +12,7 @@ import (
 )
 
 func dumpTokensSource(ctx *mellifera.Context, source string, location *mellifera.SourceLocation) error {
-	tokens := ctx.NewVector(nil)
+	tokens := ctx.NewVectorOrPanic(nil)
 	lexer := mellifera.NewLexer(ctx, source, location)
 
 	token, err := lexer.NextToken()
@@ -252,7 +252,7 @@ func main() {
 	ctx := mellifera.NewContext()
 
 	argvIntoValue := func() mellifera.Value {
-		result := ctx.NewVector(nil)
+		result := ctx.NewVectorOrPanic(nil)
 		for _, arg := range argv {
 			_ = result.Push(ctx.NewString(arg))
 		}
