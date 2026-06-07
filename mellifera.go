@@ -369,6 +369,7 @@ type Context struct {
 	identifierCache       map[string]*String
 	constStringIntoString *String
 	constStringNext       *String
+	callDepth             int
 }
 
 func NewContext() *Context {
@@ -484,6 +485,7 @@ func NewContext() *Context {
 	ctx.identifierCache = map[string]*String{}
 	ctx.constStringIntoString = ctx.NewString("into_string")
 	ctx.constStringNext = ctx.NewString("next")
+	ctx.callDepth = 0
 
 	ctx.BaseEnvironment.Let("boolean", ctx.booleanMeta)
 	ctx.BaseEnvironment.Let("number", ctx.numberMeta)
@@ -7829,6 +7831,20 @@ func (self *Parser) ParseStatementExpressionOrAssignment() (AstStatement, error)
 }
 
 func Call(ctx *Context, location *SourceLocation, callable Value, arguments []Value) (Value, error) {
+	ctx.callDepth += 1
+	defer func() { ctx.callDepth -= 1 }()
+	// A relatively low function call depth of 512 is used (1) to make error
+	// traces resulting from recursive stack overflow more digestible, and (2)
+	// to gently encourage the use of iteration over recursion since Mellifera
+	// does *not* perform any form of tail call optimization.
+	MAX_CALL_DEPTH := 512
+	if ctx.callDepth > MAX_CALL_DEPTH {
+		return nil, NewError(
+			location,
+			ctx.NewStringf("exceeded maximum function call depth of %v", MAX_CALL_DEPTH),
+		)
+	}
+
 	if len(arguments) > 0 && callableSelfIsPassedByReference(callable) {
 		if _, ok := arguments[0].(*Reference); !ok {
 			return nil, NewError(

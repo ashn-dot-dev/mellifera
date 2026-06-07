@@ -1,0 +1,6 @@
+let f = function() {
+    f();
+};
+try { f(); } catch err { println($"error: {err}"); }
+################################################################################
+# error: exceeded maximum function call depth of 512

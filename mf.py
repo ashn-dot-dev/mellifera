@@ -5400,59 +5400,69 @@ def call(
     callable: Value,
     arguments: list[Value],
 ) -> Union[Value, Error]:
-    if len(arguments) > 0 and callable_self_is_passed_by_reference(callable):
-        if not isinstance(arguments[0], Reference):
-            return Error(
-                location,
-                f"invalid function self argument (expected reference, received {typename(arguments[0])})",
-            )
+    global call_depth
+    call_depth += 1
+    if call_depth > MAX_CALL_DEPTH:
+        return Error(
+            location,
+            f"exceeded maximum function call depth of {MAX_CALL_DEPTH}",
+        )
+    try:
+        if len(arguments) > 0 and callable_self_is_passed_by_reference(callable):
+            if not isinstance(arguments[0], Reference):
+                return Error(
+                    location,
+                    f"invalid function self argument (expected reference, received {typename(arguments[0])})",
+                )
 
-    if isinstance(callable, Function):
-        if len(arguments) != len(callable.ast.parameters):
-            return Error(
-                location,
-                f"invalid function argument count (expected {len(callable.ast.parameters)}, received {len(arguments)})",
-            )
-        env = Environment(callable.env)
-        for i in range(len(callable.ast.parameters)):
-            env.let(callable.ast.parameters[i].name, arguments[i])
-        result = callable.ast.body.eval(env)
-        if isinstance(result, Return):
-            return result.value
-        if isinstance(result, Break):
-            return Error(result.location, "attempted to break outside of a loop")
-        if isinstance(result, Continue):
-            return Error(result.location, "attempted to continue outside of a loop")
-        if isinstance(result, Error):
-            result.trace.append(Error.TraceElement(location, str(callable)))
-            return result
-        assert result is None
-        return null
+        if isinstance(callable, Function):
+            if len(arguments) != len(callable.ast.parameters):
+                return Error(
+                    location,
+                    f"invalid function argument count (expected {len(callable.ast.parameters)}, received {len(arguments)})",
+                )
+            env = Environment(callable.env)
+            for i in range(len(callable.ast.parameters)):
+                env.let(callable.ast.parameters[i].name, arguments[i])
+            result = callable.ast.body.eval(env)
+            if isinstance(result, Return):
+                return result.value
+            if isinstance(result, Break):
+                return Error(result.location, "attempted to break outside of a loop")
+            if isinstance(result, Continue):
+                return Error(result.location, "attempted to continue outside of a loop")
+            if isinstance(result, Error):
+                result.trace.append(Error.TraceElement(location, str(callable)))
+                return result
+            assert result is None
+            return null
 
-    if isinstance(callable, Builtin):
-        try:
-            produced = callable.function(arguments)
-            if isinstance(produced, Value):
-                return produced
-            if isinstance(produced, Error):
-                produced.trace.append(Error.TraceElement(location, str(callable)))
-                return produced
-            # Special cases in which a builtin does not return a mellifera
-            # value or error. If None is returned, likely due to a missing
-            # return statement, automatically return a null value. If a
-            # non-None object is returned, automatically convert that object
-            # into an external value wrapping the object.
-            return null if result is None else External.new(result)
-        except Exception as e:
-            message = f"{e}"
-            if len(message) == 0:
-                message = f"encountered exception {type(e).__name__}"
-            return Error(None, String.new(message))
+        if isinstance(callable, Builtin):
+            try:
+                produced = callable.function(arguments)
+                if isinstance(produced, Value):
+                    return produced
+                if isinstance(produced, Error):
+                    produced.trace.append(Error.TraceElement(location, str(callable)))
+                    return produced
+                # Special cases in which a builtin does not return a mellifera
+                # value or error. If None is returned, likely due to a missing
+                # return statement, automatically return a null value. If a
+                # non-None object is returned, automatically convert that object
+                # into an external value wrapping the object.
+                return null if result is None else External.new(result)
+            except Exception as e:
+                message = f"{e}"
+                if len(message) == 0:
+                    message = f"encountered exception {type(e).__name__}"
+                return Error(None, String.new(message))
 
-    return Error(
-        location,
-        f"attempted to call non-function type {quote(typename(callable))} with value {callable}",
-    )
+        return Error(
+            location,
+            f"attempted to call non-function type {quote(typename(callable))} with value {callable}",
+        )
+    finally:
+        call_depth -= 1
 
 
 # Used to indicate reference arguments when defining builtin functions.
@@ -7583,6 +7593,18 @@ initialize_builtin_from_source(_SET_META[String("union")])
 initialize_builtin_from_source(_SET_META[String("intersection")])
 initialize_builtin_from_source(_SET_META[String("difference")])
 initialize_builtin_from_source(BASE_ENVIRONMENT.store[String("range")])
+
+# Current depth of the call stack tracked by the call() function.
+call_depth = 0
+# A relatively low function call depth of 512 is used (1) to make error traces
+# resulting from recursive stack overflow more digestible, and (2) to gently
+# encourage the use of iteration over recursion since Mellifera does *not*
+# perform any form of tail call optimization.
+MAX_CALL_DEPTH = 512
+# Set an arbitrarily large recursion limit in the Python interpreter to ensure
+# that recursive calls to eval() methods and the call() function actually reach
+# the max call depth.
+sys.setrecursionlimit(MAX_CALL_DEPTH * 100)
 
 
 class Repl(code.InteractiveConsole):
