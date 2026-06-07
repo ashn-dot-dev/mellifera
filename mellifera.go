@@ -10022,14 +10022,6 @@ func BuiltinJsonDecode(ctx *Context) Value {
 		dec := json.NewDecoder(strings.NewReader(encoded.data))
 		decoded, err := jsonDecodeFromTokens(ctx, dec)
 		if err != nil {
-			if e, ok := err.(*json.SyntaxError); ok && len(encoded.data) >= 1 {
-				if strings.HasPrefix(strings.ToLower(encoded.data[e.Offset-1:]), "nan") {
-					return nil, NewError(nil, ctx.NewStringf("cannot JSON-decode string \"%s\"", escape(encoded.data[e.Offset-1:e.Offset+2])))
-				}
-				if strings.HasPrefix(strings.ToLower(encoded.data[e.Offset-1:]), "inf") {
-					return nil, NewError(nil, ctx.NewStringf("cannot JSON-decode string \"%s\"", escape(encoded.data[e.Offset-1:e.Offset+2])))
-				}
-			}
 			return nil, NewError(nil, ctx.NewStringf("cannot JSON-decode string %v", encoded))
 		}
 
