@@ -3329,35 +3329,49 @@ type RegexpMatch struct {
 	result []int
 }
 
+type envRefInfo struct {
+	location *SourceLocation // Optional
+	name     string
+	value    Value
+}
+
 type Environment struct {
-	outer *Environment // Optional
 	store map[string]Value
+	outer *Environment // Optional
 	match *RegexpMatch // Optional
-	refs  int
+	refs  []envRefInfo
+	nref  int
 }
 
 func NewEnvironment(outer *Environment) *Environment {
-	refs := 0
+	nref := 0
 	if outer != nil {
-		refs = outer.refs
+		nref = outer.nref
 	}
 	return &Environment{
-		outer: outer,
 		store: map[string]Value{},
-		refs:  refs,
+		outer: outer,
+		match: nil,
+		refs:  nil,
+		nref:  nref,
 	}
 }
 
 func (self *Environment) Let(name string, value Value) {
+	self.letWithLocation(name, value, nil)
+}
+
+func (self *Environment) letWithLocation(name string, value Value, location *SourceLocation) {
 	if _, ok := value.(*Reference); ok {
-		self.refs += 1
+		self.refs = append(self.refs, envRefInfo{location, name, value})
+		self.nref += 1
 	}
 	self.store[name] = value.Take()
 }
 
 func (self *Environment) Set(name string, value Value) error {
 	// References *should* only ever be introduced to a lexical scope via a
-	// call to Environment.Let() from within the Mellifera runtime.
+	// call to Environment.letWithLocation() from within the Mellifera runtime.
 	if _, ok := value.(*Reference); ok {
 		return errors.New("attempted assignment with a reference value")
 	}
@@ -3407,7 +3421,6 @@ func (self *Environment) GetRegexpMatch() (RegexpMatch, bool) {
 		env = env.outer
 	}
 	return RegexpMatch{}, false
-
 }
 
 type ControlFlow interface {
@@ -3924,10 +3937,24 @@ func (self AstExpressionFunction) IntoValue(ctx *Context) Value {
 }
 
 func (self *AstExpressionFunction) Eval(ctx *Context, env *Environment) (Value, error) {
-	if env.refs > 0 {
+	if env.nref > 0 {
+		elements := []Value{}
+		for env != nil {
+			for _, info := range env.refs {
+				elements = append(elements, ctx.NewMapOrPanic([]MapPair{
+					{ctx.NewString("name"), ctx.NewString(info.name)},
+					{ctx.NewString("location"), optionalSourceLocationIntoValue(ctx, info.location)},
+				}))
+			}
+			env = env.outer
+		}
+		slices.Reverse(elements)
 		return nil, NewError(
 			self.Location,
-			ctx.NewString("function closes over a reference value"),
+			ctx.NewMapOrPanic([]MapPair{
+				{ctx.NewString("message"), ctx.NewString("function closes over a reference")},
+				{ctx.NewString("references"), ctx.NewVectorOrPanic(elements)},
+			}),
 		)
 	}
 	return ctx.newFunction(self, env), nil
@@ -5554,7 +5581,7 @@ func (self *AstStatementLet) Eval(ctx *Context, env *Environment) (ControlFlow, 
 		)
 	}
 
-	env.Let(self.Identifier.Name.data, moveOrCopy(rhs))
+	env.letWithLocation(self.Identifier.Name.data, moveOrCopy(rhs), self.Location)
 
 	return nil, nil
 }
@@ -5694,7 +5721,7 @@ func (self *AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, 
 				return nil, err
 			}
 			loopEnv := NewEnvironment(env)
-			loopEnv.Let(self.IdentifierK.Name.data, moveOrCopy(iterated))
+			loopEnv.letWithLocation(self.IdentifierK.Name.data, moveOrCopy(iterated), self.IdentifierK.Location)
 			result, err := self.Block.Eval(ctx, loopEnv)
 			if err != nil {
 				return nil, err
@@ -5731,7 +5758,7 @@ func (self *AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, 
 		}
 		for i := range collectionInteger {
 			loopEnv := NewEnvironment(env)
-			loopEnv.Let(self.IdentifierK.Name.data, ctx.NewNumber(float64(i)))
+			loopEnv.letWithLocation(self.IdentifierK.Name.data, ctx.NewNumber(float64(i)), self.IdentifierK.Location)
 			result, err := self.Block.Eval(ctx, loopEnv)
 			if err != nil {
 				return nil, err
@@ -5766,7 +5793,7 @@ func (self *AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, 
 				k = x.Copy()
 			}
 			loopEnv := NewEnvironment(env)
-			loopEnv.Let(self.IdentifierK.Name.data, k)
+			loopEnv.letWithLocation(self.IdentifierK.Name.data, k, self.IdentifierK.Location)
 			result, err := self.Block.Eval(ctx, loopEnv)
 			if self.KIsReference {
 				unmarkReferenced(x)
@@ -5797,7 +5824,7 @@ func (self *AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, 
 		pairs := collectionMap.Pairs()
 		for _, pair := range pairs {
 			loopEnv := NewEnvironment(env)
-			loopEnv.Let(self.IdentifierK.Name.data, pair.Key.Copy())
+			loopEnv.letWithLocation(self.IdentifierK.Name.data, pair.Key.Copy(), self.IdentifierK.Location)
 			if self.IdentifierV != nil {
 				var v Value = nil
 				if self.VIsReference {
@@ -5805,7 +5832,7 @@ func (self *AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, 
 				} else {
 					v = pair.Value.Copy()
 				}
-				loopEnv.Let(self.IdentifierV.Name.data, v)
+				loopEnv.letWithLocation(self.IdentifierV.Name.data, v, self.IdentifierV.Location)
 			}
 			result, err := self.Block.Eval(ctx, loopEnv)
 			if self.VIsReference {
@@ -5839,7 +5866,7 @@ func (self *AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, 
 		}
 		for _, element := range collectionSet.Elements() {
 			loopEnv := NewEnvironment(env)
-			loopEnv.Let(self.IdentifierK.Name.data, element.Copy())
+			loopEnv.letWithLocation(self.IdentifierK.Name.data, element.Copy(), self.IdentifierK.Location)
 			result, err := self.Block.Eval(ctx, loopEnv)
 			if err != nil {
 				return nil, err
@@ -5994,7 +6021,7 @@ func (self *AstStatementTry) Eval(ctx *Context, env *Environment) (ControlFlow, 
 		}
 		env := NewEnvironment(env)
 		if self.CatchIdentifier != nil {
-			env.Let(self.CatchIdentifier.Name.data, error.Value.Copy())
+			env.letWithLocation(self.CatchIdentifier.Name.data, error.Value.Copy(), self.CatchIdentifier.Location)
 		}
 		return self.CatchBlock.Eval(ctx, env)
 	}
@@ -7864,7 +7891,7 @@ func Call(ctx *Context, location *SourceLocation, callable Value, arguments []Va
 
 		env := NewEnvironment(function.env)
 		for i, parameter := range function.ast.Parameters {
-			env.Let(parameter.Name.data, arguments[i])
+			env.letWithLocation(parameter.Name.data, arguments[i], parameter.Location)
 		}
 
 		result, err := function.ast.Body.Eval(ctx, env)

@@ -2068,16 +2068,27 @@ class ParseError(Exception):
         return f"[{self.location}] error: {self.why}"
 
 
+@dataclass
+class EnvRefInfo:
+    location: Optional[SourceLocation]
+    name: String
+    value: Value
+
+
 class Environment:
     def __init__(self, outer: Optional["Environment"] = None):
         self.outer: Optional["Environment"] = outer
         self.store: dict[String, Value] = dict()
         self.match = None
-        self.refs: int = outer.refs if outer is not None else 0
+        self.refs: list[EnvRefInfo] = []
+        self.nref: int = outer.nref if outer is not None else 0
 
-    def let(self, name: String, value: Value) -> None:
+    def let(
+        self, name: String, value: Value, location: Optional[SourceLocation] = None
+    ) -> None:
         if isinstance(value, Reference):
-            self.refs += 1
+            self.refs.append(EnvRefInfo(location, name, value))
+            self.nref += 1
         self.store[name] = value
 
     def set(self, name: String, value: Value) -> None:
@@ -2610,8 +2621,34 @@ class AstExpressionFunction(AstExpression):
         )
 
     def eval(self, env: Environment) -> Union[Value, Error]:
-        if env.refs > 0:
-            return Error(self.location, "function closes over a reference value")
+        if env.nref > 0:
+            elements: list[Value] = list()
+            cur: Optional[Environment] = env
+            while cur is not None:
+                for info in cur.refs:
+                    elements.append(
+                        Map.new(
+                            {
+                                String.new("name"): copy(info.name),
+                                String.new(
+                                    "location"
+                                ): SourceLocation.optional_into_value(info.location),
+                            }
+                        )
+                    )
+                cur = cur.outer
+            elements.reverse()
+            return Error(
+                self.location,
+                Map.new(
+                    {
+                        String.new("message"): String.new(
+                            "function closes over a reference"
+                        ),
+                        String.new("references"): Vector.new(elements),
+                    }
+                ),
+            )
         return Function.new(self, env)
 
 
@@ -3921,7 +3958,7 @@ class AstStatementLet(AstStatement):
                 self.location,
                 f"attempted assignment statement with type reference to {typename(result)}",
             )
-        env.let(self.identifier.name, copy(result))
+        env.let(self.identifier.name, copy(result), self.identifier.location)
         return None
 
 
@@ -4042,7 +4079,11 @@ class AstStatementFor(AstStatement):
                             break  # end-of-iteration
                         return iterated
                     loop_env = Environment(env)
-                    loop_env.let(self.identifier_k.name, copy(iterated))
+                    loop_env.let(
+                        self.identifier_k.name,
+                        copy(iterated),
+                        self.identifier_k.location,
+                    )
                     result = self.block.eval(loop_env)
                     if isinstance(result, Return):
                         return result
@@ -4074,7 +4115,11 @@ class AstStatementFor(AstStatement):
                     return Error(self.location, str(e))
                 for i in range(collection_integer):
                     loop_env = Environment(env)
-                    loop_env.let(self.identifier_k.name, Number.new(i))
+                    loop_env.let(
+                        self.identifier_k.name,
+                        Number.new(i),
+                        self.identifier_k.location,
+                    )
                     result = self.block.eval(loop_env)
                     if isinstance(result, Return):
                         return result
@@ -4093,9 +4138,15 @@ class AstStatementFor(AstStatement):
                 for x in list(collection.data):
                     loop_env = Environment(env)
                     if self.k_is_reference:
-                        loop_env.let(self.identifier_k.name, Reference.new(x))
+                        loop_env.let(
+                            self.identifier_k.name,
+                            Reference.new(x),
+                            self.identifier_k.location,
+                        )
                     else:
-                        loop_env.let(self.identifier_k.name, copy(x))
+                        loop_env.let(
+                            self.identifier_k.name, copy(x), self.identifier_k.location
+                        )
                     result = self.block.eval(loop_env)
                     if self.k_is_reference:
                         Reference.unmark_referenced(x)
@@ -4115,12 +4166,22 @@ class AstStatementFor(AstStatement):
                     )
                 for k, v in dict(collection.data).items():
                     loop_env = Environment(env)
-                    loop_env.let(self.identifier_k.name, copy(k))
+                    loop_env.let(
+                        self.identifier_k.name, copy(k), self.identifier_k.location
+                    )
                     if self.identifier_v is not None:
                         if self.v_is_reference:
-                            loop_env.let(self.identifier_v.name, Reference.new(v))
+                            loop_env.let(
+                                self.identifier_v.name,
+                                Reference.new(v),
+                                self.identifier_v.location,
+                            )
                         else:
-                            loop_env.let(self.identifier_v.name, copy(v))
+                            loop_env.let(
+                                self.identifier_v.name,
+                                copy(v),
+                                self.identifier_v.location,
+                            )
                     result = self.block.eval(loop_env)
                     if self.v_is_reference:
                         Reference.unmark_referenced(v)
@@ -4145,7 +4206,9 @@ class AstStatementFor(AstStatement):
                     )
                 for x in dict(collection.data).keys():
                     loop_env = Environment(env)
-                    loop_env.let(self.identifier_k.name, copy(x))
+                    loop_env.let(
+                        self.identifier_k.name, copy(x), self.identifier_k.location
+                    )
                     result = self.block.eval(loop_env)
                     if isinstance(result, Return):
                         return result
@@ -4283,7 +4346,11 @@ class AstStatementTry(AstStatement):
         if isinstance(result, Error):
             env = Environment(env)
             if self.catch_identifier is not None:
-                env.let(self.catch_identifier.name, copy(result.value))
+                env.let(
+                    self.catch_identifier.name,
+                    copy(result.value),
+                    self.catch_identifier.location,
+                )
             return self.catch_block.eval(env)
         return None
 
@@ -5423,7 +5490,11 @@ def call(
                 )
             env = Environment(callable.env)
             for i in range(len(callable.ast.parameters)):
-                env.let(callable.ast.parameters[i].name, arguments[i])
+                env.let(
+                    callable.ast.parameters[i].name,
+                    arguments[i],
+                    callable.ast.parameters[i].location,
+                )
             result = callable.ast.body.eval(env)
             if isinstance(result, Return):
                 return result.value

@@ -1,0 +1,23 @@
+# No reference closed over, so no error is produced.
+let f = function(a) {
+    for x in ["foo", "bar", "baz"] {
+        for k, v in {"abc": 123, "def": 456} {
+            return function() { };
+        }
+    }
+};
+f(null);
+
+# Multiple references closed over, so an error is produced containing
+# information on each closed-over reference.
+let f = function(a) {
+    for x.& in ["foo", "bar", "baz"] {
+        for k, v.& in {"abc": 123, "def": 456} {
+            return function() { };
+        }
+    }
+};
+f(null.&);
+################################################################################
+# [error-function-closes-over-reference.test.mf, line 16] error: {"message": "function closes over a reference", "references": [{"name": "a", "location": {"file": "error-function-closes-over-reference.test.mf", "line": 13}}, {"name": "x", "location": {"file": "error-function-closes-over-reference.test.mf", "line": 14}}, {"name": "v", "location": {"file": "error-function-closes-over-reference.test.mf", "line": 15}}]}
+# ...within f@[error-function-closes-over-reference.test.mf, line 13] called from error-function-closes-over-reference.test.mf, line 20
