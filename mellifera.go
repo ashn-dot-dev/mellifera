@@ -390,6 +390,7 @@ func NewContext() *Context {
 		{ctx.NewString("is_nan"), BuiltinNumberIsNan(ctx)},
 		{ctx.NewString("is_inf"), BuiltinNumberIsInf(ctx)},
 		{ctx.NewString("is_integer"), BuiltinNumberIsInteger(ctx)},
+		{ctx.NewString("format"), BuiltinNumberFormat(ctx)},
 		{ctx.NewString("fixed"), BuiltinNumberFixed(ctx)},
 		{ctx.NewString("trunc"), BuiltinNumberTrunc(ctx)},
 		{ctx.NewString("round"), BuiltinNumberRound(ctx)},
@@ -636,6 +637,14 @@ func (ctx *Context) NewRegexp(text string) (*Regexp, error) {
 		return nil, fmt.Errorf("invalid regular expression \"%s\"", escape(text))
 	}
 	return &Regexp{data}, nil
+}
+
+func (ctx *Context) NewRegexpOrPanic(text string) *Regexp {
+	result, err := ctx.NewRegexp(text)
+	if err != nil {
+		panic(err.Error())
+	}
+	return result
 }
 
 func (ctx *Context) NewVector(elements []Value) (*Vector, error) {
@@ -8245,6 +8254,101 @@ func BuiltinNumberIsInteger(ctx *Context) Value {
 		}
 
 		return ctx.NewBoolean(math.Trunc(self.data) == self.data), nil
+	})
+}
+
+func BuiltinNumberFormat(ctx *Context) Value {
+	// $1 sign (+): Always show sign.
+	// $2 altf (#): Alternate form => 0b for binary, 0x for hex with base x, 0X
+	//              for hex with base X.
+	// $3 zero (0): Pad with zeros up to the provided width.
+	// $4 wstr (width): Minimum total width of the output string.
+	// $5 base (fdbxX): Digit base => b for binary, x for hex (lower), X for
+	//                  hex (upper), d for decimal integer, f for decimal
+	//                  float.
+	formatString := `^(\+)?(#)?(0)?(\d+)?([fdbxX])$`
+	formatRegexp := regexp.MustCompile(formatString)
+	// Expected format used for error messages, matching the general shape of
+	// the actual format string, but without the captures and anchors visible.
+	expected := `\+?#?0?\d+?[fdbxX]`
+
+	return ctx.NewBuiltin("number::format", []Type{TVal(NUMBER), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Number)
+		format := arguments[1].(*String)
+
+		matches := formatRegexp.FindStringSubmatch(format.data)
+		if matches == nil {
+			return nil, NewError(nil, ctx.NewStringf("expected format string matching %s, received %v", expected, format))
+		}
+
+		sign := matches[1]
+		altf := matches[2]
+		zero := matches[3]
+		wstr := matches[4]
+		base := matches[5]
+
+		switch base {
+		case "b", "x", "X":
+			integer, err := ValueAsSafeInteger(self)
+			if err != nil {
+				return nil, NewError(nil, ctx.NewString(err.Error()))
+			}
+			if altf != "" && zero != "" && wstr != "" {
+				// For some reason, Go's printf-family of functions exclude the
+				// 0b/0x/0X prefix from the width when zero-padding. Reduce the
+				// width by 2 so that the actual minimum output width matches
+				// the requested minimum output width.
+				n, err := strconv.Atoi(wstr)
+				if err != nil {
+					return nil, NewError(nil, ctx.NewString(err.Error()))
+				}
+				n -= 2
+				if n < 0 {
+					n = 0
+				}
+				wstr = strconv.Itoa(n)
+			}
+			fmtStr := "%" + sign + altf + zero + wstr + base
+			return ctx.NewString(fmt.Sprintf(fmtStr, integer)), nil
+		case "d":
+			if altf != "" {
+				return nil, NewError(nil, ctx.NewStringf("# flag not supported for decimal integer format, received %v", format))
+			}
+			integer, err := ValueAsSafeInteger(self)
+			if err != nil {
+				return nil, NewError(nil, ctx.NewString(err.Error()))
+			}
+			fmtStr := "%" + sign + zero + wstr + "d"
+			return ctx.NewString(fmt.Sprintf(fmtStr, integer)), nil
+		case "f":
+			if altf != "" {
+				return nil, NewError(nil, ctx.NewStringf("# flag not supported for decimal float format, received %v", format))
+			}
+			s := self.String()
+			if sign == "+" && !math.IsNaN(self.data) && !strings.HasPrefix(s, "-") {
+				s = "+" + s
+			}
+			if wstr != "" {
+				width, err := strconv.Atoi(wstr)
+				if err != nil {
+					return nil, NewError(nil, ctx.NewString(err.Error()))
+				}
+				if len(s) < width {
+					if zero == "0" && !math.IsNaN(self.data) && !math.IsInf(self.data, 0) {
+						if s[0] == '+' || s[0] == '-' {
+							s = string(s[0]) + strings.Repeat("0", width-len(s)) + s[1:]
+						} else {
+							s = strings.Repeat("0", width-len(s)) + s
+						}
+					} else {
+						s = strings.Repeat(" ", width-len(s)) + s
+					}
+				}
+			}
+			return ctx.NewString(s), nil
+		default:
+			panic("unreachable")
+		}
 	})
 }
 

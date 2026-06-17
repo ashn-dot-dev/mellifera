@@ -5725,6 +5725,79 @@ def builtin_number_ceil(number: Number) -> Union[Value, Error]:
     return Number.new(math.ceil(float(number.data)))
 
 
+# $1 sign (+): Always show sign.
+# $2 altf (#): Alternate form => 0b for binary, 0x for hex with base x, 0X for
+#              hex with base X.
+# $3 zero (0): Pad with zeros up to the provided width.
+# $4 wstr (width): Minimum total width of the output string.
+# $5 base (fdbxX): Digit base => b for binary, x for hex (lower), X for hex
+#                  (upper), d for decimal integer, f for decimal float.
+_NUMBER_FORMAT_REGEXP = re.compile(r"^(\+)?(#)?(0)?(\d+)?([fdbxX])$")
+# Expected format used for error messages, matching the general shape of the
+# actual format string, but without the captures and anchors visible.
+_NUMBER_FORMAT_EXPECTED = r"\+?#?0?\d+?[fdbxX]"
+
+
+@builtin("number::format", [Number, String])
+def builtin_number_format(number: Number, fmt: String) -> Union[Value, Error]:
+    m = _NUMBER_FORMAT_REGEXP.fullmatch(fmt.runes)
+    if m is None:
+        return Error(
+            None,
+            f"expected format string matching {_NUMBER_FORMAT_EXPECTED}, received {fmt}",
+        )
+
+    sign = m.group(1) or ""
+    altf = m.group(2) or ""
+    zero = m.group(3) or ""
+    wstr = m.group(4) or ""
+    base = m.group(5)
+
+    if base in ("b", "x", "X"):
+        try:
+            integer = number.as_safe_integer()
+        except Exception as e:
+            return Error(None, str(e))
+        return String.new(format(integer, sign + altf + zero + wstr + base))
+    elif base == "d":
+        if altf:
+            return Error(
+                None,
+                f"# flag not supported for decimal integer format, received {fmt}",
+            )
+        try:
+            integer = number.as_safe_integer()
+        except Exception as e:
+            return Error(None, str(e))
+        return String.new(format(integer, sign + zero + wstr + "d"))
+    elif base == "f":
+        if altf:
+            return Error(
+                None,
+                f"# flag not supported for decimal float format, received {fmt}",
+            )
+        s = str(number)
+        if sign == "+" and not math.isnan(number.data) and not s.startswith("-"):
+            s = "+" + s
+        if wstr:
+            width = int(wstr)
+            if len(s) < width:
+                if (
+                    zero == "0"
+                    and not math.isnan(number.data)
+                    and not math.isinf(number.data)
+                ):
+                    if s[0] in ("+", "-"):
+                        s = s[0] + "0" * (width - len(s)) + s[1:]
+                    else:
+                        s = "0" * (width - len(s)) + s
+                else:
+                    s = " " * (width - len(s)) + s
+        return String.new(s)
+
+    raise Exception("unreachable")
+
+
 @builtin("string::init", [Value])
 def builtin_string_init(value: Value) -> Union[Value, Error]:
     metafunction = value.metafunction(CONST_STRING_INTO_STRING)
@@ -7287,6 +7360,7 @@ _NUMBER_META = Map.new_meta(
         String("is_nan"): builtin_number_is_nan(),
         String("is_inf"): builtin_number_is_inf(),
         String("is_integer"): builtin_number_is_integer(),
+        String("format"): builtin_number_format(),
         String("fixed"): builtin_number_fixed(),
         String("trunc"): builtin_number_trunc(),
         String("round"): builtin_number_round(),

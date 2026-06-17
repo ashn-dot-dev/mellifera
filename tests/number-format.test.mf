@@ -1,0 +1,365 @@
+# f formatting
+println($`(0).format("f") is {repr((0).format("f"))}`);
+println($`(+123).format("f") is {repr((+123).format("f"))}`);
+println($`(-123).format("f") is {repr((-123).format("f"))}`);
+println($`(+3.14).format("f") is {repr((+3.14).format("f"))}`);
+println($`(-3.14).format("f") is {repr((-3.14).format("f"))}`);
+println($`(+Inf).format("f") is {repr((+Inf).format("f"))}`);
+println($`(-Inf).format("f") is {repr((-Inf).format("f"))}`);
+println($`(NaN).format("f") is {repr((NaN).format("f"))}`);
+
+print("\n");
+
+println($`(0).format("+f") is {repr((0).format("+f"))}`);
+println($`(+123).format("+f") is {repr((+123).format("+f"))}`);
+println($`(-123).format("+f") is {repr((-123).format("+f"))}`);
+println($`(+3.14).format("+f") is {repr((+3.14).format("+f"))}`);
+println($`(-3.14).format("+f") is {repr((-3.14).format("+f"))}`);
+println($`(+Inf).format("+f") is {repr((+Inf).format("+f"))}`);
+println($`(-Inf).format("+f") is {repr((-Inf).format("+f"))}`);
+println($`(NaN).format("+f") is {repr((NaN).format("+f"))}`);
+
+print("\n");
+
+println($`(0).format("+8f") is {repr((0).format("+8f"))}`);
+println($`(+123).format("+8f") is {repr((+123).format("+8f"))}`);
+println($`(-123).format("+8f") is {repr((-123).format("+8f"))}`);
+println($`(+3.14).format("+8f") is {repr((+3.14).format("+8f"))}`);
+println($`(-3.14).format("+8f") is {repr((-3.14).format("+8f"))}`);
+println($`(+Inf).format("+8f") is {repr((+Inf).format("+8f"))}`);
+println($`(-Inf).format("+8f") is {repr((-Inf).format("+8f"))}`);
+println($`(NaN).format("+8f") is {repr((NaN).format("+8f"))}`);
+
+print("\n");
+
+println($`(0).format("+08f") is {repr((0).format("+08f"))}`);
+println($`(+123).format("+08f") is {repr((+123).format("+08f"))}`);
+println($`(-123).format("+08f") is {repr((-123).format("+08f"))}`);
+println($`(+3.14).format("+08f") is {repr((+3.14).format("+08f"))}`);
+println($`(-3.14).format("+08f") is {repr((-3.14).format("+08f"))}`);
+println($`(+Inf).format("+08f") is {repr((+Inf).format("+08f"))}`);
+println($`(-Inf).format("+08f") is {repr((-Inf).format("+08f"))}`);
+println($`(NaN).format("+08f") is {repr((NaN).format("+08f"))}`);
+
+print("\n");
+
+try { (0).format("#f"); error "unreachable"; } catch err { println($`(0).format("#f") produced the error {repr(err)}`); }
+
+print("\n");
+
+# d formatting
+println($`(0).format("d") is {repr((0).format("d"))}`);
+println($`(+123).format("d") is {repr((+123).format("d"))}`);
+println($`(-123).format("d") is {repr((-123).format("d"))}`);
+
+print("\n");
+
+println($`(0).format("+d") is {repr((0).format("+d"))}`);
+println($`(+123).format("+d") is {repr((+123).format("+d"))}`);
+println($`(-123).format("+d") is {repr((-123).format("+d"))}`);
+
+print("\n");
+
+println($`(0).format("+8d") is {repr((0).format("+8d"))}`);
+println($`(+123).format("+8d") is {repr((+123).format("+8d"))}`);
+println($`(-123).format("+8d") is {repr((-123).format("+8d"))}`);
+
+print("\n");
+
+println($`(0).format("+08d") is {repr((0).format("+08d"))}`);
+println($`(+123).format("+08d") is {repr((+123).format("+08d"))}`);
+println($`(-123).format("+08d") is {repr((-123).format("+08d"))}`);
+
+print("\n");
+
+try { (0).format("#d"); error "unreachable"; } catch err { println($`(0).format("#d") produced the error {repr(err)}`); }
+try { (+3.14).format("d"); error "unreachable"; } catch err { println($`(+3.14).format("d") produced the error {repr(err)}`); }
+try { (-3.14).format("d"); error "unreachable"; } catch err { println($`(-3.14).format("d") produced the error {repr(err)}`); }
+try { (+Inf).format("d"); error "unreachable"; } catch err { println($`(+Inf).format("d") produced the error {repr(err)}`); }
+try { (-Inf).format("d"); error "unreachable"; } catch err { println($`(-Inf).format("d") produced the error {repr(err)}`); }
+try { (NaN).format("d"); error "unreachable"; } catch err { println($`(NaN).format("d") produced the error {repr(err)}`); }
+
+print("\n");
+
+# b formatting
+println($`(0).format("b") is {repr((0).format("b"))}`);
+println($`(+123).format("b") is {repr((+123).format("b"))}`);
+println($`(-123).format("b") is {repr((-123).format("b"))}`);
+
+print("\n");
+
+println($`(0).format("+b") is {repr((0).format("+b"))}`);
+println($`(+123).format("+b") is {repr((+123).format("+b"))}`);
+println($`(-123).format("+b") is {repr((-123).format("+b"))}`);
+
+print("\n");
+
+println($`(0).format("+8b") is {repr((0).format("+8b"))}`);
+println($`(+123).format("+8b") is {repr((+123).format("+8b"))}`);
+println($`(-123).format("+8b") is {repr((-123).format("+8b"))}`);
+
+print("\n");
+
+println($`(0).format("+08b") is {repr((0).format("+08b"))}`);
+println($`(+123).format("+08b") is {repr((+123).format("+08b"))}`);
+println($`(-123).format("+08b") is {repr((-123).format("+08b"))}`);
+
+print("\n");
+
+println($`(0).format("+#08b") is {repr((0).format("+#08b"))}`);
+println($`(0).format("+#016b") is {repr((0).format("+#016b"))}`);
+println($`(+123).format("+#08b") is {repr((+123).format("+#08b"))}`);
+println($`(-123).format("+#08b") is {repr((-123).format("+#08b"))}`);
+println($`(+0xFF).format("#08b") is {repr((+0xFF).format("#08b"))}`);
+println($`(-0xFF).format("#08b") is {repr((-0xFF).format("#08b"))}`);
+
+print("\n");
+
+try { (+3.14).format("b"); error "unreachable"; } catch err { println($`(+3.14).format("b") produced the error {repr(err)}`); }
+try { (-3.14).format("b"); error "unreachable"; } catch err { println($`(-3.14).format("b") produced the error {repr(err)}`); }
+try { (+Inf).format("b"); error "unreachable"; } catch err { println($`(+Inf).format("b") produced the error {repr(err)}`); }
+try { (-Inf).format("b"); error "unreachable"; } catch err { println($`(-Inf).format("b") produced the error {repr(err)}`); }
+try { (NaN).format("b"); error "unreachable"; } catch err { println($`(NaN).format("b") produced the error {repr(err)}`); }
+
+print("\n");
+
+# x formatting
+println($`(0).format("x") is {repr((0).format("x"))}`);
+println($`(+123).format("x") is {repr((+123).format("x"))}`);
+println($`(-123).format("x") is {repr((-123).format("x"))}`);
+
+print("\n");
+
+println($`(0).format("+x") is {repr((0).format("+x"))}`);
+println($`(+123).format("+x") is {repr((+123).format("+x"))}`);
+println($`(-123).format("+x") is {repr((-123).format("+x"))}`);
+
+print("\n");
+
+println($`(0).format("+8x") is {repr((0).format("+8x"))}`);
+println($`(+123).format("+8x") is {repr((+123).format("+8x"))}`);
+println($`(-123).format("+8x") is {repr((-123).format("+8x"))}`);
+
+print("\n");
+
+println($`(0).format("+08x") is {repr((0).format("+08x"))}`);
+println($`(+123).format("+08x") is {repr((+123).format("+08x"))}`);
+println($`(-123).format("+08x") is {repr((-123).format("+08x"))}`);
+
+print("\n");
+
+println($`(0).format("+#08x") is {repr((0).format("+#08x"))}`);
+println($`(0).format("+#016x") is {repr((0).format("+#016x"))}`);
+println($`(+123).format("+#08x") is {repr((+123).format("+#08x"))}`);
+println($`(-123).format("+#08x") is {repr((-123).format("+#08x"))}`);
+println($`(+0xFF).format("#08x") is {repr((+0xFF).format("#08x"))}`);
+println($`(-0xFF).format("#08x") is {repr((-0xFF).format("#08x"))}`);
+
+print("\n");
+
+try { (+3.14).format("x"); error "unreachable"; } catch err { println($`(+3.14).format("x") produced the error {repr(err)}`); }
+try { (-3.14).format("x"); error "unreachable"; } catch err { println($`(-3.14).format("x") produced the error {repr(err)}`); }
+try { (+Inf).format("x"); error "unreachable"; } catch err { println($`(+Inf).format("x") produced the error {repr(err)}`); }
+try { (-Inf).format("x"); error "unreachable"; } catch err { println($`(-Inf).format("x") produced the error {repr(err)}`); }
+try { (NaN).format("x"); error "unreachable"; } catch err { println($`(NaN).format("x") produced the error {repr(err)}`); }
+
+print("\n");
+
+# X formatting
+println($`(0).format("X") is {repr((0).format("X"))}`);
+println($`(+123).format("X") is {repr((+123).format("X"))}`);
+println($`(-123).format("X") is {repr((-123).format("X"))}`);
+
+print("\n");
+
+println($`(0).format("+X") is {repr((0).format("+X"))}`);
+println($`(+123).format("+X") is {repr((+123).format("+X"))}`);
+println($`(-123).format("+X") is {repr((-123).format("+X"))}`);
+
+print("\n");
+
+println($`(0).format("+8X") is {repr((0).format("+8X"))}`);
+println($`(+123).format("+8X") is {repr((+123).format("+8X"))}`);
+println($`(-123).format("+8X") is {repr((-123).format("+8X"))}`);
+
+print("\n");
+
+println($`(0).format("+08X") is {repr((0).format("+08X"))}`);
+println($`(+123).format("+08X") is {repr((+123).format("+08X"))}`);
+println($`(-123).format("+08X") is {repr((-123).format("+08X"))}`);
+
+print("\n");
+
+println($`(0).format("+#08X") is {repr((0).format("+#08X"))}`);
+println($`(0).format("+#016X") is {repr((0).format("+#016X"))}`);
+println($`(+123).format("+#08X") is {repr((+123).format("+#08X"))}`);
+println($`(-123).format("+#08X") is {repr((-123).format("+#08X"))}`);
+println($`(+0xFF).format("#08X") is {repr((+0xFF).format("#08X"))}`);
+println($`(-0xFF).format("#08X") is {repr((-0xFF).format("#08X"))}`);
+
+print("\n");
+
+try { (+3.14).format("X"); error "unreachable"; } catch err { println($`(+3.14).format("X") produced the error {repr(err)}`); }
+try { (-3.14).format("X"); error "unreachable"; } catch err { println($`(-3.14).format("X") produced the error {repr(err)}`); }
+try { (+Inf).format("X"); error "unreachable"; } catch err { println($`(+Inf).format("X") produced the error {repr(err)}`); }
+try { (-Inf).format("X"); error "unreachable"; } catch err { println($`(-Inf).format("X") produced the error {repr(err)}`); }
+try { (NaN).format("X"); error "unreachable"; } catch err { println($`(NaN).format("X") produced the error {repr(err)}`); }
+
+print("\n");
+
+# invalid format strings
+try { (0).format(""); error "unreachable"; } catch err { println($`(0).format("") produced the error {repr(err)}`); }
+try { (0).format("oops"); error "unreachable"; } catch err { println($`(0).format("oops") produced the error {repr(err)}`); }
+try { (0).format("+#08"); error "unreachable"; } catch err { println($`(0).format("+#08") produced the error {repr(err)}`); }
+################################################################################
+# (0).format("f") is "0"
+# (+123).format("f") is "123"
+# (-123).format("f") is "-123"
+# (+3.14).format("f") is "3.14"
+# (-3.14).format("f") is "-3.14"
+# (+Inf).format("f") is "Inf"
+# (-Inf).format("f") is "-Inf"
+# (NaN).format("f") is "NaN"
+#
+# (0).format("+f") is "+0"
+# (+123).format("+f") is "+123"
+# (-123).format("+f") is "-123"
+# (+3.14).format("+f") is "+3.14"
+# (-3.14).format("+f") is "-3.14"
+# (+Inf).format("+f") is "+Inf"
+# (-Inf).format("+f") is "-Inf"
+# (NaN).format("+f") is "NaN"
+#
+# (0).format("+8f") is "      +0"
+# (+123).format("+8f") is "    +123"
+# (-123).format("+8f") is "    -123"
+# (+3.14).format("+8f") is "   +3.14"
+# (-3.14).format("+8f") is "   -3.14"
+# (+Inf).format("+8f") is "    +Inf"
+# (-Inf).format("+8f") is "    -Inf"
+# (NaN).format("+8f") is "     NaN"
+#
+# (0).format("+08f") is "+0000000"
+# (+123).format("+08f") is "+0000123"
+# (-123).format("+08f") is "-0000123"
+# (+3.14).format("+08f") is "+0003.14"
+# (-3.14).format("+08f") is "-0003.14"
+# (+Inf).format("+08f") is "    +Inf"
+# (-Inf).format("+08f") is "    -Inf"
+# (NaN).format("+08f") is "     NaN"
+#
+# (0).format("#f") produced the error "# flag not supported for decimal float format, received \"#f\""
+#
+# (0).format("d") is "0"
+# (+123).format("d") is "123"
+# (-123).format("d") is "-123"
+#
+# (0).format("+d") is "+0"
+# (+123).format("+d") is "+123"
+# (-123).format("+d") is "-123"
+#
+# (0).format("+8d") is "      +0"
+# (+123).format("+8d") is "    +123"
+# (-123).format("+8d") is "    -123"
+#
+# (0).format("+08d") is "+0000000"
+# (+123).format("+08d") is "+0000123"
+# (-123).format("+08d") is "-0000123"
+#
+# (0).format("#d") produced the error "# flag not supported for decimal integer format, received \"#d\""
+# (+3.14).format("d") produced the error "cannot convert 3.14 into an integer without truncation"
+# (-3.14).format("d") produced the error "cannot convert -3.14 into an integer without truncation"
+# (+Inf).format("d") produced the error "cannot convert Inf into an integer"
+# (-Inf).format("d") produced the error "cannot convert -Inf into an integer"
+# (NaN).format("d") produced the error "cannot convert NaN into an integer"
+#
+# (0).format("b") is "0"
+# (+123).format("b") is "1111011"
+# (-123).format("b") is "-1111011"
+#
+# (0).format("+b") is "+0"
+# (+123).format("+b") is "+1111011"
+# (-123).format("+b") is "-1111011"
+#
+# (0).format("+8b") is "      +0"
+# (+123).format("+8b") is "+1111011"
+# (-123).format("+8b") is "-1111011"
+#
+# (0).format("+08b") is "+0000000"
+# (+123).format("+08b") is "+1111011"
+# (-123).format("+08b") is "-1111011"
+#
+# (0).format("+#08b") is "+0b00000"
+# (0).format("+#016b") is "+0b0000000000000"
+# (+123).format("+#08b") is "+0b1111011"
+# (-123).format("+#08b") is "-0b1111011"
+# (+0xFF).format("#08b") is "0b11111111"
+# (-0xFF).format("#08b") is "-0b11111111"
+#
+# (+3.14).format("b") produced the error "cannot convert 3.14 into an integer without truncation"
+# (-3.14).format("b") produced the error "cannot convert -3.14 into an integer without truncation"
+# (+Inf).format("b") produced the error "cannot convert Inf into an integer"
+# (-Inf).format("b") produced the error "cannot convert -Inf into an integer"
+# (NaN).format("b") produced the error "cannot convert NaN into an integer"
+#
+# (0).format("x") is "0"
+# (+123).format("x") is "7b"
+# (-123).format("x") is "-7b"
+#
+# (0).format("+x") is "+0"
+# (+123).format("+x") is "+7b"
+# (-123).format("+x") is "-7b"
+#
+# (0).format("+8x") is "      +0"
+# (+123).format("+8x") is "     +7b"
+# (-123).format("+8x") is "     -7b"
+#
+# (0).format("+08x") is "+0000000"
+# (+123).format("+08x") is "+000007b"
+# (-123).format("+08x") is "-000007b"
+#
+# (0).format("+#08x") is "+0x00000"
+# (0).format("+#016x") is "+0x0000000000000"
+# (+123).format("+#08x") is "+0x0007b"
+# (-123).format("+#08x") is "-0x0007b"
+# (+0xFF).format("#08x") is "0x0000ff"
+# (-0xFF).format("#08x") is "-0x000ff"
+#
+# (+3.14).format("x") produced the error "cannot convert 3.14 into an integer without truncation"
+# (-3.14).format("x") produced the error "cannot convert -3.14 into an integer without truncation"
+# (+Inf).format("x") produced the error "cannot convert Inf into an integer"
+# (-Inf).format("x") produced the error "cannot convert -Inf into an integer"
+# (NaN).format("x") produced the error "cannot convert NaN into an integer"
+#
+# (0).format("X") is "0"
+# (+123).format("X") is "7B"
+# (-123).format("X") is "-7B"
+#
+# (0).format("+X") is "+0"
+# (+123).format("+X") is "+7B"
+# (-123).format("+X") is "-7B"
+#
+# (0).format("+8X") is "      +0"
+# (+123).format("+8X") is "     +7B"
+# (-123).format("+8X") is "     -7B"
+#
+# (0).format("+08X") is "+0000000"
+# (+123).format("+08X") is "+000007B"
+# (-123).format("+08X") is "-000007B"
+#
+# (0).format("+#08X") is "+0X00000"
+# (0).format("+#016X") is "+0X0000000000000"
+# (+123).format("+#08X") is "+0X0007B"
+# (-123).format("+#08X") is "-0X0007B"
+# (+0xFF).format("#08X") is "0X0000FF"
+# (-0xFF).format("#08X") is "-0X000FF"
+#
+# (+3.14).format("X") produced the error "cannot convert 3.14 into an integer without truncation"
+# (-3.14).format("X") produced the error "cannot convert -3.14 into an integer without truncation"
+# (+Inf).format("X") produced the error "cannot convert Inf into an integer"
+# (-Inf).format("X") produced the error "cannot convert -Inf into an integer"
+# (NaN).format("X") produced the error "cannot convert NaN into an integer"
+#
+# (0).format("") produced the error "expected format string matching \\+?#?0?\\d+?[fdbxX], received \"\""
+# (0).format("oops") produced the error "expected format string matching \\+?#?0?\\d+?[fdbxX], received \"oops\""
+# (0).format("+#08") produced the error "expected format string matching \\+?#?0?\\d+?[fdbxX], received \"+#08\""
