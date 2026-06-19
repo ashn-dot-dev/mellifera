@@ -168,12 +168,12 @@ $ mf examples/explicit-references.mf
 [outside pass_by_reference] y ends as ["abc", "def", "hij", 123]
 ```
 
-Mellifera contains a small number of core built-in types, all of which have
-first-class language support: null, boolean, number, string, regular
-expression, vector, map, set, reference, and function. These built-in types are
-sufficient for most simple programs, but when the need arises for more
-structured data, users have the option to define custom types with specific
-behavior.
+Mellifera contains a small number of core built-in types with first-class
+language support: null, boolean, number, string, regular expression, vector,
+map, set, and function, as well as a second-class reference type. These
+built-in types are sufficient for most simple programs, but when the need
+arises for more structured data, users have the option to define custom types
+with specific behavior.
 
 ```
 let vec2 = type {
