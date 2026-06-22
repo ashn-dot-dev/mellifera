@@ -6864,7 +6864,8 @@ func (self *Parser) ParseExpressionMapOrSet() (AstExpression, error) {
 			break
 		}
 
-		var expression AstExpression
+		var expression AstExpression = nil
+		var identifier *AstExpressionIdentifier = nil
 		if self.checkCurrent(TOKEN_DOT) {
 			if mapOrSet == "UNKNOWN" {
 				mapOrSet = TOKEN_MAP
@@ -6878,11 +6879,12 @@ func (self *Parser) ParseExpressionMapOrSet() (AstExpression, error) {
 			if err != nil {
 				return nil, err
 			}
-			identifier, err := self.ParseExpressionIdentifier()
+			expression, err = self.ParseExpressionIdentifier()
 			if err != nil {
 				return nil, err
 			}
-			expression = &AstExpressionString{identifier.(*AstExpressionIdentifier).Location, identifier.(*AstExpressionIdentifier).Name}
+			identifier = expression.(*AstExpressionIdentifier)
+			expression = &AstExpressionString{identifier.Location, identifier.Name}
 		} else {
 			element, err := self.ParseExpression()
 			if err != nil {
@@ -6901,11 +6903,23 @@ func (self *Parser) ParseExpressionMapOrSet() (AstExpression, error) {
 
 		if mapOrSet == TOKEN_MAP {
 			if self.checkCurrent(TOKEN_COLON) {
+				if identifier != nil {
+					return nil, ParseError{
+						Location: location,
+						why:      fmt.Sprintf(`expected .%s = VALUE, found .%s: VALUE`, identifier.Name.data, identifier.Name.data),
+					}
+				}
 				_, err := self.expectCurrent(TOKEN_COLON)
 				if err != nil {
 					return nil, err
 				}
 			} else if self.checkCurrent(TOKEN_ASSIGN) {
+				if identifier == nil {
+					return nil, ParseError{
+						Location: location,
+						why:      `expected "KEY": VALUE, found "KEY" = VALUE`,
+					}
+				}
 				_, err := self.expectCurrent(TOKEN_ASSIGN)
 				if err != nil {
 					return nil, err

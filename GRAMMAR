@@ -93,13 +93,8 @@
 <set> ::= "Set" "{" "}"
         | "Set"? "{" (<expression> ("," <expression>)* ","?)? "}"
 
-<map-key> ::= <expression>
-            | "." <identifier>
-
-<map-sep> ::= ":"
-            | "="
-
-<map-element> = <map-key> <map-sep> <expression>
+<map-element> = <expression> ":" <expression>
+              | "." <identifier> "=" <expression>
 
 <map> ::= "Map" "{" "}"
         | "Map"? "{" (<map-element> ("," <map-element>)* ","?)? "}"

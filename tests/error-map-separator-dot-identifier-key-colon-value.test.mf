@@ -1,0 +1,3 @@
+{.key: 123};
+################################################################################
+# [error-map-separator-dot-identifier-key-colon-value.test.mf, line 1] error: expected .key = VALUE, found .key: VALUE

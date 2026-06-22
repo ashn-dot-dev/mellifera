@@ -5,8 +5,8 @@ println($`vector::init({{"foo", "bar", "baz"}}) is {vector::init({"foo", "bar", 
 let counter = type {
     "init": function(max) {
         return new counter {
-            .cur: 1,
-            .max: max
+            .cur = 1,
+            .max = max
         };
     },
     "next": function.&(self) {

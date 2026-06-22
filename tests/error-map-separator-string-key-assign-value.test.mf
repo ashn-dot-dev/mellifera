@@ -1,0 +1,3 @@
+{"key" = 123};
+################################################################################
+# [error-map-separator-string-key-assign-value.test.mf, line 1] error: expected "KEY": VALUE, found "KEY" = VALUE

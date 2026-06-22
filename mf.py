@@ -4973,6 +4973,7 @@ class Parser:
             if self._check_current(TokenKind.RBRACE):
                 break
 
+            identifier: Optional[AstExpressionIdentifier] = None
             if self._check_current(TokenKind.DOT):
                 if map_or_set == ParseMapOrSet.UNKNOWN:
                     map_or_set = ParseMapOrSet.MAP
@@ -5002,8 +5003,18 @@ class Parser:
             match map_or_set:
                 case ParseMapOrSet.MAP:
                     if self._check_current(TokenKind.COLON):
+                        if identifier is not None:
+                            raise ParseError(
+                                self.current_token.location,
+                                f"expected .{identifier.name.runes} = VALUE, found .{identifier.name.runes}: VALUE",
+                            )
                         self._expect_current(TokenKind.COLON)
                     elif self._check_current(TokenKind.ASSIGN):
+                        if identifier is None:
+                            raise ParseError(
+                                self.current_token.location,
+                                'expected "KEY": VALUE, found "KEY" = VALUE',
+                            )
                         self._expect_current(TokenKind.ASSIGN)
                     else:
                         raise ParseError(

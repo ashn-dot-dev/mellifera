@@ -4,8 +4,8 @@ let a = {
     "baz": 789,
 };
 let b = {
-    .foo: 123,
-    .bar: 456,
-    .baz: 789,
+    .foo = 123,
+    .bar = 456,
+    .baz = 789,
 };
 assert(a == b);
