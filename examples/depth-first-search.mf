@@ -1,12 +1,9 @@
 let node = type {
-    .init = function(name) {
-        return new node {"name": name, "children": Set{}};
+    .init = function(name, children) {
+        return new node {"name": name, "children": children};
     },
     .into_string = function(self) {
         return self.name;
-    },
-    .insert_child = function.&(self, node) {
-        self.children.insert(node.name);
     },
 };
 
@@ -81,22 +78,11 @@ let dfs_cycle_detecting = function(graph) {
 #      |     v
 #      +---->D
 
-let a = node::init("A");
-let b = node::init("B");
-let c = node::init("C");
-let d = node::init("D");
-let e = node::init("E");
-
-a.insert_child(c);
-a.insert_child(d);
-
-b.insert_child(c);
-b.insert_child(e);
-
-c.insert_child(d);
-
-e.insert_child(a);
-e.insert_child(c);
+let a = node::init("A", {"C", "D"});
+let b = node::init("B", {"C", "E"});
+let c = node::init("C", {"D"});
+let d = node::init("D", Set{});
+let e = node::init("E", {"A", "C"});
 
 let ordered = dfs(graph::init({a, b, c, d, e}));
 println("Ordered:");
@@ -115,20 +101,10 @@ assert(ordered == dfs_cycle_detecting(graph::init({a, b, c, d, e})));
 # |         |
 # +---------+
 
-let w = node::init("W");
-let x = node::init("X");
-let y = node::init("Y");
-let z = node::init("Z");
-
-w.insert_child(x);
-w.insert_child(y);
-
-x.insert_child(y);
-x.insert_child(z);
-
-y.insert_child(z);
-
-z.insert_child(w);
+let w = node::init("W", {"X", "Y"});
+let x = node::init("X", {"Y", "Z"});
+let y = node::init("Y", {"Z"});
+let z = node::init("Z", {"W"});
 
 try {
     dfs_cycle_detecting(graph::init({w, x, y, z}));
