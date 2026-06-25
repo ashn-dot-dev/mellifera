@@ -1,3 +1,4 @@
+println($`vector::init(3) is {vector::init(3)}`);
 println($`vector::init([123, 456, 789]) is {vector::init([123, 456, 789])}`);
 println($`vector::init({{"foo": 123, "bar": 456, "baz": 789}}) is {vector::init({"foo": 123, "bar": 456, "baz": 789})}`);
 println($`vector::init({{"foo", "bar", "baz"}}) is {vector::init({"foo", "bar", "baz"})}`);
@@ -27,16 +28,17 @@ let bad = type {
 };
 
 try { vector::init(null); } catch err { println($`vector::init(null) produces the error {repr(err)}`); }
-try { vector::init(123); } catch err { println($`vector::init(123) produces the error {repr(err)}`); }
+try { vector::init(3.14); } catch err { println($`vector::init(3.14) produces the error {repr(err)}`); }
 try { vector::init("foo"); } catch err { println($`vector::init("foo") produces the error {repr(err)}`); }
 try { vector::init(new bad Map{}); } catch err { println($`vector::init(new bad Map{{}}) produces the error {repr(err)}`); }
 ################################################################################
+# vector::init(3) is [null, null, null]
 # vector::init([123, 456, 789]) is [123, 456, 789]
 # vector::init({"foo": 123, "bar": 456, "baz": 789}) is [["foo", 123], ["bar", 456], ["baz", 789]]
 # vector::init({"foo", "bar", "baz"}) is ["foo", "bar", "baz"]
 # vector::init(counter::init(5)) is [1, 2, 3, 4, 5]
 #
 # vector::init(null) produces the error "cannot convert value null to vector"
-# vector::init(123) produces the error "cannot convert value 123 to vector"
+# vector::init(3.14) produces the error "cannot convert 3.14 into an integer without truncation"
 # vector::init("foo") produces the error "cannot convert value \"foo\" to vector"
 # vector::init(new bad Map{}) produces the error "iterator next must receive self by reference (declared with function.&(self))"

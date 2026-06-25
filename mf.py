@@ -6018,6 +6018,12 @@ def builtin_vector_init(value: Value) -> Union[Value, Error]:
             return Vector.new([copy(x) for x in elements])
         finally:
             Reference.unmark_referenced(value)
+    if isinstance(value, Number):
+        try:
+            integer = value.as_safe_integer()
+        except Exception as e:
+            return Error(None, str(e))
+        return Vector.new([null] * integer)
     if isinstance(value, Vector):
         return Vector.new([copy(x) for x in value.data])
     if isinstance(value, Map):

@@ -8764,6 +8764,22 @@ func BuiltinVectorInit(ctx *Context) Value {
 			return result, nil
 		}
 
+		if valueNumber, ok := value.(*Number); ok {
+			integer, err := ValueAsSafeInteger(valueNumber)
+			if err != nil {
+				return nil, NewError(nil, ctx.NewString(err.Error()))
+			}
+
+			result := ctx.NewVectorOrPanic(nil)
+			for i := int64(0); i < integer; i += 1 {
+				err := result.Push(ctx.NewNull())
+				if err != nil {
+					return nil, NewError(nil, ctx.NewString(err.Error()))
+				}
+			}
+			return result, nil
+		}
+
 		if valueVector, ok := value.(*Vector); ok {
 			result := ctx.NewVectorOrPanic(nil)
 			for _, element := range valueVector.Elements() {
@@ -9061,7 +9077,7 @@ func BuiltinVectorSlice(ctx *Context) Value {
 		}
 
 		result := ctx.NewVectorOrPanic(nil)
-		for i := bgn_index; i < end_index; i++ {
+		for i := bgn_index; i < end_index; i += 1 {
 			err := result.Push(self.Get(i).Copy())
 			if err != nil {
 				return nil, NewError(nil, ctx.NewString(err.Error()))
