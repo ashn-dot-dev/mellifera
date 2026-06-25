@@ -1,4 +1,4 @@
 typeof([])::push(Map{}.&, "foo");
 ################################################################################
-# error: expected reference to vector value for argument 0, received reference to map
+# error: expected reference to vector value for argument 1, received reference to map
 # ...within vector::push@builtin called from error-in-with-typed-argument-reference.test.mf, line 1

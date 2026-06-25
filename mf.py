@@ -1250,7 +1250,7 @@ class Builtin(Value):
             return argument  # type: ignore
         if not isinstance(argument, ty):
             raise Exception(
-                f"expected {ty.typename()} value for argument {index}, received {typename(argument)}"
+                f"expected {ty.typename()} value for argument {index + 1}, received {typename(argument)}"
             )
         return argument
 
@@ -1270,11 +1270,11 @@ class Builtin(Value):
             return (argument, argument.data)  # type: ignore
         if not isinstance(argument, Reference):
             raise Exception(
-                f"expected reference to {ty.typename()} value for argument {index}, received {typename(argument)}"
+                f"expected reference to {ty.typename()} value for argument {index + 1}, received {typename(argument)}"
             )
         if not isinstance(argument.data, ty):
             raise Exception(
-                f"expected reference to {ty.typename()} value for argument {index}, received reference to {typename(argument.data)}"
+                f"expected reference to {ty.typename()} value for argument {index + 1}, received reference to {typename(argument.data)}"
             )
         return (argument, argument.data)
 
@@ -6274,7 +6274,7 @@ def builtin_vector_sorted():
     };
     return function(self) {
         if not ty::is_vector(self) {
-            error $"expected vector value for argument 0, received {typename(self)}";
+            error $"expected vector value for argument 1, received {typename(self)}";
         }
         try { return sort(self); } catch err { error err; }
     };
@@ -6325,7 +6325,7 @@ def builtin_vector_sorted_by():
     };
     return function(self, compare) {
         if not ty::is_vector(self) {
-            error $"expected vector value for argument 0, received {typename(self)}";
+            error $"expected vector value for argument 1, received {typename(self)}";
         }
         try { return sort(self, compare); } catch err { error err; }
     };

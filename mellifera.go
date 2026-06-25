@@ -8052,7 +8052,7 @@ func typeCheckArgument(index int, expected Type, received Value) error {
 			return nil // No required base type.
 		}
 		if err := typeCheckArgument(index, *expected.Base, reference.data); err != nil {
-			return fmt.Errorf("expected reference to %s value for argument %v, received reference to %s", expected.Base, index, reference.data.Typename())
+			return fmt.Errorf("expected reference to %s value for argument %v, received reference to %s", expected.Base, index+1, reference.data.Typename())
 		}
 		return nil
 	case CALLABLE:
@@ -8067,7 +8067,7 @@ func typeCheckArgument(index int, expected Type, received Value) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("expected %s value for argument %v, received %s", expected, index, received.Typename())
+	return fmt.Errorf("expected %s value for argument %v, received %s", expected, index+1, received.Typename())
 }
 
 func typeCheckArguments(types []Type, arguments []Value) error {
@@ -9126,7 +9126,7 @@ let sort = function(x) {
 };
 return function(self) {
 	if not ty::is_vector(self) {
-		error $"expected vector value for argument 0, received {typename(self)}";
+		error $"expected vector value for argument 1, received {typename(self)}";
 	}
 	try { return sort(self); } catch err { error err; }
 };
@@ -9180,7 +9180,7 @@ let sort = function(x, compare) {
 };
 return function(self, compare) {
 	if not ty::is_vector(self) {
-		error $"expected vector value for argument 0, received {typename(self)}";
+		error $"expected vector value for argument 1, received {typename(self)}";
 	}
 	try { return sort(self, compare); } catch err { error err; }
 };

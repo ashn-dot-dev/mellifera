@@ -11,7 +11,7 @@ try { println($`["foo", 123, "baz"].sorted() is {["foo", 123, "baz"].sorted()}`)
 ################################################################################
 # ["foo", "bar", "baz"].sorted() is ["bar", "baz", "foo"]
 #
-# "expected vector value for argument 0, received map"
-# "expected vector value for argument 0, received reference"
+# "expected vector value for argument 1, received map"
+# "expected vector value for argument 1, received reference"
 #
 # "attempted < operation with types `number` and `string`"
