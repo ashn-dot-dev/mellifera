@@ -14,9 +14,8 @@ hello 🐝
 ```
 
 Mellifera aims to be an enjoyable language for writing small scripts and CLI
-utilities while still providing reasonable tools to develop larger projects.
-Here is an example word counting program in Mellifera showcasing some of the
-syntax and semantics of the language.
+utilities. Here is an example word counting program in Mellifera showcasing
+some of the syntax and semantics of the language.
 
 ```
 #!/usr/bin/env mf
