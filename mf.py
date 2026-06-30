@@ -5741,12 +5741,13 @@ def builtin_number_ceil(number: Number) -> Union[Value, Error]:
 #              hex with base X.
 # $3 zero (0): Pad with zeros up to the provided width.
 # $4 wstr (width): Minimum total width of the output string.
-# $5 base (fdbxX): Digit base => b for binary, x for hex (lower), X for hex
+# $5 prec (precision): Number of displayed digits after the decimal point.
+# $6 base (fdbxX): Digit base => b for binary, x for hex (lower), X for hex
 #                  (upper), d for decimal integer, f for decimal float.
-_NUMBER_FORMAT_REGEXP = re.compile(r"^(\+)?(#)?(0)?(\d+)?([fdbxX])$")
+_NUMBER_FORMAT_REGEXP = re.compile(r"^(\+)?(#)?(0)?(\d*)(\.\d+)?([fdbxX])$")
 # Expected format used for error messages, matching the general shape of the
 # actual format string, but without the captures and anchors visible.
-_NUMBER_FORMAT_EXPECTED = r"\+?#?0?\d+?[fdbxX]"
+_NUMBER_FORMAT_EXPECTED = r"\+?#?0?\d*(\.\d+)?[fdbxX]"
 
 
 @builtin("number::format", [Number, String])
@@ -5762,9 +5763,16 @@ def builtin_number_format(number: Number, fmt: String) -> Union[Value, Error]:
     altf = m.group(2) or ""
     zero = m.group(3) or ""
     wstr = m.group(4) or ""
-    base = m.group(5)
+    prec = m.group(5) or ""
+    base = m.group(6)
 
     if base in ("b", "x", "X"):
+        if prec:
+            ifmt = "binary" if base == "b" else "hexadecimal"
+            return Error(
+                None,
+                f"precision specifier not supported for {ifmt} integer format, received {fmt}",
+            )
         try:
             integer = number.as_safe_integer()
         except Exception as e:
@@ -5775,6 +5783,11 @@ def builtin_number_format(number: Number, fmt: String) -> Union[Value, Error]:
             return Error(
                 None,
                 f"# flag not supported for decimal integer format, received {fmt}",
+            )
+        if prec:
+            return Error(
+                None,
+                f"precision specifier not supported for decimal integer format, received {fmt}",
             )
         try:
             integer = number.as_safe_integer()
@@ -5787,7 +5800,10 @@ def builtin_number_format(number: Number, fmt: String) -> Union[Value, Error]:
                 None,
                 f"# flag not supported for decimal float format, received {fmt}",
             )
-        s = str(number)
+        if prec and not math.isnan(number.data) and not math.isinf(number.data):
+            s = format(number.data, f".{int(prec[1:])}f")
+        else:
+            s = str(number)
         if sign == "+" and not math.isnan(number.data) and not s.startswith("-"):
             s = "+" + s
         if wstr:

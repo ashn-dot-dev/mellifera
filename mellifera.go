@@ -8277,14 +8277,15 @@ func BuiltinNumberFormat(ctx *Context) Value {
 	//              for hex with base X.
 	// $3 zero (0): Pad with zeros up to the provided width.
 	// $4 wstr (width): Minimum total width of the output string.
-	// $5 base (fdbxX): Digit base => b for binary, x for hex (lower), X for
+	// $5 prec (precision): Number of displayed digits after the decimal point.
+	// $6 base (fdbxX): Digit base => b for binary, x for hex (lower), X for
 	//                  hex (upper), d for decimal integer, f for decimal
 	//                  float.
-	formatString := `^(\+)?(#)?(0)?(\d+)?([fdbxX])$`
+	formatString := `^(\+)?(#)?(0)?(\d*)(\.\d+)?([fdbxX])$`
 	formatRegexp := regexp.MustCompile(formatString)
 	// Expected format used for error messages, matching the general shape of
 	// the actual format string, but without the captures and anchors visible.
-	expected := `\+?#?0?\d+?[fdbxX]`
+	expected := `\+?#?0?\d*(\.\d+)?[fdbxX]`
 
 	return ctx.NewBuiltin("number::format", []Type{TVal(NUMBER), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Number)
@@ -8299,10 +8300,20 @@ func BuiltinNumberFormat(ctx *Context) Value {
 		altf := matches[2]
 		zero := matches[3]
 		wstr := matches[4]
-		base := matches[5]
+		prec := matches[5]
+		base := matches[6]
 
 		switch base {
 		case "b", "x", "X":
+			if prec != "" {
+				var ifmt string
+				if base == "b" {
+					ifmt = "binary"
+				} else {
+					ifmt = "hexadecimal"
+				}
+				return nil, NewError(nil, ctx.NewStringf("precision specifier not supported for %s integer format, received %v", ifmt, format))
+			}
 			integer, err := ValueAsSafeInteger(self)
 			if err != nil {
 				return nil, NewError(nil, ctx.NewString(err.Error()))
@@ -8328,6 +8339,9 @@ func BuiltinNumberFormat(ctx *Context) Value {
 			if altf != "" {
 				return nil, NewError(nil, ctx.NewStringf("# flag not supported for decimal integer format, received %v", format))
 			}
+			if prec != "" {
+				return nil, NewError(nil, ctx.NewStringf("precision specifier not supported for decimal integer format, received %v", format))
+			}
 			integer, err := ValueAsSafeInteger(self)
 			if err != nil {
 				return nil, NewError(nil, ctx.NewString(err.Error()))
@@ -8338,7 +8352,16 @@ func BuiltinNumberFormat(ctx *Context) Value {
 			if altf != "" {
 				return nil, NewError(nil, ctx.NewStringf("# flag not supported for decimal float format, received %v", format))
 			}
-			s := self.String()
+			var s string
+			if prec != "" && !math.IsNaN(self.data) && !math.IsInf(self.data, 0) {
+				ndigits, err := strconv.Atoi(prec[1:])
+				if err != nil {
+					return nil, NewError(nil, ctx.NewString(err.Error()))
+				}
+				s = strconv.FormatFloat(self.data, 'f', ndigits, 64)
+			} else {
+				s = self.String()
+			}
 			if sign == "+" && !math.IsNaN(self.data) && !strings.HasPrefix(s, "-") {
 				s = "+" + s
 			}

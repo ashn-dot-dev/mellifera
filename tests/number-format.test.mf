@@ -43,6 +43,17 @@ println($`(NaN).format("+08f") is {repr((NaN).format("+08f"))}`);
 
 print("\n");
 
+println($`(0).format("+08.3f") is {repr((0).format("+08.3f"))}`);
+println($`(+123).format("+08.3f") is {repr((+123).format("+08.3f"))}`);
+println($`(-123).format("+08.3f") is {repr((-123).format("+08.3f"))}`);
+println($`(+3.14).format("+08.3f") is {repr((+3.14).format("+08.3f"))}`);
+println($`(-3.14).format("+08.3f") is {repr((-3.14).format("+08.3f"))}`);
+println($`(+Inf).format("+08.3f") is {repr((+Inf).format("+08.3f"))}`);
+println($`(-Inf).format("+08.3f") is {repr((-Inf).format("+08.3f"))}`);
+println($`(NaN).format("+08.3f") is {repr((NaN).format("+08.3f"))}`);
+
+print("\n");
+
 try { (0).format("#f"); error "unreachable"; } catch err { println($`(0).format("#f") produced the error {repr(err)}`); }
 
 print("\n");
@@ -73,6 +84,7 @@ println($`(-123).format("+08d") is {repr((-123).format("+08d"))}`);
 print("\n");
 
 try { (0).format("#d"); error "unreachable"; } catch err { println($`(0).format("#d") produced the error {repr(err)}`); }
+try { (0).format(".3d"); error "unreachable"; } catch err { println($`(0).format(".3d") produced the error {repr(err)}`); }
 try { (+3.14).format("d"); error "unreachable"; } catch err { println($`(+3.14).format("d") produced the error {repr(err)}`); }
 try { (-3.14).format("d"); error "unreachable"; } catch err { println($`(-3.14).format("d") produced the error {repr(err)}`); }
 try { (+Inf).format("d"); error "unreachable"; } catch err { println($`(+Inf).format("d") produced the error {repr(err)}`); }
@@ -115,6 +127,7 @@ println($`(-0xFF).format("#08b") is {repr((-0xFF).format("#08b"))}`);
 
 print("\n");
 
+try { (0).format(".3b"); error "unreachable"; } catch err { println($`(0).format(".3b") produced the error {repr(err)}`); }
 try { (+3.14).format("b"); error "unreachable"; } catch err { println($`(+3.14).format("b") produced the error {repr(err)}`); }
 try { (-3.14).format("b"); error "unreachable"; } catch err { println($`(-3.14).format("b") produced the error {repr(err)}`); }
 try { (+Inf).format("b"); error "unreachable"; } catch err { println($`(+Inf).format("b") produced the error {repr(err)}`); }
@@ -157,6 +170,7 @@ println($`(-0xFF).format("#08x") is {repr((-0xFF).format("#08x"))}`);
 
 print("\n");
 
+try { (0).format(".3x"); error "unreachable"; } catch err { println($`(0).format(".3x") produced the error {repr(err)}`); }
 try { (+3.14).format("x"); error "unreachable"; } catch err { println($`(+3.14).format("x") produced the error {repr(err)}`); }
 try { (-3.14).format("x"); error "unreachable"; } catch err { println($`(-3.14).format("x") produced the error {repr(err)}`); }
 try { (+Inf).format("x"); error "unreachable"; } catch err { println($`(+Inf).format("x") produced the error {repr(err)}`); }
@@ -199,6 +213,7 @@ println($`(-0xFF).format("#08X") is {repr((-0xFF).format("#08X"))}`);
 
 print("\n");
 
+try { (0).format(".3X"); error "unreachable"; } catch err { println($`(0).format(".3X") produced the error {repr(err)}`); }
 try { (+3.14).format("X"); error "unreachable"; } catch err { println($`(+3.14).format("X") produced the error {repr(err)}`); }
 try { (-3.14).format("X"); error "unreachable"; } catch err { println($`(-3.14).format("X") produced the error {repr(err)}`); }
 try { (+Inf).format("X"); error "unreachable"; } catch err { println($`(+Inf).format("X") produced the error {repr(err)}`); }
@@ -248,6 +263,15 @@ try { (0).format("+#08"); error "unreachable"; } catch err { println($`(0).forma
 # (-Inf).format("+08f") is "    -Inf"
 # (NaN).format("+08f") is "     NaN"
 #
+# (0).format("+08.3f") is "+000.000"
+# (+123).format("+08.3f") is "+123.000"
+# (-123).format("+08.3f") is "-123.000"
+# (+3.14).format("+08.3f") is "+003.140"
+# (-3.14).format("+08.3f") is "-003.140"
+# (+Inf).format("+08.3f") is "    +Inf"
+# (-Inf).format("+08.3f") is "    -Inf"
+# (NaN).format("+08.3f") is "     NaN"
+#
 # (0).format("#f") produced the error "# flag not supported for decimal float format, received \"#f\""
 #
 # (0).format("d") is "0"
@@ -267,6 +291,7 @@ try { (0).format("+#08"); error "unreachable"; } catch err { println($`(0).forma
 # (-123).format("+08d") is "-0000123"
 #
 # (0).format("#d") produced the error "# flag not supported for decimal integer format, received \"#d\""
+# (0).format(".3d") produced the error "precision specifier not supported for decimal integer format, received \".3d\""
 # (+3.14).format("d") produced the error "cannot convert 3.14 into an integer without truncation"
 # (-3.14).format("d") produced the error "cannot convert -3.14 into an integer without truncation"
 # (+Inf).format("d") produced the error "cannot convert Inf into an integer"
@@ -296,6 +321,7 @@ try { (0).format("+#08"); error "unreachable"; } catch err { println($`(0).forma
 # (+0xFF).format("#08b") is "0b11111111"
 # (-0xFF).format("#08b") is "-0b11111111"
 #
+# (0).format(".3b") produced the error "precision specifier not supported for binary integer format, received \".3b\""
 # (+3.14).format("b") produced the error "cannot convert 3.14 into an integer without truncation"
 # (-3.14).format("b") produced the error "cannot convert -3.14 into an integer without truncation"
 # (+Inf).format("b") produced the error "cannot convert Inf into an integer"
@@ -325,6 +351,7 @@ try { (0).format("+#08"); error "unreachable"; } catch err { println($`(0).forma
 # (+0xFF).format("#08x") is "0x0000ff"
 # (-0xFF).format("#08x") is "-0x000ff"
 #
+# (0).format(".3x") produced the error "precision specifier not supported for hexadecimal integer format, received \".3x\""
 # (+3.14).format("x") produced the error "cannot convert 3.14 into an integer without truncation"
 # (-3.14).format("x") produced the error "cannot convert -3.14 into an integer without truncation"
 # (+Inf).format("x") produced the error "cannot convert Inf into an integer"
@@ -354,12 +381,13 @@ try { (0).format("+#08"); error "unreachable"; } catch err { println($`(0).forma
 # (+0xFF).format("#08X") is "0X0000FF"
 # (-0xFF).format("#08X") is "-0X000FF"
 #
+# (0).format(".3X") produced the error "precision specifier not supported for hexadecimal integer format, received \".3X\""
 # (+3.14).format("X") produced the error "cannot convert 3.14 into an integer without truncation"
 # (-3.14).format("X") produced the error "cannot convert -3.14 into an integer without truncation"
 # (+Inf).format("X") produced the error "cannot convert Inf into an integer"
 # (-Inf).format("X") produced the error "cannot convert -Inf into an integer"
 # (NaN).format("X") produced the error "cannot convert NaN into an integer"
 #
-# (0).format("") produced the error "expected format string matching \\+?#?0?\\d+?[fdbxX], received \"\""
-# (0).format("oops") produced the error "expected format string matching \\+?#?0?\\d+?[fdbxX], received \"oops\""
-# (0).format("+#08") produced the error "expected format string matching \\+?#?0?\\d+?[fdbxX], received \"+#08\""
+# (0).format("") produced the error "expected format string matching \\+?#?0?\\d*(\\.\\d+)?[fdbxX], received \"\""
+# (0).format("oops") produced the error "expected format string matching \\+?#?0?\\d*(\\.\\d+)?[fdbxX], received \"oops\""
+# (0).format("+#08") produced the error "expected format string matching \\+?#?0?\\d*(\\.\\d+)?[fdbxX], received \"+#08\""
