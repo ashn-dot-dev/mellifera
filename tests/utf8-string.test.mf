@@ -1,0 +1,19 @@
+println($`utf8::string(0x61) is {repr(utf8::string(0x61))}`);
+println($`utf8::string([0x61, 0x62, 0x63]) is {repr(utf8::string([0x61, 0x62, 0x63]))}`);
+println($`utf8::string(0x1f354) is {repr(utf8::string(0x1f354))}`);
+println($`utf8::string([0x1f354]) is {repr(utf8::string([0x1f354]))}`);
+println($`utf8::string([]) is {repr(utf8::string([]))}`);
+
+print("\n");
+
+try { utf8::string(0x10FFFF + 1); } catch err { println($`utf8::string(0x10FFFF + 1) produced the error {repr(err)}`); }
+try { utf8::string([0x10FFFF + 1]); } catch err { println($`utf8::string([0x10FFFF + 1]) produced the error {repr(err)}`); }
+################################################################################
+# utf8::string(0x61) is "a"
+# utf8::string([0x61, 0x62, 0x63]) is "abc"
+# utf8::string(0x1f354) is "🍔"
+# utf8::string([0x1f354]) is "🍔"
+# utf8::string([]) is ""
+#
+# utf8::string(0x10FFFF + 1) produced the error "expected Unicode code point, received out-of-range integer 0x110000"
+# utf8::string([0x10FFFF + 1]) produced the error "expected Unicode code point, received out-of-range integer 0x110000"

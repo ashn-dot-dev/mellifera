@@ -50,6 +50,7 @@ rng = random.Random()
 MAX_INDEX_INTEGER = 2147483647  # 2**31 - 1
 MAX_SAFE_INTEGER = +9007199254740991  # +(2**53 - 1)
 MIN_SAFE_INTEGER = -9007199254740991  # -(2**53 - 1)
+MAX_RUNE = 0x10FFFF
 
 
 def copy(value):
@@ -7317,6 +7318,58 @@ def builtin_ty_is_function(value: Value) -> Union[Value, Error]:
     return Boolean.new(isinstance(value, (Function, Builtin)))
 
 
+@builtin("utf8::code_point", [String])
+def builtin_utf8_code_point(s: String) -> Union[Value, Error]:
+    try:
+        r = s.data.decode("utf-8")
+    except UnicodeDecodeError:
+        return Error(None, f"expected valid UTF-8 string, received {s}")
+    if len(r) != 1:
+        return Error(
+            None,
+            f"expected UTF-8 string with 1 code point, received {s} with {len(r)} code points",
+        )
+    return Number.new(ord(r[0]))
+
+
+@builtin("utf8::code_points", [String])
+def builtin_utf8_code_points(s: String) -> Union[Value, Error]:
+    try:
+        r = s.data.decode("utf-8")
+    except UnicodeDecodeError:
+        return Error(None, f"expected valid UTF-8 string, received {s}")
+    return Vector.new([Number.new(ord(x)) for x in r])
+
+
+@builtin("utf8::string", [Value])
+def builtin_utf8_string(value: Value) -> Union[Value, Error]:
+    if isinstance(value, Number):
+        n = value.as_safe_integer()
+        if not (0 <= n <= MAX_RUNE):
+            return Error(
+                None,
+                f"expected Unicode code point, received out-of-range integer {n:#x}",
+            )
+        return String.new(chr(n))
+
+    if isinstance(value, Vector):
+        chars: list[str] = list()
+        for element in value.data:
+            n = value_as_safe_integer(element)
+            if not (0 <= n <= MAX_RUNE):
+                return Error(
+                    None,
+                    f"expected Unicode code point, received out-of-range integer {n:#x}",
+                )
+            chars.append(chr(n))
+        return String.new("".join(chars))
+
+    return Error(
+        None,
+        f"expected Unicode code point or vector of Unicode code points, received {value}",
+    )
+
+
 def dump_tokens_source(source: str, loc: Optional[SourceLocation] = None):
     tokens = Vector.new()
     lexer = Lexer(source, loc)
@@ -7752,6 +7805,16 @@ BASE_ENVIRONMENT.let(
             String.new("is_set"): builtin_ty_is_set(),
             String.new("is_reference"): builtin_ty_is_reference(),
             String.new("is_function"): builtin_ty_is_function(),
+        }
+    ).freeze(),
+)
+BASE_ENVIRONMENT.let(
+    String.new("utf8"),
+    Map.new(
+        {
+            String.new("code_point"): builtin_utf8_code_point(),
+            String.new("code_points"): builtin_utf8_code_points(),
+            String.new("string"): builtin_utf8_string(),
         }
     ).freeze(),
 )

@@ -1,0 +1,17 @@
+println($`utf8::code_points("\x00") is {utf8::code_points("\x00")}`);
+println($`utf8::code_points("a") is {utf8::code_points("a")}`);
+println($`utf8::code_points("🍔") is {utf8::code_points("🍔")}`);
+println($`utf8::code_points("") is {utf8::code_points("")}`);
+println($`utf8::code_points("abc") is {utf8::code_points("abc")}`);
+
+print("\n");
+
+try { utf8::code_points("\xff"); } catch err { println($`utf8::code_points("\xff") produced the error {repr(err)}`); }
+################################################################################
+# utf8::code_points("\x00") is [0]
+# utf8::code_points("a") is [97]
+# utf8::code_points("🍔") is [127828]
+# utf8::code_points("") is []
+# utf8::code_points("abc") is [97, 98, 99]
+#
+# utf8::code_points("\xff") produced the error "expected valid UTF-8 string, received \"\\xff\""

@@ -594,6 +594,11 @@ func NewContext() *Context {
 		{ctx.NewString("is_reference"), BuiltinTyIsReference(ctx)},
 		{ctx.NewString("is_function"), BuiltinTyIsFunction(ctx)},
 	}).Freeze())
+	ctx.BaseEnvironment.Let("utf8", ctx.NewMapOrPanic([]MapPair{
+		{ctx.NewString("code_point"), BuiltinUTF8CodePoint(ctx)},
+		{ctx.NewString("code_points"), BuiltinUTF8CodePoints(ctx)},
+		{ctx.NewString("string"), BuiltinUTF8String(ctx)},
+	}).Freeze())
 
 	// Initialize builtins from source with deferred instantiation.
 	ctx.vectorMeta.data.Insert(ctx.NewString("sorted"), BuiltinVectorSorted(ctx))
@@ -10714,5 +10719,79 @@ func BuiltinTyIsFunction(ctx *Context) Value {
 			return ctx.NewBoolean(true), nil
 		}
 		return ctx.NewBoolean(false), nil
+	})
+}
+
+func BuiltinUTF8CodePoint(ctx *Context) Value {
+	return ctx.NewBuiltin("utf8::code_point", []Type{TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
+		s := arguments[0].(*String)
+		if !utf8.ValidString(s.data) {
+			return nil, NewError(nil, ctx.NewStringf("expected valid UTF-8 string, received %v", s))
+		}
+
+		r := []rune(s.data)
+		if len(r) != 1 {
+			return nil, NewError(nil, ctx.NewStringf("expected UTF-8 string with 1 code point, received %v with %v code points", s, len(r)))
+		}
+
+		return ctx.NewNumber(float64(r[0])), nil
+	})
+}
+
+func BuiltinUTF8CodePoints(ctx *Context) Value {
+	return ctx.NewBuiltin("utf8::code_points", []Type{TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
+		s := arguments[0].(*String)
+		if !utf8.ValidString(s.data) {
+			return nil, NewError(nil, ctx.NewStringf("expected valid UTF-8 string, received %v", s))
+		}
+
+		elements := []Value{}
+		for _, n := range []rune(s.data) {
+			elements = append(elements, ctx.NewNumber(float64(n)))
+		}
+
+		return ctx.NewVectorOrPanic(elements), nil
+	})
+}
+
+func BuiltinUTF8String(ctx *Context) Value {
+	return ctx.NewBuiltin("utf8::string", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		value := arguments[0]
+
+		if valueNumber, ok := value.(*Number); ok {
+			n, err := ValueAsSafeInteger(valueNumber)
+			if err != nil {
+				return nil, NewError(nil, ctx.NewString(err.Error()))
+			}
+			if !(0 <= n && n <= utf8.MaxRune) {
+				return nil, NewError(nil, ctx.NewStringf("expected Unicode code point, received out-of-range integer %#x", n))
+			}
+			result := ctx.NewString(string(rune(n)))
+			if !utf8.ValidString(result.data) {
+				return nil, NewError(nil, ctx.NewStringf("expected valid UTF-8 string, received %v", result))
+			}
+			return result, nil
+		}
+
+		if valueVector, ok := value.(*Vector); ok {
+			runes := []rune{}
+			for _, element := range valueVector.Elements() {
+				n, err := ValueAsSafeInteger(element)
+				if err != nil {
+					return nil, NewError(nil, ctx.NewString(err.Error()))
+				}
+				if !(0 <= n && n <= utf8.MaxRune) {
+					return nil, NewError(nil, ctx.NewStringf("expected Unicode code point, received out-of-range integer %#x", n))
+				}
+				runes = append(runes, rune(n))
+			}
+			result := ctx.NewString(string(runes))
+			if !utf8.ValidString(result.data) {
+				return nil, NewError(nil, ctx.NewStringf("expected valid UTF-8 string, received %v", result))
+			}
+			return result, nil
+		}
+
+		return nil, NewError(nil, ctx.NewStringf("expected Unicode code point or vector of Unicode code points, received %v", value))
 	})
 }

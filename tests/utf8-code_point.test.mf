@@ -1,0 +1,17 @@
+println($`utf8::code_point("\x00").format("#x") is {utf8::code_point("\x00").format("#x")}`);
+println($`utf8::code_point("a").format("#x") is {utf8::code_point("a").format("#x")}`);
+println($`utf8::code_point("🍔").format("#x") is {utf8::code_point("🍔").format("#x")}`);
+
+print("\n");
+
+try { utf8::code_point(""); } catch err { println($`utf8::code_point("") produced the error {repr(err)}`); }
+try { utf8::code_point("abc"); } catch err { println($`utf8::code_point("abc") produced the error {repr(err)}`); }
+try { utf8::code_point("\xff"); } catch err { println($`utf8::code_point("\xff") produced the error {repr(err)}`); }
+################################################################################
+# utf8::code_point("\x00").format("#x") is 0x0
+# utf8::code_point("a").format("#x") is 0x61
+# utf8::code_point("🍔").format("#x") is 0x1f354
+#
+# utf8::code_point("") produced the error "expected UTF-8 string with 1 code point, received \"\" with 0 code points"
+# utf8::code_point("abc") produced the error "expected UTF-8 string with 1 code point, received \"abc\" with 3 code points"
+# utf8::code_point("\xff") produced the error "expected valid UTF-8 string, received \"\\xff\""
