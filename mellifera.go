@@ -595,6 +595,7 @@ func NewContext() *Context {
 		{ctx.NewString("is_function"), BuiltinTyIsFunction(ctx)},
 	}).Freeze())
 	ctx.BaseEnvironment.Let("utf8", ctx.NewMapOrPanic([]MapPair{
+		{ctx.NewString("is_valid"), BuiltinUTF8IsValid(ctx)},
 		{ctx.NewString("code_point"), BuiltinUTF8CodePoint(ctx)},
 		{ctx.NewString("code_points"), BuiltinUTF8CodePoints(ctx)},
 		{ctx.NewString("string"), BuiltinUTF8String(ctx)},
@@ -10719,6 +10720,12 @@ func BuiltinTyIsFunction(ctx *Context) Value {
 			return ctx.NewBoolean(true), nil
 		}
 		return ctx.NewBoolean(false), nil
+	})
+}
+
+func BuiltinUTF8IsValid(ctx *Context) Value {
+	return ctx.NewBuiltin("utf8::is_valid", []Type{TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return ctx.NewBoolean(utf8.ValidString(arguments[0].(*String).data)), nil
 	})
 }
 

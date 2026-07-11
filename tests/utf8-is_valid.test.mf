@@ -1,0 +1,7 @@
+dumpln(utf8::is_valid("abc"));
+dumpln(utf8::is_valid("🐝"));
+dumpln(utf8::is_valid("\xff\xff"));
+################################################################################
+# true
+# true
+# false

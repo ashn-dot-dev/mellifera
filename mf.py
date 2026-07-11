@@ -7318,6 +7318,16 @@ def builtin_ty_is_function(value: Value) -> Union[Value, Error]:
     return Boolean.new(isinstance(value, (Function, Builtin)))
 
 
+@builtin("utf8::is_valid", [String])
+def builtin_utf8_is_valid(s: String) -> Union[Value, Error]:
+    try:
+        s.data.decode("utf-8")
+        return Boolean.new(True)
+    except UnicodeDecodeError:
+        return Boolean.new(False)
+    raise Exception("unreachable")
+
+
 @builtin("utf8::code_point", [String])
 def builtin_utf8_code_point(s: String) -> Union[Value, Error]:
     try:
@@ -7812,6 +7822,7 @@ BASE_ENVIRONMENT.let(
     String.new("utf8"),
     Map.new(
         {
+            String.new("is_valid"): builtin_utf8_is_valid(),
             String.new("code_point"): builtin_utf8_code_point(),
             String.new("code_points"): builtin_utf8_code_points(),
             String.new("string"): builtin_utf8_string(),
