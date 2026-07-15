@@ -1,0 +1,54 @@
+# Reference created by using the reference operator .& on a function argument.
+let f = function(x) {
+    println($`x is {x} of type {typename(x)}`);
+    println($`x.* is {x.*} of type {typename(x.*)}`);
+};
+let v = ["foo", "bar", "baz"];
+f(v.&);
+
+print("\n");
+
+# Reference created referring to each vector element in a for loop.
+let inventory = [
+    {"item": "apples", "quantity": 12},
+    {"item": "bananas", "quantity": 30},
+    {"item": "cherries", "quantity": 8},
+];
+println($`inventory starts as {inventory}`);
+for stock.& in inventory {
+    println($`Doubling the quantity of {stock.*.item}`);
+    stock.*.quantity = stock.*.quantity * 2;
+}
+println($`inventory ends as {inventory}`);
+
+print("\n");
+
+# Reference created referring to each map value in a for loop.
+let bank_accounts = {
+    "Ashley": {"checking": 350, "savings": 1500},
+    "Joseph": {"checking": 120, "savings": 45},
+};
+println($`bank_accounts starts as {bank_accounts}`);
+for person, account.& in bank_accounts {
+    println($`Adding $100 to {person}'s savings account`);
+    account.*.savings = account.*.savings + 100;
+}
+println($`bank_accounts ends as {bank_accounts}`);
+
+print("\n");
+
+# Reference implicitly created and passed as the first argument when a method
+# declared with function.& is invoked with the dot operator.
+let person = type {
+    .init = function(name, age) {
+        return new person {.name = name, .age = age};
+    },
+    .birthday = function.&(self) {
+        println($`Happy birthday {self.name}! 🥳`);
+        self.*.age = self.*.age + 1;
+    },
+};
+let ashley = person::init("Ashley", 21);
+println($`ashley starts as {ashley}`);
+ashley.birthday(); # ashley.& is implicitly passed as self to person::birthday()
+println($`ashley ends as {ashley}`);

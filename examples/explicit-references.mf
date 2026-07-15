@@ -26,7 +26,7 @@ println($"[outside pass_by_value] x ends as {x}");
 
 print("\n");
 
-let y = ["abc", "def", "hij"];
+let y = ["abc", "def", "ghi"];
 println($"[outside pass_by_reference] y starts as {y}");
-pass_by_reference(y.&); # .& is the postfix addressof operator
+pass_by_reference(y.&); # .& is the postfix reference operator
 println($"[outside pass_by_reference] y ends as {y}");

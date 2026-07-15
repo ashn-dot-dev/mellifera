@@ -1,8 +1,9 @@
 ![The Mellifera Programming Language](https://ashn.dev/mellifera/mellifera-logo.svg)
 
-Mellifera is a scripting language featuring value semantics, structural
-equality, copy-on-write data sharing, strong dynamic typing, explicit
-references, and a lightweight nominal type system with structural protocols.
+Mellifera is a scripting language featuring mutable value semantics with
+explicit references, structural equality, copy-on-write data sharing, strong
+dynamic typing, and a lightweight nominal type system with structural
+protocols.
 
 ```
 println("hello 🐝");
@@ -112,11 +113,10 @@ y == z is true
 ```
 
 Unlike most scripting languages, in which reference semantics are the default
-way of assigning and passing around composite data, Mellifera uses value
-semantics with explicit references. One may obtain a reference to a value using
-the postfix `.&` operator on function arguments, then later dereference that
-reference-value to get the original referenced value using the postfix `.*`
-operator.
+way of assigning and passing around composite data, Mellifera uses mutable
+value semantics with explicit references. One may obtain a reference to a value
+using the postfix `.&` operator, then later dereference that reference-value to
+get the original referenced value using the postfix `.*` operator.
 
 ```
 let pass_by_value = function(val) {
@@ -147,9 +147,9 @@ println($"[outside pass_by_value] x ends as {x}");
 
 print("\n");
 
-let y = ["abc", "def", "hij"];
+let y = ["abc", "def", "ghi"];
 println($"[outside pass_by_reference] y starts as {y}");
-pass_by_reference(y.&); # .& is the postfix addressof operator
+pass_by_reference(y.&); # .& is the postfix reference operator
 println($"[outside pass_by_reference] y ends as {y}");
 ```
 
@@ -160,10 +160,128 @@ $ mf examples/explicit-references.mf
 [inside pass_by_value] val ends as ["foo", "bar", "baz", 123]
 [outside pass_by_value] x ends as ["foo", "bar", "baz"]
 
-[outside pass_by_reference] y starts as ["abc", "def", "hij"]
-[inside pass_by_reference] ref starts as reference@0x101f4c290 with referenced value ["abc", "def", "hij"]
-[inside pass_by_reference] ref ends as reference@0x101f4c290 with referenced value ["abc", "def", "hij", 123]
-[outside pass_by_reference] y ends as ["abc", "def", "hij", 123]
+[outside pass_by_reference] y starts as ["abc", "def", "ghi"]
+[inside pass_by_reference] ref starts as reference@0x372ec01e3390 with referenced value ["abc", "def", "ghi"]
+[inside pass_by_reference] ref ends as reference@0x372ec01e3390 with referenced value ["abc", "def", "ghi", 123]
+[outside pass_by_reference] y ends as ["abc", "def", "ghi", 123]
+```
+
+Mellifera's mutable value semantics mean that references can only be created at
+specific points in a program: using the `.&` operator on a function argument,
+implicitly for `self` receiver arguments in methods declared with
+`function.&(self, ...)`, or when declaring loop variables with a postfix `.&`.
+
+```
+# Reference created by using the reference operator .& on a function argument.
+let f = function(x) {
+    println($`x is {x} of type {typename(x)}`);
+    println($`x.* is {x.*} of type {typename(x.*)}`);
+};
+let v = ["foo", "bar", "baz"];
+f(v.&);
+
+print("\n");
+
+# Reference created referring to each vector element in a for loop.
+let inventory = [
+    {"item": "apples", "quantity": 12},
+    {"item": "bananas", "quantity": 30},
+    {"item": "cherries", "quantity": 8},
+];
+println($`inventory starts as {inventory}`);
+for stock.& in inventory {
+    println($`Doubling the quantity of {stock.*.item}`);
+    stock.*.quantity = stock.*.quantity * 2;
+}
+println($`inventory ends as {inventory}`);
+
+print("\n");
+
+# Reference created referring to each map value in a for loop.
+let bank_accounts = {
+    "Ashley": {"checking": 350, "savings": 1500},
+    "Joseph": {"checking": 120, "savings": 45},
+};
+println($`bank_accounts starts as {bank_accounts}`);
+for person, account.& in bank_accounts {
+    println($`Adding $100 to {person}'s savings account`);
+    account.*.savings = account.*.savings + 100;
+}
+println($`bank_accounts ends as {bank_accounts}`);
+
+print("\n");
+
+# Reference implicitly created and passed as the first argument when a method
+# declared with function.& is invoked with the dot operator.
+let person = type {
+    .init = function(name, age) {
+        return new person {.name = name, .age = age};
+    },
+    .birthday = function.&(self) {
+        println($`Happy birthday {self.name}! 🥳`);
+        self.*.age = self.*.age + 1;
+    },
+};
+let ashley = person::init("Ashley", 21);
+println($`ashley starts as {ashley}`);
+ashley.birthday(); # ashley.& is implicitly passed as self to person::birthday()
+println($`ashley ends as {ashley}`);
+```
+
+```
+$ mf examples/creating-references.mf
+x is reference@0x4d9c24eb58a0 of type reference
+x.* is ["foo", "bar", "baz"] of type vector
+
+inventory starts as [{"item": "apples", "quantity": 12}, {"item": "bananas", "quantity": 30}, {"item": "cherries", "quantity": 8}]
+Doubling the quantity of apples
+Doubling the quantity of bananas
+Doubling the quantity of cherries
+inventory ends as [{"item": "apples", "quantity": 24}, {"item": "bananas", "quantity": 60}, {"item": "cherries", "quantity": 16}]
+
+bank_accounts starts as {"Ashley": {"checking": 350, "savings": 1500}, "Joseph": {"checking": 120, "savings": 45}}
+Adding $100 to Ashley's savings account
+Adding $100 to Joseph's savings account
+bank_accounts ends as {"Ashley": {"checking": 350, "savings": 1600}, "Joseph": {"checking": 120, "savings": 145}}
+
+ashley starts as {"name": "Ashley", "age": 21}
+Happy birthday Ashley! 🥳
+ashley ends as {"name": "Ashley", "age": 22}
+```
+
+References cannot be assigned to a new variable, stored in a container, closed
+over by a function, or propagated up the call stack with return or error
+statements. Because of this, the language guarantees that a reference can never
+outlive the scope in which it was created, without requiring escape analysis.
+
+```
+$ mf -c 'let x = 123; let f = function(ref) { let y = ref; }; f(x.&);'
+[<command>, line 1] error: attempted assignment statement with type reference to number
+...within f@[<command>, line 1] called from <command>, line 1
+
+$ mf -c 'let x = 123; let f = function(ref) { let y = [ref]; }; f(x.&);'
+[<command>, line 1] error: invalid vector construction with element reference@0x24739de8d410
+...within f@[<command>, line 1] called from <command>, line 1
+
+$ mf -c 'let x = 123; let f = function(ref) { let y = {"foo": ref}; }; f(x.&);'
+[<command>, line 1] error: invalid map construction with key "foo" and value reference@0x193422f0d410
+...within f@[<command>, line 1] called from <command>, line 1
+
+$ mf -c 'let x = 123; let f = function(ref) { let y = {ref}; }; f(x.&);'
+[<command>, line 1] error: invalid set construction with element reference@0x7173f42db410
+...within f@[<command>, line 1] called from <command>, line 1
+
+$ mf -c 'let x = 123; let f = function(ref) { function() {}; }; f(x.&);'
+[<command>, line 1] error: {"message": "function closes over a reference", "references": [{"name": "ref", "location": {"file": "<command>", "line": 1}}]}
+...within f@[<command>, line 1] called from <command>, line 1
+
+$ mf -c 'let x = 123; let f = function(ref) { return ref; }; f(x.&);'
+[<command>, line 1] error: attempted return statement with type reference to number
+...within f@[<command>, line 1] called from <command>, line 1
+
+$ mf -c 'let x = 123; let f = function(ref) { error ref; }; f(x.&);'
+[<command>, line 1] error: attempted error statement with type reference to number
+...within f@[<command>, line 1] called from <command>, line 1
 ```
 
 Mellifera contains a small number of core built-in types with first-class
