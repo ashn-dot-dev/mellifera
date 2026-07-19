@@ -433,7 +433,8 @@ configuration file), replacing `$HOME/.mellifera` with your chosen
 location:
 
 ```
-export PATH="$HOME/.mellifera/bin:$PATH"
+export MELLIFERA_HOME="$HOME/.mellifera"
+export PATH="$MELLIFERA_HOME/bin:$PATH"
 ```
 
 Finally, open a new interactive shell and verify the Mellifera interpreter was
