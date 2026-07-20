@@ -6992,6 +6992,22 @@ def builtin_math_is_integer(value: Number) -> Union[Value, Error]:
     return Boolean.new(float(value.data).is_integer())
 
 
+@builtin("math::sign", [Number])
+def builtin_math_sign(value: Number) -> Union[Value, Error]:
+    if float(value.data) > 0:
+        return Number.new(+1)
+    if float(value.data) < 0:
+        return Number.new(-1)
+    if float(value.data) == 0:
+        return Number.new(math.copysign(0, value.data))
+    return Number.new(math.nan)
+
+
+@builtin("math::copy_sign", [Number, Number])
+def builtin_math_copy_sign(value: Number, sign: Number) -> Union[Value, Error]:
+    return Number.new(math.copysign(value.data, sign.data))
+
+
 @builtin("math::trunc", [Number])
 def builtin_math_trunc(value: Number) -> Union[Value, Error]:
     if math.isnan(value.data) or math.isinf(value.data):
@@ -7775,6 +7791,8 @@ BASE_ENVIRONMENT.let(
             String.new("is_nan"): builtin_math_is_nan(),
             String.new("is_inf"): builtin_math_is_inf(),
             String.new("is_integer"): builtin_math_is_integer(),
+            String.new("sign"): builtin_math_sign(),
+            String.new("copy_sign"): builtin_math_copy_sign(),
             String.new("trunc"): builtin_math_trunc(),
             String.new("round"): builtin_math_round(),
             String.new("floor"): builtin_math_floor(),

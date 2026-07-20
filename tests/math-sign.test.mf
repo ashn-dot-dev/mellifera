@@ -1,0 +1,23 @@
+println($`math::sign(+0) is {math::sign(+0)}`);
+println($`math::sign(-0) is {math::sign(-0)}`);
+println($`1 / math::sign(+0) is {1 / math::sign(+0)}`); # check for +0
+println($`1 / math::sign(-0) is {1 / math::sign(-0)}`); # check for -0
+println($`math::sign(+1) is {math::sign(+1)}`);
+println($`math::sign(-1) is {math::sign(-1)}`);
+println($`math::sign(+2) is {math::sign(+2)}`);
+println($`math::sign(-2) is {math::sign(-2)}`);
+println($`math::sign(+Inf) is {math::sign(+Inf)}`);
+println($`math::sign(-Inf) is {math::sign(-Inf)}`);
+println($`math::sign(NaN) is {math::sign(NaN)}`);
+################################################################################
+# math::sign(+0) is 0
+# math::sign(-0) is 0
+# 1 / math::sign(+0) is Inf
+# 1 / math::sign(-0) is -Inf
+# math::sign(+1) is 1
+# math::sign(-1) is -1
+# math::sign(+2) is 1
+# math::sign(-2) is -1
+# math::sign(+Inf) is 1
+# math::sign(-Inf) is -1
+# math::sign(NaN) is NaN

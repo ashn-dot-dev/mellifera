@@ -539,6 +539,8 @@ func NewContext() *Context {
 		{ctx.NewString("is_nan"), BuiltinMathIsNaN(ctx)},
 		{ctx.NewString("is_inf"), BuiltinMathIsInf(ctx)},
 		{ctx.NewString("is_integer"), BuiltinMathIsInteger(ctx)},
+		{ctx.NewString("sign"), BuiltinMathSign(ctx)},
+		{ctx.NewString("copy_sign"), BuiltinMathCopySign(ctx)},
 		{ctx.NewString("trunc"), BuiltinMathTrunc(ctx)},
 		{ctx.NewString("round"), BuiltinMathRound(ctx)},
 		{ctx.NewString("floor"), BuiltinMathFloor(ctx)},
@@ -10369,7 +10371,7 @@ func BuiltinMathIsInf(ctx *Context) Value {
 }
 
 func BuiltinMathIsInteger(ctx *Context) Value {
-	return ctx.NewBuiltin("math::copy_sign", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+	return ctx.NewBuiltin("math::is_integer", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		value := arguments[0].(*Number)
 
 		if math.IsInf(value.data, 0) || math.IsNaN(value.data) {
@@ -10377,6 +10379,33 @@ func BuiltinMathIsInteger(ctx *Context) Value {
 		}
 
 		return ctx.NewBoolean(math.Trunc(value.data) == value.data), nil
+	})
+}
+
+func BuiltinMathSign(ctx *Context) Value {
+	return ctx.NewBuiltin("math::sign", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		value := arguments[0].(*Number)
+
+		if value.data > 0 {
+			return ctx.NewNumber(+1), nil
+		}
+		if value.data < 0 {
+			return ctx.NewNumber(-1), nil
+		}
+		if value.data == 0 {
+			return ctx.NewNumber(math.Copysign(0, value.data)), nil
+		}
+
+		return ctx.NewNumber(math.NaN()), nil
+	})
+}
+
+func BuiltinMathCopySign(ctx *Context) Value {
+	return ctx.NewBuiltin("math::copy_sign", []Type{TVal(NUMBER), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		value := arguments[0].(*Number)
+		sign := arguments[1].(*Number)
+
+		return ctx.NewNumber(math.Copysign(value.data, sign.data)), nil
 	})
 }
 
