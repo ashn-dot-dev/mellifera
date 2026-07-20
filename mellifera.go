@@ -389,6 +389,7 @@ func NewContext() *Context {
 		{ctx.NewString("init"), BuiltinNumberInit(ctx)},
 		{ctx.NewString("is_nan"), BuiltinNumberIsNan(ctx)},
 		{ctx.NewString("is_inf"), BuiltinNumberIsInf(ctx)},
+		{ctx.NewString("is_finite"), BuiltinNumberIsFinite(ctx)},
 		{ctx.NewString("is_integer"), BuiltinNumberIsInteger(ctx)},
 		{ctx.NewString("format"), BuiltinNumberFormat(ctx)},
 		{ctx.NewString("fixed"), BuiltinNumberFixed(ctx)},
@@ -538,6 +539,7 @@ func NewContext() *Context {
 		{ctx.NewString("pi"), ctx.NewNumber(math.Pi)},
 		{ctx.NewString("is_nan"), BuiltinMathIsNaN(ctx)},
 		{ctx.NewString("is_inf"), BuiltinMathIsInf(ctx)},
+		{ctx.NewString("is_finite"), BuiltinMathIsFinite(ctx)},
 		{ctx.NewString("is_integer"), BuiltinMathIsInteger(ctx)},
 		{ctx.NewString("sign"), BuiltinMathSign(ctx)},
 		{ctx.NewString("copy_sign"), BuiltinMathCopySign(ctx)},
@@ -8269,6 +8271,14 @@ func BuiltinNumberIsInf(ctx *Context) Value {
 	})
 }
 
+func BuiltinNumberIsFinite(ctx *Context) Value {
+	return ctx.NewBuiltin("number::is_finite", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Number)
+
+		return ctx.NewBoolean(!math.IsInf(self.data, 0) && !math.IsNaN(self.data)), nil
+	})
+}
+
 func BuiltinNumberIsInteger(ctx *Context) Value {
 	return ctx.NewBuiltin("number::is_integer", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Number)
@@ -10367,6 +10377,14 @@ func BuiltinMathIsNaN(ctx *Context) Value {
 func BuiltinMathIsInf(ctx *Context) Value {
 	return ctx.NewBuiltin("math::is_inf", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewBoolean(math.IsInf(arguments[0].(*Number).data, 0)), nil
+	})
+}
+
+func BuiltinMathIsFinite(ctx *Context) Value {
+	return ctx.NewBuiltin("math::is_finite", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		value := arguments[0].(*Number)
+
+		return ctx.NewBoolean(!math.IsInf(value.data, 0) && !math.IsNaN(value.data)), nil
 	})
 }
 

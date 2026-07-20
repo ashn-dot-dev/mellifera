@@ -1,0 +1,13 @@
+println($`0.is_finite() is {(+123).is_finite()}`);
+println($`(-123).is_finite() is {(-123).is_finite()}`);
+println($`(+123).is_finite() is {(+123).is_finite()}`);
+println($`(-Inf).is_finite() is {(+Inf).is_finite()}`);
+println($`(+Inf).is_finite() is {(+Inf).is_finite()}`);
+println($`NaN.is_finite() is {NaN.is_finite()}`);
+################################################################################
+# 0.is_finite() is true
+# (-123).is_finite() is true
+# (+123).is_finite() is true
+# (-Inf).is_finite() is false
+# (+Inf).is_finite() is false
+# NaN.is_finite() is false

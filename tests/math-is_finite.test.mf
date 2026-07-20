@@ -1,0 +1,13 @@
+println($`math::is_finite(0) is {math::is_finite(+123)}`);
+println($`math::is_finite(-123) is {math::is_finite(-123)}`);
+println($`math::is_finite(+123) is {math::is_finite(+123)}`);
+println($`math::is_finite(-Inf) is {math::is_finite(+Inf)}`);
+println($`math::is_finite(+Inf) is {math::is_finite(+Inf)}`);
+println($`math::is_finite(NaN) is {math::is_finite(NaN)}`);
+################################################################################
+# math::is_finite(0) is true
+# math::is_finite(-123) is true
+# math::is_finite(+123) is true
+# math::is_finite(-Inf) is false
+# math::is_finite(+Inf) is false
+# math::is_finite(NaN) is false

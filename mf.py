@@ -5699,6 +5699,11 @@ def builtin_number_is_inf(number: Number) -> Union[Value, Error]:
     return Boolean.new(math.isinf(number.data))
 
 
+@builtin("number::is_finite", [Number])
+def builtin_number_is_finite(number: Number) -> Union[Value, Error]:
+    return Boolean.new(math.isfinite(number.data))
+
+
 @builtin("number::is_integer", [Number])
 def builtin_number_is_integer(number: Number) -> Union[Value, Error]:
     return Boolean.new(float(number.data).is_integer())
@@ -6987,6 +6992,11 @@ def builtin_math_is_inf(value: Number) -> Union[Value, Error]:
     return Boolean.new(math.isinf(value.data))
 
 
+@builtin("math::is_finite", [Number])
+def builtin_math_is_finite(number: Number) -> Union[Value, Error]:
+    return Boolean.new(math.isfinite(number.data))
+
+
 @builtin("math::is_integer", [Number])
 def builtin_math_is_integer(value: Number) -> Union[Value, Error]:
     return Boolean.new(float(value.data).is_integer())
@@ -7504,6 +7514,7 @@ _NUMBER_META = Map.new_meta(
         String("init"): builtin_number_init(),
         String("is_nan"): builtin_number_is_nan(),
         String("is_inf"): builtin_number_is_inf(),
+        String("is_finite"): builtin_number_is_finite(),
         String("is_integer"): builtin_number_is_integer(),
         String("format"): builtin_number_format(),
         String("fixed"): builtin_number_fixed(),
@@ -7781,6 +7792,7 @@ BASE_ENVIRONMENT.let(
             String.new("pi"): Number.new(math.pi),
             String.new("is_nan"): builtin_math_is_nan(),
             String.new("is_inf"): builtin_math_is_inf(),
+            String.new("is_finite"): builtin_math_is_finite(),
             String.new("is_integer"): builtin_math_is_integer(),
             String.new("sign"): builtin_math_sign(),
             String.new("copy_sign"): builtin_math_copy_sign(),
