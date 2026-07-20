@@ -7046,23 +7046,14 @@ def builtin_math_mod():
     return """
     return function(n, divisor) {
         if divisor.is_inf() and not n.is_inf() and not n.is_nan() {
-            # if n == 0 then return copysign(0, divisor)
             if n == 0 {
-                if divisor < 0 {
-                    return -0;
-                }
-                return +0;
+                return math::copy_sign(0, divisor);
             }
-
-            # if sign(n) == sign(divisor) then return n
-            if (n < 0) == (divisor < 0) and (n > 0) == (divisor > 0) {
+            if math::sign(n) == math::sign(divisor) {
                 return n;
             }
-
-            # otherwise return divisor
             return divisor;
         }
-
         return ((n % divisor) + divisor) % divisor;
     };
     """
