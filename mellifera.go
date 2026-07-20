@@ -10460,7 +10460,7 @@ func BuiltinMathAbs(ctx *Context) Value {
 func BuiltinMathMod(ctx *Context) Value {
 	function := ctx.NewValueFromSourceOrPanic("math::mod", `
 return function(n, divisor) {
-	if divisor.is_inf() and not n.is_inf() and not n.is_nan() {
+	if n.is_finite() and divisor.is_inf() {
 		if n == 0 {
 			return math::copy_sign(0, divisor);
 		}
