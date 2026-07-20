@@ -1,0 +1,45 @@
+println($`math::rem(+7, +3) is {math::rem(+7, +3)}`);
+println($`math::rem(+7, -3) is {math::rem(+7, -3)}`);
+println($`math::rem(-7, +3) is {math::rem(-7, +3)}`);
+println($`math::rem(-7, -3) is {math::rem(-7, -3)}`);
+println($`math::rem(10, 3.5) is {math::rem(10, 3.5)}`);
+println($`math::rem(+Inf, +1) is {math::rem(+Inf, +1)}`);
+println($`math::rem(-Inf, +1) is {math::rem(-Inf, +1)}`);
+println($`math::rem(+Inf, -1) is {math::rem(+Inf, -1)}`);
+println($`math::rem(-Inf, -1) is {math::rem(-Inf, -1)}`);
+println($`math::rem(+1, +Inf) is {math::rem(+1, +Inf)}`);
+println($`math::rem(+1, -Inf) is {math::rem(+1, -Inf)}`);
+println($`math::rem(-1, +Inf) is {math::rem(-1, +Inf)}`);
+println($`math::rem(-1, -Inf) is {math::rem(-1, -Inf)}`);
+println($`math::rem(0, +Inf) is {math::rem(0, +Inf)}`);
+println($`math::rem(0, -Inf) is {math::rem(0, -Inf)}`);
+println($`1 / math::rem(0, +Inf) is {1 / math::rem(0, +Inf)}`); # check for +0
+println($`1 / math::rem(0, -Inf) is {1 / math::rem(0, -Inf)}`); # check for +0
+println($`math::rem(NaN, 1) is {math::rem(NaN, 1)}`);
+println($`math::rem(1, Nan) is {math::rem(1, NaN)}`);
+println($`math::rem(NaN, +Inf) is {math::rem(NaN, +Inf)}`);
+println($`math::rem(NaN, -Inf) is {math::rem(NaN, -Inf)}`);
+println($`math::rem(1, 0) is {math::rem(1, 0)}`);
+################################################################################
+# math::rem(+7, +3) is 1
+# math::rem(+7, -3) is 1
+# math::rem(-7, +3) is -1
+# math::rem(-7, -3) is -1
+# math::rem(10, 3.5) is 3
+# math::rem(+Inf, +1) is NaN
+# math::rem(-Inf, +1) is NaN
+# math::rem(+Inf, -1) is NaN
+# math::rem(-Inf, -1) is NaN
+# math::rem(+1, +Inf) is 1
+# math::rem(+1, -Inf) is 1
+# math::rem(-1, +Inf) is -1
+# math::rem(-1, -Inf) is -1
+# math::rem(0, +Inf) is 0
+# math::rem(0, -Inf) is 0
+# 1 / math::rem(0, +Inf) is Inf
+# 1 / math::rem(0, -Inf) is Inf
+# math::rem(NaN, 1) is NaN
+# math::rem(1, Nan) is NaN
+# math::rem(NaN, +Inf) is NaN
+# math::rem(NaN, -Inf) is NaN
+# math::rem(1, 0) is NaN

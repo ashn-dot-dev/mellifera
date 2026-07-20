@@ -17,6 +17,22 @@ println($`+7 % -3 is {+7 % -3}`);
 println($`-7 % +3 is {-7 % +3}`);
 println($`-7 % -3 is {-7 % -3}`);
 println($`10 % 3.5 is {10 % 3.5}`);
+println($`-Inf % +1 is {-Inf % +1}`);
+println($`+Inf % -1 is {+Inf % -1}`);
+println($`-Inf % -1 is {-Inf % -1}`);
+println($`+1 % +Inf is {+1 % +Inf}`);
+println($`+1 % -Inf is {+1 % -Inf}`);
+println($`-1 % +Inf is {-1 % +Inf}`);
+println($`-1 % -Inf is {-1 % -Inf}`);
+println($`0 % +Inf is {0 % +Inf}`);
+println($`0 % -Inf is {0 % -Inf}`);
+println($`1 / (0 % +Inf) is {1 / (0 % +Inf)}`);
+println($`1 / (0 % -Inf) is {1 / (0 % -Inf)}`);
+println($`NaN % 1 is {NaN % 1}`);
+println($`1 % Nan is {1 % NaN}`);
+println($`NaN % +Inf is {NaN % +Inf}`);
+println($`NaN % -Inf is {NaN % -Inf}`);
+println($`1 % 0 is {1 % 0}`);
 ################################################################################
 # "attempted % operation with types `null` and `null`"
 # "attempted % operation with types `boolean` and `boolean`"
@@ -34,3 +50,19 @@ println($`10 % 3.5 is {10 % 3.5}`);
 # -7 % +3 is -1
 # -7 % -3 is -1
 # 10 % 3.5 is 3
+# -Inf % +1 is NaN
+# +Inf % -1 is NaN
+# -Inf % -1 is NaN
+# +1 % +Inf is 1
+# +1 % -Inf is 1
+# -1 % +Inf is -1
+# -1 % -Inf is -1
+# 0 % +Inf is 0
+# 0 % -Inf is 0
+# 1 / (0 % +Inf) is Inf
+# 1 / (0 % -Inf) is Inf
+# NaN % 1 is NaN
+# 1 % Nan is NaN
+# NaN % +Inf is NaN
+# NaN % -Inf is NaN
+# 1 % 0 is NaN

@@ -544,6 +544,8 @@ func NewContext() *Context {
 		{ctx.NewString("floor"), BuiltinMathFloor(ctx)},
 		{ctx.NewString("ceil"), BuiltinMathCeil(ctx)},
 		{ctx.NewString("abs"), BuiltinMathAbs(ctx)},
+		{ctx.NewString("mod"), BuiltinMathMod(ctx)},
+		{ctx.NewString("rem"), BuiltinMathRem(ctx)},
 		{ctx.NewString("exp"), BuiltinMathExp(ctx)},
 		{ctx.NewString("exp2"), BuiltinMathExp2(ctx)},
 		{ctx.NewString("exp10"), BuiltinMathExp10(ctx)},
@@ -10367,7 +10369,7 @@ func BuiltinMathIsInf(ctx *Context) Value {
 }
 
 func BuiltinMathIsInteger(ctx *Context) Value {
-	return ctx.NewBuiltin("math::is_integer", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+	return ctx.NewBuiltin("math::copy_sign", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		value := arguments[0].(*Number)
 
 		if math.IsInf(value.data, 0) || math.IsNaN(value.data) {
@@ -10405,6 +10407,48 @@ func BuiltinMathCeil(ctx *Context) Value {
 func BuiltinMathAbs(ctx *Context) Value {
 	return ctx.NewBuiltin("math::abs", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewNumber(math.Abs(arguments[0].(*Number).data)), nil
+	})
+}
+
+func BuiltinMathMod(ctx *Context) Value {
+	function := ctx.NewValueFromSourceOrPanic("math::mod", `
+return function(n, divisor) {
+	if divisor.is_inf() and not n.is_inf() and not n.is_nan() {
+		# if n == 0 then return copysign(0, divisor)
+		if n == 0 {
+			if divisor < 0 {
+				return -0;
+			}
+			return +0;
+		}
+
+		# if sign(n) == sign(divisor) then return n
+		if (n < 0) == (divisor < 0) and (n > 0) == (divisor > 0) {
+			return n;
+		}
+
+		# otherwise return divisor
+		return divisor;
+	}
+
+	return ((n % divisor) + divisor) % divisor;
+};
+	`)
+
+	return ctx.NewBuiltin("math::mod", []Type{TVal(NUMBER), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return Call(ctx, nil, function, arguments)
+	})
+}
+
+func BuiltinMathRem(ctx *Context) Value {
+	function := ctx.NewValueFromSourceOrPanic("math::rem", `
+return function(n, divisor) {
+	return n % divisor;
+};
+	`)
+
+	return ctx.NewBuiltin("math::rem", []Type{TVal(NUMBER), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return Call(ctx, nil, function, arguments)
 	})
 }
 

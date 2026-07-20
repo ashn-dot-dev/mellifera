@@ -1,0 +1,45 @@
+println($`math::mod(+7, +3) is {math::mod(+7, +3)}`);
+println($`math::mod(+7, -3) is {math::mod(+7, -3)}`);
+println($`math::mod(-7, +3) is {math::mod(-7, +3)}`);
+println($`math::mod(-7, -3) is {math::mod(-7, -3)}`);
+println($`math::mod(10, 3.5) is {math::mod(10, 3.5)}`);
+println($`math::mod(+Inf, +1) is {math::mod(+Inf, +1)}`);
+println($`math::mod(-Inf, +1) is {math::mod(-Inf, +1)}`);
+println($`math::mod(+Inf, -1) is {math::mod(+Inf, -1)}`);
+println($`math::mod(-Inf, -1) is {math::mod(-Inf, -1)}`);
+println($`math::mod(+1, +Inf) is {math::mod(+1, +Inf)}`);
+println($`math::mod(+1, -Inf) is {math::mod(+1, -Inf)}`);
+println($`math::mod(-1, +Inf) is {math::mod(-1, +Inf)}`);
+println($`math::mod(-1, -Inf) is {math::mod(-1, -Inf)}`);
+println($`math::mod(0, +Inf) is {math::mod(0, +Inf)}`);
+println($`math::mod(0, -Inf) is {math::mod(0, -Inf)}`);
+println($`1 / math::mod(0, +Inf) is {1 / math::mod(0, +Inf)}`); # check for +0
+println($`1 / math::mod(0, -Inf) is {1 / math::mod(0, -Inf)}`); # check for -0
+println($`math::mod(NaN, 1) is {math::mod(NaN, 1)}`);
+println($`math::mod(1, Nan) is {math::mod(1, NaN)}`);
+println($`math::mod(NaN, +Inf) is {math::mod(NaN, +Inf)}`);
+println($`math::mod(NaN, -Inf) is {math::mod(NaN, -Inf)}`);
+println($`math::mod(1, 0) is {math::mod(1, 0)}`);
+################################################################################
+# math::mod(+7, +3) is 1
+# math::mod(+7, -3) is -2
+# math::mod(-7, +3) is 2
+# math::mod(-7, -3) is -1
+# math::mod(10, 3.5) is 3
+# math::mod(+Inf, +1) is NaN
+# math::mod(-Inf, +1) is NaN
+# math::mod(+Inf, -1) is NaN
+# math::mod(-Inf, -1) is NaN
+# math::mod(+1, +Inf) is 1
+# math::mod(+1, -Inf) is -Inf
+# math::mod(-1, +Inf) is Inf
+# math::mod(-1, -Inf) is -1
+# math::mod(0, +Inf) is 0
+# math::mod(0, -Inf) is 0
+# 1 / math::mod(0, +Inf) is Inf
+# 1 / math::mod(0, -Inf) is -Inf
+# math::mod(NaN, 1) is NaN
+# math::mod(1, Nan) is NaN
+# math::mod(NaN, +Inf) is NaN
+# math::mod(NaN, -Inf) is NaN
+# math::mod(1, 0) is NaN

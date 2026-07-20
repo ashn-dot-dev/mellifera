@@ -3406,9 +3406,9 @@ class AstExpressionDiv(AstExpression):
         rhs_float = float(rhs.data)
         if rhs_float == 0.0:
             if lhs_float > 0.0:
-                return Number.new(+math.inf)
+                return Number.new(math.copysign(1, rhs_float) * +math.inf)
             if lhs_float < 0.0:
-                return Number.new(-math.inf)
+                return Number.new(math.copysign(1, rhs_float) * -math.inf)
             return Number.new(math.nan)
         return Number.new(lhs_float / rhs_float)
 
@@ -3444,8 +3444,14 @@ class AstExpressionRem(AstExpression):
                 self.location,
                 f"attempted % operation with types {quote(typename(lhs))} and {quote(typename(rhs))}",
             )
+        if math.isnan(float(lhs.data)) or math.isnan(float(rhs.data)):
+            return Number.new(math.nan)
+        if math.isinf(float(lhs.data)):
+            return Number.new(math.nan)
+        if math.isinf(float(rhs.data)):
+            return Number.new(lhs.data)
         if float(rhs.data) == 0.0:
-            return Error(self.location, "remainder with divisor zero")
+            return Number.new(math.nan)
         # The remainder will have the same sign as the dividend.
         # This behavior is identical to C's remainder operator.
         #   +7 % +3 => +1
@@ -7019,6 +7025,42 @@ def builtin_math_abs(value: Number) -> Union[Value, Error]:
     return Number.new(math.fabs(float(value.data)))
 
 
+@builtin_from_source("math::mod")
+def builtin_math_mod():
+    return """
+    return function(n, divisor) {
+        if divisor.is_inf() and not n.is_inf() and not n.is_nan() {
+            # if n == 0 then return copysign(0, divisor)
+            if n == 0 {
+                if divisor < 0 {
+                    return -0;
+                }
+                return +0;
+            }
+
+            # if sign(n) == sign(divisor) then return n
+            if (n < 0) == (divisor < 0) and (n > 0) == (divisor > 0) {
+                return n;
+            }
+
+            # otherwise return divisor
+            return divisor;
+        }
+
+        return ((n % divisor) + divisor) % divisor;
+    };
+    """
+
+
+@builtin_from_source("math::rem")
+def builtin_math_rem():
+    return """
+    return function(n, divisor) {
+        return n % divisor;
+    };
+    """
+
+
 @builtin("math::exp", [Number])
 def builtin_math_exp(value: Number) -> Union[Value, Error]:
     return Number.new(math.exp(float(value.data)))
@@ -7738,6 +7780,8 @@ BASE_ENVIRONMENT.let(
             String.new("floor"): builtin_math_floor(),
             String.new("ceil"): builtin_math_ceil(),
             String.new("abs"): builtin_math_abs(),
+            String.new("mod"): builtin_math_mod(),
+            String.new("rem"): builtin_math_rem(),
             String.new("exp"): builtin_math_exp(),
             String.new("exp2"): builtin_math_exp2(),
             String.new("exp10"): builtin_math_exp10(),
