@@ -411,7 +411,7 @@ func BuiltinJsValueCall(ctx *mellifera.Context) *mellifera.Builtin {
 
 		methodJsValue := delfJsValue.Get(method.Data())
 		if methodJsValue.Type() != js.TypeFunction {
-			return nil, mellifera.NewError(nil, ctx.NewStringf("external value %v is does not have method %s (found %v)", delf, method.Data(), ctx.NewExternalWithType(ctx.BaseEnvironment.GetOrPanic("@js::value").(*mellifera.Map), methodJsValue)))
+			return nil, mellifera.NewError(nil, ctx.NewStringf("external value %v does not have method %s (found %v)", delf, method.Data(), ctx.NewExternalWithType(ctx.BaseEnvironment.GetOrPanic("@js::value").(*mellifera.Map), methodJsValue)))
 		}
 
 		argsSlice := []any{}
