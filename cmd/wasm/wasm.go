@@ -660,6 +660,14 @@ func BuiltinFsAppend(ctx *mellifera.Context) mellifera.Value {
 	})
 }
 
+func BuiltinExit(ctx *mellifera.Context) mellifera.Value {
+	return ctx.NewBuiltin("exit", []mellifera.Type{
+		mellifera.TVal(mellifera.NUMBER),
+	}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
+		return nil, mellifera.NewError(nil, ctx.NewStringf("unsupported function"))
+	})
+}
+
 func BuiltinImport(ctx *mellifera.Context) mellifera.Value {
 	return ctx.NewBuiltin("import", []mellifera.Type{
 		mellifera.TVal(mellifera.STRING),
@@ -822,6 +830,7 @@ func main() {
 				{ctx.NewString("write"), BuiltinFsWrite(ctx)},
 				{ctx.NewString("append"), BuiltinFsAppend(ctx)},
 			}).Freeze())
+			ctx.BaseEnvironment.Set("exit", BuiltinExit(ctx))
 			ctx.BaseEnvironment.Set("import", BuiltinImport(ctx))
 			ctx.BaseEnvironment.Let("@js::value", ctx.NewMetaMapOrPanic("js::value", []mellifera.MapPair{
 				{ctx.NewString("get"), BuiltinJsValueGet(ctx)},
