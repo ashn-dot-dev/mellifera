@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"runtime/debug"
@@ -907,23 +908,28 @@ func main() {
 
 		_, err := eval()
 		if err != nil {
+			stderr := io.Writer(os.Stderr)
+			if ctx != nil {
+				stderr = ctx.Stderr
+			}
+
 			if e, ok := err.(mellifera.ParseError); ok && e.Location != nil {
-				fmt.Fprintf(ctx.Stderr, "[%v, line %v] error: %v\n", e.Location.File, e.Location.Line, err)
+				fmt.Fprintf(stderr, "[%v, line %v] error: %v\n", e.Location.File, e.Location.Line, err)
 			} else if e, ok := err.(mellifera.Error); ok {
 				if e.Location != nil {
-					fmt.Fprintf(ctx.Stderr, "[%v, line %v] error: %v\n", e.Location.File, e.Location.Line, err)
+					fmt.Fprintf(stderr, "[%v, line %v] error: %v\n", e.Location.File, e.Location.Line, err)
 				} else {
-					fmt.Fprintf(ctx.Stderr, "error: %v\n", err)
+					fmt.Fprintf(stderr, "error: %v\n", err)
 				}
 				for _, element := range e.Trace {
 					s := fmt.Sprintf("...within %v", element.FuncName)
 					if element.Location != nil {
 						s += fmt.Sprintf(" called from %s, line %v", element.Location.File, element.Location.Line)
 					}
-					fmt.Fprintf(ctx.Stderr, "%s\n", s)
+					fmt.Fprintf(stderr, "%s\n", s)
 				}
 			} else {
-				fmt.Fprintf(ctx.Stderr, "%v\n", err)
+				fmt.Fprintf(stderr, "%v\n", err)
 			}
 		}
 
