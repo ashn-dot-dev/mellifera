@@ -5936,7 +5936,7 @@ def builtin_string_slice(
     if end_index > len(string.bytes):
         return Error(
             None,
-            f"attempted string::slice with invalid begin index {end} (string has a count of {len(string.bytes)})",
+            f"attempted string::slice with invalid end index {end} (string has a count of {len(string.bytes)})",
         )
 
     if end_index < bgn_index:
@@ -6243,7 +6243,7 @@ def builtin_vector_slice(
     if end_index > len(vector.data):
         return Error(
             None,
-            f"attempted vector::slice with invalid begin index {end} (vector has a count of {len(vector.data)})",
+            f"attempted vector::slice with invalid end index {end} (vector has a count of {len(vector.data)})",
         )
 
     if end_index < bgn_index:
