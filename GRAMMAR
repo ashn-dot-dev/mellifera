@@ -47,7 +47,7 @@
                | <function>
                | <template>
                | <identifier>
-               | freeze <expression>
+               | "freeze" <expression>
                | type (extends <expression>) <expression>
                | new <expression> <expression>
                | "(" <expression> ")"
