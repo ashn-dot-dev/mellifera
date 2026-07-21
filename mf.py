@@ -21,6 +21,7 @@ from typing import (
     final,
 )
 import code
+import decimal
 import enum
 import json
 import math
@@ -409,7 +410,7 @@ class Number(Value):
         if math.trunc(float(self.data)) == float(self.data):
             string = f"{self.data:f}"
         else:
-            string = str(self.data)
+            string = format(decimal.Decimal(str(self.data)), "f")
         dot = string.find(".")
         end = len(string)
         while string[end - 1] == "0":

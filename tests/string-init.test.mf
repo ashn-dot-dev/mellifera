@@ -3,6 +3,7 @@ println($`string::init(true) is {repr(string::init(true))}`);
 println($`string::init(false) is {repr(string::init(false))}`);
 println($`string::init(123) is {repr(string::init(123))}`);
 println($`string::init(123.4) is {repr(string::init(123.4))}`);
+println($`string::init(0.00000000000000000001) is {repr(string::init(0.00000000000000000001))}`);
 println($`string::init(Inf) is {repr(string::init(Inf))}`);
 println($`string::init(NaN) is {repr(string::init(NaN))}`);
 println($`string::init("foo") is {repr(string::init("foo"))}`);
@@ -31,6 +32,7 @@ try { println(repr(string::init(y))); } catch err { println($"error: {err}"); }
 # string::init(false) is "false"
 # string::init(123) is "123"
 # string::init(123.4) is "123.4"
+# string::init(0.00000000000000000001) is "0.00000000000000000001"
 # string::init(Inf) is "Inf"
 # string::init(NaN) is "NaN"
 # string::init("foo") is "foo"
