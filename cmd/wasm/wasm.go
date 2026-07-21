@@ -295,7 +295,7 @@ func BuiltinJsValueSet(ctx *mellifera.Context) *mellifera.Builtin {
 
 		valueJsValue, ok := value.Data().(js.Value)
 		if !ok {
-			return nil, mellifera.NewError(nil, ctx.NewStringf("external value %v is not a JavaScript value", delf))
+			return nil, mellifera.NewError(nil, ctx.NewStringf("external value %v is not a JavaScript value", value))
 		}
 
 		delfJsValue.Set(property.Data(), valueJsValue)
@@ -442,11 +442,11 @@ func BuiltinJsCall(ctx *mellifera.Context) *mellifera.Builtin {
 
 		functionJsValue, ok := function.Data().(js.Value)
 		if !ok {
-			return nil, mellifera.NewError(nil, ctx.NewStringf("external value %v is not a JavaScript value", functionJsValue))
+			return nil, mellifera.NewError(nil, ctx.NewStringf("external value %v is not a JavaScript value", function))
 		}
 
 		if functionJsValue.Type() != js.TypeFunction {
-			return nil, mellifera.NewError(nil, ctx.NewStringf("external value %v is not a JavaScript function", functionJsValue))
+			return nil, mellifera.NewError(nil, ctx.NewStringf("external value %v is not a JavaScript function", function))
 		}
 
 		argsSlice := []any{}
