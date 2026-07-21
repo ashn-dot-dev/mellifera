@@ -7892,6 +7892,7 @@ func (self *Parser) ParseStatementExpressionOrAssignment() (AstStatement, error)
 	return &AstStatementAssignment{location, expression, rhs}, nil
 }
 
+// Invoke a callable function, either a *Function or *Builtin value.
 func Call(ctx *Context, location *SourceLocation, callable Value, arguments []Value) (Value, error) {
 	ctx.callDepth += 1
 	defer func() { ctx.callDepth -= 1 }()
@@ -7982,6 +7983,21 @@ func Call(ctx *Context, location *SourceLocation, callable Value, arguments []Va
 		location,
 		ctx.NewStringf("attempted to call non-function type %s with value %s", quote(callable.Typename()), callable.String()),
 	)
+}
+
+// Invoke a callable function, either a *Function or *Builtin value, and strip
+// internal trace elements on error. Used to invoke built-in functions created
+// with Context.NewValueFromSource() and Context.NewValueFromSourceOrPanic() in
+// a way that hides the internal source of those functions.
+func CallBuiltinFromSource(ctx *Context, function Value, arguments []Value) (Value, error) {
+	result, err := Call(ctx, nil, function, arguments)
+	if err != nil {
+		if e, ok := err.(Error); ok {
+			e.Trace = nil
+			return nil, e
+		}
+	}
+	return result, err
 }
 
 const (
@@ -9192,7 +9208,7 @@ return function(self) {
 `)
 
 	return ctx.NewBuiltin("vector::sorted", []Type{TVal(VECTOR)}, func(ctx *Context, arguments []Value) (Value, error) {
-		return Call(ctx, nil, function, arguments)
+		return CallBuiltinFromSource(ctx, function, arguments)
 	})
 }
 
@@ -9246,7 +9262,7 @@ return function(self, compare) {
 `)
 
 	return ctx.NewBuiltin("vector::sorted_by", []Type{TVal(VECTOR), TVal(CALLABLE)}, func(ctx *Context, arguments []Value) (Value, error) {
-		return Call(ctx, nil, function, arguments)
+		return CallBuiltinFromSource(ctx, function, arguments)
 	})
 }
 
@@ -9271,7 +9287,7 @@ return function(self) {
 	`)
 
 	return ctx.NewBuiltin("vector::into_iterator", []Type{TVal(VECTOR)}, func(ctx *Context, arguments []Value) (Value, error) {
-		return Call(ctx, nil, function, arguments)
+		return CallBuiltinFromSource(ctx, function, arguments)
 	})
 }
 
@@ -9417,7 +9433,7 @@ return function(a, b) {
 	`)
 
 	return ctx.NewBuiltin("map::union", []Type{TVal(ANY), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
-		return Call(ctx, nil, function, arguments)
+		return CallBuiltinFromSource(ctx, function, arguments)
 	})
 }
 
@@ -9503,7 +9519,7 @@ return function(a, b) {
 	`)
 
 	return ctx.NewBuiltin("set::union", []Type{TVal(ANY), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
-		return Call(ctx, nil, function, arguments)
+		return CallBuiltinFromSource(ctx, function, arguments)
 	})
 }
 
@@ -9526,7 +9542,7 @@ return function(a, b) {
 	`)
 
 	return ctx.NewBuiltin("set::intersection", []Type{TVal(ANY), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
-		return Call(ctx, nil, function, arguments)
+		return CallBuiltinFromSource(ctx, function, arguments)
 	})
 }
 
@@ -9549,7 +9565,7 @@ return function(a, b) {
 	`)
 
 	return ctx.NewBuiltin("set::difference", []Type{TVal(ANY), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
-		return Call(ctx, nil, function, arguments)
+		return CallBuiltinFromSource(ctx, function, arguments)
 	})
 }
 
@@ -9575,7 +9591,7 @@ return assert;
 	`)
 
 	return ctx.NewBuiltin("assert", []Type{TVal(BOOLEAN)}, func(ctx *Context, arguments []Value) (Value, error) {
-		return Call(ctx, nil, function, arguments)
+		return CallBuiltinFromSource(ctx, function, arguments)
 	})
 }
 
@@ -9796,7 +9812,7 @@ return range;
 	`)
 
 	return ctx.NewBuiltin("range", []Type{TVal(NUMBER), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
-		return Call(ctx, nil, function, arguments)
+		return CallBuiltinFromSource(ctx, function, arguments)
 	})
 }
 
@@ -9812,7 +9828,7 @@ return min;
 	`)
 
 	return ctx.NewBuiltin("min", []Type{TVal(ANY), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
-		return Call(ctx, nil, function, arguments)
+		return CallBuiltinFromSource(ctx, function, arguments)
 	})
 }
 
@@ -9828,7 +9844,7 @@ return max;
 	`)
 
 	return ctx.NewBuiltin("max", []Type{TVal(ANY), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
-		return Call(ctx, nil, function, arguments)
+		return CallBuiltinFromSource(ctx, function, arguments)
 	})
 }
 
@@ -10480,7 +10496,7 @@ return function(n, divisor) {
 	`)
 
 	return ctx.NewBuiltin("math::mod", []Type{TVal(NUMBER), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
-		return Call(ctx, nil, function, arguments)
+		return CallBuiltinFromSource(ctx, function, arguments)
 	})
 }
 
@@ -10492,7 +10508,7 @@ return function(n, divisor) {
 	`)
 
 	return ctx.NewBuiltin("math::rem", []Type{TVal(NUMBER), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
-		return Call(ctx, nil, function, arguments)
+		return CallBuiltinFromSource(ctx, function, arguments)
 	})
 }
 
@@ -10577,7 +10593,7 @@ return clamp;
 	`)
 
 	return ctx.NewBuiltin("math::clamp", []Type{TVal(NUMBER), TVal(NUMBER), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
-		return Call(ctx, nil, function, arguments)
+		return CallBuiltinFromSource(ctx, function, arguments)
 	})
 }
 
@@ -10703,7 +10719,7 @@ return function(string, regexp) {
 	`)
 
 	return ctx.NewBuiltin("re::split", []Type{TVal(STRING), TVal(REGEXP)}, func(ctx *Context, arguments []Value) (Value, error) {
-		return Call(ctx, nil, function, arguments)
+		return CallBuiltinFromSource(ctx, function, arguments)
 	})
 }
 
@@ -10715,7 +10731,7 @@ return function(string, regexp, replacement) {
 	`)
 
 	return ctx.NewBuiltin("re::replace", []Type{TVal(STRING), TVal(REGEXP), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
-		return Call(ctx, nil, function, arguments)
+		return CallBuiltinFromSource(ctx, function, arguments)
 	})
 }
 
