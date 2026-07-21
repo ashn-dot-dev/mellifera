@@ -2,6 +2,12 @@ println($`(+123.45).round() is {(+123.45).round()}`);
 println($`(-123.45).round() is {(-123.45).round()}`);
 println($`(+123.54).round() is {(+123.54).round()}`);
 println($`(-123.54).round() is {(-123.54).round()}`);
+println($`(+0.5).round() is {(+0.5).round()}`);
+println($`(-0.5).round() is {(-0.5).round()}`);
+println($`(+2.5).round() is {(+2.5).round()}`);
+println($`(-2.5).round() is {(-2.5).round()}`);
+println($`(+0.49999999999999994).round() is {(+0.49999999999999994).round()}`);
+println($`(-0.49999999999999994).round() is {(-0.49999999999999994).round()}`);
 println($`Inf.round() is {Inf.round()}`);
 println($`NaN.round() is {NaN.round()}`);
 ################################################################################
@@ -9,5 +15,11 @@ println($`NaN.round() is {NaN.round()}`);
 # (-123.45).round() is -123
 # (+123.54).round() is 124
 # (-123.54).round() is -124
+# (+0.5).round() is 1
+# (-0.5).round() is -1
+# (+2.5).round() is 3
+# (-2.5).round() is -3
+# (+0.49999999999999994).round() is 0
+# (-0.49999999999999994).round() is 0
 # Inf.round() is Inf
 # NaN.round() is NaN

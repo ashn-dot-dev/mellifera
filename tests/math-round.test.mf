@@ -7,6 +7,12 @@ dumpln(math::round(+123.456));
 dumpln(math::round(-123.456));
 dumpln(math::round(+123.654));
 dumpln(math::round(-123.654));
+dumpln(math::round(+0.5));
+dumpln(math::round(-0.5));
+dumpln(math::round(+2.5));
+dumpln(math::round(-2.5));
+dumpln(math::round(+0.49999999999999994));
+dumpln(math::round(-0.49999999999999994));
 ################################################################################
 # NaN
 # Inf
@@ -17,3 +23,9 @@ dumpln(math::round(-123.654));
 # -123
 # 124
 # -124
+# 1
+# -1
+# 3
+# -3
+# 0
+# 0

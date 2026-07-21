@@ -5731,7 +5731,12 @@ def builtin_number_trunc(number: Number) -> Union[Value, Error]:
 def builtin_number_round(number: Number) -> Union[Value, Error]:
     if math.isnan(number.data) or math.isinf(number.data):
         return copy(number)
-    return Number.new(round(float(number.data)))
+    x = float(number.data)
+    truncated = math.trunc(x)
+    if abs(x - truncated) == 0.5:
+        # Round half way away from zero.
+        return Number.new(truncated + math.copysign(1.0, x))
+    return Number.new(round(x))
 
 
 @builtin("number::floor", [Number])
@@ -7029,7 +7034,12 @@ def builtin_math_trunc(value: Number) -> Union[Value, Error]:
 def builtin_math_round(value: Number) -> Union[Value, Error]:
     if math.isnan(value.data) or math.isinf(value.data):
         return copy(value)
-    return Number.new(round(float(value.data)))
+    x = float(value.data)
+    truncated = math.trunc(x)
+    if abs(x - truncated) == 0.5:
+        # Round half way away from zero.
+        return Number.new(truncated + math.copysign(1.0, x))
+    return Number.new(round(x))
 
 
 @builtin("math::floor", [Number])
