@@ -459,7 +459,7 @@ println("=====================");
 #       # body
 #   }
 #
-# iterate over integers in the half-open range [0, n].
+# iterate over integers in the half-open range [0, n).
 for x in 3 {
     println($"x is {x}");
 }
