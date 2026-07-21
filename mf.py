@@ -7983,7 +7983,7 @@ def main() -> None:
         # $MELLIFERA_HOME/mf.py -> $MELLIFERA_HOME
         env_mellifera_home = str(Path(__file__).resolve().parent)
         os.environ["MELLIFERA_HOME"] = env_mellifera_home
-    env_mellifera_search_path = os.getenv("MELLIFERA_SERCH_PATH")
+    env_mellifera_search_path = os.getenv("MELLIFERA_SEARCH_PATH")
     if env_mellifera_search_path is None:
         assert env_mellifera_home is not None
         os.environ["MELLIFERA_SEARCH_PATH"] = f"{env_mellifera_home}{os.sep}lib"
