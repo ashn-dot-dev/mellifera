@@ -1228,3 +1228,34 @@ func TestBuiltinJsonRoundtripDeterministic(t *testing.T) {
 		}
 	}
 }
+
+func TestBuiltinInputln(t *testing.T) {
+	ctx := NewContext()
+	ctx.Stdin = strings.NewReader("foo\n\nbar")
+	fn := BuiltinInputln(ctx).(*Builtin)
+
+	// "foo\n" reads as the line "foo".
+	result, err := fn.impl(ctx, []Value{})
+	AssertEq(t, err, nil)
+	AssertEq(t, "foo", result.(*String).data)
+
+	// "\n" reads as an empty line, distinct from the end of input.
+	result, err = fn.impl(ctx, []Value{})
+	AssertEq(t, err, nil)
+	AssertEq(t, "", result.(*String).data)
+
+	// "bar" without a trailing newline reads as the line "bar".
+	result, err = fn.impl(ctx, []Value{})
+	AssertEq(t, err, nil)
+	AssertEq(t, "bar", result.(*String).data)
+
+	// The end of input reads as null.
+	result, err = fn.impl(ctx, []Value{})
+	AssertEq(t, err, nil)
+	AssertEq(t, ctx.Null, result.(*Null))
+
+	// The end of input continues to read as null on subsequent calls.
+	result, err = fn.impl(ctx, []Value{})
+	AssertEq(t, err, nil)
+	AssertEq(t, ctx.Null, result.(*Null))
+}

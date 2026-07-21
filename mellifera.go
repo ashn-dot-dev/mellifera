@@ -9627,6 +9627,12 @@ func BuiltinInputln(ctx *Context) Value {
 			}
 			if err != nil {
 				if err == io.EOF {
+					if len(data) == 0 {
+						// The end of input was reached before any line data
+						// was read. Produce null so that the end of input is
+						// distinguishable from an empty line.
+						return ctx.NewNull(), nil
+					}
 					break
 				}
 				return nil, NewError(nil, ctx.NewString(err.Error()))
