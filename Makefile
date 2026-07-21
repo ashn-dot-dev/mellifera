@@ -5,7 +5,7 @@
 	wasm wasm-go \
 	install \
 	check check-go check-py \
-	lint \
+	lint-py \
 	format format-go format-py \
 	clean
 
