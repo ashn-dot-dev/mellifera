@@ -5414,7 +5414,7 @@ func (self *AstExpressionFunctionCall) Eval(ctx *Context, env *Environment) (Val
 		if function == nil {
 			return nil, NewError(
 				self.Location,
-				ctx.NewStringf("invalid method access with name %s", accessDot.Field.Name.data),
+				ctx.NewStringf("invalid method access with name %v", accessDot.Field.Name),
 			)
 		}
 

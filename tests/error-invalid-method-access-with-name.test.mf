@@ -1,0 +1,5 @@
+try { 123.nope(); } catch err { dumpln(err); }
+try { let m = {"foo": 123}; m.nope(); } catch err { dumpln(err); }
+################################################################################
+# "invalid method access with name \"nope\""
+# "invalid method access with name \"nope\""
