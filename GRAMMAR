@@ -48,8 +48,8 @@
                | <template>
                | <identifier>
                | "freeze" <expression>
-               | type (extends <expression>) <expression>
-               | new <expression> <expression>
+               | "type" ("extends" <expression>)? <expression>
+               | "new" <expression> <expression>
                | "(" <expression> ")"
                | "+" <expression>
                | "-" <expression>
