@@ -3336,7 +3336,7 @@ func NewError(location *SourceLocation, value Value) Error {
 	}
 }
 
-type RegexpMatch struct {
+type regexpMatch struct {
 	// String data tested by the last regular expression operation (=~, !~).
 	string string
 	// Result of the last regular expression operation (=~, !~) returned by:
@@ -3359,7 +3359,7 @@ type envRefInfo struct {
 type Environment struct {
 	store map[string]Value
 	outer *Environment // Optional
-	match *RegexpMatch // Optional
+	match *regexpMatch // Optional
 	refs  []envRefInfo
 	nref  int
 }
@@ -3429,11 +3429,11 @@ func (self *Environment) GetOrPanic(name string) Value {
 	return value
 }
 
-func (self *Environment) SetRegexpMatch(match RegexpMatch) {
+func (self *Environment) setRegexpMatch(match regexpMatch) {
 	self.match = &match
 }
 
-func (self *Environment) GetRegexpMatch() (RegexpMatch, bool) {
+func (self *Environment) getRegexpMatch() (regexpMatch, bool) {
 	env := self
 	for env != nil {
 		if env.match != nil {
@@ -3441,7 +3441,7 @@ func (self *Environment) GetRegexpMatch() (RegexpMatch, bool) {
 		}
 		env = env.outer
 	}
-	return RegexpMatch{}, false
+	return regexpMatch{}, false
 }
 
 type ControlFlow interface {
@@ -3776,7 +3776,7 @@ func (self AstExpressionRegexpGroup) IntoValue(ctx *Context) Value {
 }
 
 func (self *AstExpressionRegexpGroup) Eval(ctx *Context, env *Environment) (Value, error) {
-	match, ok := env.GetRegexpMatch()
+	match, ok := env.getRegexpMatch()
 	if !ok {
 		return nil, NewError(nil, ctx.NewString("regular expression did not match"))
 	}
@@ -4717,7 +4717,7 @@ func (self *AstExpressionEqRe) Eval(ctx *Context, env *Environment) (Value, erro
 		rhsRegexp, rhsIsRegexp := rhs.(*Regexp)
 		if rhsIsRegexp {
 			result := rhsRegexp.data.FindStringSubmatchIndex(lhsString.data)
-			env.SetRegexpMatch(RegexpMatch{lhsString.data, result})
+			env.setRegexpMatch(regexpMatch{lhsString.data, result})
 			return ctx.NewBoolean(result != nil), nil
 		}
 	}
@@ -4763,7 +4763,7 @@ func (self *AstExpressionNeRe) Eval(ctx *Context, env *Environment) (Value, erro
 		rhsRegexp, rhsIsRegexp := rhs.(*Regexp)
 		if rhsIsRegexp {
 			result := rhsRegexp.data.FindStringSubmatchIndex(lhsString.data)
-			env.SetRegexpMatch(RegexpMatch{lhsString.data, result})
+			env.setRegexpMatch(regexpMatch{lhsString.data, result})
 			return ctx.NewBoolean(result == nil), nil
 		}
 	}
