@@ -189,8 +189,8 @@ func moveOrCopy(value Value) Value {
 	return value.Copy()
 }
 
-// Increment the underlying shared data held by this value to signal that an
-// additional holds an access path to that data through a reference.
+// Increment the use count of the underlying shared data held by this value to
+// signal that there is an access path to that data through a reference.
 func markReferenced(value Value) {
 	switch v := value.(type) {
 	case *Vector:
@@ -211,10 +211,10 @@ func markReferenced(value Value) {
 	}
 }
 
-// Decrement the underlying shared data held by this value. This operation is
-// only valid when it is known that the referenced value was previously marked
-// with markReferenced() and actual reference to that value is *guaranteed* to
-// be non-escaping.
+// Decrement the use count of the underlying shared data held by this value.
+// This operation is only valid when it is known that the referenced value was
+// previously marked with markReferenced(), and that all references to the
+// value are *guaranteed* to be currently unreachable.
 func unmarkReferenced(value Value) {
 	switch v := value.(type) {
 	case *Vector:
