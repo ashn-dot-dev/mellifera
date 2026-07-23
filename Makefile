@@ -30,7 +30,7 @@ wasm-go:
 	GOARCH=wasm GOOS=js go build -o mellifera.wasm cmd/wasm/wasm.go
 	cp "$$(go env GOROOT)/lib/wasm/wasm_exec.js" .
 
-install:
+install: bin/mf
 	mkdir -p "$(MELLIFERA_HOME)/bin"
 	mkdir -p "$(MELLIFERA_HOME)/lib"
 	cp -r bin "$(MELLIFERA_HOME)"
