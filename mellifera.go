@@ -3356,8 +3356,13 @@ type envRefInfo struct {
 	value    Value
 }
 
+type envElement struct {
+	name  string
+	value Value
+}
+
 type Environment struct {
-	store map[string]Value
+	store []envElement
 	outer *Environment // Optional
 	match *regexpMatch // Optional
 	refs  []envRefInfo
@@ -3370,7 +3375,7 @@ func NewEnvironment(outer *Environment) *Environment {
 		nref = outer.nref
 	}
 	return &Environment{
-		store: map[string]Value{},
+		store: nil,
 		outer: outer,
 		match: nil,
 		refs:  nil,
@@ -3387,7 +3392,15 @@ func (self *Environment) letWithLocation(name string, value Value, location *Sou
 		self.refs = append(self.refs, envRefInfo{location, name, value})
 		self.nref += 1
 	}
-	self.store[name] = value.Take()
+
+	index := slices.IndexFunc(self.store, func(element envElement) bool {
+		return element.name == name
+	})
+	if index != -1 {
+		self.store[index].value = value.Take()
+		return
+	}
+	self.store = append(self.store, envElement{name, value.Take()})
 }
 
 func (self *Environment) Set(name string, value Value) error {
@@ -3399,9 +3412,11 @@ func (self *Environment) Set(name string, value Value) error {
 
 	env := self
 	for env != nil {
-		_, ok := env.store[name]
-		if ok {
-			env.store[name] = value.Take()
+		index := slices.IndexFunc(env.store, func(element envElement) bool {
+			return element.name == name
+		})
+		if index != -1 {
+			env.store[index].value = value.Take()
 			return nil
 		}
 		env = env.outer
@@ -3412,9 +3427,11 @@ func (self *Environment) Set(name string, value Value) error {
 func (self *Environment) Get(name string) (Value, error) {
 	env := self
 	for env != nil {
-		value, ok := env.store[name]
-		if ok {
-			return value, nil
+		index := slices.IndexFunc(env.store, func(element envElement) bool {
+			return element.name == name
+		})
+		if index != -1 {
+			return env.store[index].value, nil
 		}
 		env = env.outer
 	}
