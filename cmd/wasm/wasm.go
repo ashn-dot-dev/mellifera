@@ -381,7 +381,7 @@ func BuiltinJsValueSetIndex(ctx *mellifera.Context) *mellifera.Builtin {
 
 		valueJsValue, ok := value.Data().(js.Value)
 		if !ok {
-			return nil, mellifera.NewError(nil, ctx.NewStringf("external value %v is not a JavaScript value", delf))
+			return nil, mellifera.NewError(nil, ctx.NewStringf("external value %v is not a JavaScript value", value))
 		}
 
 		if delfJsValue.Type() != js.TypeObject {
