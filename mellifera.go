@@ -2202,7 +2202,7 @@ type Reference struct {
 	data Value
 }
 
-func (self *Reference) Data() any {
+func (self *Reference) Data() Value {
 	return self.data
 }
 
