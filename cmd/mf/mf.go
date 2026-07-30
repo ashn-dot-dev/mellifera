@@ -528,6 +528,9 @@ func main() {
 	} else if dumpTokens {
 		fmt.Fprintf(os.Stderr, "error: requested token dump without a command or file path\n")
 		os.Exit(1)
+	} else if dumpAst {
+		fmt.Fprintf(os.Stderr, "error: requested AST dump without a command or file path\n")
+		os.Exit(1)
 	} else {
 		fmt.Fprintf(os.Stderr, "error: REPL not implemented\n")
 		os.Exit(1)
