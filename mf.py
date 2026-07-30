@@ -5247,10 +5247,6 @@ class Parser:
         field = self.parse_identifier()
         return AstExpressionAccessDot(location, lhs, field)
 
-    def parse_expression_mkref(self, lhs: AstExpression) -> AstExpressionMkref:
-        location = self._expect_current(TokenKind.MKREF).location
-        return AstExpressionMkref(location, lhs)
-
     def parse_expression_deref(self, lhs: AstExpression) -> AstExpressionDeref:
         location = self._expect_current(TokenKind.DEREF).location
         return AstExpressionDeref(location, lhs)

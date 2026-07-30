@@ -7480,14 +7480,6 @@ func (self *Parser) ParseExpressionAccessDot(lhs AstExpression) (AstExpression, 
 	return &AstExpressionAccessDot{token.Location, lhs, field}, nil
 }
 
-func (self *Parser) ParseExpressionMkref(lhs AstExpression) (AstExpression, error) {
-	token, err := self.expectCurrent(TOKEN_MKREF)
-	if err != nil {
-		return nil, err
-	}
-	return &AstExpressionMkref{token.Location, lhs}, nil
-}
-
 func (self *Parser) ParseExpressionDeref(lhs AstExpression) (AstExpression, error) {
 	token, err := self.expectCurrent(TOKEN_DEREF)
 	if err != nil {
