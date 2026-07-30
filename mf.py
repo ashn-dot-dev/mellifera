@@ -1083,17 +1083,17 @@ class Reference(Value):
         Reference.mark_referenced(data)
         return Reference(data, _REFERENCE_META)
 
-    # Increment the underlying shared data held by this value to signal that an
-    # additional holds an access path to that data through a reference.
+    # Increment the use count of the underlying shared data held by this value
+    # to signal that there is an access path to that data through a reference.
     @staticmethod
     def mark_referenced(value: Value) -> None:
         if isinstance(value, (Vector, Map, Set)):
             value.data.refs += 1
 
-    # Decrement the underlying shared data held by this value. This operation
-    # is only valid when it is known that the referenced value was previously
-    # marked with mark_referenced() and actual reference to that value is
-    # *guaranteed* to be non-escaping.
+    # Decrement the use count of the underlying shared data held by this value.
+    # This operation is only valid when it is known that the referenced value
+    # was previously marked with Reference.mark_referenced(), and that all
+    # references to the value are *guaranteed* to be currently unreachable.
     @staticmethod
     def unmark_referenced(value: Value) -> None:
         if isinstance(value, (Vector, Map, Set)):
