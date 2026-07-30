@@ -681,15 +681,6 @@ class Vector(Value):
             raise KeyError(f"attempted vector access using a negative index {index}")
         return self.data.__getitem__(index)
 
-    def __delitem__(self, key: Value) -> None:
-        if self.is_immutable():
-            raise Exception(f"attempted to modify immutable vector {self}")
-        if self.data.uses > 1:
-            self.data.uses -= 1
-            self.data = copy(self.data)  # copy-on-write
-            self.data.uses += 1
-        super().__delitem__(key)
-
     def insert(self, index: int, value: Value) -> None:
         if self.is_immutable():
             raise Exception(f"attempted to modify immutable vector {self}")
