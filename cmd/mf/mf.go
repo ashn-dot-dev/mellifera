@@ -194,11 +194,11 @@ func BuiltinFsWrite(ctx *mellifera.Context) mellifera.Value {
 
 		f, err := os.OpenFile(path.Data(), os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0644)
 		if err != nil {
-			return nil, mellifera.NewError(nil, ctx.NewStringf("failed to write file %v (%s)", path, err.Error()))
+			return nil, mellifera.NewError(nil, ctx.NewStringf("failed write to file %v (%s)", path, err.Error()))
 		}
 		defer f.Close()
 		if _, err := f.Write([]byte(data.Data())); err != nil {
-			return nil, mellifera.NewError(nil, ctx.NewStringf("failed to write file %v (%s)", path, err.Error()))
+			return nil, mellifera.NewError(nil, ctx.NewStringf("failed write to file %v (%s)", path, err.Error()))
 		}
 		return ctx.NewNull(), nil
 	})
@@ -214,11 +214,11 @@ func BuiltinFsAppend(ctx *mellifera.Context) mellifera.Value {
 
 		f, err := os.OpenFile(path.Data(), os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
 		if err != nil {
-			return nil, mellifera.NewError(nil, ctx.NewStringf("failed to append file %v (%s)", path, err.Error()))
+			return nil, mellifera.NewError(nil, ctx.NewStringf("failed append to file %v (%s)", path, err.Error()))
 		}
 		defer f.Close()
 		if _, err := f.Write([]byte(data.Data())); err != nil {
-			return nil, mellifera.NewError(nil, ctx.NewStringf("failed to append file %v (%s)", path, err.Error()))
+			return nil, mellifera.NewError(nil, ctx.NewStringf("failed append to file %v (%s)", path, err.Error()))
 		}
 		return ctx.NewNull(), nil
 	})
