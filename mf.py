@@ -1205,7 +1205,11 @@ class Builtin(Value):
         return hash(self.name)
 
     def __eq__(self, other):
-        return self.name == other.name and self.function == other.function
+        return (
+            isinstance(other, Builtin)
+            and self.name == other.name
+            and self.function == other.function
+        )
 
     def __str__(self):
         return f"{self.name}@builtin"
