@@ -523,7 +523,7 @@ func main() {
 		} else if file != nil {
 			_, err = evalFile(ctx, *file)
 		} else {
-			err = fmt.Errorf("unreachable\n")
+			err = fmt.Errorf("unreachable")
 		}
 	} else if dumpTokens {
 		fmt.Fprintf(os.Stderr, "error: requested token dump without a command or file path\n")
