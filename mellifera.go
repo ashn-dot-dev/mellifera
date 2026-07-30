@@ -9501,7 +9501,6 @@ func BuiltinSetRemove(ctx *Context) Value {
 func BuiltinSetUnion(ctx *Context) Value {
 	function := ctx.NewValueFromSourceOrPanic("set::union", `
 return function(a, b) {
-	try { a = a.*; } catch { } # &set -> set
 	if not ty::is_set(a) or not ty::is_set(b) {
 		error $"attempted set::union of values {repr(a)} and {repr(b)}";
 	}
@@ -9525,7 +9524,6 @@ return function(a, b) {
 func BuiltinSetIntersection(ctx *Context) Value {
 	function := ctx.NewValueFromSourceOrPanic("set::intersection", `
 return function(a, b) {
-	try { a = a.*; } catch { } # &set -> set
 	if not ty::is_set(a) or not ty::is_set(b) {
 		error $"attempted set::intersection of values {repr(a)} and {repr(b)}";
 	}
@@ -9548,7 +9546,6 @@ return function(a, b) {
 func BuiltinSetDifference(ctx *Context) Value {
 	function := ctx.NewValueFromSourceOrPanic("set::difference", `
 return function(a, b) {
-	try { a = a.*; } catch { } # &set -> set
 	if not ty::is_set(a) or not ty::is_set(b) {
 		error $"attempted set::difference of values {repr(a)} and {repr(b)}";
 	}

@@ -6523,7 +6523,6 @@ def builtin_set_remove(
 def builtin_set_union():
     return """
     return function(a, b) {
-        try { a = a.*; } catch { } # &set -> set
         if not ty::is_set(a) or not ty::is_set(b) {
             error $"attempted set::union of values {repr(a)} and {repr(b)}";
         }
@@ -6544,7 +6543,6 @@ def builtin_set_union():
 def builtin_set_intersection():
     return """
     return function(a, b) {
-        try { a = a.*; } catch { } # &set -> set
         if not ty::is_set(a) or not ty::is_set(b) {
             error $"attempted set::intersection of values {repr(a)} and {repr(b)}";
         }
@@ -6564,7 +6562,6 @@ def builtin_set_intersection():
 def builtin_set_difference():
     return """
     return function(a, b) {
-        try { a = a.*; } catch { } # &set -> set
         if not ty::is_set(a) or not ty::is_set(b) {
             error $"attempted set::difference of values {repr(a)} and {repr(b)}";
         }
