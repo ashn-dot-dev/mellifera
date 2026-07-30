@@ -3937,7 +3937,7 @@ type AstExpressionFunction struct {
 	Location        *SourceLocation // Optional
 	Parameters      []*AstIdentifier
 	Body            *AstBlock
-	Name            *String // optional
+	Name            *String // Optional
 	SelfByReference bool
 }
 
