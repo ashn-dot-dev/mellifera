@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -10,6 +11,218 @@ import (
 
 	"ashn.dev/mellifera"
 )
+
+func BuiltinExit(ctx *mellifera.Context) mellifera.Value {
+	return ctx.NewBuiltin("exit", []mellifera.Type{
+		mellifera.TVal(mellifera.NUMBER),
+	}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
+		integer, err := mellifera.ValueAsSafeInteger(arguments[0])
+		if err != nil {
+			return nil, mellifera.NewError(nil, ctx.NewStringf("expected integer exit code, received %v", arguments[0]))
+		}
+		os.Exit(int(integer))
+		return ctx.NewNull(), nil
+	})
+}
+
+func BuiltinImport(ctx *mellifera.Context) mellifera.Value {
+	return ctx.NewBuiltin("import", []mellifera.Type{
+		mellifera.TVal(mellifera.STRING),
+	}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
+		target := arguments[0].(*mellifera.String)
+
+		env := mellifera.NewEnvironment(ctx.BaseEnvironment)
+		module, err := ctx.BaseEnvironment.Get("module")
+		if err != nil {
+			return nil, mellifera.NewError(nil, ctx.NewString(err.Error()))
+		}
+		moduleMap, ok := module.(*mellifera.Map)
+		if !ok {
+			return nil, mellifera.NewError(nil, ctx.NewStringf("expected map module value, received %v", module.Typename()))
+		}
+		_, modulePathOk := moduleMap.Lookup(ctx.NewString("path"))
+		_, moduleFileOk := moduleMap.Lookup(ctx.NewString("file"))
+		moduleDirectory, moduleDirectoryOk := moduleMap.Lookup(ctx.NewString("directory"))
+		if !modulePathOk || !moduleFileOk || !moduleDirectoryOk {
+			return nil, mellifera.NewError(nil, ctx.NewStringf("expected module map to contain `path`, `file` and `directory` values, received %v", module))
+		}
+		moduleDirectoryString, ok := moduleDirectory.(*mellifera.String)
+		if !ok {
+			return nil, mellifera.NewError(nil, ctx.NewStringf("expected string module directory value, received %v", moduleDirectory))
+		}
+
+		// Always restore module fields.
+		defer (func() {
+			_ = ctx.BaseEnvironment.Set("module", moduleMap)
+		})()
+
+		var result mellifera.Value = nil
+		paths := []string{}
+		if filepath.IsAbs(target.Data()) {
+			paths = append(paths, target.Data()) // direct path
+		} else {
+			paths = append(paths, filepath.Join(moduleDirectoryString.Data(), target.Data())) // current module directory
+			if search, ok := os.LookupEnv("MELLIFERA_SEARCH_PATH"); ok {
+				for _, p := range strings.Split(search, ":") {
+					paths = append(paths, filepath.Join(p, target.Data()))
+				}
+			}
+		}
+		for _, p := range paths {
+			stat, err := os.Stat(p)
+			if err != nil {
+				continue
+			}
+			if stat.IsDir() {
+				// If the path is a directory, such as in the case of a
+				// library, load the entry point to the library and/or group of
+				// files, using the name <directory>/lib.mf by convention.
+				p = filepath.Join(p, "lib.mf")
+			}
+			absolute, err := filepath.Abs(p)
+			if err != nil {
+				return nil, mellifera.NewError(nil, ctx.NewString(err.Error()))
+			}
+
+			importModuleMap := ctx.NewMapOrPanic([]mellifera.MapPair{
+				{ctx.NewString("path"), ctx.NewString(absolute)},
+				{ctx.NewString("file"), ctx.NewString(filepath.Base(absolute))},
+				{ctx.NewString("directory"), ctx.NewString(filepath.Dir(absolute))},
+			}).Freeze()
+			if err := ctx.BaseEnvironment.Set("module", importModuleMap); err != nil {
+				return nil, mellifera.NewError(nil, ctx.NewString(err.Error()))
+			}
+
+			bytes, err := os.ReadFile(absolute)
+			if err != nil {
+				continue
+			}
+			source := string(bytes)
+
+			lexer := mellifera.NewLexer(ctx, source, &mellifera.SourceLocation{p, 1})
+			parser, err := mellifera.NewParser(&lexer)
+			if err != nil {
+				return nil, mellifera.NewError(nil, ctx.NewString(err.Error()))
+			}
+			program, err := parser.ParseProgram()
+			if err != nil {
+				return nil, mellifera.NewError(nil, ctx.NewString(err.Error()))
+			}
+			result, err = program.Eval(ctx, env)
+			if err != nil {
+				if e, ok := err.(mellifera.Error); ok {
+					return nil, e
+				}
+				return nil, mellifera.NewError(nil, ctx.NewString(err.Error()))
+			}
+			break
+		}
+
+		if result == nil {
+			return nil, mellifera.NewError(nil, ctx.NewStringf("module %v not found", target))
+		}
+		return result, nil
+	})
+}
+
+func BuiltinInput(ctx *mellifera.Context) mellifera.Value {
+	return ctx.NewBuiltin("input", []mellifera.Type{}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
+		data, err := io.ReadAll(ctx.Stdin)
+		if err != nil {
+			return nil, mellifera.NewError(nil, ctx.NewString(err.Error()))
+		}
+		return ctx.NewString(string(data)), nil
+	})
+}
+
+func BuiltinInputln(ctx *mellifera.Context) mellifera.Value {
+	return ctx.NewBuiltin("inputln", []mellifera.Type{}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
+		data := []byte{}
+		buf := make([]byte, 1)
+		for {
+			nbytes, err := ctx.Stdin.Read(buf)
+			if nbytes != 0 {
+				if buf[0] == '\n' {
+					break
+				}
+				data = append(data, buf[0])
+			}
+			if err != nil {
+				if err == io.EOF {
+					if len(data) == 0 {
+						// The end of input was reached before any line data
+						// was read. Produce null so that the end of input is
+						// distinguishable from an empty line.
+						return ctx.NewNull(), nil
+					}
+					break
+				}
+				return nil, mellifera.NewError(nil, ctx.NewString(err.Error()))
+			}
+		}
+		return ctx.NewString(string(data)), nil
+	})
+}
+
+func BuiltinFsRead(ctx *mellifera.Context) mellifera.Value {
+	return ctx.NewBuiltin("fs::read", []mellifera.Type{
+		mellifera.TVal(mellifera.STRING),
+	}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
+		path := arguments[0].(*mellifera.String)
+
+		data, err := os.ReadFile(path.Data())
+		if err != nil {
+			var pathErr *os.PathError
+			if errors.As(err, &pathErr) {
+				if errors.Is(pathErr.Err, os.ErrNotExist) {
+					return nil, mellifera.NewError(nil, ctx.NewStringf("failed to read file %v (file not found)", path))
+				}
+			}
+			return nil, mellifera.NewError(nil, ctx.NewStringf("failed to read file %v (%s)", path, err.Error()))
+		}
+		return ctx.NewString(string(data)), nil
+	})
+}
+
+func BuiltinFsWrite(ctx *mellifera.Context) mellifera.Value {
+	return ctx.NewBuiltin("fs::write", []mellifera.Type{
+		mellifera.TVal(mellifera.STRING),
+		mellifera.TVal(mellifera.STRING),
+	}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
+		path := arguments[0].(*mellifera.String)
+		data := arguments[1].(*mellifera.String)
+
+		f, err := os.OpenFile(path.Data(), os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0644)
+		if err != nil {
+			return nil, mellifera.NewError(nil, ctx.NewStringf("failed to write file %v (%s)", path, err.Error()))
+		}
+		defer f.Close()
+		if _, err := f.Write([]byte(data.Data())); err != nil {
+			return nil, mellifera.NewError(nil, ctx.NewStringf("failed to write file %v (%s)", path, err.Error()))
+		}
+		return ctx.NewNull(), nil
+	})
+}
+
+func BuiltinFsAppend(ctx *mellifera.Context) mellifera.Value {
+	return ctx.NewBuiltin("fs::append", []mellifera.Type{
+		mellifera.TVal(mellifera.STRING),
+		mellifera.TVal(mellifera.STRING),
+	}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
+		path := arguments[0].(*mellifera.String)
+		data := arguments[1].(*mellifera.String)
+
+		f, err := os.OpenFile(path.Data(), os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
+		if err != nil {
+			return nil, mellifera.NewError(nil, ctx.NewStringf("failed to append file %v (%s)", path, err.Error()))
+		}
+		defer f.Close()
+		if _, err := f.Write([]byte(data.Data())); err != nil {
+			return nil, mellifera.NewError(nil, ctx.NewStringf("failed to append file %v (%s)", path, err.Error()))
+		}
+		return ctx.NewNull(), nil
+	})
+}
 
 func dumpTokensSource(ctx *mellifera.Context, source string, location *mellifera.SourceLocation) error {
 	tokens := ctx.NewVectorOrPanic(nil)
@@ -250,6 +463,15 @@ func main() {
 
 	var err error
 	ctx := mellifera.NewContext()
+	ctx.BaseEnvironment.Let("exit", BuiltinExit(ctx))
+	ctx.BaseEnvironment.Let("import", BuiltinImport(ctx))
+	ctx.BaseEnvironment.Let("input", BuiltinInput(ctx))
+	ctx.BaseEnvironment.Let("inputln", BuiltinInputln(ctx))
+	ctx.BaseEnvironment.Let("fs", ctx.NewMapOrPanic([]mellifera.MapPair{
+		{ctx.NewString("read"), BuiltinFsRead(ctx)},
+		{ctx.NewString("write"), BuiltinFsWrite(ctx)},
+		{ctx.NewString("append"), BuiltinFsAppend(ctx)},
+	}).Freeze())
 
 	argvIntoValue := func() mellifera.Value {
 		result := ctx.NewVectorOrPanic(nil)

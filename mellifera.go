@@ -8,7 +8,6 @@ import (
 	"math"
 	"math/rand/v2"
 	"os"
-	"path/filepath"
 	"reflect"
 	"regexp"
 	"slices"
@@ -500,13 +499,10 @@ func NewContext() *Context {
 	ctx.BaseEnvironment.Let("iterator", ctx.NewValueFromSourceOrPanic("", _ITERATOR_SOURCE))
 	ctx.BaseEnvironment.Let("NaN", ctx.NewNumber(math.NaN()))
 	ctx.BaseEnvironment.Let("Inf", ctx.NewNumber(math.Inf(+1)))
-	ctx.BaseEnvironment.Let("exit", BuiltinExit(ctx))
 	ctx.BaseEnvironment.Let("assert", BuiltinAssert(ctx))
 	ctx.BaseEnvironment.Let("typeof", BuiltinTypeof(ctx))
 	ctx.BaseEnvironment.Let("typename", BuiltinTypename(ctx))
 	ctx.BaseEnvironment.Let("repr", BuiltinRepr(ctx))
-	ctx.BaseEnvironment.Let("input", BuiltinInput(ctx))
-	ctx.BaseEnvironment.Let("inputln", BuiltinInputln(ctx))
 	ctx.BaseEnvironment.Let("dump", BuiltinDump(ctx))
 	ctx.BaseEnvironment.Let("dumpln", BuiltinDumpln(ctx))
 	ctx.BaseEnvironment.Let("print", BuiltinPrint(ctx))
@@ -516,16 +512,10 @@ func NewContext() *Context {
 	ctx.BaseEnvironment.Let("range", ctx.NewNull()) // deferred instantiation
 	ctx.BaseEnvironment.Let("min", BuiltinMin(ctx))
 	ctx.BaseEnvironment.Let("max", BuiltinMax(ctx))
-	ctx.BaseEnvironment.Let("import", BuiltinImport(ctx))
 	ctx.BaseEnvironment.Let("comb", ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("decode"), BuiltinCombDecode(ctx)},
 		{ctx.NewString("encode"), BuiltinCombEncode(ctx)},
 		{ctx.NewString("encode_ex"), BuiltinCombEncodeEx(ctx)},
-	}).Freeze())
-	ctx.BaseEnvironment.Let("fs", ctx.NewMapOrPanic([]MapPair{
-		{ctx.NewString("read"), BuiltinFsRead(ctx)},
-		{ctx.NewString("write"), BuiltinFsWrite(ctx)},
-		{ctx.NewString("append"), BuiltinFsAppend(ctx)},
 	}).Freeze())
 	ctx.BaseEnvironment.Let("html", ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("escape"), BuiltinHtmlEscape(ctx)},
@@ -9586,17 +9576,6 @@ return function(a, b) {
 	})
 }
 
-func BuiltinExit(ctx *Context) Value {
-	return ctx.NewBuiltin("exit", []Type{TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
-		integer, err := ValueAsSafeInteger(arguments[0])
-		if err != nil {
-			return nil, NewError(nil, ctx.NewStringf("expected integer exit code, received %v", arguments[0]))
-		}
-		os.Exit(int(integer))
-		return ctx.NewNull(), nil
-	})
-}
-
 func BuiltinAssert(ctx *Context) Value {
 	function := ctx.NewValueFromSourceOrPanic("assert", `
 let assert = function(condition) {
@@ -9633,45 +9612,6 @@ func BuiltinTypename(ctx *Context) Value {
 func BuiltinRepr(ctx *Context) Value {
 	return ctx.NewBuiltin("repr", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return ctx.NewStringf("%v", arguments[0]), nil
-	})
-}
-
-func BuiltinInput(ctx *Context) Value {
-	return ctx.NewBuiltin("input", []Type{}, func(ctx *Context, arguments []Value) (Value, error) {
-		data, err := io.ReadAll(ctx.Stdin)
-		if err != nil {
-			return nil, NewError(nil, ctx.NewString(err.Error()))
-		}
-		return ctx.NewString(string(data)), nil
-	})
-}
-
-func BuiltinInputln(ctx *Context) Value {
-	return ctx.NewBuiltin("inputln", []Type{}, func(ctx *Context, arguments []Value) (Value, error) {
-		data := []byte{}
-		buf := make([]byte, 1)
-		for {
-			nbytes, err := ctx.Stdin.Read(buf)
-			if nbytes != 0 {
-				if buf[0] == '\n' {
-					break
-				}
-				data = append(data, buf[0])
-			}
-			if err != nil {
-				if err == io.EOF {
-					if len(data) == 0 {
-						// The end of input was reached before any line data
-						// was read. Produce null so that the end of input is
-						// distinguishable from an empty line.
-						return ctx.NewNull(), nil
-					}
-					break
-				}
-				return nil, NewError(nil, ctx.NewString(err.Error()))
-			}
-		}
-		return ctx.NewString(string(data)), nil
 	})
 }
 
@@ -9865,104 +9805,6 @@ return max;
 	})
 }
 
-func BuiltinImport(ctx *Context) Value {
-	return ctx.NewBuiltin("import", []Type{TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
-		target := arguments[0].(*String)
-
-		env := NewEnvironment(ctx.BaseEnvironment)
-		module, err := ctx.BaseEnvironment.Get("module")
-		if err != nil {
-			return nil, NewError(nil, ctx.NewString(err.Error()))
-		}
-		moduleMap, ok := module.(*Map)
-		if !ok {
-			return nil, NewError(nil, ctx.NewStringf("expected map module value, received %v", module.Typename()))
-		}
-		_, modulePathOk := moduleMap.Lookup(ctx.NewString("path"))
-		_, moduleFileOk := moduleMap.Lookup(ctx.NewString("file"))
-		moduleDirectory, moduleDirectoryOk := moduleMap.Lookup(ctx.NewString("directory"))
-		if !modulePathOk || !moduleFileOk || !moduleDirectoryOk {
-			return nil, NewError(nil, ctx.NewStringf("expected module map to contain `path`, `file` and `directory` values, received %v", module))
-		}
-		moduleDirectoryString, ok := moduleDirectory.(*String)
-		if !ok {
-			return nil, NewError(nil, ctx.NewStringf("expected string module directory value, received %v", moduleDirectory))
-		}
-
-		// Always restore module fields.
-		defer (func() {
-			_ = ctx.BaseEnvironment.Set("module", moduleMap)
-		})()
-
-		var result Value = nil
-		paths := []string{}
-		if filepath.IsAbs(target.data) {
-			paths = append(paths, target.data) // direct path
-		} else {
-			paths = append(paths, filepath.Join(moduleDirectoryString.data, target.data)) // current module directory
-			if search, ok := os.LookupEnv("MELLIFERA_SEARCH_PATH"); ok {
-				for _, p := range strings.Split(search, ":") {
-					paths = append(paths, filepath.Join(p, target.data))
-				}
-			}
-		}
-		for _, p := range paths {
-			stat, err := os.Stat(p)
-			if err != nil {
-				continue
-			}
-			if stat.IsDir() {
-				// If the path is a directory, such as in the case of a
-				// library, load the entry point to the library and/or group of
-				// files, using the name <directory>/lib.mf by convention.
-				p = filepath.Join(p, "lib.mf")
-			}
-			absolute, err := filepath.Abs(p)
-			if err != nil {
-				return nil, NewError(nil, ctx.NewString(err.Error()))
-			}
-
-			importModuleMap := ctx.NewMapOrPanic([]MapPair{
-				{ctx.NewString("path"), ctx.NewString(absolute)},
-				{ctx.NewString("file"), ctx.NewString(filepath.Base(absolute))},
-				{ctx.NewString("directory"), ctx.NewString(filepath.Dir(absolute))},
-			}).Freeze()
-			if err := ctx.BaseEnvironment.Set("module", importModuleMap); err != nil {
-				return nil, NewError(nil, ctx.NewString(err.Error()))
-			}
-
-			bytes, err := os.ReadFile(absolute)
-			if err != nil {
-				continue
-			}
-			source := string(bytes)
-
-			lexer := NewLexer(ctx, source, &SourceLocation{p, 1})
-			parser, err := NewParser(&lexer)
-			if err != nil {
-				return nil, NewError(nil, ctx.NewString(err.Error()))
-			}
-			program, err := parser.ParseProgram()
-			if err != nil {
-				return nil, NewError(nil, ctx.NewString(err.Error()))
-			}
-			result, err = program.Eval(ctx, env)
-			if err != nil {
-				if e, ok := err.(Error); ok {
-					return nil, e
-				}
-				return nil, NewError(nil, ctx.NewString(err.Error()))
-			}
-			break
-		}
-
-		if result == nil {
-			return nil, NewError(nil, ctx.NewStringf("module %v not found", target))
-		}
-		return result, nil
-	})
-}
-
 // XXX: Parse, don’t validate! Currently, this implementation validates an
 // already parsed AST (1) to avoid duplicating parsing code, and (2) because it
 // is unclear what the best architecture for breaking out comb encoding would be
@@ -10138,58 +9980,6 @@ func BuiltinCombEncodeEx(ctx *Context) Value {
 		}
 
 		return ctx.NewString(sb.String()), nil
-	})
-}
-
-func BuiltinFsRead(ctx *Context) Value {
-	return ctx.NewBuiltin("fs::read", []Type{TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
-		path := arguments[0].(*String)
-
-		data, err := os.ReadFile(path.data)
-		if err != nil {
-			var pathErr *os.PathError
-			if errors.As(err, &pathErr) {
-				if errors.Is(pathErr.Err, os.ErrNotExist) {
-					return nil, NewError(nil, ctx.NewStringf("failed to read file %v (file not found)", path))
-				}
-			}
-			return nil, NewError(nil, ctx.NewStringf("failed to read file %v (%s)", path, err.Error()))
-		}
-		return ctx.NewString(string(data)), nil
-	})
-}
-
-func BuiltinFsWrite(ctx *Context) Value {
-	return ctx.NewBuiltin("fs::write", []Type{TVal(STRING), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
-		path := arguments[0].(*String)
-		data := arguments[1].(*String)
-
-		f, err := os.OpenFile(path.data, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0644)
-		if err != nil {
-			return nil, NewError(nil, ctx.NewStringf("failed to write file %v (%s)", path, err.Error()))
-		}
-		defer f.Close()
-		if _, err := f.Write([]byte(data.data)); err != nil {
-			return nil, NewError(nil, ctx.NewStringf("failed to write file %v (%s)", path, err.Error()))
-		}
-		return ctx.NewNull(), nil
-	})
-}
-
-func BuiltinFsAppend(ctx *Context) Value {
-	return ctx.NewBuiltin("fs::append", []Type{TVal(STRING), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
-		path := arguments[0].(*String)
-		data := arguments[1].(*String)
-
-		f, err := os.OpenFile(path.data, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
-		if err != nil {
-			return nil, NewError(nil, ctx.NewStringf("failed to append file %v (%s)", path, err.Error()))
-		}
-		defer f.Close()
-		if _, err := f.Write([]byte(data.data)); err != nil {
-			return nil, NewError(nil, ctx.NewStringf("failed to append file %v (%s)", path, err.Error()))
-		}
-		return ctx.NewNull(), nil
 	})
 }
 

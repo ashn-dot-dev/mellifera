@@ -13,6 +13,7 @@ import (
 )
 
 var isDebug = false
+
 func debugf(format string, args ...any) {
 	if isDebug {
 		fmt.Fprintf(os.Stderr, format, args...)
@@ -667,14 +668,6 @@ func BuiltinFsAppend(ctx *mellifera.Context) mellifera.Value {
 	})
 }
 
-func BuiltinExit(ctx *mellifera.Context) mellifera.Value {
-	return ctx.NewBuiltin("exit", []mellifera.Type{
-		mellifera.TVal(mellifera.NUMBER),
-	}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
-		return nil, mellifera.NewError(nil, ctx.NewStringf("unsupported function"))
-	})
-}
-
 func BuiltinImport(ctx *mellifera.Context) mellifera.Value {
 	return ctx.NewBuiltin("import", []mellifera.Type{
 		mellifera.TVal(mellifera.STRING),
@@ -832,13 +825,12 @@ func main() {
 			}
 
 			ctx.BaseEnvironment.Let("@fs", fs)
-			ctx.BaseEnvironment.Set("fs", ctx.NewMapOrPanic([]mellifera.MapPair{
+			ctx.BaseEnvironment.Let("fs", ctx.NewMapOrPanic([]mellifera.MapPair{
 				{ctx.NewString("read"), BuiltinFsRead(ctx)},
 				{ctx.NewString("write"), BuiltinFsWrite(ctx)},
 				{ctx.NewString("append"), BuiltinFsAppend(ctx)},
 			}).Freeze())
-			ctx.BaseEnvironment.Set("exit", BuiltinExit(ctx))
-			ctx.BaseEnvironment.Set("import", BuiltinImport(ctx))
+			ctx.BaseEnvironment.Let("import", BuiltinImport(ctx))
 			ctx.BaseEnvironment.Let("@js::value", ctx.NewMetaMapOrPanic("js::value", []mellifera.MapPair{
 				{ctx.NewString("get"), BuiltinJsValueGet(ctx)},
 				{ctx.NewString("set"), BuiltinJsValueSet(ctx)},
