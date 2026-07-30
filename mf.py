@@ -1180,7 +1180,7 @@ class Function(Value):
 class Builtin(Value):
     meta: Optional["Map"] = None
     # Whether the builtin takes an implicit `self` argument by reference. When
-    # True, the `self` argument *must* not escap, as the Mellifera runtime
+    # True, the `self` argument *must* not escape, as the Mellifera runtime
     # treats the self reference as temporary.
     self_by_reference: ClassVar[bool] = False
 
