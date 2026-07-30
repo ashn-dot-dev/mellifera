@@ -7284,7 +7284,6 @@ def builtin_random_integer(min: Number, max: Number) -> Union[Value, Error]:
 
     if min_integer > max_integer:
         return Error(None, f"min > max ({min} > {max})")
-        min_integer, max_integer = max_integer, min_integer
     if min_integer < MIN_SAFE_INTEGER or min_integer > MAX_SAFE_INTEGER:
         return Error(None, f"integer {min} is outside the safe integer range")
     if max_integer < MIN_SAFE_INTEGER or max_integer > MAX_SAFE_INTEGER:
