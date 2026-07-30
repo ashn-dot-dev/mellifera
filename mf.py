@@ -2175,7 +2175,7 @@ def typename(value: Value) -> str:
 def update_named_functions(ast: "AstExpressionMap", prefix: bytes = b""):
     """
     Update the name values of named functions that are children somewhere in
-    this map, either direct map-level values or a decendent of another map.
+    this map, either direct map-level values or a descendent of another map.
     """
     for k, v in ast.elements:
         if not isinstance(k, AstExpressionString):
@@ -2721,7 +2721,7 @@ class AstExpressionType(AstExpression):
             # A new map is created so that all of the key-value pairs from the
             # super-type, then all of the key-value pairs from the sub-type,
             # can be added to the resulting type in that order, preserving the
-            # order of key-value pairs to make it seems as if the sub-type is
+            # order of key-value pairs to make it seem as if the sub-type is
             # layered on top of the super-type with map::union.
             #
             # The super-type map is immutable, so we can directly use pairs
@@ -3800,7 +3800,7 @@ class AstExpressionMkref(AstExpression):
 
     # Returns the constructed reference value as well as the full list of
     # values marked as referenced (access chain plus the returned referenced
-    # value). The caller may chose to unmark the list of values at the end of
+    # value). The caller may choose to unmark the list of values at the end of
     # the current lexical scope.
     def eval_(self, env: Environment) -> Union[tuple[Reference, list[Value]], Error]:
         chain: list[Value] = []
@@ -4041,15 +4041,15 @@ class AstStatementFor(AstStatement):
         if self.k_is_reference or self.v_is_reference:
             # Reference iteration aliases elements from the original
             # collection. The collection is specifically *not* copied here,
-            # since updates though referenced values should be observed in that
-            # original collection.
+            # since updates through referenced values should be observed in
+            # that original collection.
             collection.cow()
             Reference.mark_referenced(collection)
             collection_marked = True
         else:
             # Value iteration iterates over copies of each element, so we
             # iterate over a shallow copy of the collection to allow
-            # modifcation of that original collection during iteration.
+            # modification of that original collection during iteration.
             collection = copy(collection)
 
         try:
@@ -6890,8 +6890,8 @@ def builtin_fs_append(path: String, data: String) -> Union[Value, Error]:
 def builtin_html_escape(text: String) -> Union[Value, Error]:
     data = text.data
     # Although &apos; is not a part of the HTML4 standard, this function
-    # chooses to normalize on HTML5 rather thank keep compatibility with
-    # legacy browsers like IE.
+    # chooses to normalize on HTML5 rather than keep compatibility with legacy
+    # browsers like IE.
     data = data.replace(b"&", b"&amp;")
     data = data.replace(b'"', b"&quot;")
     data = data.replace(b"'", b"&apos;")

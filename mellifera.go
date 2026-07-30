@@ -1539,7 +1539,7 @@ type Map struct {
 
 func (self *Map) Typename() string {
 	if self.meta != nil && self.meta.name != nil {
-		// Instance of a custom type that that has its own name.
+		// Instance of a custom type that has its own name.
 		return *self.meta.name
 	}
 	return "map"
@@ -2395,7 +2395,7 @@ func (self *External) Data() any {
 
 func (self *External) Typename() string {
 	if self.meta != nil && self.meta.name != nil {
-		// Instance of a custom type that that has its own name.
+		// Instance of a custom type that has its own name.
 		return *self.meta.name
 	}
 	return "external"
@@ -3277,7 +3277,7 @@ func (self *Lexer) NextToken() (Token, error) {
 		TOKEN_DOT,
 		TOKEN_SCOPE,
 		TOKEN_ASSIGN,
-		// Delmimiters
+		// Delimiters
 		TOKEN_COMMA,
 		TOKEN_COLON,
 		TOKEN_SEMICOLON,
@@ -3481,7 +3481,7 @@ func (self Continue) ControlFlowLocation() *SourceLocation {
 }
 
 // Update the name values of named functions that are children somewhere in
-// this map, either direct map-level values or a decendent of another map.
+// this map, either direct map-level values or a descendent of another map.
 func updateNamedFunctions(ctx *Context, ast *AstExpressionMap, prefix string) {
 	for _, pair := range ast.Elements {
 		k := pair.Key
@@ -4075,7 +4075,7 @@ func (self *AstExpressionType) Eval(ctx *Context, env *Environment) (Value, erro
 		// A new map is created so that all of the key-value pairs from the
 		// super-type, then all of the key-value pairs from the sub-type, can
 		// be added to the resulting type in that order, preserving the order
-		// of key-value pairs to make it seems as if the sub-type is layered on
+		// of key-value pairs to make it seem as if the sub-type is layered on
 		// top of the super-type with map::union.
 		//
 		// The super-type map is immutable, so we can directly use pairs from
@@ -5281,7 +5281,7 @@ func (self AstExpressionMkref) IntoValue(ctx *Context) Value {
 
 // Returns the constructed reference value as well as the full list of values
 // marked as referenced (access chain plus the returned referenced value). The
-// caller may chose to unmark the list of values at the end of the current
+// caller may choose to unmark the list of values at the end of the current
 // lexical scope.
 func (self *AstExpressionMkref) eval(ctx *Context, env *Environment) (*Reference, []Value, error) {
 	chain := []Value{}
@@ -5707,14 +5707,14 @@ func (self *AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, 
 	if self.KIsReference || self.VIsReference {
 		// Reference iteration aliases elements from the original collection.
 		// The collection is specifically *not* copied here, since updates
-		// though referenced values should be observed in that original
+		// through referenced values should be observed in that original
 		// collection.
 		collection.CopyOnWrite()
 		markReferenced(collection)
 		defer unmarkReferenced(collection)
 	} else {
 		// Value iteration iterates over copies of each element, so we iterate
-		// over a shallow copy of the collection to allow modifcation of that
+		// over a shallow copy of the collection to allow modification of that
 		// original collection during iteration.
 		collection = collection.Copy()
 	}
@@ -8237,7 +8237,7 @@ func BuiltinNumberInit(ctx *Context) Value {
 				sign = +1 // explicitly positive
 				data = data[1:]
 			} else if strings.HasPrefix(x.data, "-") {
-				sign = -1 // explicitily negative
+				sign = -1 // explicitly negative
 				data = data[1:]
 			}
 
@@ -9980,7 +9980,7 @@ func BuiltinHtmlEscape(ctx *Context) Value {
 		text := arguments[0].(*String)
 
 		// Although &apos; is not a part of the HTML4 standard, this function
-		// chooses to normalize on HTML5 rather thank keep compatibility with
+		// chooses to normalize on HTML5 rather than keep compatibility with
 		// legacy browsers like IE.
 		escaper := strings.NewReplacer(
 			`&`, "&amp;",

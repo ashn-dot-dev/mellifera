@@ -709,7 +709,7 @@ func BuiltinImport(ctx *mellifera.Context) mellifera.Value {
 			target.Data(), // direct path
 		}
 		if moduleDirectoryString, ok := moduleDirectory.(*mellifera.String); ok {
-			paths = append(paths, moduleDirectoryString.Data()+"/"+target.Data()) // path within current module diretory
+			paths = append(paths, moduleDirectoryString.Data()+"/"+target.Data()) // path within current module directory
 		}
 		for _, p := range paths {
 			// Strip the trailing slash off of directories.
