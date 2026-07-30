@@ -3205,7 +3205,7 @@ func (self *Lexer) lexRegexpGroup() (Token, error) {
 
 	return Token{}, ParseError{
 		Location: location,
-		why:      fmt.Sprintf("invalid regexp capture group"),
+		why:      "invalid regexp capture group",
 	}
 }
 
@@ -7040,7 +7040,7 @@ func (self *Parser) ParseExpressionFunction() (AstExpression, error) {
 	if selfByReference && len(parameters) == 0 {
 		return nil, ParseError{
 			Location: location,
-			why:      fmt.Sprintf("function takes self by reference, but has no parameters"),
+			why:      "function takes self by reference, but has no parameters",
 		}
 	}
 
