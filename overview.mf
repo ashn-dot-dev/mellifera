@@ -718,9 +718,9 @@ let boom = function() {
 # ...within h@[example.mf, line 8] called from example.mf, line 11
 # ...within boom@[example.mf, line 7] called from example.mf, line 13
 
-println("=====================================");
+println("======================================");
 println("== Built-in Variables and Functions ==");
-println("=====================================");
+println("======================================");
 
 # Mellifera aims to be a "batteries-included" scripting language, shipping with
 # out-of-the-box support for common algorithms and data formats. Adding this
