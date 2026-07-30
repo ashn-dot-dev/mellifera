@@ -486,7 +486,7 @@ func BuiltinJsCallNew(ctx *mellifera.Context) *mellifera.Builtin {
 
 		functionJsValue, ok := function.Data().(js.Value)
 		if !ok {
-			return nil, mellifera.NewError(nil, ctx.NewStringf("external value %v is not a JavaScript value", functionJsValue))
+			return nil, mellifera.NewError(nil, ctx.NewStringf("external value %v is not a JavaScript value", function))
 		}
 
 		if functionJsValue.Type() != js.TypeFunction {
