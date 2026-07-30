@@ -12,6 +12,13 @@ import (
 	"ashn.dev/mellifera"
 )
 
+var isDebug = false
+func debugf(format string, args ...any) {
+	if isDebug {
+		fmt.Fprintf(os.Stderr, format, args...)
+	}
+}
+
 type contextCacheEntry struct {
 	ctx *mellifera.Context
 	env *mellifera.Environment
@@ -873,11 +880,11 @@ func main() {
 				key := options.Get("context").String()
 				cached, ok := contextCache[key]
 				if ok {
-					fmt.Printf("[mellifera.eval] using existing named context %q\n", key)
+					debugf("[mellifera.eval] using existing named context %q\n", key)
 					ctx = cached.ctx
 					env = cached.env
 				} else {
-					fmt.Printf("[mellifera.eval] using new named context %q\n", key)
+					debugf("[mellifera.eval] using new named context %q\n", key)
 					ctx, err = newContext()
 					if err != nil {
 						return nil, err
@@ -893,10 +900,10 @@ func main() {
 				env = mellifera.NewEnvironment(ctx.BaseEnvironment)
 			}
 
-			fmt.Printf("[mellifera.eval] stdout=%+v, stderr=%+v, fs=%v\n", ctx.Stdout, ctx.Stderr, ctx.BaseEnvironment.GetOrPanic("@fs"))
+			debugf("[mellifera.eval] stdout=%+v, stderr=%+v, fs=%v\n", ctx.Stdout, ctx.Stderr, ctx.BaseEnvironment.GetOrPanic("@fs"))
 			defer func() {
 				if r := recover(); r != nil {
-					fmt.Printf("[mellifera.eval] encountered panic: %v\n", r)
+					fmt.Fprintf(os.Stderr, "[mellifera.eval] encountered panic: %v\n", r)
 					debug.PrintStack()
 				}
 			}()
