@@ -314,8 +314,8 @@ function(a, b) { return a + b; };
 # A function declared with function.&() will expect its first parameter to be
 # passed by reference (relevant for method calls discussed later).
 let inc = function.&(obj) { obj.n = obj.n + 1; };
-let foo = {"n": 0}; # foo is {"n": 0}
-println($`foo is {foo}`);
+let foo = {"n": 0};
+println($`foo is {foo}`); # foo is {"n": 0}
 inc(foo.&);
 println($`foo after being passed to {inc} by reference is {foo}`); # foo after being passed to inc@[overview.mf, line XXX] by reference is {"n": 1}
 # Functions close over their environment.
