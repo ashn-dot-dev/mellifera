@@ -2943,11 +2943,9 @@ func (self *Lexer) lexRawString() (Token, error) {
 		// Future-proof in case I want to add variable-number-of-tick raw
 		// string literals in the future.
 		if len(bytes) == 0 {
-			if err := self.expectRune('`'); err != nil {
-				return Token{}, ParseError{
-					Location: location,
-					why:      "invalid empty multi-tick raw string",
-				}
+			return Token{}, ParseError{
+				Location: location,
+				why:      "invalid empty multi-tick raw string",
 			}
 		}
 	} else {
