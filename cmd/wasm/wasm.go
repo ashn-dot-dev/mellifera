@@ -775,11 +775,11 @@ func BuiltinImport(ctx *mellifera.Context) mellifera.Value {
 func main() {
 	mf := js.Global().Get("mellifera")
 	mf.Set("eval", js.FuncOf(func(this js.Value, args []js.Value) any {
-		if len(args) == 1 {
-			args = append(args, js.ValueOf(map[string]any{})) // empty options
-		} else if len(args) > 2 {
+		if len(args) == 0 || len(args) > 2 {
 			fmt.Fprintf(os.Stderr, "error: expected one or two arguments for mellifera.eval(source, options), received %v arguments\n", len(args))
 			return nil
+		} else if len(args) == 1 {
+			args = append(args, js.ValueOf(map[string]any{})) // empty options
 		}
 
 		if args[0].Type() != js.TypeString {
