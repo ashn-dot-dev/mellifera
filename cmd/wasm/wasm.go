@@ -653,7 +653,11 @@ func BuiltinFsAppend(ctx *mellifera.Context) mellifera.Value {
 		// mapping that ignores the concept of directory structure.
 		text, ok := fsMap.Lookup(file)
 		if !ok {
-			return nil, mellifera.NewError(nil, ctx.NewStringf("failed to read file %v (file not found)", file))
+			err = fsMap.Insert(file, data)
+			if err != nil {
+				return nil, mellifera.NewError(nil, ctx.NewString(err.Error()))
+			}
+			return ctx.NewNull(), nil
 		}
 		textString, ok := text.(*mellifera.String)
 		if !ok {
