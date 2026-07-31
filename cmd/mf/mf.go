@@ -306,7 +306,8 @@ func evalSource(ctx *mellifera.Context, source string, location *mellifera.Sourc
 	if err != nil {
 		return nil, err
 	}
-	return program.Eval(ctx, ctx.BaseEnvironment)
+	env := mellifera.NewEnvironment(ctx.BaseEnvironment)
+	return program.Eval(ctx, env)
 }
 
 func evalFile(ctx *mellifera.Context, path string) (mellifera.Value, error) {
