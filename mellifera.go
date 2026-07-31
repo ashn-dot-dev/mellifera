@@ -5654,7 +5654,8 @@ func (self *AstStatementIfElifElse) Eval(ctx *Context, env *Environment) (Contro
 	}
 
 	if self.ElseBlock != nil {
-		return self.ElseBlock.Eval(ctx, env)
+		elseEnv := NewEnvironment(env)
+		return self.ElseBlock.Eval(ctx, elseEnv)
 	}
 
 	return nil, nil
@@ -6042,17 +6043,18 @@ func (self AstStatementTry) IntoValue(ctx *Context) Value {
 }
 
 func (self *AstStatementTry) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
-	result, err := self.TryBlock.Eval(ctx, env)
+	tryEnv := NewEnvironment(env)
+	result, err := self.TryBlock.Eval(ctx, tryEnv)
 	if err != nil {
 		error, ok := err.(Error)
 		if !ok {
 			return nil, err
 		}
-		env := NewEnvironment(env)
+		catchEnv := NewEnvironment(env)
 		if self.CatchIdentifier != nil {
-			env.letWithLocation(self.CatchIdentifier.Name.data, error.Value.Copy(), self.CatchIdentifier.Location)
+			catchEnv.letWithLocation(self.CatchIdentifier.Name.data, error.Value.Copy(), self.CatchIdentifier.Location)
 		}
-		return self.CatchBlock.Eval(ctx, env)
+		return self.CatchBlock.Eval(ctx, catchEnv)
 	}
 	if _, ok := result.(Return); ok {
 		return result, nil
