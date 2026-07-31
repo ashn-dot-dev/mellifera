@@ -4189,7 +4189,10 @@ func (self *AstExpressionNew) Eval(ctx *Context, env *Environment) (Value, error
 	for _, pair := range valueMap.Pairs() {
 		err := result.Insert(pair.Key.Copy(), pair.Value.Copy())
 		if err != nil {
-			return nil, err
+			return nil, NewError(
+				self.Location,
+				ctx.NewString(err.Error()),
+			)
 		}
 	}
 	result.meta = metaMap.Copy().(*Map)
