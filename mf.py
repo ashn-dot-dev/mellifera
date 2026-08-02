@@ -1083,17 +1083,18 @@ class Reference(Value):
         Reference.mark_referenced(data)
         return Reference(data, _REFERENCE_META)
 
-    # Increment the use count of the underlying shared data held by this value
-    # to signal that there is an access path to that data through a reference.
+    # Increment the reference count of the underlying shared data held by this
+    # value to signal that there is an access path to that data through a
+    # reference.
     @staticmethod
     def mark_referenced(value: Value) -> None:
         if isinstance(value, (Vector, Map, Set)):
             value.data.refs += 1
 
-    # Decrement the use count of the underlying shared data held by this value.
-    # This operation is only valid when it is known that the referenced value
-    # was previously marked with Reference.mark_referenced(), and that all
-    # references to the value are *guaranteed* to be currently unreachable.
+    # Decrement the reference count of the underlying shared data held by this
+    # value. This operation is only valid when it is known that the referenced
+    # value was previously marked with Reference.mark_referenced(), and that
+    # all references to the value are *guaranteed* to be currently unreachable.
     @staticmethod
     def unmark_referenced(value: Value) -> None:
         if isinstance(value, (Vector, Map, Set)):
@@ -6156,7 +6157,7 @@ def builtin_vector_push(
     self: Reference, vector: Vector, value: Value
 ) -> Union[Value, Error]:
     try:
-        vector.push(value)
+        vector.push(copy(value))
     except Exception as e:
         return Error(None, f"invalid vector::push operation ({e})")
     return null
@@ -6188,7 +6189,7 @@ def builtin_vector_insert(
             f"attempted vector::insert with invalid index {index} (vector has a count of {len(vector.data)})",
         )
     try:
-        vector.insert(idx, value)
+        vector.insert(idx, copy(value))
     except Exception as e:
         return Error(None, f"invalid vector::insert operation ({str(e)})")
     return null
@@ -6405,7 +6406,7 @@ def builtin_map_insert(
     self: Reference, map: Map, k: Value, v: Value
 ) -> Union[Value, Error]:
     try:
-        map[k] = v
+        map[k] = copy(v)
     except Exception as e:
         return Error(None, f"invalid map::insert operation ({str(e)})")
 
@@ -6492,7 +6493,7 @@ def builtin_set_insert(
     self: Reference, set: Set, element: Value
 ) -> Union[Value, Error]:
     try:
-        set.insert(element)
+        set.insert(copy(element))
     except Exception as e:
         return Error(None, f"invalid set::insert operation ({str(e)})")
     return null

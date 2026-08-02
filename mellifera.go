@@ -188,8 +188,29 @@ func moveOrCopy(value Value) Value {
 	return value.Copy()
 }
 
-// Increment the use count of the underlying shared data held by this value to
-// signal that there is an access path to that data through a reference.
+// Decrement the shared use count of the underlying shared data held by this
+// value. This operation is only valid when it is known that that the marked
+// value is *guaranteed* to be currently unreachable.
+func unmarkUsed(value Value) {
+	switch v := value.(type) {
+	case *Vector:
+		if v.data != nil && !v.IsImmutable() {
+			v.data.uses -= 1
+		}
+	case *Map:
+		if v.data != nil && !v.IsImmutable() {
+			v.data.uses -= 1
+		}
+	case *Set:
+		if v.data != nil && !v.IsImmutable() {
+			v.data.uses -= 1
+		}
+	}
+}
+
+// Increment the reference count of the underlying shared data held by this
+// value to signal that there is an access path to that data through a
+// reference.
 func markReferenced(value Value) {
 	switch v := value.(type) {
 	case *Vector:
@@ -210,10 +231,10 @@ func markReferenced(value Value) {
 	}
 }
 
-// Decrement the use count of the underlying shared data held by this value.
-// This operation is only valid when it is known that the referenced value was
-// previously marked with markReferenced(), and that all references to the
-// value are *guaranteed* to be currently unreachable.
+// Decrement the reference count of the underlying shared data held by this
+// value. This operation is only valid when it is known that the referenced
+// value was previously marked with markReferenced(), and that all references
+// to the value are *guaranteed* to be currently unreachable.
 func unmarkReferenced(value Value) {
 	switch v := value.(type) {
 	case *Vector:
@@ -253,9 +274,9 @@ func callableSelfIsPassedByReference(function Value) bool {
 // pattern of calling value.into_string() or a similarly-flavored callable.
 func (ctx *Context) callMetaWithSelf(location *SourceLocation, metaFunction Value, self Value) (Value, error) {
 	if !callableSelfIsPassedByReference(metaFunction) {
-		return Call(ctx, location, metaFunction, []Value{self.Copy()})
+		return call(ctx, location, metaFunction, []Value{self.Copy()})
 	}
-	result, err := Call(ctx, location, metaFunction, []Value{ctx.newReference(self)})
+	result, err := call(ctx, location, metaFunction, []Value{ctx.newReference(self)})
 	unmarkReferenced(self)
 	return result, err
 }
@@ -3355,6 +3376,7 @@ type Environment struct {
 	match *regexpMatch // Optional
 	refs  []envRefInfo
 	nref  int
+	held  bool
 }
 
 func NewEnvironment(outer *Environment) *Environment {
@@ -3368,6 +3390,21 @@ func NewEnvironment(outer *Environment) *Environment {
 		match: nil,
 		refs:  nil,
 		nref:  nref,
+	}
+}
+
+// Mark that this environment has been closed-over by at least one function
+// that now holds a live path to all values in this and outer environments.
+func (self *Environment) markHeld() {
+	env := self
+	for env != nil {
+		if env.held {
+			// The current environment being held implies all outer
+			// environments are also held.
+			break
+		}
+		env.held = true
+		env = env.outer
 	}
 }
 
@@ -3983,6 +4020,7 @@ func (self *AstExpressionFunction) Eval(ctx *Context, env *Environment) (Value, 
 			}),
 		)
 	}
+	env.markHeld()
 	return ctx.newFunction(self, env), nil
 }
 
@@ -5506,7 +5544,7 @@ func (self *AstExpressionFunctionCall) Eval(ctx *Context, env *Environment) (Val
 		arguments = append(arguments, moveOrCopy(result))
 	}
 
-	return Call(ctx, self.Location, function, arguments)
+	return call(ctx, self.Location, function, arguments)
 }
 
 type AstBlock struct {
@@ -5744,7 +5782,7 @@ func (self *AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, 
 		reference := ctx.newReference(collection)
 		defer unmarkReferenced(collection)
 		for {
-			iterated, err := Call(ctx, self.Location, metaFunction, []Value{reference})
+			iterated, err := call(ctx, self.Location, metaFunction, []Value{reference})
 			if err != nil {
 				if error, ok := err.(Error); ok {
 					if _, ok := error.Value.(*Null); ok {
@@ -7899,6 +7937,18 @@ func (self *Parser) ParseStatementExpressionOrAssignment() (AstStatement, error)
 
 // Invoke a callable function, either a *Function or *Builtin value.
 func Call(ctx *Context, location *SourceLocation, callable Value, arguments []Value) (Value, error) {
+	copied := make([]Value, len(arguments))
+	for i, argument := range arguments {
+		copied[i] = argument.Copy()
+	}
+	return call(ctx, location, callable, copied)
+}
+
+// Invoke a callable function, either a *Function or *Builtin value, with the
+// requirement that every argument passed in the arguments slice MUST be a
+// freshly copied or moved value. All arguments will automatically have their
+// uses unmarked after control returns from the function invocation.
+func call(ctx *Context, location *SourceLocation, callable Value, arguments []Value) (Value, error) {
 	ctx.callDepth += 1
 	defer func() { ctx.callDepth -= 1 }()
 	// A relatively low function call depth of 512 is used (1) to make error
@@ -7944,6 +7994,14 @@ func Call(ctx *Context, location *SourceLocation, callable Value, arguments []Va
 			return nil, err
 		}
 
+		// Arguments can be safely considered dead as long as the callee
+		// environment was not closed-over by a newly-created function.
+		if !env.held {
+			for _, argument := range arguments {
+				unmarkUsed(argument)
+			}
+		}
+
 		if flow, ok := result.(Return); ok {
 			return flow.Value, nil
 		}
@@ -7980,7 +8038,11 @@ func Call(ctx *Context, location *SourceLocation, callable Value, arguments []Va
 			}
 			return nil, err
 		}
-
+		// Built-in functions do not produce values that close-over their
+		// environment, so it is always safe to unmark built-in arguments.
+		for _, argument := range arguments {
+			unmarkUsed(argument)
+		}
 		return result, nil
 	}
 
@@ -8811,7 +8873,7 @@ func BuiltinVectorInit(ctx *Context) Value {
 			defer unmarkReferenced(value)
 			result := ctx.NewVectorOrPanic(nil)
 			for {
-				iterated, err := Call(ctx, nil, metaFunction, []Value{reference})
+				iterated, err := call(ctx, nil, metaFunction, []Value{reference})
 				if err != nil {
 					if error, ok := err.(Error); ok {
 						if _, ok := error.Value.(*Null); ok {
@@ -8917,7 +8979,7 @@ func BuiltinVectorAny(ctx *Context) Value {
 		self := arguments[0].(*Vector)
 
 		for _, element := range self.Elements() {
-			result, err := Call(ctx, nil, arguments[1], []Value{element.Copy()})
+			result, err := call(ctx, nil, arguments[1], []Value{element.Copy()})
 			if err != nil {
 				return nil, err
 			}
@@ -8941,7 +9003,7 @@ func BuiltinVectorAll(ctx *Context) Value {
 		self := arguments[0].(*Vector)
 
 		for _, element := range self.Elements() {
-			result, err := Call(ctx, nil, arguments[1], []Value{element.Copy()})
+			result, err := call(ctx, nil, arguments[1], []Value{element.Copy()})
 			if err != nil {
 				return nil, err
 			}
@@ -8966,7 +9028,7 @@ func BuiltinVectorMap(ctx *Context) Value {
 
 		mapped := []Value{}
 		for _, element := range self.Elements() {
-			result, err := Call(ctx, nil, arguments[1], []Value{element.Copy()})
+			result, err := call(ctx, nil, arguments[1], []Value{element.Copy()})
 			if err != nil {
 				return nil, err
 			}
@@ -8984,7 +9046,7 @@ func BuiltinVectorFilter(ctx *Context) Value {
 
 		filtered := []Value{}
 		for _, element := range self.Elements() {
-			result, err := Call(ctx, nil, arguments[1], []Value{element.Copy()})
+			result, err := call(ctx, nil, arguments[1], []Value{element.Copy()})
 			if err != nil {
 				return nil, err
 			}
@@ -9331,7 +9393,7 @@ func BuiltinMapInsert(ctx *Context) Value {
 		k := arguments[1]
 		v := arguments[2]
 
-		err := delf.Insert(k, v)
+		err := delf.Insert(k.Copy(), v.Copy())
 		if err != nil {
 			return nil, NewError(nil, ctx.NewStringf("invalid map::insert operation (%s)", err.Error()))
 		}
@@ -9357,7 +9419,7 @@ func BuiltinMapRemove(ctx *Context) Value {
 			return nil, NewError(nil, ctx.NewStringf("invalid map::remove operation (%s)", err.Error()))
 		}
 
-		return lookup, nil
+		return lookup.Copy(), nil
 	})
 }
 
@@ -9475,7 +9537,7 @@ func BuiltinSetInsert(ctx *Context) Value {
 		delf := self.data.(*Set)
 		element := arguments[1]
 
-		err := delf.Insert(element)
+		err := delf.Insert(element.Copy())
 		if err != nil {
 			return nil, NewError(nil, ctx.NewStringf("invalid set::insert operation (%s)", err.Error()))
 		}
