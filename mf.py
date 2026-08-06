@@ -7280,6 +7280,18 @@ def builtin_math_atanh(value: Number) -> Union[Value, Error]:
         return Number.new(math.nan)
 
 
+@builtin_from_source("math::sum")
+def builtin_math_sum():
+    return """
+    let add = function(lhs, rhs) {
+        return lhs + rhs;
+    };
+    return function(iterable) {
+        return iterable.reduce(add);
+    };
+    """
+
+
 @builtin("py::exec", [Value])
 def builtin_py_exec(source: String) -> Union[Value, Error]:
     try:
@@ -7859,6 +7871,7 @@ BASE_ENVIRONMENT.let(
             String.new("asinh"): builtin_math_asinh(),
             String.new("acosh"): builtin_math_acosh(),
             String.new("atanh"): builtin_math_atanh(),
+            String.new("sum"): builtin_math_sum(),
         }
     ).freeze(),
 )

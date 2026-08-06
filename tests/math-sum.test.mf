@@ -1,0 +1,25 @@
+dumpln(math::sum([1]));
+dumpln(math::sum([1, 3, 5]));
+dumpln(math::sum([1].into_iterator()));
+dumpln(math::sum([1, 3, 5].into_iterator()));
+dumpln(math::sum(["foo", "bar", "baz"]));
+dumpln(math::sum(["foo", "bar", "baz"].into_iterator()));
+
+print("\n");
+
+try { math::sum([]); } catch err { dumpln(err); }
+try { math::sum([].into_iterator()); } catch err { dumpln(err); }
+try { math::sum([123, "foo"]); } catch err { dumpln(err); }
+try { math::sum([123, "foo"].into_iterator()); } catch err { dumpln(err); }
+################################################################################
+# 1
+# 9
+# 1
+# 9
+# "foobarbaz"
+# "foobarbaz"
+#
+# "attempted vector::reduce on an empty vector"
+# "attempted iterator::reduce on an exhausted iterator"
+# "attempted + operation with types `number` and `string`"
+# "attempted + operation with types `number` and `string`"
