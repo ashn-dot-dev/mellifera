@@ -7715,6 +7715,21 @@ let iterator = type {
             .base = self,
         };
     },
+    .reduce = function.&(self, func) {
+        let accumulator = null;
+        try {
+            accumulator = self.next();
+        }
+        catch err {
+            if err == null {
+                error "attempted iterator::reduce on an exhausted iterator";
+            }
+        }
+        for x in self.* {
+            accumulator = func(accumulator, x);
+        }
+        return accumulator;
+    },
     .into_vector = function.&(self) {
         let result = [];
         for x in self.* {
