@@ -6136,6 +6136,24 @@ def builtin_vector_filter(vector: Vector, function: Function) -> Union[Value, Er
     return Vector.new(filtered)
 
 
+@builtin("vector::reduce", [Vector, Function])
+def builtin_vector_reduce(vector: Vector, function: Function) -> Union[Value, Error]:
+    if len(vector.data) == 0:
+        return Error(None, "attempted vector::reduce on an empty vector")
+
+    if len(vector.data) == 1:
+        return copy(vector.data[0])
+
+    accumulator = copy(vector.data[0])
+    for element in vector.data[1:]:
+        result = call(None, function, [copy(accumulator), copy(element)])
+        if isinstance(result, Error):
+            return result
+        accumulator = result
+
+    return copy(accumulator)
+
+
 @builtin("vector::find", [Vector, Value])
 def builtin_vector_find(vector: Vector, target: Value) -> Union[Value, Error]:
     for index, value in enumerate(vector.data):
@@ -7568,6 +7586,7 @@ _VECTOR_META = Map.new_meta(
         String("all"): builtin_vector_all(),
         String("map"): builtin_vector_map(),
         String("filter"): builtin_vector_filter(),
+        String("reduce"): builtin_vector_reduce(),
         String("find"): builtin_vector_find(),
         String("rfind"): builtin_vector_rfind(),
         String("push"): builtin_vector_push(),

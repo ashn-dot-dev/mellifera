@@ -453,6 +453,7 @@ func NewContext() *Context {
 		{ctx.NewString("all"), BuiltinVectorAll(ctx)},
 		{ctx.NewString("map"), BuiltinVectorMap(ctx)},
 		{ctx.NewString("filter"), BuiltinVectorFilter(ctx)},
+		{ctx.NewString("reduce"), BuiltinVectorReduce(ctx)},
 		{ctx.NewString("find"), BuiltinVectorFind(ctx)},
 		{ctx.NewString("rfind"), BuiltinVectorRfind(ctx)},
 		{ctx.NewString("push"), BuiltinVectorPush(ctx)},
@@ -9062,6 +9063,31 @@ func BuiltinVectorFilter(ctx *Context) Value {
 		}
 
 		return ctx.NewVectorOrPanic(filtered), nil
+	})
+}
+
+func BuiltinVectorReduce(ctx *Context) Value {
+	return ctx.NewBuiltin("vector::reduce", []Type{TVal(VECTOR), TVal(CALLABLE)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Vector)
+
+		if self.Count() == 0 {
+			return nil, NewError(nil, ctx.NewStringf("attempted vector::reduce on an empty vector"))
+		}
+
+		if self.Count() == 1 {
+			return self.Get(0).Copy(), nil
+		}
+
+		accumulator := self.Get(0).Copy()
+		for _, element := range self.Elements()[1:] {
+			result, err := call(ctx, nil, arguments[1], []Value{accumulator.Copy(), element.Copy()})
+			if err != nil {
+				return nil, err
+			}
+			accumulator = result
+		}
+
+		return moveOrCopy(accumulator), nil
 	})
 }
 
