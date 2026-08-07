@@ -7739,18 +7739,19 @@ let iterator = type {
             .base = self,
         };
     },
-    .reduce = function.&(self, func) {
+    .reduce = function(self, func) {
         let accumulator = null;
-        try {
-            accumulator = self.next();
-        }
-        catch err {
-            if err == null {
-                error "attempted iterator::reduce on an exhausted iterator";
+        let has_element = false;
+        for x in self {
+            if not has_element {
+                accumulator = x;
+                has_element = true;
+                continue;
             }
-        }
-        for x in self.* {
             accumulator = func(accumulator, x);
+        }
+        if not has_element {
+            error "attempted iterator::reduce on an exhausted iterator";
         }
         return accumulator;
     },
