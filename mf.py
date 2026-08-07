@@ -7671,23 +7671,23 @@ let iterator = type {
     .next = function.&(self) {
         error "unimplemented iterator::next";
     },
-    .count = function.&(self) {
+    .count = function(self) {
         let count = 0;
-        for _ in self.* {
+        for _ in self {
             count = count + 1;
         }
         return count;
     },
-    .contains = function.&(self, value) {
-        for x in self.* {
+    .contains = function(self, value) {
+        for x in self {
             if x == value {
                 return true;
             }
         }
         return false;
     },
-    .any = function.&(self, func) {
-        for x in self.* {
+    .any = function(self, func) {
+        for x in self {
             let result = func(x);
             if not ty::is_boolean(result) {
                 error $"expected function {func} to return a boolean (received {typename(result)} {repr(result)})";
@@ -7698,8 +7698,8 @@ let iterator = type {
         }
         return false;
     },
-    .all = function.&(self, func) {
-        for x in self.* {
+    .all = function(self, func) {
+        for x in self {
             let result = func(x);
             if not ty::is_boolean(result) {
                 error $"expected function {func} to return a boolean (received {typename(result)} {repr(result)})";
@@ -7755,9 +7755,9 @@ let iterator = type {
         }
         return accumulator;
     },
-    .into_vector = function.&(self) {
+    .into_vector = function(self) {
         let result = [];
-        for x in self.* {
+        for x in self {
             result.push(x);
         }
         return result;

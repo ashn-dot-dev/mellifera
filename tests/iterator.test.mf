@@ -2,7 +2,10 @@ dumpln(iterator);
 try { iterator.next(); } catch err { dumpln(err); }
 try { iterator::eoi(); } catch err { dumpln(err); }
 
-let counter = type map::union(iterator, {
+print("\n");
+
+# Nominal definition of a custom iterator.
+let counter = type extends iterator {
     .init = function(start, max) {
         return new counter {
             .current = start,
@@ -20,22 +23,70 @@ let counter = type map::union(iterator, {
         self.*.current = self.*.current + 1;
         return result;
     },
-});
-dumpln(counter);
-let c = counter::init(5, 10);
-dumpln(c);
-for x in c {
-    dumpln(x);
+};
+println($`counter is {counter}`);
+let iter = counter::init(5, 10);
+println($`iter before loop is {iter} with type {typename(iter)}`);
+for x in iter {
+    println($`  iter element: {x}`);
 }
+println($`iter after loop is still {iter} where iter.next() produces {iter.next()} due to loops iterating over a copy`);
+
+print("\n");
+
+# Definition of a custom iterator using a closure to hold persistent state
+# across copies.
+let counter = function(start, max) {
+    let current = start;
+    let counter = type extends iterator {
+        .next = function.&(self) {
+            if current > max {
+                return iterator::eoi();
+            }
+
+            let result = current;
+            current = current + 1;
+            return result;
+        },
+    };
+    return new counter Map{};
+};
+println($`counter is {counter}`);
+let iter = counter(5, 10);
+println($`iter before loop is {iter} with type {typename(iter)}`);
+for x in iter {
+    println($`  iter element: {x}`);
+}
+println($`iter after loop is {iter} where iter.next() would produce EOI due to holding persistent state via a closure...`);
+try {
+    iter.next();
+}
+catch err {
+    println($`...iter.next() produced the error {repr(err)}`);
+}
+
 ################################################################################
 # {"eoi": iterator::eoi, "next": iterator::next, "count": iterator::count, "contains": iterator::contains, "any": iterator::any, "all": iterator::all, "map": iterator::map, "filter": iterator::filter, "reduce": iterator::reduce, "into_vector": iterator::into_vector}
 # "unimplemented iterator::next"
 # null
-# {"eoi": iterator::eoi, "next": next@[iterator.test.mf, line 12], "count": iterator::count, "contains": iterator::contains, "any": iterator::any, "all": iterator::all, "map": iterator::map, "filter": iterator::filter, "reduce": iterator::reduce, "into_vector": iterator::into_vector, "init": init@[iterator.test.mf, line 6]}
-# {"current": 5, "max": 10}
-# 5
-# 6
-# 7
-# 8
-# 9
-# 10
+#
+# counter is {"eoi": iterator::eoi, "next": counter::next@[iterator.test.mf, line 15], "count": iterator::count, "contains": iterator::contains, "any": iterator::any, "all": iterator::all, "map": iterator::map, "filter": iterator::filter, "reduce": iterator::reduce, "into_vector": iterator::into_vector, "init": counter::init@[iterator.test.mf, line 9]}
+# iter before loop is {"current": 5, "max": 10} with type counter
+#   iter element: 5
+#   iter element: 6
+#   iter element: 7
+#   iter element: 8
+#   iter element: 9
+#   iter element: 10
+# iter after loop is still {"current": 5, "max": 10} where iter.next() produces 5 due to loops iterating over a copy
+#
+# counter is counter@[iterator.test.mf, line 39]
+# iter before loop is Map{} with type counter
+#   iter element: 5
+#   iter element: 6
+#   iter element: 7
+#   iter element: 8
+#   iter element: 9
+#   iter element: 10
+# iter after loop is Map{} where iter.next() would produce EOI due to holding persistent state via a closure...
+# ...iter.next() produced the error null
