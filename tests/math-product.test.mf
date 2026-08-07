@@ -1,0 +1,21 @@
+dumpln(math::product([1]));
+dumpln(math::product([1, 3, 5]));
+dumpln(math::product([1].into_iterator()));
+dumpln(math::product([1, 3, 5].into_iterator()));
+
+print("\n");
+
+try { math::product([]); } catch err { dumpln(err); }
+try { math::product([].into_iterator()); } catch err { dumpln(err); }
+try { math::product([123, "foo"]); } catch err { dumpln(err); }
+try { math::product([123, "foo"].into_iterator()); } catch err { dumpln(err); }
+################################################################################
+# 1
+# 15
+# 1
+# 15
+#
+# "attempted vector::reduce on an empty vector"
+# "attempted iterator::reduce on an exhausted iterator"
+# "attempted * operation with types `number` and `string`"
+# "attempted * operation with types `number` and `string`"

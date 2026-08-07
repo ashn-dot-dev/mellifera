@@ -586,6 +586,7 @@ func NewContext() *Context {
 		{ctx.NewString("acosh"), BuiltinMathAcosh(ctx)},
 		{ctx.NewString("atanh"), BuiltinMathAtanh(ctx)},
 		{ctx.NewString("sum"), BuiltinMathSum(ctx)},
+		{ctx.NewString("product"), BuiltinMathProduct(ctx)},
 	}).Freeze())
 	ctx.BaseEnvironment.Let("module", ctx.NewMapOrPanic([]MapPair{
 		{ctx.NewString("path"), ctx.NewNull()},
@@ -10592,6 +10593,21 @@ return function(iterable) {
 	`)
 
 	return ctx.NewBuiltin("math::sum", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return CallBuiltinFromSource(ctx, function, arguments)
+	})
+}
+
+func BuiltinMathProduct(ctx *Context) Value {
+	function := ctx.NewValueFromSourceOrPanic("math::product", `
+	let multiply = function(lhs, rhs) {
+		return lhs * rhs;
+	};
+	return function(iterable) {
+		return iterable.reduce(multiply);
+	};
+	`)
+
+	return ctx.NewBuiltin("math::product", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return CallBuiltinFromSource(ctx, function, arguments)
 	})
 }

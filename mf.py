@@ -7292,6 +7292,18 @@ def builtin_math_sum():
     """
 
 
+@builtin_from_source("math::product")
+def builtin_math_product():
+    return """
+    let multiply = function(lhs, rhs) {
+        return lhs * rhs;
+    };
+    return function(iterable) {
+        return iterable.reduce(multiply);
+    };
+    """
+
+
 @builtin("py::exec", [Value])
 def builtin_py_exec(source: String) -> Union[Value, Error]:
     try:
@@ -7872,6 +7884,7 @@ BASE_ENVIRONMENT.let(
             String.new("acosh"): builtin_math_acosh(),
             String.new("atanh"): builtin_math_atanh(),
             String.new("sum"): builtin_math_sum(),
+            String.new("product"): builtin_math_product(),
         }
     ).freeze(),
 )
