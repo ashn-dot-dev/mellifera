@@ -2931,21 +2931,26 @@ class AstExpressionAnd(AstExpression):
         lhs = self.lhs.eval(env)
         if isinstance(lhs, Error):
             return lhs
-        if isinstance(lhs, Boolean) and not lhs.data:
+        if not isinstance(lhs, Boolean):
+            return Error(
+                self.location,
+                f"attempted binary and operation with left-hand-side of type {quote(typename(lhs))}",
+            )
+        if not lhs.data:
             return Boolean.new(False)  # short circuit
 
         rhs = self.rhs.eval(env)
         if isinstance(rhs, Error):
             return rhs
-        if isinstance(rhs, Boolean) and not rhs.data:
-            return Boolean.new(False)  # short circuit
+        if not isinstance(rhs, Boolean):
+            return Error(
+                self.location,
+                f"attempted binary and operation with right-hand-side of type {quote(typename(rhs))}",
+            )
+        if not rhs.data:
+            return Boolean.new(False)
 
-        if isinstance(lhs, Boolean) and isinstance(rhs, Boolean):
-            return Boolean.new(lhs.data and rhs.data)
-        return Error(
-            self.location,
-            f"attempted binary and operation with types {quote(typename(lhs))} and {quote(typename(rhs))}",
-        )
+        return Boolean.new(True)
 
 
 @final
@@ -2971,21 +2976,26 @@ class AstExpressionOr(AstExpression):
         lhs = self.lhs.eval(env)
         if isinstance(lhs, Error):
             return lhs
-        if isinstance(lhs, Boolean) and lhs.data:
+        if not isinstance(lhs, Boolean):
+            return Error(
+                self.location,
+                f"attempted binary or operation with left-hand-side of type {quote(typename(lhs))}",
+            )
+        if lhs.data:
             return Boolean.new(True)  # short circuit
 
         rhs = self.rhs.eval(env)
         if isinstance(rhs, Error):
             return rhs
-        if isinstance(rhs, Boolean) and rhs.data:
-            return Boolean.new(True)  # short circuit
+        if not isinstance(rhs, Boolean):
+            return Error(
+                self.location,
+                f"attempted binary or operation with right-hand-side of type {quote(typename(rhs))}",
+            )
+        if rhs.data:
+            return Boolean.new(True)
 
-        if isinstance(lhs, Boolean) and isinstance(rhs, Boolean):
-            return Boolean.new(lhs.data or rhs.data)
-        return Error(
-            self.location,
-            f"attempted binary or operation with types {quote(typename(lhs))} and {quote(typename(rhs))}",
-        )
+        return Boolean.new(False)
 
 
 @final

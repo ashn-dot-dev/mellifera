@@ -4386,7 +4386,13 @@ func (self *AstExpressionAnd) Eval(ctx *Context, env *Environment) (Value, error
 	}
 
 	lhsBoolean, lhsIsBoolean := lhs.(*Boolean)
-	if lhsIsBoolean && !lhsBoolean.data {
+	if !lhsIsBoolean {
+		return nil, NewError(
+			self.Location,
+			ctx.NewStringf("attempted binary and operation with left-hand-side of type %s", quote(lhs.Typename())),
+		)
+	}
+	if !lhsBoolean.data {
 		return ctx.NewBoolean(false), nil // short circuit
 	}
 
@@ -4396,18 +4402,17 @@ func (self *AstExpressionAnd) Eval(ctx *Context, env *Environment) (Value, error
 	}
 
 	rhsBoolean, rhsIsBoolean := rhs.(*Boolean)
-	if rhsIsBoolean && !rhsBoolean.data {
-		return ctx.NewBoolean(false), nil // short circuit
+	if !rhsIsBoolean {
+		return nil, NewError(
+			self.Location,
+			ctx.NewStringf("attempted binary and operation with right-hand-side of type %s", quote(rhs.Typename())),
+		)
+	}
+	if !rhsBoolean.data {
+		return ctx.NewBoolean(false), nil
 	}
 
-	if lhsIsBoolean && rhsIsBoolean {
-		return ctx.NewBoolean(lhsBoolean.data && rhsBoolean.data), nil
-	}
-
-	return nil, NewError(
-		self.Location,
-		ctx.NewStringf("attempted binary and operation with types %s and %s", quote(lhs.Typename()), quote(rhs.Typename())),
-	)
+	return ctx.NewBoolean(true), nil
 }
 
 type AstExpressionOr struct {
@@ -4436,7 +4441,13 @@ func (self *AstExpressionOr) Eval(ctx *Context, env *Environment) (Value, error)
 	}
 
 	lhsBoolean, lhsIsBoolean := lhs.(*Boolean)
-	if lhsIsBoolean && lhsBoolean.data {
+	if !lhsIsBoolean {
+		return nil, NewError(
+			self.Location,
+			ctx.NewStringf("attempted binary or operation with left-hand-side of type %s", quote(lhs.Typename())),
+		)
+	}
+	if lhsBoolean.data {
 		return ctx.NewBoolean(true), nil // short circuit
 	}
 
@@ -4446,18 +4457,17 @@ func (self *AstExpressionOr) Eval(ctx *Context, env *Environment) (Value, error)
 	}
 
 	rhsBoolean, rhsIsBoolean := rhs.(*Boolean)
-	if rhsIsBoolean && rhsBoolean.data {
-		return ctx.NewBoolean(true), nil // short circuit
+	if !rhsIsBoolean {
+		return nil, NewError(
+			self.Location,
+			ctx.NewStringf("attempted binary or operation with right-hand-side of type %s", quote(rhs.Typename())),
+		)
+	}
+	if rhsBoolean.data {
+		return ctx.NewBoolean(true), nil
 	}
 
-	if lhsIsBoolean && rhsIsBoolean {
-		return ctx.NewBoolean(lhsBoolean.data || rhsBoolean.data), nil
-	}
-
-	return nil, NewError(
-		self.Location,
-		ctx.NewStringf("attempted binary or operation with types %s and %s", quote(lhs.Typename()), quote(rhs.Typename())),
-	)
+	return ctx.NewBoolean(false), nil
 }
 
 type AstExpressionEq struct {

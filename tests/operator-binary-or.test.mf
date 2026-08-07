@@ -19,25 +19,39 @@ dumpln(true or true);
 print("\n");
 
 # short circuiting
-let f = function(s) { println(s); error "oopsie"; };
-try { false or f("false or f()"); } catch { println("error"); }
-true or f("true and f()");
+let boom = function() { error "boom"; };
+try { println($`true or boom() is {true or boom()}`); } catch err { println($`true or boom() produced {repr(err)}`); }
+try { println($`false or boom() is {false or boom()}`); } catch err { println($`false or boom() produced {repr(err)}`); }
+
+print("\n");
+
+# type checking where one side is not a boolean
+let bad = 123;
+try { println($`bad or true is {bad or true}`); } catch err { println($`bad or true produced {repr(err)}`); }
+try { println($`bad or false is {bad or false}`); } catch err { println($`bad or false produced {repr(err)}`); }
+try { println($`true or bad is {true or bad}`); } catch err { println($`true or bad produced {repr(err)}`); }
+try { println($`false or bad is {false or bad}`); } catch err { println($`false or bad produced {repr(err)}`); }
 ################################################################################
-# "attempted binary or operation with types `null` and `null`"
+# "attempted binary or operation with left-hand-side of type `null`"
 # true
-# "attempted binary or operation with types `number` and `number`"
-# "attempted binary or operation with types `string` and `string`"
-# "attempted binary or operation with types `vector` and `vector`"
-# "attempted binary or operation with types `map` and `map`"
-# "attempted binary or operation with types `set` and `set`"
-# "attempted binary or operation with types `reference` and `reference`"
-# "attempted binary or operation with types `function` and `function`"
-# "attempted binary or operation with types `function` and `function`"
+# "attempted binary or operation with left-hand-side of type `number`"
+# "attempted binary or operation with left-hand-side of type `string`"
+# "attempted binary or operation with left-hand-side of type `vector`"
+# "attempted binary or operation with left-hand-side of type `map`"
+# "attempted binary or operation with left-hand-side of type `set`"
+# "attempted binary or operation with left-hand-side of type `reference`"
+# "attempted binary or operation with left-hand-side of type `function`"
+# "attempted binary or operation with left-hand-side of type `function`"
 #
 # false
 # true
 # true
 # true
 #
-# false or f()
-# error
+# true or boom() is true
+# false or boom() produced "boom"
+#
+# bad or true produced "attempted binary or operation with left-hand-side of type `number`"
+# bad or false produced "attempted binary or operation with left-hand-side of type `number`"
+# true or bad is true
+# false or bad produced "attempted binary or operation with right-hand-side of type `number`"
