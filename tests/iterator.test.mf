@@ -66,11 +66,11 @@ catch err {
 }
 
 ################################################################################
-# {"eoi": iterator::eoi, "next": iterator::next, "count": iterator::count, "contains": iterator::contains, "any": iterator::any, "all": iterator::all, "map": iterator::map, "filter": iterator::filter, "reduce": iterator::reduce, "into_vector": iterator::into_vector}
+# {"eoi": iterator::eoi, "next": iterator::next, "count": iterator::count, "contains": iterator::contains, "any": iterator::any, "all": iterator::all, "map": iterator::map, "filter": iterator::filter, "reduce": iterator::reduce, "into_vector": iterator::into_vector, "into_set": iterator::into_set}
 # "unimplemented iterator::next"
 # null
 #
-# counter is {"eoi": iterator::eoi, "next": counter::next@[iterator.test.mf, line 15], "count": iterator::count, "contains": iterator::contains, "any": iterator::any, "all": iterator::all, "map": iterator::map, "filter": iterator::filter, "reduce": iterator::reduce, "into_vector": iterator::into_vector, "init": counter::init@[iterator.test.mf, line 9]}
+# counter is {"eoi": iterator::eoi, "next": counter::next@[iterator.test.mf, line 15], "count": iterator::count, "contains": iterator::contains, "any": iterator::any, "all": iterator::all, "map": iterator::map, "filter": iterator::filter, "reduce": iterator::reduce, "into_vector": iterator::into_vector, "into_set": iterator::into_set, "init": counter::init@[iterator.test.mf, line 9]}
 # iter before loop is {"current": 5, "max": 10} with type counter
 #   iter element: 5
 #   iter element: 6

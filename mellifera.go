@@ -8286,11 +8286,10 @@ let iterator = type {
         return accumulator;
     },
     .into_vector = function(self) {
-        let result = [];
-        for x in self {
-            result.push(x);
-        }
-        return result;
+        return vector::init(self);
+    },
+    .into_set = function(self) {
+        return set::init(self);
     },
 };
 return iterator;
