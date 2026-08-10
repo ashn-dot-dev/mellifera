@@ -1,0 +1,7 @@
+dumpln(range(1, 4).map(function(n) { return [n, math::pow(n, 2)]; }).into_map());
+dumpln(range(1, 5).map(function(n) { return [n, math::pow(n, 2)]; }).into_map());
+dumpln(range(1, 6).map(function(n) { return [n, math::pow(n, 2)]; }).into_map());
+################################################################################
+# {1: 1, 2: 4, 3: 9}
+# {1: 1, 2: 4, 3: 9, 4: 16}
+# {1: 1, 2: 4, 3: 9, 4: 16, 5: 25}

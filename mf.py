@@ -7852,6 +7852,9 @@ let iterator = type {
     .into_vector = function(self) {
         return vector::init(self);
     },
+    .into_map = function(self) {
+        return map::init(self);
+    },
     .into_set = function(self) {
         return set::init(self);
     },
