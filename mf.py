@@ -6414,6 +6414,58 @@ def builtin_vector_into_iterator():
     """
 
 
+@builtin("map::init", [Value])
+def builtin_map_init(value: Value) -> Union[Value, Error]:
+    pairs: dict[Value, Value]
+    if metafunction := value.metafunction(CONST_STRING_NEXT):
+        if not callable_self_is_passed_by_reference(metafunction):
+            return Error(
+                None,
+                "iterator next must receive self by reference (declared with function.&(self))",
+            )
+        reference = Reference.new(value)
+        try:
+            pairs = dict()
+            while True:
+                iterated = call(None, metafunction, [reference])
+                if isinstance(iterated, Error):
+                    if isinstance(iterated.value, Null):
+                        break  # end-of-iteration
+                    return iterated
+                if not isinstance(iterated, Vector) or len(iterated.data) != 2:
+                    return Error(
+                        None,
+                        f"iterator next must return a two element vector, received {iterated}",
+                    )
+                pairs[iterated.data[0]] = iterated.data[1]
+            return Map.new({copy(k): copy(v) for k, v in pairs.items()})
+        finally:
+            Reference.unmark_referenced(value)
+    if isinstance(value, Vector):
+        pairs = dict()
+        for element in value.data:
+            if not isinstance(element, Vector) or len(element.data) != 2:
+                return Error(
+                    None,
+                    f"expected vector element to be a two element vector, received {element}",
+                )
+            pairs[element.data[0]] = element.data[1]
+        return Map.new({copy(k): copy(v) for k, v in pairs.items()})
+    if isinstance(value, Map):
+        return Map.new({copy(k): copy(v) for k, v in value.data.items()})
+    if isinstance(value, Set):
+        pairs = dict()
+        for element in value.data:
+            if not isinstance(element, Vector) or len(element.data) != 2:
+                return Error(
+                    None,
+                    f"expected set element to be a two element vector, received {element}",
+                )
+            pairs[element.data[0]] = element.data[1]
+        return Map.new({copy(k): copy(v) for k, v in pairs.items()})
+    return Error(None, f"cannot convert value {value} to map")
+
+
 @builtin("map::count", [Map])
 def builtin_map_count(map: Map) -> Union[Value, Error]:
     return Number.new(len(map.data))
@@ -7669,6 +7721,7 @@ _VECTOR_META = Map.new_meta(
 _MAP_META = Map.new_meta(
     name=String(Map.typename()),
     data={
+        String("init"): builtin_map_init(),
         String("count"): builtin_map_count(),
         String("is_empty"): builtin_map_is_empty(),
         String("contains"): builtin_map_contains(),

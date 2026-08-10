@@ -467,6 +467,7 @@ func NewContext() *Context {
 		{ctx.NewString("into_iterator"), ctx.NewNull()}, // deferred instantiation
 	})
 	ctx.mapMeta = ctx.NewMetaMapOrPanic("map", []MapPair{
+		{ctx.NewString("init"), BuiltinMapInit(ctx)},
 		{ctx.NewString("count"), BuiltinMapCount(ctx)},
 		{ctx.NewString("is_empty"), BuiltinMapIsEmpty(ctx)},
 		{ctx.NewString("contains"), BuiltinMapContains(ctx)},
@@ -9409,6 +9410,84 @@ return function(self) {
 
 	return ctx.NewBuiltin("vector::into_iterator", []Type{TVal(VECTOR)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return CallBuiltinFromSource(ctx, function, arguments)
+	})
+}
+
+func BuiltinMapInit(ctx *Context) Value {
+	return ctx.NewBuiltin("map::init", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		value := arguments[0]
+
+		if metaFunction, ok := MetaFunction(ctx, value, ctx.constStringNext); ok {
+			if !callableSelfIsPassedByReference(metaFunction) {
+				return nil, NewError(nil, ctx.NewString("iterator next must receive self by reference (declared with function.&(self))"))
+			}
+			reference := ctx.newReference(value)
+			defer unmarkReferenced(value)
+			result := ctx.NewMapOrPanic(nil)
+			for {
+				iterated, err := call(ctx, nil, metaFunction, []Value{reference})
+				if err != nil {
+					if error, ok := err.(Error); ok {
+						if _, ok := error.Value.(*Null); ok {
+							break // end-of-iteration
+						}
+					}
+					return nil, err
+				}
+				iteratedVector, ok := iterated.(*Vector)
+				if !ok || iteratedVector.Count() != 2 {
+					return nil, NewError(nil, ctx.NewStringf("iterator next must return a two element vector, received %s", iterated))
+				}
+				err = result.Insert(iteratedVector.Get(0).Copy(), iteratedVector.Get(1).Copy())
+				if err != nil {
+					return nil, NewError(nil, ctx.NewString(err.Error()))
+				}
+			}
+			return result, nil
+		}
+
+		if valueVector, ok := value.(*Vector); ok {
+			result := ctx.NewMapOrPanic(nil)
+			for _, element := range valueVector.Elements() {
+				elementVector, ok := element.(*Vector)
+				if !ok || elementVector.Count() != 2 {
+					return nil, NewError(nil, ctx.NewStringf("expected vector element to be a two element vector, received %s", element))
+				}
+				err := result.Insert(elementVector.Get(0).Copy(), elementVector.Get(1).Copy())
+				if err != nil {
+					return nil, NewError(nil, ctx.NewString(err.Error()))
+				}
+			}
+			return result, nil
+		}
+
+		if valueMap, ok := value.(*Map); ok {
+			result := ctx.NewMapOrPanic(nil)
+			for _, pair := range valueMap.Pairs() {
+				err := result.Insert(pair.Key.Copy(), pair.Value.Copy())
+				if err != nil {
+					return nil, NewError(nil, ctx.NewString(err.Error()))
+				}
+			}
+			return result, nil
+		}
+
+		if valueSet, ok := value.(*Set); ok {
+			result := ctx.NewMapOrPanic(nil)
+			for _, element := range valueSet.Elements() {
+				elementVector, ok := element.(*Vector)
+				if !ok || elementVector.Count() != 2 {
+					return nil, NewError(nil, ctx.NewStringf("expected set element to be a two element vector, received %s", element))
+				}
+				err := result.Insert(elementVector.Get(0).Copy(), elementVector.Get(1).Copy())
+				if err != nil {
+					return nil, NewError(nil, ctx.NewString(err.Error()))
+				}
+			}
+			return result, nil
+		}
+
+		return nil, NewError(nil, ctx.NewStringf("cannot convert value %v to map", value))
 	})
 }
 

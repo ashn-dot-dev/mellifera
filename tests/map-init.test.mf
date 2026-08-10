@@ -1,0 +1,86 @@
+println($`map::init([["foo", 123], ["bar", 456], ["baz", 789]]) is {map::init([["foo", 123], ["bar", 456], ["baz", 789]])}`);
+println($`map::init({{"foo": 123, "bar": 456, "baz": 789}}) is {map::init({"foo": 123, "bar": 456, "baz": 789})}`);
+println($`map::init({{["foo", 123], ["bar", 456], ["baz", 789]}}) is {map::init({["foo", 123], ["bar", 456], ["baz", 789]})}`);
+
+let counter = type extends iterator {
+    .init = function(max) {
+        return new counter {
+            .cur = 1,
+            .max = max
+        };
+    },
+    .next = function.&(self) {
+        if self.*.cur > self.*.max {
+            error null; # end-of-iteration
+        }
+        let result = self.*.cur;
+        self.*.cur = self.*.cur + 1;
+        return [result, null];
+    },
+};
+println($`map::init(counter::init(5)) is {map::init(counter::init(5))}`);
+
+print("\n");
+
+let bad = type type extends iterator {
+    "next": function(self) { }
+};
+
+let bad_counter_invalid_return_type = type extends iterator {
+    .init = function(max) {
+        return new bad_counter_invalid_return_type {
+            .cur = 1,
+            .max = max
+        };
+    },
+    .next = function.&(self) {
+        if self.*.cur > self.*.max {
+            error null; # end-of-iteration
+        }
+        let result = self.*.cur;
+        self.*.cur = self.*.cur + 1;
+        return result;
+    },
+};
+
+let bad_counter_invalid_return_element_count = type extends iterator {
+    .init = function(max) {
+        return new bad_counter_invalid_return_element_count {
+            .cur = 1,
+            .max = max
+        };
+    },
+    .next = function.&(self) {
+        if self.*.cur > self.*.max {
+            error null; # end-of-iteration
+        }
+        let result = self.*.cur;
+        self.*.cur = self.*.cur + 1;
+        return [result];
+    },
+};
+
+try { map::init(null); } catch err { println($`map::init(null) produces the error {repr(err)}`); }
+try { map::init(3); } catch err { println($`map::init(3) produces the error {repr(err)}`); }
+try { map::init(3.14); } catch err { println($`map::init(3.14) produces the error {repr(err)}`); }
+try { map::init("foo"); } catch err { println($`map::init("foo") produces the error {repr(err)}`); }
+try { map::init(["foo"]); } catch err { println($`map::init(["foo"]) produces the error {repr(err)}`); }
+try { map::init({"foo"}); } catch err { println($`map::init({{"foo"}}) produces the error {repr(err)}`); }
+try { map::init(new bad Map{}); } catch err { println($`map::init(new bad Map{{}}) produces the error {repr(err)}`); }
+try { map::init(bad_counter_invalid_return_type::init(5)); } catch err { println($`map::init(bad_counter_invalid_return_type::init(5)) produces the error {repr(err)}`); }
+try { map::init(bad_counter_invalid_return_element_count::init(5)); } catch err { println($`map::init(bad_counter_invalid_return_element_count::init(5)) produces the error {repr(err)}`); }
+################################################################################
+# map::init([["foo", 123], ["bar", 456], ["baz", 789]]) is {"foo": 123, "bar": 456, "baz": 789}
+# map::init({"foo": 123, "bar": 456, "baz": 789}) is {"foo": 123, "bar": 456, "baz": 789}
+# map::init({["foo", 123], ["bar", 456], ["baz", 789]}) is {"foo": 123, "bar": 456, "baz": 789}
+# map::init(counter::init(5)) is {1: null, 2: null, 3: null, 4: null, 5: null}
+#
+# map::init(null) produces the error "cannot convert value null to map"
+# map::init(3) produces the error "cannot convert value 3 to map"
+# map::init(3.14) produces the error "cannot convert value 3.14 to map"
+# map::init("foo") produces the error "cannot convert value \"foo\" to map"
+# map::init(["foo"]) produces the error "expected vector element to be a two element vector, received \"foo\""
+# map::init({"foo"}) produces the error "expected set element to be a two element vector, received \"foo\""
+# map::init(new bad Map{}) produces the error "iterator next must receive self by reference (declared with function.&(self))"
+# map::init(bad_counter_invalid_return_type::init(5)) produces the error "iterator next must return a two element vector, received 1"
+# map::init(bad_counter_invalid_return_element_count::init(5)) produces the error "iterator next must return a two element vector, received [1]"
