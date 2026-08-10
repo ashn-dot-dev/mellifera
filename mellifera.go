@@ -476,7 +476,8 @@ func NewContext() *Context {
 		{ctx.NewString("keys"), BuiltinMapKeys(ctx)},
 		{ctx.NewString("values"), BuiltinMapValues(ctx)},
 		{ctx.NewString("pairs"), BuiltinMapPairs(ctx)},
-		{ctx.NewString("union"), ctx.NewNull()}, // deferred instantiation
+		{ctx.NewString("union"), ctx.NewNull()},         // deferred instantiation
+		{ctx.NewString("into_iterator"), ctx.NewNull()}, // deferred instantiation
 	})
 	ctx.setMeta = ctx.NewMetaMapOrPanic("set", []MapPair{
 		{ctx.NewString("init"), BuiltinSetInit(ctx)},
@@ -485,9 +486,10 @@ func NewContext() *Context {
 		{ctx.NewString("contains"), BuiltinSetContains(ctx)},
 		{ctx.NewString("insert"), BuiltinSetInsert(ctx)},
 		{ctx.NewString("remove"), BuiltinSetRemove(ctx)},
-		{ctx.NewString("union"), ctx.NewNull()},        // deferred instantiation
-		{ctx.NewString("intersection"), ctx.NewNull()}, // deferred instantiation
-		{ctx.NewString("difference"), ctx.NewNull()},   // deferred instantiation
+		{ctx.NewString("union"), ctx.NewNull()},         // deferred instantiation
+		{ctx.NewString("intersection"), ctx.NewNull()},  // deferred instantiation
+		{ctx.NewString("difference"), ctx.NewNull()},    // deferred instantiation
+		{ctx.NewString("into_iterator"), ctx.NewNull()}, // deferred instantiation
 	})
 	ctx.referenceMeta = ctx.NewMetaMapOrPanic("reference", nil)
 
@@ -628,9 +630,11 @@ func NewContext() *Context {
 	ctx.vectorMeta.data.Insert(ctx.NewString("sorted_by"), BuiltinVectorSortedBy(ctx))
 	ctx.vectorMeta.data.Insert(ctx.NewString("into_iterator"), BuiltinVectorIntoIterator(ctx))
 	ctx.mapMeta.data.Insert(ctx.NewString("union"), BuiltinMapUnion(ctx))
+	ctx.mapMeta.data.Insert(ctx.NewString("into_iterator"), BuiltinMapIntoIterator(ctx))
 	ctx.setMeta.data.Insert(ctx.NewString("union"), BuiltinSetUnion(ctx))
 	ctx.setMeta.data.Insert(ctx.NewString("intersection"), BuiltinSetIntersection(ctx))
 	ctx.setMeta.data.Insert(ctx.NewString("difference"), BuiltinSetDifference(ctx))
+	ctx.setMeta.data.Insert(ctx.NewString("into_iterator"), BuiltinSetIntoIterator(ctx))
 	_ = ctx.BaseEnvironment.Set("range", BuiltinRange(ctx))
 
 	return ctx
@@ -9640,6 +9644,31 @@ return function(a, b) {
 	})
 }
 
+func BuiltinMapIntoIterator(ctx *Context) Value {
+	function := ctx.NewValueFromSourceOrPanic("map::into_iterator", `
+return function(self) {
+	let map_iterator = type extends iterator {
+		.next = function.&(self) {
+			if self.index >= self.pairs.count() {
+				return iterator::eoi();
+			}
+			let current = self.pairs[self.index];
+			self.index = self.index + 1;
+			return current;
+		},
+	};
+	return new map_iterator {
+		.pairs = vector::init(self),
+		.index = 0,
+	};
+};
+	`)
+
+	return ctx.NewBuiltin("map::into_iterator", []Type{TVal(MAP)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return CallBuiltinFromSource(ctx, function, arguments)
+	})
+}
+
 func BuiltinSetInit(ctx *Context) Value {
 	return ctx.NewBuiltin("set::init", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		value := arguments[0]
@@ -9831,6 +9860,31 @@ return function(a, b) {
 	`)
 
 	return ctx.NewBuiltin("set::difference", []Type{TVal(ANY), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		return CallBuiltinFromSource(ctx, function, arguments)
+	})
+}
+
+func BuiltinSetIntoIterator(ctx *Context) Value {
+	function := ctx.NewValueFromSourceOrPanic("set::into_iterator", `
+return function(self) {
+	let set_iterator = type extends iterator {
+		.next = function.&(self) {
+			if self.index >= self.elements.count() {
+				return iterator::eoi();
+			}
+			let current = self.elements[self.index];
+			self.index = self.index + 1;
+			return current;
+		},
+	};
+	return new set_iterator {
+		.elements = vector::init(self),
+		.index = 0,
+	};
+};
+	`)
+
+	return ctx.NewBuiltin("set::into_iterator", []Type{TVal(SET)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return CallBuiltinFromSource(ctx, function, arguments)
 	})
 }

@@ -6553,6 +6553,28 @@ def builtin_map_union():
     """
 
 
+@builtin_from_source("map::into_iterator")
+def builtin_map_into_iterator():
+    return """
+    return function(self) {
+        let map_iterator = type extends iterator {
+            .next = function.&(self) {
+                if self.index >= self.pairs.count() {
+                    return iterator::eoi();
+                }
+                let current = self.pairs[self.index];
+                self.index = self.index + 1;
+                return current;
+            },
+        };
+        return new map_iterator {
+            .pairs = vector::init(self),
+            .index = 0,
+        };
+    };
+    """
+
+
 @builtin("set::init", [Value])
 def builtin_set_init(value: Value) -> Union[Value, Error]:
     if metafunction := value.metafunction(CONST_STRING_NEXT):
@@ -6679,6 +6701,28 @@ def builtin_set_difference():
             }
         }
         return result;
+    };
+    """
+
+
+@builtin_from_source("set::into_iterator")
+def builtin_set_into_iterator():
+    return """
+    return function(self) {
+        let set_iterator = type extends iterator {
+            .next = function.&(self) {
+                if self.index >= self.elements.count() {
+                    return iterator::eoi();
+                }
+                let current = self.elements[self.index];
+                self.index = self.index + 1;
+                return current;
+            },
+        };
+        return new set_iterator {
+            .elements = vector::init(self),
+            .index = 0,
+        };
     };
     """
 
@@ -7731,6 +7775,9 @@ _MAP_META = Map.new_meta(
         String("values"): builtin_map_values(),
         String("pairs"): builtin_map_pairs(),
         String("union"): builtin_map_union(BuiltinExplicitUninitialized()),
+        String("into_iterator"): builtin_map_into_iterator(
+            BuiltinExplicitUninitialized()
+        ),
     },
 )
 _SET_META = Map.new_meta(
@@ -7747,6 +7794,9 @@ _SET_META = Map.new_meta(
             BuiltinExplicitUninitialized()
         ),
         String("difference"): builtin_set_difference(BuiltinExplicitUninitialized()),
+        String("into_iterator"): builtin_set_into_iterator(
+            BuiltinExplicitUninitialized()
+        ),
     },
 )
 _REFERENCE_META = Map.new_meta(name=String(Reference.typename()))
@@ -8062,9 +8112,11 @@ initialize_builtin_from_source(_VECTOR_META[String("sorted")])
 initialize_builtin_from_source(_VECTOR_META[String("sorted_by")])
 initialize_builtin_from_source(_VECTOR_META[String("into_iterator")])
 initialize_builtin_from_source(_MAP_META[String("union")])
+initialize_builtin_from_source(_MAP_META[String("into_iterator")])
 initialize_builtin_from_source(_SET_META[String("union")])
 initialize_builtin_from_source(_SET_META[String("intersection")])
 initialize_builtin_from_source(_SET_META[String("difference")])
+initialize_builtin_from_source(_SET_META[String("into_iterator")])
 initialize_builtin_from_source(BASE_ENVIRONMENT.store[String("range")])
 
 # Current depth of the call stack tracked by the call() function.
