@@ -478,6 +478,7 @@ func NewContext() *Context {
 		{ctx.NewString("union"), ctx.NewNull()}, // deferred instantiation
 	})
 	ctx.setMeta = ctx.NewMetaMapOrPanic("set", []MapPair{
+		{ctx.NewString("init"), BuiltinSetInit(ctx)},
 		{ctx.NewString("count"), BuiltinSetCount(ctx)},
 		{ctx.NewString("is_empty"), BuiltinSetIsEmpty(ctx)},
 		{ctx.NewString("contains"), BuiltinSetContains(ctx)},
@@ -9555,6 +9556,72 @@ return function(a, b) {
 
 	return ctx.NewBuiltin("map::union", []Type{TVal(ANY), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
 		return CallBuiltinFromSource(ctx, function, arguments)
+	})
+}
+
+func BuiltinSetInit(ctx *Context) Value {
+	return ctx.NewBuiltin("set::init", []Type{TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		value := arguments[0]
+
+		if metaFunction, ok := MetaFunction(ctx, value, ctx.constStringNext); ok {
+			if !callableSelfIsPassedByReference(metaFunction) {
+				return nil, NewError(nil, ctx.NewString("iterator next must receive self by reference (declared with function.&(self))"))
+			}
+			reference := ctx.newReference(value)
+			defer unmarkReferenced(value)
+			result := ctx.NewSetOrPanic(nil)
+			for {
+				iterated, err := call(ctx, nil, metaFunction, []Value{reference})
+				if err != nil {
+					if error, ok := err.(Error); ok {
+						if _, ok := error.Value.(*Null); ok {
+							break // end-of-iteration
+						}
+					}
+					return nil, err
+				}
+				err = result.Insert(iterated.Copy())
+				if err != nil {
+					return nil, NewError(nil, ctx.NewString(err.Error()))
+				}
+			}
+			return result, nil
+		}
+
+		if valueVector, ok := value.(*Vector); ok {
+			result := ctx.NewSetOrPanic(nil)
+			for _, element := range valueVector.Elements() {
+				err := result.Insert(element.Copy())
+				if err != nil {
+					return nil, NewError(nil, ctx.NewString(err.Error()))
+				}
+			}
+			return result, nil
+		}
+
+		if valueMap, ok := value.(*Map); ok {
+			result := ctx.NewSetOrPanic(nil)
+			for _, pair := range valueMap.Pairs() {
+				err := result.Insert(ctx.NewVectorOrPanic([]Value{pair.Key.Copy(), pair.Value.Copy()}))
+				if err != nil {
+					return nil, NewError(nil, ctx.NewString(err.Error()))
+				}
+			}
+			return result, nil
+		}
+
+		if valueSet, ok := value.(*Set); ok {
+			result := ctx.NewSetOrPanic(nil)
+			for _, element := range valueSet.Elements() {
+				err := result.Insert(element.Copy())
+				if err != nil {
+					return nil, NewError(nil, ctx.NewString(err.Error()))
+				}
+			}
+			return result, nil
+		}
+
+		return nil, NewError(nil, ctx.NewStringf("cannot convert value %v to set", value))
 	})
 }
 

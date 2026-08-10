@@ -3,14 +3,14 @@ println($`vector::init([123, 456, 789]) is {vector::init([123, 456, 789])}`);
 println($`vector::init({{"foo": 123, "bar": 456, "baz": 789}}) is {vector::init({"foo": 123, "bar": 456, "baz": 789})}`);
 println($`vector::init({{"foo", "bar", "baz"}}) is {vector::init({"foo", "bar", "baz"})}`);
 
-let counter = type {
-    "init": function(max) {
+let counter = type extends iterator {
+    .init = function(max) {
         return new counter {
             .cur = 1,
             .max = max
         };
     },
-    "next": function.&(self) {
+    .next = function.&(self) {
         if self.*.cur > self.*.max {
             error null; # end-of-iteration
         }
@@ -23,7 +23,7 @@ println($`vector::init(counter::init(5)) is {vector::init(counter::init(5))}`);
 
 print("\n");
 
-let bad = type {
+let bad = type extends iterator {
     "next": function(self) { }
 };
 

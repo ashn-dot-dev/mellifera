@@ -1,0 +1,44 @@
+println($`set::init([123, 456, 789]) is {set::init([123, 456, 789])}`);
+println($`set::init({{"foo": 123, "bar": 456, "baz": 789}}) is {set::init({"foo": 123, "bar": 456, "baz": 789})}`);
+println($`set::init({{"foo", "bar", "baz"}}) is {set::init({"foo", "bar", "baz"})}`);
+
+let counter = type extends iterator {
+    .init = function(max) {
+        return new counter {
+            .cur = 1,
+            .max = max
+        };
+    },
+    .next = function.&(self) {
+        if self.*.cur > self.*.max {
+            error null; # end-of-iteration
+        }
+        let result = self.*.cur;
+        self.*.cur = self.*.cur + 1;
+        return result;
+    },
+};
+println($`set::init(counter::init(5)) is {set::init(counter::init(5))}`);
+
+print("\n");
+
+let bad = type type extends iterator {
+    "next": function(self) { }
+};
+
+try { set::init(null); } catch err { println($`set::init(null) produces the error {repr(err)}`); }
+try { set::init(3); } catch err { println($`set::init(3) produces the error {repr(err)}`); }
+try { set::init(3.14); } catch err { println($`set::init(3.14) produces the error {repr(err)}`); }
+try { set::init("foo"); } catch err { println($`set::init("foo") produces the error {repr(err)}`); }
+try { set::init(new bad Map{}); } catch err { println($`set::init(new bad Map{{}}) produces the error {repr(err)}`); }
+################################################################################
+# set::init([123, 456, 789]) is {123, 456, 789}
+# set::init({"foo": 123, "bar": 456, "baz": 789}) is {["foo", 123], ["bar", 456], ["baz", 789]}
+# set::init({"foo", "bar", "baz"}) is {"foo", "bar", "baz"}
+# set::init(counter::init(5)) is {1, 2, 3, 4, 5}
+#
+# set::init(null) produces the error "cannot convert value null to set"
+# set::init(3) produces the error "cannot convert value 3 to set"
+# set::init(3.14) produces the error "cannot convert value 3.14 to set"
+# set::init("foo") produces the error "cannot convert value \"foo\" to set"
+# set::init(new bad Map{}) produces the error "iterator next must receive self by reference (declared with function.&(self))"

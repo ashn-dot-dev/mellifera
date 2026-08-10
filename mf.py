@@ -6501,6 +6501,36 @@ def builtin_map_union():
     """
 
 
+@builtin("set::init", [Value])
+def builtin_set_init(value: Value) -> Union[Value, Error]:
+    if metafunction := value.metafunction(CONST_STRING_NEXT):
+        if not callable_self_is_passed_by_reference(metafunction):
+            return Error(
+                None,
+                "iterator next must receive self by reference (declared with function.&(self))",
+            )
+        reference = Reference.new(value)
+        try:
+            elements: list[Value] = list()
+            while True:
+                iterated = call(None, metafunction, [reference])
+                if isinstance(iterated, Error):
+                    if isinstance(iterated.value, Null):
+                        break  # end-of-iteration
+                    return iterated
+                elements.append(iterated)
+            return Set.new([copy(x) for x in elements])
+        finally:
+            Reference.unmark_referenced(value)
+    if isinstance(value, Vector):
+        return Set.new([copy(x) for x in value.data])
+    if isinstance(value, Map):
+        return Set.new([Vector.new([copy(k), copy(v)]) for k, v in value.data.items()])
+    if isinstance(value, Set):
+        return Set.new([copy(x) for x in value.data])
+    return Error(None, f"cannot convert value {value} to set")
+
+
 @builtin("set::count", [Set])
 def builtin_set_count(set: Set) -> Union[Value, Error]:
     return Number.new(len(set.data))
@@ -7653,6 +7683,7 @@ _MAP_META = Map.new_meta(
 _SET_META = Map.new_meta(
     name=String(Set.typename()),
     data={
+        String("init"): builtin_set_init(),
         String("count"): builtin_set_count(),
         String("is_empty"): builtin_set_is_empty(),
         String("contains"): builtin_set_contains(),
