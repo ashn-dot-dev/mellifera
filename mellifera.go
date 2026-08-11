@@ -13,6 +13,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"unicode"
 	"unicode/utf8"
 )
@@ -3379,6 +3380,12 @@ type envElement struct {
 	value Value
 }
 
+var envPool = sync.Pool{
+	New: func() any {
+		return &Environment{}
+	},
+}
+
 type Environment struct {
 	store []envElement
 	outer *Environment // Optional
@@ -3393,13 +3400,16 @@ func NewEnvironment(outer *Environment) *Environment {
 	if outer != nil {
 		nref = outer.nref
 	}
-	return &Environment{
-		store: nil,
+
+	self := envPool.Get().(*Environment)
+	*self = Environment{
+		store: self.store,
 		outer: outer,
 		match: nil,
-		refs:  nil,
+		refs:  self.refs,
 		nref:  nref,
 	}
+	return self
 }
 
 // Mark that this environment has been closed-over by at least one function
@@ -3415,6 +3425,19 @@ func (self *Environment) markHeld() {
 		env.held = true
 		env = env.outer
 	}
+}
+
+// Return this environment to the environment pool if it has not been
+// closed-over by at least one function.
+func (self *Environment) tryReuse() {
+	if self.held {
+		return
+	}
+
+	clear(self.store) // re-use store allocation
+	clear(self.refs)  // re-use refs allocation
+	*self = Environment{store: self.store[:0], refs: self.refs[:0]}
+	envPool.Put(self)
 }
 
 func (self *Environment) Let(name string, value Value) {
@@ -5628,6 +5651,7 @@ func (self AstConditional) exec(ctx *Context, env *Environment) (ControlFlow, bo
 	if valueBoolean.data {
 		env := NewEnvironment(env)
 		result, err := self.Body.Eval(ctx, env)
+		env.tryReuse()
 		return result, true, err
 	}
 
@@ -5715,7 +5739,9 @@ func (self *AstStatementIfElifElse) Eval(ctx *Context, env *Environment) (Contro
 
 	if self.ElseBlock != nil {
 		elseEnv := NewEnvironment(env)
-		return self.ElseBlock.Eval(ctx, elseEnv)
+		result, err := self.ElseBlock.Eval(ctx, elseEnv)
+		elseEnv.tryReuse()
+		return result, err
 	}
 
 	return nil, nil
@@ -5813,6 +5839,7 @@ func (self *AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, 
 			loopEnv := NewEnvironment(env)
 			loopEnv.letWithLocation(self.IdentifierK.Name.data, moveOrCopy(iterated), self.IdentifierK.Location)
 			result, err := self.Block.Eval(ctx, loopEnv)
+			loopEnv.tryReuse()
 			if err != nil {
 				return nil, err
 			}
@@ -5850,6 +5877,7 @@ func (self *AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, 
 			loopEnv := NewEnvironment(env)
 			loopEnv.letWithLocation(self.IdentifierK.Name.data, ctx.NewNumber(float64(i)), self.IdentifierK.Location)
 			result, err := self.Block.Eval(ctx, loopEnv)
+			loopEnv.tryReuse()
 			if err != nil {
 				return nil, err
 			}
@@ -5888,6 +5916,7 @@ func (self *AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, 
 			if self.KIsReference {
 				unmarkReferenced(x)
 			}
+			loopEnv.tryReuse()
 			if err != nil {
 				return nil, err
 			}
@@ -5928,6 +5957,7 @@ func (self *AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, 
 			if self.VIsReference {
 				unmarkReferenced(pair.Value)
 			}
+			loopEnv.tryReuse()
 			if err != nil {
 				return nil, err
 			}
@@ -5958,6 +5988,7 @@ func (self *AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, 
 			loopEnv := NewEnvironment(env)
 			loopEnv.letWithLocation(self.IdentifierK.Name.data, element.Copy(), self.IdentifierK.Location)
 			result, err := self.Block.Eval(ctx, loopEnv)
+			loopEnv.tryReuse()
 			if err != nil {
 				return nil, err
 			}
@@ -6021,6 +6052,7 @@ func (self *AstStatementWhile) Eval(ctx *Context, env *Environment) (ControlFlow
 
 		loopEnv := NewEnvironment(env)
 		result, err := self.Block.Eval(ctx, loopEnv)
+		loopEnv.tryReuse()
 		if err != nil {
 			return nil, err
 		}
@@ -6105,6 +6137,7 @@ func (self AstStatementTry) IntoValue(ctx *Context) Value {
 func (self *AstStatementTry) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
 	tryEnv := NewEnvironment(env)
 	result, err := self.TryBlock.Eval(ctx, tryEnv)
+	tryEnv.tryReuse()
 	if err != nil {
 		error, ok := err.(Error)
 		if !ok {
@@ -6114,7 +6147,9 @@ func (self *AstStatementTry) Eval(ctx *Context, env *Environment) (ControlFlow, 
 		if self.CatchIdentifier != nil {
 			catchEnv.letWithLocation(self.CatchIdentifier.Name.data, error.Value.Copy(), self.CatchIdentifier.Location)
 		}
-		return self.CatchBlock.Eval(ctx, catchEnv)
+		result, err := self.CatchBlock.Eval(ctx, catchEnv)
+		catchEnv.tryReuse()
+		return result, err
 	}
 	if _, ok := result.(Return); ok {
 		return result, nil
@@ -8005,6 +8040,8 @@ func call(ctx *Context, location *SourceLocation, callable Value, arguments []Va
 		}
 
 		result, err := function.ast.Body.Eval(ctx, env)
+		envHeld := env.held
+		env.tryReuse()
 		if err != nil {
 			if e, ok := err.(Error); ok {
 				e.Trace = append(e.Trace, TraceElement{location, function.String()})
@@ -8015,7 +8052,7 @@ func call(ctx *Context, location *SourceLocation, callable Value, arguments []Va
 
 		// Arguments can be safely considered dead as long as the callee
 		// environment was not closed-over by a newly-created function.
-		if !env.held {
+		if !envHeld {
 			for _, argument := range arguments {
 				unmarkUsed(argument)
 			}
@@ -10227,7 +10264,9 @@ func BuiltinCombDecode(ctx *Context) Value {
 			return nil, err
 		}
 		env := NewEnvironment(nil)
-		return expr.Eval(ctx, env)
+		result, err := expr.Eval(ctx, env)
+		env.tryReuse()
+		return result, err
 	})
 }
 
