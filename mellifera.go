@@ -3518,33 +3518,19 @@ func (self *Environment) getRegexpMatch() (regexpMatch, bool) {
 	return regexpMatch{}, false
 }
 
-type ControlFlow interface {
-	ControlFlowLocation() *SourceLocation
-}
+type ControlFlowKind int
 
-type Return struct {
+const (
+	ControlFlowNone ControlFlowKind = iota
+	ControlFlowReturn
+	ControlFlowBreak
+	ControlFlowContinue
+)
+
+type ControlFlow struct {
+	Kind     ControlFlowKind
 	Location *SourceLocation // Optional
-	Value    Value
-}
-
-func (self Return) ControlFlowLocation() *SourceLocation {
-	return self.Location
-}
-
-type Break struct {
-	Location *SourceLocation // Optional
-}
-
-func (self Break) ControlFlowLocation() *SourceLocation {
-	return self.Location
-}
-
-type Continue struct {
-	Location *SourceLocation // Optional
-}
-
-func (self Continue) ControlFlowLocation() *SourceLocation {
-	return self.Location
+	Value    Value           // ControlFlowReturn only
 }
 
 // Update the name values of named functions that are children somewhere in
@@ -3623,14 +3609,14 @@ func (self *AstProgram) Eval(ctx *Context, env *Environment) (Value, error) {
 		if error != nil {
 			return nil, error
 		}
-		if result, ok := cflow.(Return); ok {
-			return result.Value, nil
+		if cflow.Kind == ControlFlowReturn {
+			return cflow.Value, nil
 		}
-		if result, ok := cflow.(Break); ok {
-			return nil, NewError(result.Location, ctx.NewString("attempted to break outside of a loop"))
+		if cflow.Kind == ControlFlowBreak {
+			return nil, NewError(cflow.Location, ctx.NewString("attempted to break outside of a loop"))
 		}
-		if result, ok := cflow.(Continue); ok {
-			return nil, NewError(result.Location, ctx.NewString("attempted to continue outside of a loop"))
+		if cflow.Kind == ControlFlowContinue {
+			return nil, NewError(cflow.Location, ctx.NewString("attempted to continue outside of a loop"))
 		}
 	}
 	return result, nil
@@ -5610,13 +5596,13 @@ func (self *AstBlock) Eval(ctx *Context, env *Environment) (ControlFlow, error) 
 	for _, statement := range self.Statements {
 		cflow, error := statement.Eval(ctx, env)
 		if error != nil {
-			return nil, error
+			return ControlFlow{}, error
 		}
-		if cflow != nil {
+		if cflow.Kind != ControlFlowNone {
 			return cflow, nil
 		}
 	}
-	return nil, nil
+	return ControlFlow{}, nil
 }
 
 type AstConditional struct {
@@ -5637,12 +5623,12 @@ func (self AstConditional) IntoValue(ctx *Context) Value {
 func (self AstConditional) exec(ctx *Context, env *Environment) (ControlFlow, bool, error) {
 	value, error := self.Condition.Eval(ctx, env)
 	if error != nil {
-		return nil, false, error
+		return ControlFlow{}, false, error
 	}
 
 	valueBoolean, ok := value.(*Boolean)
 	if !ok {
-		return nil, false, NewError(
+		return ControlFlow{}, false, NewError(
 			self.Location,
 			ctx.NewStringf("conditional with non-boolean type %s", quote(value.Typename())),
 		)
@@ -5655,7 +5641,7 @@ func (self AstConditional) exec(ctx *Context, env *Environment) (ControlFlow, bo
 		return result, true, err
 	}
 
-	return nil, false, nil
+	return ControlFlow{}, false, nil
 }
 
 func (self *AstConditional) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
@@ -5685,10 +5671,10 @@ func (self AstStatementLet) IntoValue(ctx *Context) Value {
 func (self *AstStatementLet) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
 	rhs, error := self.Expression.Eval(ctx, env)
 	if error != nil {
-		return nil, error
+		return ControlFlow{}, error
 	}
 	if rhsReference, ok := rhs.(*Reference); ok {
-		return nil, NewError(
+		return ControlFlow{}, NewError(
 			self.Location,
 			ctx.NewStringf("attempted assignment statement with type reference to %v", rhsReference.data.Typename()),
 		)
@@ -5696,7 +5682,7 @@ func (self *AstStatementLet) Eval(ctx *Context, env *Environment) (ControlFlow, 
 
 	env.letWithLocation(self.Identifier.Name.data, moveOrCopy(rhs), self.Location)
 
-	return nil, nil
+	return ControlFlow{}, nil
 }
 
 type AstStatementIfElifElse struct {
@@ -5730,7 +5716,7 @@ func (self *AstStatementIfElifElse) Eval(ctx *Context, env *Environment) (Contro
 	for _, conditional := range self.Conditionals {
 		result, executed, err := conditional.exec(ctx, env)
 		if err != nil {
-			return nil, err
+			return ControlFlow{}, err
 		}
 		if executed {
 			return result, nil
@@ -5744,7 +5730,7 @@ func (self *AstStatementIfElifElse) Eval(ctx *Context, env *Environment) (Contro
 		return result, err
 	}
 
-	return nil, nil
+	return ControlFlow{}, nil
 }
 
 type AstStatementFor struct {
@@ -5787,7 +5773,7 @@ func (self AstStatementFor) IntoValue(ctx *Context) Value {
 func (self *AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
 	collection, error := self.Collection.Eval(ctx, env)
 	if error != nil {
-		return nil, error
+		return ControlFlow{}, error
 	}
 	if self.KIsReference || self.VIsReference {
 		// Reference iteration aliases elements from the original collection.
@@ -5806,20 +5792,20 @@ func (self *AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, 
 
 	if metaFunction, ok := MetaFunction(ctx, collection, ctx.constStringNext); ok {
 		if self.IdentifierV != nil {
-			return nil, NewError(
+			return ControlFlow{}, NewError(
 				self.Location,
 				ctx.NewStringf("attempted key-value iteration over iterator %s", quote(collection.Typename())),
 			)
 		}
 		if self.KIsReference {
-			return nil, NewError(
+			return ControlFlow{}, NewError(
 				self.Location,
 				ctx.NewStringf("cannot use a key-reference over iterator %s", quote(collection.Typename())),
 			)
 		}
 
 		if !callableSelfIsPassedByReference(metaFunction) {
-			return nil, NewError(
+			return ControlFlow{}, NewError(
 				self.Location,
 				ctx.NewString("iterator next must receive self by reference (declared with function.&(self))"),
 			)
@@ -5834,41 +5820,41 @@ func (self *AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, 
 						break // end-of-iteration
 					}
 				}
-				return nil, err
+				return ControlFlow{}, err
 			}
 			loopEnv := NewEnvironment(env)
 			loopEnv.letWithLocation(self.IdentifierK.Name.data, moveOrCopy(iterated), self.IdentifierK.Location)
 			result, err := self.Block.Eval(ctx, loopEnv)
 			loopEnv.tryReuse()
 			if err != nil {
-				return nil, err
+				return ControlFlow{}, err
 			}
-			if _, ok := result.(Return); ok {
+			if result.Kind == ControlFlowReturn {
 				return result, nil
 			}
-			if _, ok := result.(Break); ok {
-				return nil, nil
+			if result.Kind == ControlFlowBreak {
+				return ControlFlow{}, nil
 			}
-			if _, ok := result.(Continue); ok {
+			if result.Kind == ControlFlowContinue {
 				continue
 			}
 		}
 	} else if collectionNumber, ok := collection.(*Number); ok {
 		if self.IdentifierV != nil {
-			return nil, NewError(
+			return ControlFlow{}, NewError(
 				self.Location,
 				ctx.NewStringf("attempted key-value iteration over type %s", quote(collection.Typename())),
 			)
 		}
 		if self.KIsReference {
-			return nil, NewError(
+			return ControlFlow{}, NewError(
 				self.Location,
 				ctx.NewStringf("cannot use a key-reference over type %s", quote(collection.Typename())),
 			)
 		}
 		collectionInteger, err := ValueAsIndex(collectionNumber)
 		if err != nil {
-			return nil, NewError(
+			return ControlFlow{}, NewError(
 				self.Location,
 				ctx.NewString(err.Error()),
 			)
@@ -5879,21 +5865,21 @@ func (self *AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, 
 			result, err := self.Block.Eval(ctx, loopEnv)
 			loopEnv.tryReuse()
 			if err != nil {
-				return nil, err
+				return ControlFlow{}, err
 			}
-			if _, ok := result.(Return); ok {
+			if result.Kind == ControlFlowReturn {
 				return result, nil
 			}
-			if _, ok := result.(Break); ok {
-				return nil, nil
+			if result.Kind == ControlFlowBreak {
+				return ControlFlow{}, nil
 			}
-			if _, ok := result.(Continue); ok {
+			if result.Kind == ControlFlowContinue {
 				continue
 			}
 		}
 	} else if collectionVector, ok := collection.(*Vector); ok {
 		if self.IdentifierV != nil {
-			return nil, NewError(
+			return ControlFlow{}, NewError(
 				self.Location,
 				ctx.NewStringf("attempted key-value iteration over type %s", quote(collection.Typename())),
 			)
@@ -5918,21 +5904,21 @@ func (self *AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, 
 			}
 			loopEnv.tryReuse()
 			if err != nil {
-				return nil, err
+				return ControlFlow{}, err
 			}
-			if _, ok := result.(Return); ok {
+			if result.Kind == ControlFlowReturn {
 				return result, nil
 			}
-			if _, ok := result.(Break); ok {
-				return nil, nil
+			if result.Kind == ControlFlowBreak {
+				return ControlFlow{}, nil
 			}
-			if _, ok := result.(Continue); ok {
+			if result.Kind == ControlFlowContinue {
 				continue
 			}
 		}
 	} else if collectionMap, ok := collection.(*Map); ok {
 		if self.KIsReference {
-			return nil, NewError(
+			return ControlFlow{}, NewError(
 				self.Location,
 				ctx.NewStringf("cannot use a key-reference over type %s", quote(collection.Typename())),
 			)
@@ -5959,27 +5945,27 @@ func (self *AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, 
 			}
 			loopEnv.tryReuse()
 			if err != nil {
-				return nil, err
+				return ControlFlow{}, err
 			}
-			if _, ok := result.(Return); ok {
+			if result.Kind == ControlFlowReturn {
 				return result, nil
 			}
-			if _, ok := result.(Break); ok {
-				return nil, nil
+			if result.Kind == ControlFlowBreak {
+				return ControlFlow{}, nil
 			}
-			if _, ok := result.(Continue); ok {
+			if result.Kind == ControlFlowContinue {
 				continue
 			}
 		}
 	} else if collectionSet, ok := collection.(*Set); ok {
 		if self.IdentifierV != nil {
-			return nil, NewError(
+			return ControlFlow{}, NewError(
 				self.Location,
 				ctx.NewStringf("attempted key-value iteration over type %s", quote(collection.Typename())),
 			)
 		}
 		if self.KIsReference {
-			return nil, NewError(
+			return ControlFlow{}, NewError(
 				self.Location,
 				ctx.NewStringf("cannot use a key-reference over type %s", quote(collection.Typename())),
 			)
@@ -5990,26 +5976,26 @@ func (self *AstStatementFor) Eval(ctx *Context, env *Environment) (ControlFlow, 
 			result, err := self.Block.Eval(ctx, loopEnv)
 			loopEnv.tryReuse()
 			if err != nil {
-				return nil, err
+				return ControlFlow{}, err
 			}
-			if _, ok := result.(Return); ok {
+			if result.Kind == ControlFlowReturn {
 				return result, nil
 			}
-			if _, ok := result.(Break); ok {
-				return nil, nil
+			if result.Kind == ControlFlowBreak {
+				return ControlFlow{}, nil
 			}
-			if _, ok := result.(Continue); ok {
+			if result.Kind == ControlFlowContinue {
 				continue
 			}
 		}
 	} else {
-		return nil, NewError(
+		return ControlFlow{}, NewError(
 			self.Location,
 			ctx.NewStringf("attempted iteration over type %s", quote(collection.Typename())),
 		)
 	}
 
-	return nil, nil
+	return ControlFlow{}, nil
 }
 
 type AstStatementWhile struct {
@@ -6035,12 +6021,12 @@ func (self *AstStatementWhile) Eval(ctx *Context, env *Environment) (ControlFlow
 	for {
 		expression, error := self.Expression.Eval(ctx, env)
 		if error != nil {
-			return nil, error
+			return ControlFlow{}, error
 		}
 
 		expressionBoolean, ok := expression.(*Boolean)
 		if !ok {
-			return nil, NewError(
+			return ControlFlow{}, NewError(
 				self.Location,
 				ctx.NewStringf("conditional with non-boolean type %s", quote(expression.Typename())),
 			)
@@ -6054,20 +6040,20 @@ func (self *AstStatementWhile) Eval(ctx *Context, env *Environment) (ControlFlow
 		result, err := self.Block.Eval(ctx, loopEnv)
 		loopEnv.tryReuse()
 		if err != nil {
-			return nil, err
+			return ControlFlow{}, err
 		}
-		if _, ok := result.(Return); ok {
+		if result.Kind == ControlFlowReturn {
 			return result, nil
 		}
-		if _, ok := result.(Break); ok {
-			return nil, nil
+		if result.Kind == ControlFlowBreak {
+			return ControlFlow{}, nil
 		}
-		if _, ok := result.(Continue); ok {
+		if result.Kind == ControlFlowContinue {
 			continue
 		}
 	}
 
-	return nil, nil
+	return ControlFlow{}, nil
 }
 
 type AstStatementBreak struct {
@@ -6086,7 +6072,7 @@ func (self AstStatementBreak) IntoValue(ctx *Context) Value {
 }
 
 func (self *AstStatementBreak) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
-	return Break{self.Location}, nil
+	return ControlFlow{ControlFlowBreak, self.Location, nil}, nil
 }
 
 type AstStatementContinue struct {
@@ -6105,7 +6091,7 @@ func (self AstStatementContinue) IntoValue(ctx *Context) Value {
 }
 
 func (self *AstStatementContinue) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
-	return Continue{self.Location}, nil
+	return ControlFlow{ControlFlowContinue, self.Location, nil}, nil
 }
 
 type AstStatementTry struct {
@@ -6141,7 +6127,7 @@ func (self *AstStatementTry) Eval(ctx *Context, env *Environment) (ControlFlow, 
 	if err != nil {
 		error, ok := err.(Error)
 		if !ok {
-			return nil, err
+			return ControlFlow{}, err
 		}
 		catchEnv := NewEnvironment(env)
 		if self.CatchIdentifier != nil {
@@ -6151,16 +6137,16 @@ func (self *AstStatementTry) Eval(ctx *Context, env *Environment) (ControlFlow, 
 		catchEnv.tryReuse()
 		return result, err
 	}
-	if _, ok := result.(Return); ok {
+	if result.Kind == ControlFlowReturn {
 		return result, nil
 	}
-	if _, ok := result.(Break); ok {
+	if result.Kind == ControlFlowBreak {
 		return result, nil
 	}
-	if _, ok := result.(Continue); ok {
+	if result.Kind == ControlFlowContinue {
 		return result, nil
 	}
-	return nil, nil
+	return ControlFlow{}, nil
 }
 
 type AstStatementError struct {
@@ -6183,16 +6169,16 @@ func (self AstStatementError) IntoValue(ctx *Context) Value {
 func (self *AstStatementError) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
 	value, err := self.Expression.Eval(ctx, env)
 	if err != nil {
-		return nil, err
+		return ControlFlow{}, err
 	}
 	if valueReference, ok := value.(*Reference); ok {
-		return nil, NewError(
+		return ControlFlow{}, NewError(
 			self.Location,
 			ctx.NewStringf("attempted error statement with type reference to %v", valueReference.data.Typename()),
 		)
 	}
 
-	return nil, NewError(self.Location, moveOrCopy(value))
+	return ControlFlow{}, NewError(self.Location, moveOrCopy(value))
 }
 
 type AstStatementReturn struct {
@@ -6219,21 +6205,21 @@ func (self AstStatementReturn) IntoValue(ctx *Context) Value {
 
 func (self *AstStatementReturn) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
 	if self.Expression == nil {
-		return Return{self.Location, ctx.NewNull()}, nil
+		return ControlFlow{ControlFlowReturn, self.Location, ctx.NewNull()}, nil
 	}
 
 	value, err := self.Expression.Eval(ctx, env)
 	if err != nil {
-		return nil, err
+		return ControlFlow{}, err
 	}
 	if valueReference, ok := value.(*Reference); ok {
-		return nil, NewError(
+		return ControlFlow{}, NewError(
 			self.Location,
 			ctx.NewStringf("attempted return statement with type reference to %v", valueReference.data.Typename()),
 		)
 	}
 
-	return Return{self.Location, moveOrCopy(value)}, nil
+	return ControlFlow{ControlFlowReturn, self.Location, moveOrCopy(value)}, nil
 }
 
 type AstStatementAssignment struct {
@@ -6450,10 +6436,10 @@ func (self *AstStatementAssignment) Eval(ctx *Context, env *Environment) (Contro
 	if lhsIdentifier, ok := self.Lhs.(*AstExpressionIdentifier); ok {
 		rhs, err := self.Rhs.Eval(ctx, env)
 		if err != nil {
-			return nil, err
+			return ControlFlow{}, err
 		}
 		if rhsReference, ok := rhs.(*Reference); ok {
-			return nil, NewError(
+			return ControlFlow{}, NewError(
 				self.Location,
 				ctx.NewStringf("attempted assignment statement with type reference to %v", rhsReference.data.Typename()),
 			)
@@ -6461,10 +6447,10 @@ func (self *AstStatementAssignment) Eval(ctx *Context, env *Environment) (Contro
 
 		err = env.Set(lhsIdentifier.Name.data, moveOrCopy(rhs))
 		if err != nil {
-			return nil, NewError(self.Location, ctx.NewString(err.Error()))
+			return ControlFlow{}, NewError(self.Location, ctx.NewString(err.Error()))
 		}
 
-		return nil, nil
+		return ControlFlow{}, nil
 	}
 
 	var store Value
@@ -6474,26 +6460,26 @@ func (self *AstStatementAssignment) Eval(ctx *Context, env *Environment) (Contro
 	if lhsAccessIndex, ok := self.Lhs.(*AstExpressionAccessIndex); ok {
 		store, err = evalLvalue(lhsAccessIndex.Store, ctx, env, nil)
 		if err != nil {
-			return nil, err
+			return ControlFlow{}, err
 		}
 		field, err = lhsAccessIndex.Field.Eval(ctx, env)
 		if err != nil {
-			return nil, err
+			return ControlFlow{}, err
 		}
 	} else if lhsAccessDot, ok := self.Lhs.(*AstExpressionAccessDot); ok {
 		store, err = evalLvalue(lhsAccessDot.Store, ctx, env, nil)
 		if err != nil {
-			return nil, err
+			return ControlFlow{}, err
 		}
 		field = lhsAccessDot.Field.Name
 	} else if lhsAccessScope, ok := self.Lhs.(*AstExpressionAccessScope); ok {
 		store, err = evalLvalue(lhsAccessScope.Store, ctx, env, nil)
 		if err != nil {
-			return nil, err
+			return ControlFlow{}, err
 		}
 		field = lhsAccessScope.Field.Name
 	} else {
-		return nil, NewError(
+		return ControlFlow{}, NewError(
 			self.Location,
 			ctx.NewString("attempted assignment to non-lvalue"),
 		)
@@ -6501,7 +6487,7 @@ func (self *AstStatementAssignment) Eval(ctx *Context, env *Environment) (Contro
 
 	rhs, err := self.Rhs.Eval(ctx, env)
 	if err != nil {
-		return nil, err
+		return ControlFlow{}, err
 	}
 
 	assignVector := func(storeVector *Vector) error {
@@ -6545,29 +6531,29 @@ func (self *AstStatementAssignment) Eval(ctx *Context, env *Environment) (Contro
 
 	if storeVector, ok := store.(*Vector); ok {
 		if _, lhsIsAccessIndex := self.Lhs.(*AstExpressionAccessIndex); lhsIsAccessIndex {
-			return nil, assignVector(storeVector)
+			return ControlFlow{}, assignVector(storeVector)
 		}
 	}
 	if storeMap, ok := store.(*Map); ok {
-		return nil, assignMap(storeMap)
+		return ControlFlow{}, assignMap(storeMap)
 	}
 	if storeReference, ok := store.(*Reference); ok {
 		storeDeref := storeReference.data
 		if storeDerefVector, ok := storeDeref.(*Vector); ok {
 			if _, lhsIsAccessIndex := self.Lhs.(*AstExpressionAccessIndex); lhsIsAccessIndex {
-				return nil, assignVector(storeDerefVector)
+				return ControlFlow{}, assignVector(storeDerefVector)
 			}
 		}
 		if storeDerefMap, ok := storeDeref.(*Map); ok {
-			return nil, assignMap(storeDerefMap)
+			return ControlFlow{}, assignMap(storeDerefMap)
 		}
-		return nil, NewError(
+		return ControlFlow{}, NewError(
 			self.Location,
 			ctx.NewStringf("invalid %s to %s access with field %v", store.Typename(), storeDeref.Typename(), field),
 		)
 	}
 
-	return nil, NewError(
+	return ControlFlow{}, NewError(
 		self.Location,
 		ctx.NewStringf("attempted access into type %s with type %s", quote(store.Typename()), quote(field.Typename())),
 	)
@@ -6593,9 +6579,9 @@ func (self AstStatementExpression) IntoValue(ctx *Context) Value {
 func (self *AstStatementExpression) Eval(ctx *Context, env *Environment) (ControlFlow, error) {
 	_, error := self.Expression.Eval(ctx, env)
 	if error != nil {
-		return nil, error
+		return ControlFlow{}, error
 	}
-	return nil, nil
+	return ControlFlow{}, nil
 }
 
 // Precedence Levels
@@ -8058,18 +8044,18 @@ func call(ctx *Context, location *SourceLocation, callable Value, arguments []Va
 			}
 		}
 
-		if flow, ok := result.(Return); ok {
-			return flow.Value, nil
+		if result.Kind == ControlFlowReturn {
+			return result.Value, nil
 		}
-		if _, ok := result.(Break); ok {
+		if result.Kind == ControlFlowBreak {
 			return nil, NewError(
-				result.ControlFlowLocation(),
+				result.Location,
 				ctx.NewString("attempted to break outside of a loop"),
 			)
 		}
-		if _, ok := result.(Continue); ok {
+		if result.Kind == ControlFlowContinue {
 			return nil, NewError(
-				result.ControlFlowLocation(),
+				result.Location,
 				ctx.NewString("attempted to continue outside of a loop"),
 			)
 		}
