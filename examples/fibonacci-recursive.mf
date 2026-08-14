@@ -1,5 +1,5 @@
 # Usage:
-#   /path/to/mf.py examples/fibonacci-recursive.mf n
+#   mf examples/fibonacci-recursive.mf n
 
 let fibonacci = function(n) {
     if n <= 1 {

@@ -1,5 +1,5 @@
 # Usage:
-#   /path/to/mf.py examples/fibonacci-recursive-memoized.mf n
+#   mf examples/fibonacci-recursive-memoized.mf n
 
 let cache = {
     0: 0, # fibonacci(0)
