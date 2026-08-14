@@ -5539,7 +5539,11 @@ func (self *AstExpressionFunctionCall) Eval(ctx *Context, env *Environment) (Val
 		}
 	}
 
-	arguments := []Value{}
+	capacity := len(self.Arguments)
+	if callableSelfArgument != nil {
+		capacity += 1
+	}
+	arguments := make([]Value, 0, capacity)
 	if callableSelfArgument != nil {
 		arguments = append(arguments, callableSelfArgument)
 	}
