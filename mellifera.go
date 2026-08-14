@@ -1294,9 +1294,11 @@ func (self *Vector) Equal(other Value) bool {
 	if !ok {
 		return false
 	}
+
 	if self.Count() != othr.Count() {
 		return false
 	}
+
 	if self.data != nil && othr.data != nil {
 		for i := range self.data.elements {
 			if !self.data.elements[i].Equal(othr.data.elements[i]) {
@@ -1704,27 +1706,41 @@ func (self *Map) Equal(other Value) bool {
 	if !ok {
 		return false
 	}
+
 	if self.Count() != othr.Count() {
 		return false
 	}
-
 	if self.Count() == 0 {
 		// Empty maps.
 		return true
 	}
 
-	// Non-empty maps - self and other both have non-nil data.
-	selfCur := self.data.head
-	for selfCur != nil {
-		value, ok := othr.Lookup(selfCur.key)
+	// Non-empty maps - self and othr both have non-nil data.
+	if self.data == othr.data {
+		// Self and other share the same backing map data. Equality depends on
+		// each key and value being equal to itself, which is itself dependent
+		// on whether any nested key or value contains a NaN value.
+		cur := self.data.head
+		for cur != nil {
+			if !cur.key.Equal(cur.key) || !cur.value.Equal(cur.value) {
+				return false
+			}
+			cur = cur.next
+		}
+		return true
+	}
+
+	// Non-empty maps - self and othr both have separate non-nil data.
+	cur := self.data.head
+	for cur != nil {
+		value, ok := othr.Lookup(cur.key)
 		if !ok {
 			return false
 		}
-		if !selfCur.value.Equal(value) {
+		if !cur.value.Equal(value) {
 			return false
 		}
-
-		selfCur = selfCur.next
+		cur = cur.next
 	}
 
 	return true
@@ -2089,23 +2105,38 @@ func (self *Set) Equal(other Value) bool {
 	if !ok {
 		return false
 	}
+
 	if self.Count() != othr.Count() {
 		return false
 	}
-
 	if self.Count() == 0 {
 		// Empty sets.
 		return true
 	}
 
-	// Non-empty sets - self and other both have non-nil data.
-	selfCur := self.data.head
-	for selfCur != nil {
-		_, ok := othr.Lookup(selfCur.key)
+	// Non-empty sets - self and othr both have non-nil data.
+	if self.data == othr.data {
+		// Self and othr share the same backing set data. Equality depends on
+		// each element being equal to itself, which is itself dependent on
+		// whether any nested elements contain a NaN value.
+		cur := self.data.head
+		for cur != nil {
+			if !cur.key.Equal(cur.key) {
+				return false
+			}
+			cur = cur.next
+		}
+		return true
+	}
+
+	// Non-empty sets - self and othr both have separate non-nil data.
+	cur := self.data.head
+	for cur != nil {
+		_, ok := othr.Lookup(cur.key)
 		if !ok {
 			return false
 		}
-		selfCur = selfCur.next
+		cur = cur.next
 	}
 
 	return true

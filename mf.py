@@ -388,7 +388,7 @@ class Number(Value):
         return hash(self.data)
 
     def __eq__(self, other):
-        return self is other or isinstance(other, Number) and self.data == other.data
+        return isinstance(other, Number) and self.data == other.data
 
     def __int__(self) -> int:
         return int(float(self.data))

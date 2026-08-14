@@ -26,6 +26,28 @@ try { dumpln( println         == dumpln          ); } catch err { dumpln(err); }
 
 print("\n");
 
+# NaN values should never compare equal, even with the same structural shape.
+println($`NaN == NaN is {NaN == NaN}`);
+println($`[NaN] == [NaN] is {[NaN] == [NaN]}`);
+println($`{{"foo": NaN}} == {{"foo": NaN}} is { {"foo": NaN} == {"foo": NaN} }`);
+let x = NaN;
+let y = x;
+println($`x is {x}`);
+println($`y is {y}`);
+println($`x == y is {x == y}`);
+let x = [NaN];
+let y = x;
+println($`x is {x}`);
+println($`y is {y}`);
+println($`x == y is {x == y}`);
+let x = {"foo": NaN};
+let y = x;
+println($`x is {x}`);
+println($`y is {y}`);
+println($`x == y is {x == y}`);
+
+print("\n");
+
 # Order of elements in a map should not matter for structural equality.
 let x = {"foo": 123, "bar": 456};
 let y = {"bar": 456, "foo": 123};
@@ -76,6 +98,19 @@ println($`fx == fy is {fx == fy}`);
 # true
 # false
 #
+# NaN == NaN is false
+# [NaN] == [NaN] is false
+# {"foo": NaN} == {"foo": NaN} is false
+# x is NaN
+# y is NaN
+# x == y is false
+# x is [NaN]
+# y is [NaN]
+# x == y is false
+# x is {"foo": NaN}
+# y is {"foo": NaN}
+# x == y is false
+#
 # x is {"foo": 123, "bar": 456}
 # y is {"bar": 456, "foo": 123}
 # x == y is true
@@ -84,6 +119,6 @@ println($`fx == fy is {fx == fy}`);
 # y is {"bar", "foo"}
 # x == y is true
 #
-# fx is function@[operator-binary-eq.test.mf, line 49]
-# fy is function@[operator-binary-eq.test.mf, line 49]
+# fx is function@[operator-binary-eq.test.mf, line 71]
+# fy is function@[operator-binary-eq.test.mf, line 71]
 # fx == fy is false
