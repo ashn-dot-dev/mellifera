@@ -8809,7 +8809,7 @@ func BuiltinStringJoin(ctx *Context) Value {
 		self := arguments[0].(*String)
 		vector := arguments[1].(*Vector)
 
-		data := ""
+		var sb strings.Builder
 		for index, value := range vector.Elements() {
 			string, ok := value.(*String)
 			if !ok {
@@ -8819,12 +8819,12 @@ func BuiltinStringJoin(ctx *Context) Value {
 				)
 			}
 			if index != 0 {
-				data += self.data
+				sb.WriteString(self.data)
 			}
-			data += string.data
+			sb.WriteString(string.data)
 		}
 
-		return ctx.NewString(data), nil
+		return ctx.NewString(sb.String()), nil
 	})
 }
 
