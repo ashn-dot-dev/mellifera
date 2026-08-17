@@ -5720,7 +5720,31 @@ def builtin_number_fixed(number: Number, precision: Number) -> Union[Value, Erro
         return Error(None, str(e))
     if precision_integer < 0:
         return Error(None, f"expected non-negative integer, received {precision}")
-    return Number.new(round(float(number.data), ndigits=precision_integer))
+    if math.isnan(number.data) or math.isinf(number.data):
+        return copy(number)
+    # Match the Go implementation's `math.Round(self * factor) / factor`, which
+    # rounds half away from zero -- the canonical rounding behavior of the
+    # language (see number::round). Python's built-in round() rounds half to
+    # even, so it must not be used here. The arithmetic mirrors Go's IEEE-754
+    # semantics exactly, including a factor that overflows to infinity for a
+    # very large precision (Go's math.Pow), so it never raises.
+    try:
+        factor = math.pow(10.0, precision_integer)
+    except OverflowError:
+        factor = math.inf
+    scaled = float(number.data) * factor
+    if math.isfinite(scaled):
+        truncated = math.trunc(scaled)
+        if abs(scaled - truncated) == 0.5:
+            # Round half away from zero.
+            rounded = truncated + math.copysign(1.0, scaled)
+        else:
+            # copysign preserves a signed zero, matching Go's math.Round.
+            rounded = math.copysign(float(round(scaled)), scaled)
+    else:
+        # math.Round leaves NaN/Inf unchanged.
+        rounded = scaled
+    return Number.new(rounded / factor)
 
 
 @builtin("number::trunc", [Number])
