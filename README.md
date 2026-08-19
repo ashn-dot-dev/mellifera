@@ -463,7 +463,7 @@ respectively.
 
 ```
 make build   # build standalone interpreter executable
-make check   # run unit tests and interpreter golden tests
+make check   # run interpreter golden tests
 make format  # format sources
 make install # install standalone Mellifera tooling
 ```
@@ -473,7 +473,7 @@ make install # install standalone Mellifera tooling
 ```
 make build-go  # build standalone interpreter executable
 make wasm-go   # build Wasm module for embedding in the browser
-make check-go  # run unit tests and interpreter golden tests
+make check-go  # run interpreter golden tests
 make format-go # format sources using go fmt
 make install   # install standalone Mellifera tooling
 ```

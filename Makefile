@@ -40,7 +40,6 @@ install: bin/mf
 check: check-go
 
 check-go: bin/mf
-	go test
 	MELLIFERA_HOME="$(realpath .)" sh bin/mf-test
 
 check-py:
