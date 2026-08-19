@@ -68,7 +68,6 @@ format-py:
 clean:
 	rm -rf __pycache__
 	rm -rf .mypy_cache
-	rm -f .mellifera-history
 	rm -f bin/mf
 	rm -f mellifera.wasm
 	rm -f wasm_exec.js

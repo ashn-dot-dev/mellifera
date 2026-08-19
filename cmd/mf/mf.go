@@ -533,7 +533,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "error: requested AST dump without a command or file path\n")
 		os.Exit(1)
 	} else {
-		fmt.Fprintf(os.Stderr, "error: REPL not implemented\n")
+		usage(os.Stderr)
 		os.Exit(1)
 	}
 

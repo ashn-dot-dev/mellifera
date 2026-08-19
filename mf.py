@@ -6,7 +6,6 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from string import ascii_letters, digits, whitespace
-from types import ModuleType
 from typing import (
     Any,
     Callable,
@@ -20,7 +19,6 @@ from typing import (
     Union,
     final,
 )
-import code
 import decimal
 import enum
 import json
@@ -38,13 +36,6 @@ except ImportError:
     # Reasonable fallback if re2 is not installed, e.g if mf.py is used as a
     # standalone script outside of a virtual environment.
     import re as re2  # type: ignore
-
-readline: Optional[ModuleType]
-try:
-    # REPL readline support.
-    import readline
-except ImportError:
-    readline = None
 
 rng = random.Random()
 
@@ -8132,36 +8123,6 @@ MAX_CALL_DEPTH = 512
 sys.setrecursionlimit(MAX_CALL_DEPTH * 100)
 
 
-class Repl(code.InteractiveConsole):
-    def __init__(self, env: Environment):
-        super().__init__()
-        self.env = env if env is not None else Environment(BASE_ENVIRONMENT)
-
-    def runsource(self, source, file="<input>", symbol="single"):
-        lexer = Lexer(source)
-        parser = Parser(lexer)
-        try:
-            program = parser.parse_program()
-        except ParseError as e:
-            if not source.endswith("\n"):
-                # Assume the user has not finished entering their program, and
-                # wait for an additional newline before producing an error.
-                return True
-            print(f"error: {e}")
-            return False
-        # If the program is valid, but did not end in a semicolon or additional
-        # newline, then assume that there may be additional source to process,
-        # e.g. the else clause of an if-elif-else statement.
-        if not (source.endswith("\n") or source.rstrip().endswith(";")):
-            return True
-        result = program.eval(self.env)
-        if isinstance(result, Value) and not isinstance(result, Null):
-            print(result)
-        if isinstance(result, Error):
-            print(f"error: {result}")
-        return False
-
-
 def mfenv(file):
     print(f"MELLIFERA_HOME={os.getenv('MELLIFERA_HOME')}", file=file)
     print(f"MELLIFERA_SEARCH_PATH={os.getenv('MELLIFERA_SEARCH_PATH')}", file=file)
@@ -8353,16 +8314,8 @@ def main() -> None:
         )
         sys.exit(1)
     else:
-        HOME = os.environ.get("MELLIFERA_HOME", Path.home())
-        HISTFILE = Path(HOME) / ".mellifera-history"
-        HISTFILE_SIZE = 4096
-        if readline and os.path.exists(HISTFILE):
-            readline.read_history_file(HISTFILE)
-        repl = Repl(env)
-        repl.interact(banner="", exitmsg="")
-        if readline:
-            readline.set_history_length(HISTFILE_SIZE)
-            readline.write_history_file(HISTFILE)
+        usage(sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

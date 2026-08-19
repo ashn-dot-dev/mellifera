@@ -441,8 +441,8 @@ Finally, open a new interactive shell and verify the Mellifera interpreter was
 successfully installed with:
 
 ```
-$ printf 'println("Hello world!");' | mf /dev/stdin
-Hello world!
+$ mf --command 'println("hello 🐝");'
+hello 🐝
 ```
 
 ## Development
