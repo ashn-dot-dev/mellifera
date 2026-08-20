@@ -6077,6 +6077,70 @@ def builtin_vector_contains(vector: Vector, target: Value) -> Union[Value, Error
     return Boolean.new(target in vector)
 
 
+@builtin("vector::insert", [ReferenceTo(Vector), Number, Value], self_by_reference=True)
+def builtin_vector_insert(
+    self: Reference, vector: Vector, index: Number, value: Value
+) -> Union[Value, Error]:
+    try:
+        idx = index.as_index()
+    except Exception as e:
+        return Error(
+            None, f"attempted vector::insert with invalid index {index} ({str(e)})"
+        )
+    if idx > len(vector.data):
+        return Error(
+            None,
+            f"attempted vector::insert with invalid index {index} (vector has a count of {len(vector.data)})",
+        )
+    try:
+        vector.insert(idx, copy(value))
+    except Exception as e:
+        return Error(None, f"invalid vector::insert operation ({str(e)})")
+    return null
+
+
+@builtin("vector::remove", [ReferenceTo(Vector), Number], self_by_reference=True)
+def builtin_vector_remove(
+    self: Reference, vector: Vector, index: Number
+) -> Union[Value, Error]:
+    try:
+        idx = index.as_index()
+    except Exception as e:
+        return Error(
+            None, f"attempted vector::remove with invalid index {index} ({str(e)})"
+        )
+    if idx >= len(vector.data):
+        return Error(
+            None,
+            f"attempted vector::remove with invalid index {index} (vector has a count of {len(vector.data)})",
+        )
+    try:
+        return copy(vector.remove(idx))
+    except Exception as e:
+        return Error(None, f"invalid vector::remove operation ({str(e)})")
+
+
+@builtin("vector::push", [ReferenceTo(Vector), Value], self_by_reference=True)
+def builtin_vector_push(
+    self: Reference, vector: Vector, value: Value
+) -> Union[Value, Error]:
+    try:
+        vector.push(copy(value))
+    except Exception as e:
+        return Error(None, f"invalid vector::push operation ({e})")
+    return null
+
+
+@builtin("vector::pop", [ReferenceTo(Vector)], self_by_reference=True)
+def builtin_vector_pop(self: Reference, vector: Vector) -> Union[Value, Error]:
+    if len(vector.data) == 0:
+        return Error(None, "attempted vector::pop on an empty vector")
+    try:
+        return copy(vector.pop())
+    except Exception as e:
+        return Error(None, f"invalid vector::pop operation ({e})")
+
+
 @builtin("vector::any", [Vector, Function])
 def builtin_vector_any(vector: Vector, function: Function) -> Union[Value, Error]:
     for element in vector.data:
@@ -6169,70 +6233,6 @@ def builtin_vector_rfind(vector: Vector, target: Value) -> Union[Value, Error]:
         if value == target:
             return Number.new(index)
     return null
-
-
-@builtin("vector::push", [ReferenceTo(Vector), Value], self_by_reference=True)
-def builtin_vector_push(
-    self: Reference, vector: Vector, value: Value
-) -> Union[Value, Error]:
-    try:
-        vector.push(copy(value))
-    except Exception as e:
-        return Error(None, f"invalid vector::push operation ({e})")
-    return null
-
-
-@builtin("vector::pop", [ReferenceTo(Vector)], self_by_reference=True)
-def builtin_vector_pop(self: Reference, vector: Vector) -> Union[Value, Error]:
-    if len(vector.data) == 0:
-        return Error(None, "attempted vector::pop on an empty vector")
-    try:
-        return copy(vector.pop())
-    except Exception as e:
-        return Error(None, f"invalid vector::pop operation ({e})")
-
-
-@builtin("vector::insert", [ReferenceTo(Vector), Number, Value], self_by_reference=True)
-def builtin_vector_insert(
-    self: Reference, vector: Vector, index: Number, value: Value
-) -> Union[Value, Error]:
-    try:
-        idx = index.as_index()
-    except Exception as e:
-        return Error(
-            None, f"attempted vector::insert with invalid index {index} ({str(e)})"
-        )
-    if idx > len(vector.data):
-        return Error(
-            None,
-            f"attempted vector::insert with invalid index {index} (vector has a count of {len(vector.data)})",
-        )
-    try:
-        vector.insert(idx, copy(value))
-    except Exception as e:
-        return Error(None, f"invalid vector::insert operation ({str(e)})")
-    return null
-
-
-@builtin("vector::remove", [ReferenceTo(Vector), Number], self_by_reference=True)
-def builtin_vector_remove(
-    self: Reference, vector: Vector, index: Number
-) -> Union[Value, Error]:
-    try:
-        idx = index.as_index()
-    except Exception as e:
-        return Error(
-            None, f"attempted vector::remove with invalid index {index} ({str(e)})"
-        )
-    if idx >= len(vector.data):
-        return Error(
-            None,
-            f"attempted vector::remove with invalid index {index} (vector has a count of {len(vector.data)})",
-        )
-    try:
-        return copy(vector.remove(idx))
-    except Exception as e:
-        return Error(None, f"invalid vector::remove operation ({str(e)})")
 
 
 @builtin("vector::slice", [Vector, Number, Number])
@@ -7733,6 +7733,10 @@ _VECTOR_META = Map.new_meta(
         String("count"): builtin_vector_count(),
         String("is_empty"): builtin_vector_is_empty(),
         String("contains"): builtin_vector_contains(),
+        String("insert"): builtin_vector_insert(),
+        String("remove"): builtin_vector_remove(),
+        String("push"): builtin_vector_push(),
+        String("pop"): builtin_vector_pop(),
         String("any"): builtin_vector_any(),
         String("all"): builtin_vector_all(),
         String("map"): builtin_vector_map(),
@@ -7740,10 +7744,6 @@ _VECTOR_META = Map.new_meta(
         String("reduce"): builtin_vector_reduce(),
         String("find"): builtin_vector_find(),
         String("rfind"): builtin_vector_rfind(),
-        String("push"): builtin_vector_push(),
-        String("pop"): builtin_vector_pop(),
-        String("insert"): builtin_vector_insert(),
-        String("remove"): builtin_vector_remove(),
         String("slice"): builtin_vector_slice(),
         String("reversed"): builtin_vector_reversed(),
         String("sorted"): builtin_vector_sorted(BuiltinExplicitUninitialized()),

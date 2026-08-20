@@ -450,6 +450,10 @@ func NewContext() *Context {
 		{ctx.NewString("count"), BuiltinVectorCount(ctx)},
 		{ctx.NewString("is_empty"), BuiltinVectorIsEmpty(ctx)},
 		{ctx.NewString("contains"), BuiltinVectorContains(ctx)},
+		{ctx.NewString("insert"), BuiltinVectorInsert(ctx)},
+		{ctx.NewString("remove"), BuiltinVectorRemove(ctx)},
+		{ctx.NewString("push"), BuiltinVectorPush(ctx)},
+		{ctx.NewString("pop"), BuiltinVectorPop(ctx)},
 		{ctx.NewString("any"), BuiltinVectorAny(ctx)},
 		{ctx.NewString("all"), BuiltinVectorAll(ctx)},
 		{ctx.NewString("map"), BuiltinVectorMap(ctx)},
@@ -457,10 +461,6 @@ func NewContext() *Context {
 		{ctx.NewString("reduce"), BuiltinVectorReduce(ctx)},
 		{ctx.NewString("find"), BuiltinVectorFind(ctx)},
 		{ctx.NewString("rfind"), BuiltinVectorRfind(ctx)},
-		{ctx.NewString("push"), BuiltinVectorPush(ctx)},
-		{ctx.NewString("pop"), BuiltinVectorPop(ctx)},
-		{ctx.NewString("insert"), BuiltinVectorInsert(ctx)},
-		{ctx.NewString("remove"), BuiltinVectorRemove(ctx)},
 		{ctx.NewString("slice"), BuiltinVectorSlice(ctx)},
 		{ctx.NewString("reversed"), BuiltinVectorReversed(ctx)},
 		{ctx.NewString("sorted"), ctx.NewNull()},        // deferred instantiation
@@ -9069,6 +9069,84 @@ func BuiltinVectorContains(ctx *Context) Value {
 	})
 }
 
+func BuiltinVectorInsert(ctx *Context) Value {
+	return ctx.NewBuiltinWithSelfByReference("vector::insert", []Type{TRef(TVal(VECTOR)), TVal(NUMBER), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*Vector)
+
+		index, err := ValueAsIndex(arguments[1])
+		if err != nil {
+			return nil, NewError(nil, ctx.NewStringf("attempted vector::insert with invalid index %v (%s)", arguments[1], err.Error()))
+		}
+
+		if index > delf.Count() {
+			return nil, NewError(nil, ctx.NewStringf("attempted vector::insert with invalid index %v (vector has a count of %v)", index, delf.Count()))
+		}
+
+		err = delf.Insert(index, arguments[2].Copy())
+		if err != nil {
+			return nil, NewError(nil, ctx.NewStringf("invalid vector::insert operation (%s)", err.Error()))
+		}
+
+		return ctx.NewNull(), nil
+	})
+}
+
+func BuiltinVectorRemove(ctx *Context) Value {
+	return ctx.NewBuiltinWithSelfByReference("vector::remove", []Type{TRef(TVal(VECTOR)), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*Vector)
+
+		index, err := ValueAsIndex(arguments[1])
+		if err != nil {
+			return nil, NewError(nil, ctx.NewStringf("attempted vector::remove with invalid index %v (%s)", arguments[1], err.Error()))
+		}
+
+		if index >= delf.Count() {
+			return nil, NewError(nil, ctx.NewStringf("attempted vector::remove with invalid index %v (vector has a count of %v)", index, delf.Count()))
+		}
+
+		value, err := delf.Remove(index)
+		if err != nil {
+			return nil, NewError(nil, ctx.NewStringf("invalid vector::remove operation (%s)", err.Error()))
+		}
+
+		return value, nil
+	})
+}
+
+func BuiltinVectorPush(ctx *Context) Value {
+	return ctx.NewBuiltinWithSelfByReference("vector::push", []Type{TRef(TVal(VECTOR)), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*Vector)
+
+		err := delf.Push(arguments[1].Copy())
+		if err != nil {
+			return nil, NewError(nil, ctx.NewStringf("invalid vector::push operation (%s)", err.Error()))
+		}
+
+		return ctx.NewNull(), nil
+	})
+}
+
+func BuiltinVectorPop(ctx *Context) Value {
+	return ctx.NewBuiltinWithSelfByReference("vector::pop", []Type{TRef(TVal(VECTOR))}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Reference)
+		delf := self.data.(*Vector)
+
+		if delf.Count() == 0 {
+			return nil, NewError(nil, ctx.NewString("attempted vector::pop on an empty vector"))
+		}
+
+		value, err := delf.Pop()
+		if err != nil {
+			return nil, NewError(nil, ctx.NewStringf("invalid vector::pop operation (%s)", err.Error()))
+		}
+
+		return value, nil
+	})
+}
+
 func BuiltinVectorAny(ctx *Context) Value {
 	return ctx.NewBuiltin("vector::any", []Type{TVal(VECTOR), TVal(CALLABLE)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Vector)
@@ -9215,84 +9293,6 @@ func BuiltinVectorRfind(ctx *Context) Value {
 		}
 
 		return ctx.NewNull(), nil
-	})
-}
-
-func BuiltinVectorPush(ctx *Context) Value {
-	return ctx.NewBuiltinWithSelfByReference("vector::push", []Type{TRef(TVal(VECTOR)), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*Vector)
-
-		err := delf.Push(arguments[1].Copy())
-		if err != nil {
-			return nil, NewError(nil, ctx.NewStringf("invalid vector::push operation (%s)", err.Error()))
-		}
-
-		return ctx.NewNull(), nil
-	})
-}
-
-func BuiltinVectorPop(ctx *Context) Value {
-	return ctx.NewBuiltinWithSelfByReference("vector::pop", []Type{TRef(TVal(VECTOR))}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*Vector)
-
-		if delf.Count() == 0 {
-			return nil, NewError(nil, ctx.NewString("attempted vector::pop on an empty vector"))
-		}
-
-		value, err := delf.Pop()
-		if err != nil {
-			return nil, NewError(nil, ctx.NewStringf("invalid vector::pop operation (%s)", err.Error()))
-		}
-
-		return value, nil
-	})
-}
-
-func BuiltinVectorInsert(ctx *Context) Value {
-	return ctx.NewBuiltinWithSelfByReference("vector::insert", []Type{TRef(TVal(VECTOR)), TVal(NUMBER), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*Vector)
-
-		index, err := ValueAsIndex(arguments[1])
-		if err != nil {
-			return nil, NewError(nil, ctx.NewStringf("attempted vector::insert with invalid index %v (%s)", arguments[1], err.Error()))
-		}
-
-		if index > delf.Count() {
-			return nil, NewError(nil, ctx.NewStringf("attempted vector::insert with invalid index %v (vector has a count of %v)", index, delf.Count()))
-		}
-
-		err = delf.Insert(index, arguments[2].Copy())
-		if err != nil {
-			return nil, NewError(nil, ctx.NewStringf("invalid vector::insert operation (%s)", err.Error()))
-		}
-
-		return ctx.NewNull(), nil
-	})
-}
-
-func BuiltinVectorRemove(ctx *Context) Value {
-	return ctx.NewBuiltinWithSelfByReference("vector::remove", []Type{TRef(TVal(VECTOR)), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
-		self := arguments[0].(*Reference)
-		delf := self.data.(*Vector)
-
-		index, err := ValueAsIndex(arguments[1])
-		if err != nil {
-			return nil, NewError(nil, ctx.NewStringf("attempted vector::remove with invalid index %v (%s)", arguments[1], err.Error()))
-		}
-
-		if index >= delf.Count() {
-			return nil, NewError(nil, ctx.NewStringf("attempted vector::remove with invalid index %v (vector has a count of %v)", index, delf.Count()))
-		}
-
-		value, err := delf.Remove(index)
-		if err != nil {
-			return nil, NewError(nil, ctx.NewStringf("invalid vector::remove operation (%s)", err.Error()))
-		}
-
-		return value, nil
 	})
 }
 
