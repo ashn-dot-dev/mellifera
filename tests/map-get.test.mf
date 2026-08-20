@@ -1,0 +1,18 @@
+let x = {
+    "foo": 123,
+    "bar": 456,
+    [{"abc", "def"}]: function() {},
+};
+dumpln(x.get("foo", "default"));
+dumpln(x.get("bar", "default"));
+dumpln(x.get("baz", "default"));
+dumpln(x.get([{"abc", "def"}], "default"));
+dumpln(x.get([{"def", "abc"}], "default"));
+dumpln(x.get([{"abc": "def"}], "default"));
+################################################################################
+# 123
+# 456
+# "default"
+# function@[map-get.test.mf, line 4]
+# function@[map-get.test.mf, line 4]
+# "default"

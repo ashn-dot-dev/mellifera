@@ -474,6 +474,7 @@ func NewContext() *Context {
 		{ctx.NewString("contains"), BuiltinMapContains(ctx)},
 		{ctx.NewString("insert"), BuiltinMapInsert(ctx)},
 		{ctx.NewString("remove"), BuiltinMapRemove(ctx)},
+		{ctx.NewString("get"), BuiltinMapGet(ctx)},
 		{ctx.NewString("keys"), BuiltinMapKeys(ctx)},
 		{ctx.NewString("values"), BuiltinMapValues(ctx)},
 		{ctx.NewString("pairs"), BuiltinMapPairs(ctx)},
@@ -1481,7 +1482,6 @@ func (self *mapData) LookupWithHash(key Value, hash uint64) (*mapElement, bool) 
 	return nil, false
 }
 
-// Returns nil on lookup failure.
 func (self *mapData) Lookup(key Value) (*mapElement, bool) {
 	return self.LookupWithHash(key, key.Hash())
 }
@@ -9618,6 +9618,21 @@ func BuiltinMapRemove(ctx *Context) Value {
 		}
 
 		return lookup.Copy(), nil
+	})
+}
+
+func BuiltinMapGet(ctx *Context) Value {
+	return ctx.NewBuiltin("map::get", []Type{TVal(MAP), TVal(ANY), TVal(ANY)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*Map)
+		k := arguments[1]
+		d := arguments[2]
+
+		lookup, ok := self.Lookup(k)
+		if ok {
+			return lookup.Copy(), nil
+		}
+
+		return d.Copy(), nil
 	})
 }
 

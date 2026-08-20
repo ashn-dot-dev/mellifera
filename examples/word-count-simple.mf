@@ -10,8 +10,7 @@ let words = re::split(input(), r`\s+`)
 
 let counts = Map{};
 for word in words {
-    try { counts[word] = counts[word] + 1; }
-    catch { counts[word] = 1; }
+    counts[word] = counts.get(word, 0) + 1;
 }
 
 let ordered = counts

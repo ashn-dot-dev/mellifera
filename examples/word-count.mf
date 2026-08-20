@@ -62,11 +62,7 @@ let words = re::split(text, r`\s+`)
         return word.count() != 0;
     });
 for word in words {
-    if occurrences.contains(word) {
-        occurrences[word] = occurrences[word] + 1;
-        continue;
-    }
-    occurrences[word] = 1;
+    occurrences[word] = occurrences.get(word, 0) + 1;
 }
 
 let ordered = occurrences

@@ -6499,6 +6499,11 @@ def builtin_map_remove(self: Reference, map: Map, k: Value) -> Union[Value, Erro
         return Error(None, f"invalid map::remove operation ({str(e)})")
 
 
+@builtin("map::get", [Map, Value, Value])
+def builtin_map_get(map: Map, k: Value, d: Value) -> Union[Value, Error]:
+    return copy(map.data.get(k, d))
+
+
 @builtin("map::keys", [Map])
 def builtin_map_keys(map: Map) -> Union[Value, Error]:
     return Vector.new([copy(k) for k in map.data.keys()])
@@ -7762,6 +7767,7 @@ _MAP_META = Map.new_meta(
         String("contains"): builtin_map_contains(),
         String("insert"): builtin_map_insert(),
         String("remove"): builtin_map_remove(),
+        String("get"): builtin_map_get(),
         String("keys"): builtin_map_keys(),
         String("values"): builtin_map_values(),
         String("pairs"): builtin_map_pairs(),
