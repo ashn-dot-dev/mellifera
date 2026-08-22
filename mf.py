@@ -6919,6 +6919,9 @@ def builtin_max():
     """
 
 
+_import_file_cache: dict[str, Value] = dict()
+
+
 @builtin("import", [Value])
 def builtin_import(target: String) -> Union[Value, Error]:
     env = Environment(BASE_ENVIRONMENT)
@@ -6941,7 +6944,10 @@ def builtin_import(target: String) -> Union[Value, Error]:
                 # load the entry point to the library and/or group of files, using
                 # the name `<directory>/lib.mf` by convention.
                 p = p / "lib.mf"
-            absolute = str(p.absolute())
+            absolute = os.path.normpath(str(p.absolute()))
+            if absolute in _import_file_cache:
+                return copy(_import_file_cache[absolute])
+
             env.set(
                 CONST_STRING_MODULE,
                 Map.new(
@@ -6966,6 +6972,7 @@ def builtin_import(target: String) -> Union[Value, Error]:
         return result
     if result is None:
         return null
+    _import_file_cache[absolute] = copy(result)
     return result
 
 

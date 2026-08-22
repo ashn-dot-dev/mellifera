@@ -678,7 +678,6 @@ func BuiltinImport(ctx *mellifera.Context) mellifera.Value {
 	}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
 		target := arguments[0].(*mellifera.String)
 
-		env := mellifera.NewEnvironment(ctx.BaseEnvironment)
 		module, err := ctx.BaseEnvironment.Get("module")
 		if err != nil {
 			return nil, mellifera.NewError(nil, ctx.NewString(err.Error()))
@@ -719,9 +718,14 @@ func BuiltinImport(ctx *mellifera.Context) mellifera.Value {
 			// Strip the trailing slash off of directories.
 			p = strings.TrimSuffix(p, "/")
 			if _, ok := fsMap.Lookup(ctx.NewString(p + "/lib.mf")); ok {
-				// If the path is a directory with a known <directory>/lib.mf file,
-				// such as in the case of a library, load that entry point file.
+				// If the path is a directory, such as in the case of a
+				// library, load the entry point to the library and/or group of
+				// files, using the name <directory>/lib.mf by convention.
 				p = p + "/lib.mf"
+			}
+
+			if cached, ok := ctx.GetModule(p); ok {
+				return cached, nil
 			}
 
 			importModuleMap := ctx.NewMapOrPanic([]mellifera.MapPair{
@@ -755,13 +759,14 @@ func BuiltinImport(ctx *mellifera.Context) mellifera.Value {
 			if err != nil {
 				return nil, mellifera.NewError(nil, ctx.NewString(err.Error()))
 			}
-			result, err = program.Eval(ctx, env)
+			result, err = program.Eval(ctx, mellifera.NewEnvironment(ctx.BaseEnvironment))
 			if err != nil {
 				if e, ok := err.(mellifera.Error); ok {
 					return nil, e
 				}
 				return nil, mellifera.NewError(nil, ctx.NewString(err.Error()))
 			}
+			ctx.SetModule(p, result) // cache import
 			break
 		}
 

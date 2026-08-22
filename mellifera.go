@@ -387,6 +387,7 @@ type Context struct {
 	reNumberDecFullmatch  *regexp.Regexp
 	reNumberHex           *regexp.Regexp
 	reNumberHexFullmatch  *regexp.Regexp
+	importFileCache       map[string]Value
 	identifierCache       map[string]*String
 	constStringIntoString *String
 	constStringNext       *String
@@ -511,6 +512,7 @@ func NewContext() *Context {
 	ctx.reNumberDecFullmatch = regexp.MustCompile(`^\d+(\.\d+)?$`)
 	ctx.reNumberHex = regexp.MustCompile(`^0x[0-9a-fA-F]+`)
 	ctx.reNumberHexFullmatch = regexp.MustCompile(`^0x[0-9a-fA-F]+$`)
+	ctx.importFileCache = map[string]Value{}
 	ctx.identifierCache = map[string]*String{}
 	ctx.constStringIntoString = ctx.NewString("into_string")
 	ctx.constStringNext = ctx.NewString("next")
@@ -849,6 +851,18 @@ func (ctx *Context) NewValueFromSourceOrPanic(name string, source string) Value 
 		panic(err.Error())
 	}
 	return value
+}
+
+func (ctx *Context) GetModule(path string) (Value, bool) {
+	cached, ok := ctx.importFileCache[path]
+	if !ok {
+		return nil, false
+	}
+	return cached.Copy(), true
+}
+
+func (ctx *Context) SetModule(path string, value Value) {
+	ctx.importFileCache[path] = value.Copy()
 }
 
 type Null struct {

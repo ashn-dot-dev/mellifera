@@ -31,7 +31,6 @@ func BuiltinImport(ctx *mellifera.Context) mellifera.Value {
 	}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
 		target := arguments[0].(*mellifera.String)
 
-		env := mellifera.NewEnvironment(ctx.BaseEnvironment)
 		module, err := ctx.BaseEnvironment.Get("module")
 		if err != nil {
 			return nil, mellifera.NewError(nil, ctx.NewString(err.Error()))
@@ -84,6 +83,10 @@ func BuiltinImport(ctx *mellifera.Context) mellifera.Value {
 				return nil, mellifera.NewError(nil, ctx.NewString(err.Error()))
 			}
 
+			if cached, ok := ctx.GetModule(absolute); ok {
+				return cached, nil
+			}
+
 			importModuleMap := ctx.NewMapOrPanic([]mellifera.MapPair{
 				{ctx.NewString("path"), ctx.NewString(absolute)},
 				{ctx.NewString("file"), ctx.NewString(filepath.Base(absolute))},
@@ -108,13 +111,14 @@ func BuiltinImport(ctx *mellifera.Context) mellifera.Value {
 			if err != nil {
 				return nil, mellifera.NewError(nil, ctx.NewString(err.Error()))
 			}
-			result, err = program.Eval(ctx, env)
+			result, err = program.Eval(ctx, mellifera.NewEnvironment(ctx.BaseEnvironment))
 			if err != nil {
 				if e, ok := err.(mellifera.Error); ok {
 					return nil, e
 				}
 				return nil, mellifera.NewError(nil, ctx.NewString(err.Error()))
 			}
+			ctx.SetModule(absolute, result) // cache import
 			break
 		}
 

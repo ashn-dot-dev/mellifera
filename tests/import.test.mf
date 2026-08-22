@@ -30,6 +30,16 @@ catch err {
     println(err);
 }
 
+# Importing the same module twice should re-use the first cached import value
+# for the second import.
+try {
+    let x = import("import/yell.mf");
+    let y = import("import/yell.mf");
+}
+catch err {
+    println(err);
+}
+
 # Ensure that the module field is properly restored after successful import.
 try {
     assert(module::path.ends_with("import.test.mf"));
@@ -60,3 +70,4 @@ catch err {
 ################################################################################
 # module "nope.mf" not found
 # module "../lib" not found
+# IMPORT IN PROGRESS
