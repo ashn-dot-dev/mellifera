@@ -80,6 +80,16 @@ func fnv1a(s string) uint64 {
 	return hash
 }
 
+// MurmurHash3 64-bit finalization mix
+func fmix64(k uint64) uint64 {
+	k ^= k >> 33
+	k *= 0xff51afd7ed558ccd
+	k ^= k >> 33
+	k *= 0xc4ceb9fe1a85ec53
+	k ^= k >> 33
+	return k
+}
+
 type Value interface {
 	Typename() string
 	String() string
@@ -1038,7 +1048,7 @@ func (self *Number) Hash() uint64 {
 		// representation, but should still compare equal as map keys.
 		return 0
 	}
-	return math.Float64bits(self.data)
+	return fmix64(math.Float64bits(self.data))
 }
 
 func (self *Number) Equal(other Value) bool {
@@ -2315,7 +2325,7 @@ func (self *Reference) IsImmutable() bool {
 }
 
 func (self *Reference) Hash() uint64 {
-	return uint64(reflect.ValueOf(self.data).Pointer())
+	return fmix64(uint64(reflect.ValueOf(self.data).Pointer()))
 }
 
 func (self *Reference) Equal(other Value) bool {
@@ -2384,7 +2394,7 @@ func (self *Function) IsImmutable() bool {
 }
 
 func (self *Function) Hash() uint64 {
-	return uint64(reflect.ValueOf(self.ast).Pointer() + reflect.ValueOf(self.env).Pointer())
+	return fmix64(uint64(reflect.ValueOf(self.ast).Pointer() + reflect.ValueOf(self.env).Pointer()))
 }
 
 func (self *Function) Equal(other Value) bool {
