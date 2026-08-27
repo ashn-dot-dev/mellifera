@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"iter"
 	"math"
 	"math/rand/v2"
 	"os"
@@ -640,15 +641,15 @@ func NewContext() *Context {
 	}).Freeze())
 
 	// Initialize builtins from source with deferred instantiation.
-	ctx.vectorMeta.data.Insert(ctx.NewString("sorted"), BuiltinVectorSorted(ctx))
-	ctx.vectorMeta.data.Insert(ctx.NewString("sorted_by"), BuiltinVectorSortedBy(ctx))
-	ctx.vectorMeta.data.Insert(ctx.NewString("into_iterator"), BuiltinVectorIntoIterator(ctx))
-	ctx.mapMeta.data.Insert(ctx.NewString("union"), BuiltinMapUnion(ctx))
-	ctx.mapMeta.data.Insert(ctx.NewString("into_iterator"), BuiltinMapIntoIterator(ctx))
-	ctx.setMeta.data.Insert(ctx.NewString("union"), BuiltinSetUnion(ctx))
-	ctx.setMeta.data.Insert(ctx.NewString("intersection"), BuiltinSetIntersection(ctx))
-	ctx.setMeta.data.Insert(ctx.NewString("difference"), BuiltinSetDifference(ctx))
-	ctx.setMeta.data.Insert(ctx.NewString("into_iterator"), BuiltinSetIntoIterator(ctx))
+	ctx.vectorMeta.data.hmap.insert(ctx.NewString("sorted"), BuiltinVectorSorted(ctx))
+	ctx.vectorMeta.data.hmap.insert(ctx.NewString("sorted_by"), BuiltinVectorSortedBy(ctx))
+	ctx.vectorMeta.data.hmap.insert(ctx.NewString("into_iterator"), BuiltinVectorIntoIterator(ctx))
+	ctx.mapMeta.data.hmap.insert(ctx.NewString("union"), BuiltinMapUnion(ctx))
+	ctx.mapMeta.data.hmap.insert(ctx.NewString("into_iterator"), BuiltinMapIntoIterator(ctx))
+	ctx.setMeta.data.hmap.insert(ctx.NewString("union"), BuiltinSetUnion(ctx))
+	ctx.setMeta.data.hmap.insert(ctx.NewString("intersection"), BuiltinSetIntersection(ctx))
+	ctx.setMeta.data.hmap.insert(ctx.NewString("difference"), BuiltinSetDifference(ctx))
+	ctx.setMeta.data.hmap.insert(ctx.NewString("into_iterator"), BuiltinSetIntoIterator(ctx))
 	_ = ctx.BaseEnvironment.Set("range", BuiltinRange(ctx))
 
 	return ctx
@@ -1475,116 +1476,322 @@ type MapPair struct {
 	Value Value
 }
 
-type mapElement struct {
-	prev  *mapElement
-	next  *mapElement
+const (
+	orderedHashMapSmallCap = 8
+	orderedHashMapSlotFree = -1
+	orderedHashMapSlotDead = -2
+)
+
+type orderedHashMapSmallEntry struct {
+	hash  uint64
 	key   Value
 	value Value
 }
 
-type mapData struct {
-	buckets map[uint64][]*mapElement
-	head    *mapElement
-	tail    *mapElement
-	count   int
-	uses    int
-	refs    int
+type orderedHashMapLargeEntry struct {
+	hash  uint64
+	key   Value
+	value Value
+	dead  bool
 }
 
-func (self *mapData) LookupWithHash(key Value, hash uint64) (*mapElement, bool) {
-	bucket, ok := self.buckets[hash]
-	if !ok || len(bucket) == 0 {
-		return nil, false
-	}
+type orderedHashMap struct {
+	// Small Mode: Entries inline within small[:live] in insertion order.
+	// Large Mode: Backing array small[:] is zeroed.
+	small [orderedHashMapSmallCap]orderedHashMapSmallEntry
+	// Small Mode: Nil slice.
+	// Large Mode: Non-nil slice (including dead entries) in insertion order.
+	large []orderedHashMapLargeEntry
+	// Open-addressing index with len(index) as a power of two, where elements
+	// are entry indices that in the free, live, or dead state.
+	index []int32
+	live  int // Count of live entries.
+	dead  int // Count of dead entries (large mode only).
+	used  int // Count of non-free index slots (large mode only).
+}
 
-	for _, element := range bucket {
-		if element.key.Equal(key) {
-			return element, true
+func (self *orderedHashMap) count() int {
+	return self.live
+}
+
+// SMALL MODE ONLY
+// Returns the index of the provided key with the provided hash in the small
+// entry buffer. Returns -1 if no entry is found.
+func (self *orderedHashMap) findSmall(key Value, hash uint64) int {
+	for i := 0; i < self.live; i += 1 {
+		if self.small[i].hash == hash && self.small[i].key.Equal(key) {
+			return i
 		}
 	}
+	return -1
+}
 
+// LARGE MODE ONLY
+// Returns the index of the provided key with the provided hash in the large
+// entry buffer. Returns -1 if no entry is found.
+func (self *orderedHashMap) findLarge(key Value, hash uint64) int {
+	mask := uint64(len(self.index) - 1)
+	i := hash & mask
+	for {
+		slot := self.index[i]
+		if slot == orderedHashMapSlotFree {
+			return -1
+		}
+		if slot >= 0 {
+			e := &self.large[slot]
+			if e.hash == hash && e.key.Equal(key) {
+				return int(slot)
+			}
+		}
+		i = (i + 1) & mask
+	}
+}
+
+func (self *orderedHashMap) lookup(key Value) (Value, bool) {
+	hash := key.Hash()
+	if self.large == nil {
+		if i := self.findSmall(key, hash); i != -1 {
+			return self.small[i].value, true
+		}
+		return nil, false
+	}
+	if i := self.findLarge(key, hash); i != -1 {
+		return self.large[i].value, true
+	}
 	return nil, false
 }
 
-func (self *mapData) Lookup(key Value) (*mapElement, bool) {
-	return self.LookupWithHash(key, key.Hash())
+func (self *orderedHashMap) lookupEntry(key Value) (Value, Value, bool) {
+	hash := key.Hash()
+	if self.large == nil {
+		if i := self.findSmall(key, hash); i != -1 {
+			return self.small[i].key, self.small[i].value, true
+		}
+	} else if i := self.findLarge(key, hash); i != -1 {
+		return self.large[i].key, self.large[i].value, true
+	}
+	return nil, nil, false
 }
 
-func (self *mapData) Insert(key, value Value) {
-	if self.buckets == nil {
-		self.buckets = make(map[uint64][]*mapElement)
-	}
-
+func (self *orderedHashMap) insert(key, value Value) {
 	hash := key.Hash()
-	if self.head == nil {
-		element := &mapElement{
-			key:   key,
-			value: value,
+
+	// Replace an existing entry if it already exists in the map.
+	if self.large == nil {
+		if i := self.findSmall(key, hash); i != -1 {
+			self.small[i].key = key
+			self.small[i].value = value
+			return
 		}
-
-		self.buckets[hash] = append(self.buckets[hash], element)
-		self.head = element
-		self.tail = element
-		self.count = 1
+	} else if i := self.findLarge(key, hash); i != -1 {
+		self.large[i].key = key
+		self.large[i].value = value
 		return
 	}
 
-	lookup, ok := self.LookupWithHash(key, hash)
-	if !ok {
-		element := &mapElement{
-			prev:  self.tail,
-			key:   key,
-			value: value,
-		}
-
-		self.buckets[hash] = append(self.buckets[hash], element)
-		self.tail.next = element
-		self.tail = element
-		self.count += 1
-		return
-	}
-
-	lookup.key = key
-	lookup.value = value
-}
-
-func (self *mapData) Remove(key Value) {
-	if self.head == nil {
-		return
-	}
-
-	hash := key.Hash()
-	bucket, ok := self.buckets[hash]
-	if !ok || len(bucket) == 0 {
-		return
-	}
-	var lookup *mapElement
-	for i := 0; i < len(bucket); i += 1 {
-		if bucket[i].key.Equal(key) {
-			lookup = bucket[i]
-			self.buckets[hash] = append(bucket[:i], bucket[i+1:]...)
-			if len(self.buckets[hash]) == 0 {
-				delete(self.buckets, hash)
+	if self.large == nil {
+		if self.live < orderedHashMapSmallCap {
+			self.small[self.live] = orderedHashMapSmallEntry{
+				hash:  hash,
+				key:   key,
+				value: value,
 			}
+			self.live += 1
+			return
+		}
+
+		// Not enough storage in the small buffer. Transform from small mode to
+		// large mode by migrating inline entries into a heap-allocated slice.
+		self.large = make([]orderedHashMapLargeEntry, self.live, 2*orderedHashMapSmallCap)
+		for i := 0; i < self.live; i += 1 {
+			self.large[i] = orderedHashMapLargeEntry{
+				hash:  self.small[i].hash,
+				key:   self.small[i].key,
+				value: self.small[i].value,
+			}
+		}
+		// Clear memory of previously used small entries.
+		self.small = [orderedHashMapSmallCap]orderedHashMapSmallEntry{}
+
+		// Build initial index.
+		self.index = make([]int32, 4*orderedHashMapSmallCap)
+		for i := range self.index {
+			self.index[i] = orderedHashMapSlotFree
+		}
+		mask := uint64(len(self.index) - 1)
+		for n := range self.large {
+			i := self.large[n].hash & mask
+			for self.index[i] != orderedHashMapSlotFree {
+				i = (i + 1) & mask
+			}
+			self.index[i] = int32(n)
+		}
+		self.used = self.live
+	}
+
+	// Rebuild threshold sits at a 3/4 load factor somewhat arbitrarily.
+	if (self.used+1)*4 > len(self.index)*3 {
+		self.rebuild()
+	}
+
+	// Probe for a free or dead slot in the index.
+	mask := uint64(len(self.index) - 1)
+	i := hash & mask
+	for {
+		slot := self.index[i]
+		if slot == orderedHashMapSlotFree {
+			self.used += 1
 			break
 		}
+		if slot == orderedHashMapSlotDead {
+			break
+		}
+		i = (i + 1) & mask
 	}
 
-	if lookup != nil {
-		if self.head == lookup {
-			self.head = lookup.next
+	self.large = append(self.large, orderedHashMapLargeEntry{
+		hash:  hash,
+		key:   key,
+		value: value,
+	})
+	self.index[i] = int32(len(self.large) - 1)
+	self.live += 1
+}
+
+func (self *orderedHashMap) rebuild() {
+	out := 0
+	for i := range self.large {
+		if self.large[i].dead {
+			continue
 		}
-		if self.tail == lookup {
-			self.tail = lookup.prev
+		if out != i {
+			self.large[out] = self.large[i]
 		}
-		if lookup.prev != nil {
-			lookup.prev.next = lookup.next
-		}
-		if lookup.next != nil {
-			lookup.next.prev = lookup.prev
-		}
-		self.count -= 1
+		out += 1
 	}
+	clear(self.large[out:])
+	self.large = self.large[:out]
+	self.dead = 0
+
+	size := 4 * orderedHashMapSmallCap
+	// Keep load at or below a 3/8 load factor, chosen somewhat arbitrarily.
+	for size*3 < (self.live+1)*8 {
+		size *= 2
+	}
+	if size == len(self.index) {
+		for i := range self.index {
+			self.index[i] = orderedHashMapSlotFree
+		}
+	} else {
+		self.index = make([]int32, size)
+		for i := range self.index {
+			self.index[i] = orderedHashMapSlotFree
+		}
+	}
+
+	mask := uint64(len(self.index) - 1)
+	for n := range self.large {
+		i := self.large[n].hash & mask
+		for self.index[i] != orderedHashMapSlotFree {
+			i = (i + 1) & mask
+		}
+		self.index[i] = int32(n)
+	}
+	self.used = out
+}
+
+func (self *orderedHashMap) remove(key Value) {
+	hash := key.Hash()
+	if self.large == nil {
+		i := self.findSmall(key, hash)
+		if i == -1 {
+			return
+		}
+		copy(self.small[i:self.live-1], self.small[i+1:self.live])
+		// Clear memory of previously used small entry.
+		self.small[self.live-1] = orderedHashMapSmallEntry{}
+		self.live -= 1
+		return
+	}
+
+	mask := uint64(len(self.index) - 1)
+	i := hash & mask
+	for {
+		slot := self.index[i]
+		if slot == orderedHashMapSlotFree {
+			return
+		}
+		if slot >= 0 {
+			e := &self.large[slot]
+			if e.hash == hash && e.key.Equal(key) {
+				self.index[i] = orderedHashMapSlotDead
+				// Clear memory of previous entry, while setting a tombstone.
+				*e = orderedHashMapLargeEntry{dead: true}
+				self.live -= 1
+				self.dead += 1
+				// Keep iteration O(live) in the case of many removals.
+				if self.dead > self.live {
+					self.rebuild()
+				}
+				return
+			}
+		}
+		i = (i + 1) & mask
+	}
+}
+
+// Iterate over key-value pairs in insertion order.
+// The receiver ordered hash map must not be modified during iteration.
+func (self *orderedHashMap) entries() iter.Seq2[Value, Value] {
+	return func(yield func(Value, Value) bool) {
+		if self.large == nil {
+			for i := 0; i < self.live; i += 1 {
+				if !yield(self.small[i].key, self.small[i].value) {
+					return
+				}
+			}
+			return
+		}
+		for i := range self.large {
+			e := &self.large[i]
+			if e.dead {
+				continue
+			}
+			if !yield(e.key, e.value) {
+				return
+			}
+		}
+	}
+}
+
+// Iterate over keys in insertion order.
+// The receiver ordered hash map must not be modified during iteration.
+func (self *orderedHashMap) keys() iter.Seq[Value] {
+	return func(yield func(Value) bool) {
+		for k := range self.entries() {
+			if !yield(k) {
+				return
+			}
+		}
+	}
+}
+
+// Iterate over values in insertion order.
+// The receiver ordered hash map must not be modified during iteration.
+func (self *orderedHashMap) values() iter.Seq[Value] {
+	return func(yield func(Value) bool) {
+		for _, v := range self.entries() {
+			if !yield(v) {
+				return
+			}
+		}
+	}
+}
+
+type mapData struct {
+	hmap orderedHashMap
+	uses int
+	refs int
 }
 
 type Map struct {
@@ -1603,15 +1810,13 @@ func (self *Map) Typename() string {
 }
 
 func (self *Map) String() string {
-	if self.data == nil || self.data.count == 0 {
+	if self.data == nil || self.data.hmap.count() == 0 {
 		return "Map{}"
 	}
 
 	s := make([]string, 0)
-	cur := self.data.head
-	for cur != nil {
-		s = append(s, fmt.Sprintf("%s: %s", cur.key.String(), cur.value.String()))
-		cur = cur.next
+	for key, value := range self.data.hmap.entries() {
+		s = append(s, fmt.Sprintf("%s: %s", key.String(), value.String()))
 	}
 	return fmt.Sprintf("{%s}", strings.Join(s, ", "))
 }
@@ -1653,10 +1858,8 @@ func (self *Map) Copy() Value {
 		// one reference does not allow for shared mutation of semantically
 		// separate values created via copy.
 		data := &mapData{uses: 1}
-		cur := self.data.head
-		for cur != nil {
-			data.Insert(cur.key.Copy().Take(), cur.value.Copy().Take())
-			cur = cur.next
+		for key, value := range self.data.hmap.entries() {
+			data.hmap.insert(key.Copy().Take(), value.Copy().Take())
 		}
 		return &Map{
 			data: data,
@@ -1680,10 +1883,8 @@ func (self *Map) CopyOnWrite() {
 			uses: 1,
 		}
 
-		cur := self.data.head
-		for cur != nil {
-			data.Insert(cur.key.Copy().Take(), cur.value.Copy().Take())
-			cur = cur.next
+		for key, value := range self.data.hmap.entries() {
+			data.hmap.insert(key.Copy().Take(), value.Copy().Take())
 		}
 		self.data = data
 	}
@@ -1716,10 +1917,8 @@ func (self *Map) IsImmutable() bool {
 func (self *Map) Hash() uint64 {
 	var hash uint64 = 0
 	if self.data != nil {
-		cur := self.data.head
-		for cur != nil {
-			hash += cur.key.Hash() + cur.value.Hash()
-			cur = cur.next
+		for key, value := range self.data.hmap.entries() {
+			hash += key.Hash() + value.Hash()
 		}
 	}
 	return hash
@@ -1744,34 +1943,30 @@ func (self *Map) Equal(other Value) bool {
 		// Self and other share the same backing map data. Equality depends on
 		// each key and value being equal to itself, which is itself dependent
 		// on whether any nested key or value contains a NaN value.
-		cur := self.data.head
-		for cur != nil {
-			if !cur.key.Equal(cur.key) || !cur.value.Equal(cur.value) {
+		for key, value := range self.data.hmap.entries() {
+			if !key.Equal(key) || !value.Equal(value) {
 				return false
 			}
-			cur = cur.next
 		}
 		return true
 	}
 
 	// Non-empty maps - self and othr both have separate non-nil data.
-	cur := self.data.head
-	for cur != nil {
-		value, ok := othr.Lookup(cur.key)
+	for key, value := range self.data.hmap.entries() {
+		othrValue, ok := othr.Lookup(key)
 		if !ok {
 			return false
 		}
-		if !cur.value.Equal(value) {
+		if !value.Equal(othrValue) {
 			return false
 		}
-		cur = cur.next
 	}
 
 	return true
 }
 
 func (self *Map) CombEncode(e *CombEncoder) error {
-	if self.data == nil || self.data.count == 0 {
+	if self.data == nil || self.data.hmap.count() == 0 {
 		e.writeString("Map{}")
 		return e.err
 	}
@@ -1782,22 +1977,21 @@ func (self *Map) CombEncode(e *CombEncoder) error {
 	}
 	e.indentLevel += 1
 
-	cur := self.data.head
-	for cur != nil {
+	remaining := self.data.hmap.count()
+	for key, value := range self.data.hmap.entries() {
 		e.writeIndent("")
-		cur.key.CombEncode(e)
+		key.CombEncode(e)
 		e.writeString(":")
 		e.writeString(e.Separator)
-		cur.value.CombEncode(e)
+		value.CombEncode(e)
 
-		if cur != self.data.tail {
+		remaining -= 1
+		if remaining != 0 {
 			e.writeString(",")
 			e.writeEndOfLine()
 		} else if e.Indent != nil {
 			e.writeEndOfLine()
 		}
-
-		cur = cur.next
 	}
 
 	e.indentLevel -= 1
@@ -1811,7 +2005,7 @@ func (self *Map) Count() int {
 		return 0
 	}
 
-	return self.data.count
+	return self.data.hmap.count()
 }
 
 func (self *Map) Pairs() []MapPair {
@@ -1819,11 +2013,9 @@ func (self *Map) Pairs() []MapPair {
 		return []MapPair{}
 	}
 
-	pairs := []MapPair{}
-	cur := self.data.head
-	for cur != nil {
-		pairs = append(pairs, MapPair{cur.key, cur.value})
-		cur = cur.next
+	pairs := make([]MapPair, 0, self.data.hmap.count())
+	for key, value := range self.data.hmap.entries() {
+		pairs = append(pairs, MapPair{key, value})
 	}
 	return pairs
 }
@@ -1839,12 +2031,7 @@ func (self *Map) Lookup(key Value) (Value, bool) {
 		return nil, false
 	}
 
-	element, ok := self.data.Lookup(key)
-	if !ok {
-		return nil, false
-	}
-
-	return element.value, true
+	return self.data.hmap.lookup(key)
 }
 
 func (self *Map) Insert(key, value Value) error {
@@ -1873,7 +2060,7 @@ func (self *Map) Insert(key, value Value) error {
 		}
 	}
 
-	self.data.Insert(key.Take(), value.Take())
+	self.data.hmap.insert(key.Take(), value.Take())
 	return nil
 }
 
@@ -1891,118 +2078,14 @@ func (self *Map) Remove(key Value) error {
 	}
 
 	self.CopyOnWrite()
-	self.data.Remove(key)
+	self.data.hmap.remove(key)
 	return nil
-}
-
-type setElement struct {
-	prev *setElement
-	next *setElement
-	key  Value
 }
 
 type setData struct {
-	buckets map[uint64][]*setElement
-	head    *setElement
-	tail    *setElement
-	count   int
-	uses    int
-	refs    int
-}
-
-// Returns nil on lookup failure.
-func (self *setData) LookupWithHash(key Value, hash uint64) *setElement {
-	bucket, ok := self.buckets[hash]
-	if !ok || len(bucket) == 0 {
-		return nil
-	}
-
-	for _, element := range bucket {
-		if element.key.Equal(key) {
-			return element
-		}
-	}
-
-	return nil
-}
-
-// Returns nil on lookup failure.
-func (self *setData) Lookup(key Value) *setElement {
-	return self.LookupWithHash(key, key.Hash())
-}
-
-func (self *setData) Insert(key Value) {
-	if self.buckets == nil {
-		self.buckets = make(map[uint64][]*setElement)
-	}
-
-	hash := key.Hash()
-	if self.head == nil {
-		element := &setElement{
-			key: key,
-		}
-
-		self.buckets[hash] = append(self.buckets[hash], element)
-		self.head = element
-		self.tail = element
-		self.count = 1
-		return
-	}
-
-	lookup := self.LookupWithHash(key, hash)
-	if lookup == nil {
-		element := &setElement{
-			prev: self.tail,
-			key:  key,
-		}
-
-		self.buckets[hash] = append(self.buckets[hash], element)
-		self.tail.next = element
-		self.tail = element
-		self.count += 1
-		return
-	}
-
-	lookup.key = key
-}
-
-func (self *setData) Remove(key Value) {
-	if self.head == nil {
-		return
-	}
-
-	hash := key.Hash()
-	bucket, ok := self.buckets[hash]
-	if !ok || len(bucket) == 0 {
-		return
-	}
-	var lookup *setElement
-	for i := 0; i < len(bucket); i += 1 {
-		if bucket[i].key.Equal(key) {
-			lookup = bucket[i]
-			self.buckets[hash] = append(bucket[:i], bucket[i+1:]...)
-			if len(self.buckets[hash]) == 0 {
-				delete(self.buckets, hash)
-			}
-			break
-		}
-	}
-
-	if lookup != nil {
-		if self.head == lookup {
-			self.head = lookup.next
-		}
-		if self.tail == lookup {
-			self.tail = lookup.prev
-		}
-		if lookup.prev != nil {
-			lookup.prev.next = lookup.next
-		}
-		if lookup.next != nil {
-			lookup.next.prev = lookup.prev
-		}
-		self.count -= 1
-	}
+	hmap orderedHashMap // Entries of the form {key, nil}.
+	uses int
+	refs int
 }
 
 type Set struct {
@@ -2015,15 +2098,13 @@ func (self *Set) Typename() string {
 }
 
 func (self *Set) String() string {
-	if self.data == nil || self.data.count == 0 {
+	if self.data == nil || self.data.hmap.count() == 0 {
 		return "Set{}"
 	}
 
 	s := make([]string, 0)
-	cur := self.data.head
-	for cur != nil {
-		s = append(s, cur.key.String())
-		cur = cur.next
+	for element := range self.data.hmap.keys() {
+		s = append(s, element.String())
 	}
 	return fmt.Sprintf("{%s}", strings.Join(s, ", "))
 }
@@ -2061,10 +2142,8 @@ func (self *Set) Copy() Value {
 		// one reference does not allow for shared mutation of semantically
 		// separate values created via copy.
 		data := &setData{uses: 1}
-		cur := self.data.head
-		for cur != nil {
-			data.Insert(cur.key.Copy().Take())
-			cur = cur.next
+		for element := range self.data.hmap.keys() {
+			data.hmap.insert(element.Copy().Take(), nil)
 		}
 		return &Set{data: data}
 	}
@@ -2080,10 +2159,8 @@ func (self *Set) CopyOnWrite() {
 			uses: 1,
 		}
 
-		cur := self.data.head
-		for cur != nil {
-			data.Insert(cur.key.Copy().Take())
-			cur = cur.next
+		for element := range self.data.hmap.keys() {
+			data.hmap.insert(element.Copy().Take(), nil)
 		}
 		self.data = data
 	}
@@ -2115,10 +2192,8 @@ func (self *Set) IsImmutable() bool {
 func (self *Set) Hash() uint64 {
 	var hash uint64 = 0
 	if self.data != nil {
-		cur := self.data.head
-		for cur != nil {
-			hash += cur.key.Hash()
-			cur = cur.next
+		for element := range self.data.hmap.keys() {
+			hash += element.Hash()
 		}
 	}
 	return hash
@@ -2143,31 +2218,26 @@ func (self *Set) Equal(other Value) bool {
 		// Self and othr share the same backing set data. Equality depends on
 		// each element being equal to itself, which is itself dependent on
 		// whether any nested elements contain a NaN value.
-		cur := self.data.head
-		for cur != nil {
-			if !cur.key.Equal(cur.key) {
+		for element := range self.data.hmap.keys() {
+			if !element.Equal(element) {
 				return false
 			}
-			cur = cur.next
 		}
 		return true
 	}
 
 	// Non-empty sets - self and othr both have separate non-nil data.
-	cur := self.data.head
-	for cur != nil {
-		_, ok := othr.Lookup(cur.key)
-		if !ok {
+	for element := range self.data.hmap.keys() {
+		if _, ok := othr.Lookup(element); !ok {
 			return false
 		}
-		cur = cur.next
 	}
 
 	return true
 }
 
 func (self *Set) CombEncode(e *CombEncoder) error {
-	if self.data == nil || self.data.count == 0 {
+	if self.data == nil || self.data.hmap.count() == 0 {
 		e.writeString("Set{}")
 		return e.err
 	}
@@ -2178,19 +2248,18 @@ func (self *Set) CombEncode(e *CombEncoder) error {
 	}
 	e.indentLevel += 1
 
-	cur := self.data.head
-	for cur != nil {
+	remaining := self.data.hmap.count()
+	for element := range self.data.hmap.keys() {
 		e.writeIndent("")
-		cur.key.CombEncode(e)
+		element.CombEncode(e)
 
-		if cur != self.data.tail {
+		remaining -= 1
+		if remaining != 0 {
 			e.writeString(",")
 			e.writeEndOfLine()
 		} else if e.Indent != nil {
 			e.writeEndOfLine()
 		}
-
-		cur = cur.next
 	}
 
 	e.indentLevel -= 1
@@ -2204,7 +2273,7 @@ func (self *Set) Count() int {
 		return 0
 	}
 
-	return self.data.count
+	return self.data.hmap.count()
 }
 
 func (self *Set) Elements() []Value {
@@ -2212,11 +2281,9 @@ func (self *Set) Elements() []Value {
 		return []Value{}
 	}
 
-	elements := []Value{}
-	cur := self.data.head
-	for cur != nil {
-		elements = append(elements, cur.key)
-		cur = cur.next
+	elements := make([]Value, 0, self.data.hmap.count())
+	for element := range self.data.hmap.keys() {
+		elements = append(elements, element)
 	}
 	return elements
 }
@@ -2232,12 +2299,12 @@ func (self *Set) Lookup(value Value) (Value, bool) {
 		return nil, false
 	}
 
-	element := self.data.Lookup(value)
-	if element == nil {
+	element, _, ok := self.data.hmap.lookupEntry(value)
+	if !ok {
 		return nil, false
 	}
 
-	return element.key, true
+	return element, true
 }
 
 func (self *Set) Insert(value Value) error {
@@ -2262,7 +2329,7 @@ func (self *Set) Insert(value Value) error {
 		}
 	}
 
-	self.data.Insert(value.Take())
+	self.data.hmap.insert(value.Take(), nil)
 	return nil
 }
 
@@ -2280,7 +2347,7 @@ func (self *Set) Remove(value Value) error {
 	}
 
 	self.CopyOnWrite()
-	self.data.Remove(value)
+	self.data.hmap.remove(value)
 	return nil
 }
 
