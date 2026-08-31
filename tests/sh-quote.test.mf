@@ -1,0 +1,11 @@
+println(sh::quote(`foo`));
+println(sh::quote(`foo bar`));
+println(sh::quote(`foo"bar`));
+println(sh::quote(`foo'bar`));
+println(sh::quote(`foo=bar`));
+################################################################################
+# 'foo'
+# 'foo bar'
+# 'foo"bar'
+# 'foo'\''bar'
+# 'foo=bar'

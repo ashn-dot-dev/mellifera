@@ -1,0 +1,8 @@
+dumpln(sh::run(`printf "sh::run stdout\n" && printf "sh::run stderr\n" >&2 && true`));
+dumpln(sh::run(`printf "sh::run stdout\n" && printf "sh::run stderr\n" >&2 && false`));
+
+print("\n");
+
+################################################################################
+# {"status": 0, "stdout": "sh::run stdout\n", "stderr": "sh::run stderr\n"}
+# {"status": 1, "stdout": "sh::run stdout\n", "stderr": "sh::run stderr\n"}

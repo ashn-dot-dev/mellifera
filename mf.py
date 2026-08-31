@@ -26,6 +26,7 @@ import math
 import os
 import random
 import re
+import subprocess
 import sys
 import traceback
 
@@ -7496,6 +7497,86 @@ def builtin_re_replace():
     """
 
 
+def _sh_run(command: bytes, stdin: Optional[bytes]) -> Union[Map, Error]:
+    found = command.find(b"\x00")
+    if found != -1:
+        return Error(None, "invalid null byte in POSIX shell string")
+    result = subprocess.run(
+        ["/bin/sh", "-c", command],
+        input=stdin,
+        stdin=subprocess.DEVNULL if stdin is None else None,
+        capture_output=True,
+        check=False,
+    )
+    return Map.new(
+        {
+            String.new("status"): Number.new(result.returncode),
+            String.new("stdout"): String.new(result.stdout),
+            String.new("stderr"): String.new(result.stderr),
+        }
+    )
+
+
+@builtin("sh::run", [String])
+def builtin_sh_run(command: String) -> Union[Value, Error]:
+    return _sh_run(command.bytes, None)
+
+
+@builtin("sh::run_ex", [String, Map])
+def builtin_sh_run_ex(command: String, options: Map) -> Union[Map, Error]:
+    stdin = None
+    for k, v in options.data.items():
+        if isinstance(k, String) and k.bytes == b"stdin":
+            if not isinstance(v, String):
+                return Error(None, f"expected string standard input, received {v}")
+            stdin = v.bytes
+            continue
+        return Error(None, f"unknown option {k}")
+    return _sh_run(command.bytes, stdin)
+
+
+@builtin("sh::runx", [String])
+def builtin_sh_runx(command: String) -> Union[Value, Error]:
+    result = _sh_run(command.bytes, None)
+    if isinstance(result, Error):
+        return result
+    status = result.data[String("status")]
+    assert isinstance(status, Number)
+    if status.data != 0:
+        return Error(None, result)
+    return result
+
+
+@builtin("sh::runx_ex", [String, Map])
+def builtin_sh_runx_ex(command: String, options: Map) -> Union[Value, Error]:
+    stdin = None
+    for k, v in options.data.items():
+        if isinstance(k, String) and k.bytes == b"stdin":
+            if not isinstance(v, String):
+                return Error(None, f"expected string standard input, received {v}")
+            stdin = v.bytes
+            continue
+        return Error(None, String.new(f"unknown option {k}"))
+    result = _sh_run(command.bytes, stdin)
+    if isinstance(result, Error):
+        return result
+    status = result.data[String("status")]
+    assert isinstance(status, Number)
+    if status.data != 0:
+        return Error(None, result)
+    return result
+
+
+@builtin("sh::quote", [String])
+def builtin_sh_quote(s: String) -> Union[Value, Error]:
+    found = s.bytes.find(b"\x00")
+    if found != -1:
+        return Error(None, "invalid null byte in POSIX shell string")
+    # 'foo bar'
+    # 'foo'\''bar'
+    return String.new(b"'" + s.bytes.replace(b"'", b"'\\''") + b"'")
+
+
 @builtin("ty::is", [Value, Value])
 def builtin_ty_is(value: Value, type: Value) -> Union[Value, Error]:
     if isinstance(type, Null):
@@ -8072,6 +8153,18 @@ BASE_ENVIRONMENT.let(
         {
             String.new("split"): builtin_re_split(),
             String.new("replace"): builtin_re_replace(),
+        }
+    ).freeze(),
+)
+BASE_ENVIRONMENT.let(
+    String.new("sh"),
+    Map.new(
+        {
+            String.new("run"): builtin_sh_run(),
+            String.new("run_ex"): builtin_sh_run_ex(),
+            String.new("runx"): builtin_sh_runx(),
+            String.new("runx_ex"): builtin_sh_runx_ex(),
+            String.new("quote"): builtin_sh_quote(),
         }
     ).freeze(),
 )

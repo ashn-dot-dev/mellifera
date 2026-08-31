@@ -1,13 +1,16 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"syscall"
 
 	"ashn.dev/mellifera"
 )
@@ -225,6 +228,155 @@ func BuiltinFsAppend(ctx *mellifera.Context) mellifera.Value {
 			return nil, mellifera.NewError(nil, ctx.NewStringf("failed append to file %v (%s)", path, err.Error()))
 		}
 		return ctx.NewNull(), nil
+	})
+}
+
+func shRun(ctx *mellifera.Context, command string, stdin *string) (*mellifera.Map, error, int) {
+	found := strings.Index(command, "\x00")
+	if found != -1 {
+		return nil, mellifera.NewError(nil, ctx.NewStringf("invalid null byte in POSIX shell string")), -1
+	}
+
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd := exec.Command("/bin/sh", "-c", command)
+	if stdin != nil {
+		cmd.Stdin = strings.NewReader(*stdin)
+	}
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	status := 0
+	if err := cmd.Run(); err != nil {
+		// > https://pkg.go.dev/os/exec@go1.26.7#Cmd.Run
+		// > ===========================================
+		// > Run starts the specified command and waits for it to complete.
+		// >
+		// > The returned error is nil if the command runs, has no problems
+		// > copying stdin, stdout, and stderr, and exits with a zero exit
+		// > status.
+		// >
+		// > If the command starts but does not complete successfully, the
+		// > error is of type *ExitError. Other error types may be returned
+		// > for other situations.
+		if exitError, ok := err.(*exec.ExitError); ok {
+			status = exitError.Sys().(syscall.WaitStatus).ExitStatus()
+		} else {
+			return nil, mellifera.NewError(nil, ctx.NewString(err.Error())), -1
+		}
+	}
+
+	return ctx.NewMapOrPanic([]mellifera.MapPair{
+		{ctx.NewString("status"), ctx.NewNumber(float64(status))},
+		{ctx.NewString("stdout"), ctx.NewString(stdout.String())},
+		{ctx.NewString("stderr"), ctx.NewString(stderr.String())},
+	}), nil, status
+}
+
+func BuiltinShRun(ctx *mellifera.Context) mellifera.Value {
+	return ctx.NewBuiltin("sh::run", []mellifera.Type{
+		mellifera.TVal(mellifera.STRING),
+	}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
+		command := arguments[0].(*mellifera.String)
+
+		result, err, _ := shRun(ctx, command.Data(), nil)
+		return result, err
+	})
+}
+
+func BuiltinShRunEx(ctx *mellifera.Context) mellifera.Value {
+	return ctx.NewBuiltin("sh::run_ex", []mellifera.Type{
+		mellifera.TVal(mellifera.STRING),
+		mellifera.TVal(mellifera.MAP),
+	}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
+		command := arguments[0].(*mellifera.String)
+		options := arguments[1].(*mellifera.Map)
+
+		var stdin *string = nil // optional
+		for _, pair := range options.Pairs() {
+			if k, ok := pair.Key.(*mellifera.String); ok && k.Data() == "stdin" {
+				if v, ok := pair.Value.(*mellifera.String); ok {
+					data := v.Data()
+					stdin = &data
+					continue
+				}
+
+				return nil, mellifera.NewError(nil, ctx.NewStringf("expected string standard input, received %v", pair.Value))
+			}
+
+			return nil, mellifera.NewError(nil, ctx.NewStringf("unknown option %v", pair.Key))
+		}
+
+		result, err, _ := shRun(ctx, command.Data(), stdin)
+		return result, err
+	})
+}
+
+func BuiltinShRunx(ctx *mellifera.Context) mellifera.Value {
+	return ctx.NewBuiltin("sh::runx", []mellifera.Type{
+		mellifera.TVal(mellifera.STRING),
+	}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
+		command := arguments[0].(*mellifera.String)
+
+		result, err, status := shRun(ctx, command.Data(), nil)
+		if err != nil {
+			return nil, err
+		}
+		if status != 0 {
+			return nil, mellifera.NewError(nil, result)
+		}
+		return result, err
+	})
+}
+
+func BuiltinShRunxEx(ctx *mellifera.Context) mellifera.Value {
+	return ctx.NewBuiltin("sh::runx_ex", []mellifera.Type{
+		mellifera.TVal(mellifera.STRING),
+		mellifera.TVal(mellifera.MAP),
+	}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
+		command := arguments[0].(*mellifera.String)
+		options := arguments[1].(*mellifera.Map)
+
+		var stdin *string = nil // optional
+		for _, pair := range options.Pairs() {
+			if k, ok := pair.Key.(*mellifera.String); ok && k.Data() == "stdin" {
+				if v, ok := pair.Value.(*mellifera.String); ok {
+					data := v.Data()
+					stdin = &data
+					continue
+				}
+
+				return nil, mellifera.NewError(nil, ctx.NewStringf("expected string standard input, received %v", pair.Value))
+			}
+
+			return nil, mellifera.NewError(nil, ctx.NewStringf("unknown option %v", pair.Key))
+		}
+
+		result, err, status := shRun(ctx, command.Data(), stdin)
+		if err != nil {
+			return nil, err
+		}
+		if status != 0 {
+			return nil, mellifera.NewError(nil, result)
+		}
+		return result, err
+	})
+}
+
+func BuiltinShQuote(ctx *mellifera.Context) mellifera.Value {
+	return ctx.NewBuiltin("sh::quote", []mellifera.Type{
+		mellifera.TVal(mellifera.STRING),
+	}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
+		s := arguments[0].(*mellifera.String)
+
+		found := strings.Index(s.Data(), "\x00")
+		if found != -1 {
+			return nil, mellifera.NewError(nil, ctx.NewStringf("invalid null byte in POSIX shell string"))
+		}
+
+		// 'foo bar'
+		// 'foo'\''bar'
+		return ctx.NewStringf("'%s'", strings.ReplaceAll(s.Data(), "'", "'\\''")), nil
 	})
 }
 
@@ -476,6 +628,13 @@ func main() {
 		{ctx.NewString("read"), BuiltinFsRead(ctx)},
 		{ctx.NewString("write"), BuiltinFsWrite(ctx)},
 		{ctx.NewString("append"), BuiltinFsAppend(ctx)},
+	}).Freeze())
+	ctx.BaseEnvironment.Let("sh", ctx.NewMapOrPanic([]mellifera.MapPair{
+		{ctx.NewString("run"), BuiltinShRun(ctx)},
+		{ctx.NewString("run_ex"), BuiltinShRunEx(ctx)},
+		{ctx.NewString("runx"), BuiltinShRunx(ctx)},
+		{ctx.NewString("runx_ex"), BuiltinShRunxEx(ctx)},
+		{ctx.NewString("quote"), BuiltinShQuote(ctx)},
 	}).Freeze())
 
 	argvIntoValue := func() mellifera.Value {
