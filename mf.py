@@ -5712,7 +5712,20 @@ def builtin_number_fixed(number: Number, precision: Number) -> Union[Value, Erro
         return Error(None, str(e))
     if precision_integer < 0:
         return Error(None, f"expected non-negative integer, received {precision}")
-    return Number.new(round(float(number.data), ndigits=precision_integer))
+    if math.isnan(number.data) or math.isinf(number.data):
+        return copy(number)
+    try:
+        scale = math.pow(10.0, precision_integer)
+    except OverflowError:
+        scale = math.inf
+    scaled = float(number.data) * scale
+    if math.isnan(scaled) or math.isinf(scaled):
+        return Number.new(scaled / scale)
+    truncated = math.trunc(scaled)
+    if abs(scaled - truncated) == 0.5:
+        # Round half way away from zero.
+        return Number.new((truncated + math.copysign(1.0, scaled)) / scale)
+    return Number.new(round(scaled) / scale)
 
 
 @builtin("number::trunc", [Number])
