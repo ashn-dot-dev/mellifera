@@ -1673,17 +1673,17 @@ func (self *orderedHashMap) rebuild() {
 	self.large = self.large[:out]
 	self.dead = 0
 
-	size := 4 * orderedHashMapSmallCap
+	capacity := 4 * orderedHashMapSmallCap
 	// Keep load at or below a 3/8 load factor, chosen somewhat arbitrarily.
-	for size*3 < (self.live+1)*8 {
-		size *= 2
+	for capacity*3 < (self.live+1)*8 {
+		capacity *= 2
 	}
-	if size == len(self.index) {
+	if capacity == len(self.index) {
 		for i := range self.index {
 			self.index[i] = orderedHashMapSlotFree
 		}
 	} else {
-		self.index = make([]int32, size)
+		self.index = make([]int32, capacity)
 		for i := range self.index {
 			self.index[i] = orderedHashMapSlotFree
 		}
@@ -3508,8 +3508,14 @@ var envPool = sync.Pool{
 	},
 }
 
+const (
+	envHashMapSmallCap = 8
+	envHashMapSlotFree = -1
+)
+
 type Environment struct {
 	store []envElement
+	index []int32      // Optional (non-nil implies large mode)
 	outer *Environment // Optional
 	match *regexpMatch // Optional
 	refs  []envRefInfo
@@ -3532,6 +3538,62 @@ func NewEnvironment(outer *Environment) *Environment {
 		nref:  nref,
 	}
 	return self
+}
+
+// SMALL MODE ONLY
+// Returns the index of name within the store via linear scan.
+// Returns -1 if name is not declared.
+func (self *Environment) findSmall(name string) int {
+	for i := range self.store {
+		if self.store[i].name == name {
+			return i
+		}
+	}
+	return -1
+}
+
+// LARGE MODE ONLY
+// Returns the index of name within the store via the open-addressing index.
+// Returns -1 if name is not declared.
+func (self *Environment) findLarge(name string, hash uint64) int {
+	mask := uint64(len(self.index) - 1)
+	i := hash & mask
+	for {
+		slot := self.index[i]
+		if slot == envHashMapSlotFree {
+			return -1
+		}
+		if self.store[slot].name == name {
+			return int(slot)
+		}
+		i = (i + 1) & mask
+	}
+}
+
+// Generate the hash map index with the provided power-of-two slot capacity.
+func (self *Environment) indexRebuild(capacity int) {
+	self.index = make([]int32, capacity)
+	for i := range self.index {
+		self.index[i] = envHashMapSlotFree
+	}
+	mask := uint64(capacity - 1)
+	for i := range self.store {
+		slot := fnv1a(self.store[i].name) & mask
+		for self.index[slot] != envHashMapSlotFree {
+			slot = (slot + 1) & mask
+		}
+		self.index[slot] = int32(i)
+	}
+}
+
+// Update the hash map index with a mapping to the provided store index.
+func (self *Environment) indexInsert(name string, storeIndex int) {
+	mask := uint64(len(self.index) - 1)
+	slot := fnv1a(name) & mask
+	for self.index[slot] != envHashMapSlotFree {
+		slot = (slot + 1) & mask
+	}
+	self.index[slot] = int32(storeIndex)
 }
 
 // Mark that this environment has been closed-over by at least one function
@@ -3572,14 +3634,29 @@ func (self *Environment) letWithLocation(name string, value Value, location *Sou
 		self.nref += 1
 	}
 
-	index := slices.IndexFunc(self.store, func(element envElement) bool {
-		return element.name == name
-	})
+	index := -1
+	if self.index == nil {
+		index = self.findSmall(name)
+	} else {
+		index = self.findLarge(name, fnv1a(name))
+	}
 	if index != -1 {
 		self.store[index].value = value.Take()
 		return
 	}
 	self.store = append(self.store, envElement{name, value.Take()})
+
+	if len(self.store) > envHashMapSmallCap {
+		if self.index == nil {
+			// Switch from small mode to large mode.
+			self.indexRebuild(4 * envHashMapSmallCap)
+		} else if len(self.store)*4 >= len(self.index)*3 {
+			// Rebuild threshold sits at a 3/4 load factor somewhat arbitrarily.
+			self.indexRebuild(2 * len(self.index))
+		} else {
+			self.indexInsert(name, len(self.store)-1)
+		}
+	}
 }
 
 func (self *Environment) Set(name string, value Value) error {
@@ -3591,9 +3668,12 @@ func (self *Environment) Set(name string, value Value) error {
 
 	env := self
 	for env != nil {
-		index := slices.IndexFunc(env.store, func(element envElement) bool {
-			return element.name == name
-		})
+		index := -1
+		if env.index == nil {
+			index = env.findSmall(name)
+		} else {
+			index = env.findLarge(name, fnv1a(name))
+		}
 		if index != -1 {
 			env.store[index].value = value.Take()
 			return nil
@@ -3606,9 +3686,12 @@ func (self *Environment) Set(name string, value Value) error {
 func (self *Environment) Get(name string) (Value, error) {
 	env := self
 	for env != nil {
-		index := slices.IndexFunc(env.store, func(element envElement) bool {
-			return element.name == name
-		})
+		index := -1
+		if env.index == nil {
+			index = env.findSmall(name)
+		} else {
+			index = env.findLarge(name, fnv1a(name))
+		}
 		if index != -1 {
 			return env.store[index].value, nil
 		}
