@@ -304,7 +304,13 @@ func shRun(ctx *mellifera.Context, command string, stdin *string) (*mellifera.Ma
 		// > error is of type *ExitError. Other error types may be returned
 		// > for other situations.
 		if exitError, ok := err.(*exec.ExitError); ok {
-			status = exitError.Sys().(syscall.WaitStatus).ExitStatus()
+			waitStatus := exitError.Sys().(syscall.WaitStatus)
+			if waitStatus.Signaled() {
+				// Use the POSIX shell convention of 128 + signum for $?.
+				status = 128 + int(waitStatus.Signal())
+			} else {
+				status = waitStatus.ExitStatus()
+			}
 		} else {
 			return nil, mellifera.NewError(nil, ctx.NewString(err.Error())), -1
 		}

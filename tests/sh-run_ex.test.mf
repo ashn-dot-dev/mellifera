@@ -3,6 +3,10 @@ dumpln(sh::run_ex(`grep 'input line' && printf "sh::run_ex stdout\n" && printf "
 
 print("\n");
 
+dumpln(sh::run_ex(`kill -TERM $$`, Map{}));
+
+print("\n");
+
 try { dumpln(sh::run_ex(`printf 'empty options\n'`, Map{})); } catch err { println($"error: {err}"); }
 try { dumpln(sh::run_ex(`printf 'invalid options\n'`, Set{})); } catch err { println($"error: {err}"); }
 try { dumpln(sh::run_ex(`printf 'invalid option\n'`, {.foo = "bar"})); } catch err { println($"error: {err}"); }
@@ -10,6 +14,8 @@ try { dumpln(sh::run_ex(`printf 'invalid option\n'`, {.stdin = null})); } catch 
 ################################################################################
 # {"status": 0, "stdout": "input line 1\ninput line2\nsh::run_ex stdout\n", "stderr": "sh::run_ex stderr\n"}
 # {"status": 1, "stdout": "input line 1\ninput line2\nsh::run_ex stdout\n", "stderr": "sh::run_ex stderr\n"}
+#
+# {"status": 143, "stdout": "", "stderr": ""}
 #
 # {"status": 0, "stdout": "empty options\n", "stderr": ""}
 # error: expected map value for argument 2, received set

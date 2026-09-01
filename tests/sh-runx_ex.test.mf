@@ -3,6 +3,10 @@ try { dumpln(sh::runx_ex(`grep 'input line' && printf "sh::runx_ex stdout\n" && 
 
 print("\n");
 
+try { dumpln(sh::runx_ex(`kill -TERM $$`, Map{})); } catch err { println($"error: {err}"); }
+
+print("\n");
+
 try { dumpln(sh::runx_ex(`printf 'empty options\n'`, Map{})); } catch err { println($"error: {err}"); }
 try { dumpln(sh::runx_ex(`printf 'invalid options\n'`, Set{})); } catch err { println($"error: {err}"); }
 try { dumpln(sh::runx_ex(`printf 'invalid option\n'`, {.foo = "bar"})); } catch err { println($"error: {err}"); }
@@ -10,6 +14,8 @@ try { dumpln(sh::runx_ex(`printf 'invalid option\n'`, {.stdin = null})); } catch
 ################################################################################
 # {"status": 0, "stdout": "input line 1\ninput line2\nsh::runx_ex stdout\n", "stderr": "sh::runx_ex stderr\n"}
 # error: {"status": 1, "stdout": "input line 1\ninput line2\nsh::runx_ex stdout\n", "stderr": "sh::runx_ex stderr\n"}
+#
+# error: {"status": 143, "stdout": "", "stderr": ""}
 #
 # {"status": 0, "stdout": "empty options\n", "stderr": ""}
 # error: expected map value for argument 2, received set

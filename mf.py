@@ -7544,9 +7544,14 @@ def _sh_run(command: bytes, stdin: Optional[bytes]) -> Union[Map, Error]:
         capture_output=True,
         check=False,
     )
+    status = result.returncode
+    if status < 0:
+        # Terminated by signal - use the POSIX shell convention of 128 + signum
+        # for $?.
+        status = 128 + (-status)
     return Map.new(
         {
-            String.new("status"): Number.new(result.returncode),
+            String.new("status"): Number.new(status),
             String.new("stdout"): String.new(result.stdout),
             String.new("stderr"): String.new(result.stderr),
         }

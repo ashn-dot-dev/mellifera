@@ -1,5 +1,11 @@
 try { dumpln(sh::runx(`printf "sh::runx stdout\n" && printf "sh::runx stderr\n" >&2 && true`)); } catch err { println($"error: {err}"); }
 try { dumpln(sh::runx(`printf "sh::runx stdout\n" && printf "sh::runx stderr\n" >&2 && false`)); } catch err { println($"error: {err}"); }
+
+print("\n");
+
+try { dumpln(sh::runx(`kill -TERM $$`)); } catch err { println($"error: {err}"); }
 ################################################################################
 # {"status": 0, "stdout": "sh::runx stdout\n", "stderr": "sh::runx stderr\n"}
 # error: {"status": 1, "stdout": "sh::runx stdout\n", "stderr": "sh::runx stderr\n"}
+#
+# error: {"status": 143, "stdout": "", "stderr": ""}

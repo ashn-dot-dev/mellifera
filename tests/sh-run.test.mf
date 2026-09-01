@@ -3,6 +3,9 @@ dumpln(sh::run(`printf "sh::run stdout\n" && printf "sh::run stderr\n" >&2 && fa
 
 print("\n");
 
+dumpln(sh::run(`kill -TERM $$`));
 ################################################################################
 # {"status": 0, "stdout": "sh::run stdout\n", "stderr": "sh::run stderr\n"}
 # {"status": 1, "stdout": "sh::run stdout\n", "stderr": "sh::run stderr\n"}
+#
+# {"status": 143, "stdout": "", "stderr": ""}
