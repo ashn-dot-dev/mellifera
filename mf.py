@@ -7017,6 +7017,29 @@ def builtin_comb_encode_ex(value: Value, options: Map) -> Union[Value, Error]:
     return String.new(value.comb_encode(indent=indent, separator=separator))
 
 
+@builtin("env::get", [String])
+def builtin_env_get(variable: String) -> Union[Value, Error]:
+    result = os.environb.get(variable.bytes, None)
+    if result is None:
+        return Null.new()
+    return String.new(result)
+
+
+@builtin("env::set", [String, String])
+def builtin_env_set(variable: String, value: String) -> Union[Value, Error]:
+    os.environb[variable.bytes] = value.bytes
+    return Null.new()
+
+
+@builtin("env::unset", [String])
+def builtin_env_unset(variable: String) -> Union[Value, Error]:
+    try:
+        del os.environb[variable.bytes]
+    except KeyError:
+        pass
+    return Null.new()
+
+
 @builtin("fs::read", [String])
 def builtin_fs_read(path: String) -> Union[Value, Error]:
     try:
@@ -8043,6 +8066,16 @@ BASE_ENVIRONMENT.let(
             String.new("decode"): builtin_comb_decode(),
             String.new("encode"): builtin_comb_encode(),
             String.new("encode_ex"): builtin_comb_encode_ex(),
+        }
+    ).freeze(),
+)
+BASE_ENVIRONMENT.let(
+    String.new("env"),
+    Map.new(
+        {
+            String.new("get"): builtin_env_get(),
+            String.new("set"): builtin_env_set(),
+            String.new("unset"): builtin_env_unset(),
         }
     ).freeze(),
 )

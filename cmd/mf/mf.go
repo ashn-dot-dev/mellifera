@@ -171,6 +171,50 @@ func BuiltinInputln(ctx *mellifera.Context) mellifera.Value {
 	})
 }
 
+func BuiltinEnvGet(ctx *mellifera.Context) mellifera.Value {
+	return ctx.NewBuiltin("env::get", []mellifera.Type{
+		mellifera.TVal(mellifera.STRING),
+	}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
+		variable := arguments[0].(*mellifera.String)
+
+		lookup, ok := os.LookupEnv(variable.Data())
+		if !ok {
+			return ctx.NewNull(), nil
+		}
+		return ctx.NewString(lookup), nil
+	})
+}
+
+func BuiltinEnvSet(ctx *mellifera.Context) mellifera.Value {
+	return ctx.NewBuiltin("env::set", []mellifera.Type{
+		mellifera.TVal(mellifera.STRING),
+		mellifera.TVal(mellifera.STRING),
+	}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
+		variable := arguments[0].(*mellifera.String)
+		value := arguments[1].(*mellifera.String)
+
+		err := os.Setenv(variable.Data(), value.Data())
+		if err != nil {
+			return nil, mellifera.NewError(nil, ctx.NewString(err.Error()))
+		}
+		return ctx.NewNull(), nil
+	})
+}
+
+func BuiltinEnvUnset(ctx *mellifera.Context) mellifera.Value {
+	return ctx.NewBuiltin("env::unset", []mellifera.Type{
+		mellifera.TVal(mellifera.STRING),
+	}, func(ctx *mellifera.Context, arguments []mellifera.Value) (mellifera.Value, error) {
+		variable := arguments[0].(*mellifera.String)
+
+		err := os.Unsetenv(variable.Data())
+		if err != nil {
+			return nil, mellifera.NewError(nil, ctx.NewString(err.Error()))
+		}
+		return ctx.NewNull(), nil
+	})
+}
+
 func BuiltinFsRead(ctx *mellifera.Context) mellifera.Value {
 	return ctx.NewBuiltin("fs::read", []mellifera.Type{
 		mellifera.TVal(mellifera.STRING),
@@ -624,6 +668,11 @@ func main() {
 	ctx.BaseEnvironment.Let("import", BuiltinImport(ctx))
 	ctx.BaseEnvironment.Let("input", BuiltinInput(ctx))
 	ctx.BaseEnvironment.Let("inputln", BuiltinInputln(ctx))
+	ctx.BaseEnvironment.Let("env", ctx.NewMapOrPanic([]mellifera.MapPair{
+		{ctx.NewString("get"), BuiltinEnvGet(ctx)},
+		{ctx.NewString("set"), BuiltinEnvSet(ctx)},
+		{ctx.NewString("unset"), BuiltinEnvUnset(ctx)},
+	}).Freeze())
 	ctx.BaseEnvironment.Let("fs", ctx.NewMapOrPanic([]mellifera.MapPair{
 		{ctx.NewString("read"), BuiltinFsRead(ctx)},
 		{ctx.NewString("write"), BuiltinFsWrite(ctx)},

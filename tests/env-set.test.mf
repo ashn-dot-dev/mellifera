@@ -1,0 +1,8 @@
+assert(env::get("MELLIFERA_HOME") != null);
+assert(env::get("MELLIFERA_ENVIRONMENT_VARIABLE_THAT_DOES_NOT_EXIST") == null);
+
+env::set("MELLIFERA_HOME", "foo");
+env::set("MELLIFERA_ENVIRONMENT_VARIABLE_THAT_DOES_NOT_EXIST", "bar");
+
+assert(env::get("MELLIFERA_HOME") == "foo");
+assert(env::get("MELLIFERA_ENVIRONMENT_VARIABLE_THAT_DOES_NOT_EXIST") == "bar");
