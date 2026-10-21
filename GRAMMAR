@@ -121,7 +121,8 @@
 
 <line-feed> ::= ? Unicode character U+000A ?
 
-<number> ::= /0x[0-9a-fA-F]+/
+<number> ::= /0b[01]+/
+           | /0x[0-9a-fA-F]+/
            | /\d+(\.\d+)?/
 
 <boolean> ::= "true"

@@ -5,6 +5,8 @@ println($`number::init("123") is {repr(number::init("123"))}`);
 println($`number::init("+123") is {repr(number::init("+123"))}`);
 println($`number::init("-123") is {repr(number::init("-123"))}`);
 println($`number::init("123.4") is {repr(number::init("123.4"))}`);
+println($`number::init("0b11001010") is {repr(number::init("0b11001010"))}`);
+println($`number::init("0xdeadbeef") is {repr(number::init("0xdeadbeef"))}`);
 println($`number::init("Inf") is {repr(number::init("Inf"))}`);
 println($`number::init("+Inf") is {repr(number::init("+Inf"))}`);
 println($`number::init("-Inf") is {repr(number::init("-Inf"))}`);
@@ -22,6 +24,7 @@ try { number::init("++123"); } catch err { println($`number::init("++123") produ
 try { number::init("--123"); } catch err { println($`number::init("--123") produces the error {repr(err)}`); }
 try { number::init(" 123"); } catch err { println($`number::init(" 123") produces the error {repr(err)}`); }
 try { number::init("123 "); } catch err { println($`number::init("123 ") produces the error {repr(err)}`); }
+try { number::init("0b1111111111111111111111111111111111111111111111111111111111111111"); } catch err { println($`number::init("0b1111111111111111111111111111111111111111111111111111111111111111") produces the error {repr(err)}`); }
 try { number::init("0x20000000000000"); } catch err { println($`number::init("0x20000000000000") produces the error {repr(err)}`); }
 ################################################################################
 # number::init(true) is 1
@@ -31,6 +34,8 @@ try { number::init("0x20000000000000"); } catch err { println($`number::init("0x
 # number::init("+123") is 123
 # number::init("-123") is -123
 # number::init("123.4") is 123.4
+# number::init("0b11001010") is 202
+# number::init("0xdeadbeef") is 3735928559
 # number::init("Inf") is Inf
 # number::init("+Inf") is Inf
 # number::init("-Inf") is -Inf
@@ -46,4 +51,5 @@ try { number::init("0x20000000000000"); } catch err { println($`number::init("0x
 # number::init("--123") produces the error "cannot convert value \"--123\" to number"
 # number::init(" 123") produces the error "cannot convert value \" 123\" to number"
 # number::init("123 ") produces the error "cannot convert value \"123 \" to number"
+# number::init("0b1111111111111111111111111111111111111111111111111111111111111111") produces the error "binary integer 0b1111111111111111111111111111111111111111111111111111111111111111 is outside the safe integer range"
 # number::init("0x20000000000000") produces the error "hexadecimal integer 0x20000000000000 is outside the safe integer range"

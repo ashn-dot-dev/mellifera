@@ -1533,7 +1533,8 @@ class Lexer:
     EOF_LITERAL = ""
     RE_IDENTIFIER = re.compile(r"^[a-zA-Z_]\w*", re.ASCII)
     RE_NUMBER_DEC = re.compile(r"^\d+(\.\d+)?", re.ASCII)
-    RE_NUMBER_HEX = re.compile(r"^0x[0-9a-fA-F]+", re.ASCII)
+    RE_INTEGER_BIN = re.compile(r"^0b[01]+", re.ASCII)
+    RE_INTEGER_HEX = re.compile(r"^0x[0-9a-fA-F]+", re.ASCII)
     RE_INTEGER_DEC = re.compile(r"^\d+", re.ASCII)
 
     def __init__(self, source: str, location: Optional[SourceLocation] = None):
@@ -1623,7 +1624,20 @@ class Lexer:
 
     def _lex_number(self) -> Token:
         assert self._current_rune() in digits
-        match = Lexer.RE_NUMBER_HEX.match(self.source[self.position :])
+        match = Lexer.RE_INTEGER_BIN.match(self.source[self.position :])
+        if match is not None:
+            text = match[0]
+            self.position += len(text)
+            integer = int(text, 2)
+            if integer < MIN_SAFE_INTEGER or integer > MAX_SAFE_INTEGER:
+                raise ParseError(
+                    self.location,
+                    f"binary integer {text} is outside the safe integer range",
+                )
+            return self._new_token(
+                TokenKind.NUMBER, text, value=Number.new(float(integer))
+            )
+        match = Lexer.RE_INTEGER_HEX.match(self.source[self.position :])
         if match is not None:
             text = match[0]
             self.position += len(text)
@@ -1634,7 +1648,7 @@ class Lexer:
                     f"hexadecimal integer {text} is outside the safe integer range",
                 )
             return self._new_token(
-                TokenKind.NUMBER, text, value=Number.new(float(int(text, 16)))
+                TokenKind.NUMBER, text, value=Number.new(float(integer))
             )
         match = Lexer.RE_NUMBER_DEC.match(self.source[self.position :])
         assert match is not None  # guaranteed by regexp
@@ -5668,7 +5682,15 @@ def builtin_number_init(value: Value) -> Union[Value, Error]:
             if data == "NaN":
                 return Number.new(sign * math.nan)
 
-            if Lexer.RE_NUMBER_HEX.fullmatch(data) is not None:
+            if Lexer.RE_INTEGER_BIN.fullmatch(data) is not None:
+                integer = int(data, 2)
+                if integer < MIN_SAFE_INTEGER or integer > MAX_SAFE_INTEGER:
+                    return Error(
+                        None,
+                        f"binary integer {data} is outside the safe integer range",
+                    )
+                return Number.new(sign * float(integer))
+            if Lexer.RE_INTEGER_HEX.fullmatch(data) is not None:
                 integer = int(data, 16)
                 if integer < MIN_SAFE_INTEGER or integer > MAX_SAFE_INTEGER:
                     return Error(

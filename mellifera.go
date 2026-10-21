@@ -394,10 +394,12 @@ type Context struct {
 	// Miscellaneous State and Definitions
 	reIntegerDec          *regexp.Regexp
 	reIntegerDecFullmatch *regexp.Regexp
+	reIntegerBin          *regexp.Regexp
+	reIntegerBinFullmatch *regexp.Regexp
+	reIntegerHex          *regexp.Regexp
+	reIntegerHexFullmatch *regexp.Regexp
 	reNumberDec           *regexp.Regexp
 	reNumberDecFullmatch  *regexp.Regexp
-	reNumberHex           *regexp.Regexp
-	reNumberHexFullmatch  *regexp.Regexp
 	importFileCache       map[string]Value
 	identifierCache       map[string]*String
 	constStringIntoString *String
@@ -519,10 +521,12 @@ func NewContext() *Context {
 
 	ctx.reIntegerDec = regexp.MustCompile(`^\d+`)
 	ctx.reIntegerDecFullmatch = regexp.MustCompile(`^\d+$`)
+	ctx.reIntegerBin = regexp.MustCompile(`^0b[01]+`)
+	ctx.reIntegerBinFullmatch = regexp.MustCompile(`^0b[01]+$`)
+	ctx.reIntegerHex = regexp.MustCompile(`^0x[0-9a-fA-F]+`)
+	ctx.reIntegerHexFullmatch = regexp.MustCompile(`^0x[0-9a-fA-F]+$`)
 	ctx.reNumberDec = regexp.MustCompile(`^\d+(\.\d+)?`)
 	ctx.reNumberDecFullmatch = regexp.MustCompile(`^\d+(\.\d+)?$`)
-	ctx.reNumberHex = regexp.MustCompile(`^0x[0-9a-fA-F]+`)
-	ctx.reNumberHexFullmatch = regexp.MustCompile(`^0x[0-9a-fA-F]+$`)
 	ctx.importFileCache = map[string]Value{}
 	ctx.identifierCache = map[string]*String{}
 	ctx.constStringIntoString = ctx.NewString("into_string")
@@ -2877,7 +2881,34 @@ func (self *Lexer) lexKeywordOrIdentifier() (Token, error) {
 }
 
 func (self *Lexer) lexNumber() (Token, error) {
-	hex := self.ctx.reNumberHex.FindString(self.source[self.position:])
+	bin := self.ctx.reIntegerBin.FindString(self.source[self.position:])
+	if bin != "" {
+		self.position += len(bin)
+		parsed, err := strconv.ParseInt(bin, 0, 64)
+		if err != nil {
+			if errors.Is(err, strconv.ErrRange) {
+				return Token{}, ParseError{
+					Location: self.currentLocation(),
+					why:      fmt.Sprintf("binary integer %s is outside the safe integer range", bin),
+				}
+			}
+			return Token{}, err
+		}
+		if parsed < MIN_SAFE_INTEGER || parsed > MAX_SAFE_INTEGER {
+			return Token{}, ParseError{
+				Location: self.currentLocation(),
+				why:      fmt.Sprintf("binary integer %s is outside the safe integer range", bin),
+			}
+		}
+		return Token{
+			Kind:     TOKEN_NUMBER,
+			Literal:  bin,
+			Location: self.currentLocation(),
+			Value:    self.ctx.NewNumber(float64(parsed)),
+		}, nil
+	}
+
+	hex := self.ctx.reIntegerHex.FindString(self.source[self.position:])
 	if hex != "" {
 		self.position += len(hex)
 		parsed, err := strconv.ParseInt(hex, 0, 64)
@@ -8582,7 +8613,20 @@ func BuiltinNumberInit(ctx *Context) Value {
 				return ctx.NewNumber(math.NaN()), nil
 			}
 
-			if ctx.reNumberHexFullmatch.MatchString(data) {
+			if ctx.reIntegerBinFullmatch.MatchString(data) {
+				parsed, err := strconv.ParseInt(data, 0, 64)
+				if err != nil {
+					if errors.Is(err, strconv.ErrRange) {
+						return nil, NewError(nil, ctx.NewStringf("binary integer %s is outside the safe integer range", data))
+					}
+					return nil, NewError(nil, ctx.NewString(err.Error()))
+				}
+				if parsed < MIN_SAFE_INTEGER || parsed > MAX_SAFE_INTEGER {
+					return nil, NewError(nil, ctx.NewStringf("binary integer %s is outside the safe integer range", data))
+				}
+				return ctx.NewNumber(float64(sign) * float64(parsed)), nil
+			}
+			if ctx.reIntegerHexFullmatch.MatchString(data) {
 				parsed, err := strconv.ParseInt(data, 0, 64)
 				if err != nil {
 					if errors.Is(err, strconv.ErrRange) {
