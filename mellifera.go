@@ -25,6 +25,15 @@ const (
 	MIN_SAFE_INTEGER  = -9007199254740991 // -(2**53 - 1)
 )
 
+var reIntegerDec = regexp.MustCompile(`^\d+`)
+var reIntegerDecFullmatch = regexp.MustCompile(`^\d+$`)
+var reIntegerBin = regexp.MustCompile(`^0b[01]+`)
+var reIntegerBinFullmatch = regexp.MustCompile(`^0b[01]+$`)
+var reIntegerHex = regexp.MustCompile(`^0x[0-9a-fA-F]+`)
+var reIntegerHexFullmatch = regexp.MustCompile(`^0x[0-9a-fA-F]+$`)
+var reNumberDec = regexp.MustCompile(`^\d+(\.\d+)?`)
+var reNumberDecFullmatch = regexp.MustCompile(`^\d+(\.\d+)?$`)
+
 func escape(s string) string {
 	result := ""
 	index := 0
@@ -392,14 +401,6 @@ type Context struct {
 	rng *rand.Rand
 
 	// Miscellaneous State and Definitions
-	reIntegerDec          *regexp.Regexp
-	reIntegerDecFullmatch *regexp.Regexp
-	reIntegerBin          *regexp.Regexp
-	reIntegerBinFullmatch *regexp.Regexp
-	reIntegerHex          *regexp.Regexp
-	reIntegerHexFullmatch *regexp.Regexp
-	reNumberDec           *regexp.Regexp
-	reNumberDecFullmatch  *regexp.Regexp
 	importFileCache       map[string]Value
 	identifierCache       map[string]*String
 	constStringIntoString *String
@@ -519,14 +520,6 @@ func NewContext() *Context {
 	seed := rand.Uint64() // random initial rng seed
 	ctx.rng = rand.New(rand.NewPCG(seed, seed))
 
-	ctx.reIntegerDec = regexp.MustCompile(`^\d+`)
-	ctx.reIntegerDecFullmatch = regexp.MustCompile(`^\d+$`)
-	ctx.reIntegerBin = regexp.MustCompile(`^0b[01]+`)
-	ctx.reIntegerBinFullmatch = regexp.MustCompile(`^0b[01]+$`)
-	ctx.reIntegerHex = regexp.MustCompile(`^0x[0-9a-fA-F]+`)
-	ctx.reIntegerHexFullmatch = regexp.MustCompile(`^0x[0-9a-fA-F]+$`)
-	ctx.reNumberDec = regexp.MustCompile(`^\d+(\.\d+)?`)
-	ctx.reNumberDecFullmatch = regexp.MustCompile(`^\d+(\.\d+)?$`)
 	ctx.importFileCache = map[string]Value{}
 	ctx.identifierCache = map[string]*String{}
 	ctx.constStringIntoString = ctx.NewString("into_string")
@@ -2881,7 +2874,7 @@ func (self *Lexer) lexKeywordOrIdentifier() (Token, error) {
 }
 
 func (self *Lexer) lexNumber() (Token, error) {
-	bin := self.ctx.reIntegerBin.FindString(self.source[self.position:])
+	bin := reIntegerBin.FindString(self.source[self.position:])
 	if bin != "" {
 		self.position += len(bin)
 		parsed, err := strconv.ParseInt(bin, 0, 64)
@@ -2908,7 +2901,7 @@ func (self *Lexer) lexNumber() (Token, error) {
 		}, nil
 	}
 
-	hex := self.ctx.reIntegerHex.FindString(self.source[self.position:])
+	hex := reIntegerHex.FindString(self.source[self.position:])
 	if hex != "" {
 		self.position += len(hex)
 		parsed, err := strconv.ParseInt(hex, 0, 64)
@@ -2935,7 +2928,7 @@ func (self *Lexer) lexNumber() (Token, error) {
 		}, nil
 	}
 
-	dec := self.ctx.reNumberDec.FindString(self.source[self.position:])
+	dec := reNumberDec.FindString(self.source[self.position:])
 	if dec != "" {
 		self.position += len(dec)
 		parsed, err := strconv.ParseFloat(dec, 64)
@@ -3366,7 +3359,7 @@ func (self *Lexer) lexRegexpGroup() (Token, error) {
 		return Token{}, err
 	}
 
-	integer := self.ctx.reIntegerDec.FindString(self.source[self.position:])
+	integer := reIntegerDec.FindString(self.source[self.position:])
 	if integer != "" {
 		self.position += len(integer)
 		parsed, err := strconv.ParseInt(integer, 10, 0)
@@ -8613,7 +8606,7 @@ func BuiltinNumberInit(ctx *Context) Value {
 				return ctx.NewNumber(math.NaN()), nil
 			}
 
-			if ctx.reIntegerBinFullmatch.MatchString(data) {
+			if reIntegerBinFullmatch.MatchString(data) {
 				parsed, err := strconv.ParseInt(data, 0, 64)
 				if err != nil {
 					if errors.Is(err, strconv.ErrRange) {
@@ -8626,7 +8619,7 @@ func BuiltinNumberInit(ctx *Context) Value {
 				}
 				return ctx.NewNumber(float64(sign) * float64(parsed)), nil
 			}
-			if ctx.reIntegerHexFullmatch.MatchString(data) {
+			if reIntegerHexFullmatch.MatchString(data) {
 				parsed, err := strconv.ParseInt(data, 0, 64)
 				if err != nil {
 					if errors.Is(err, strconv.ErrRange) {
@@ -8639,7 +8632,7 @@ func BuiltinNumberInit(ctx *Context) Value {
 				}
 				return ctx.NewNumber(float64(sign) * float64(parsed)), nil
 			}
-			if ctx.reNumberDecFullmatch.MatchString(data) {
+			if reNumberDecFullmatch.MatchString(data) {
 				parsed, err := strconv.ParseFloat(data, 64)
 				if err != nil {
 					return nil, NewError(nil, ctx.NewString(err.Error()))
