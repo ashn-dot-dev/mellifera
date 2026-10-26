@@ -35,7 +35,7 @@ var reNumberDec = regexp.MustCompile(`^\d+(\.\d+)?`)
 var reNumberDecFullmatch = regexp.MustCompile(`^\d+(\.\d+)?$`)
 
 func escape(s string) string {
-	result := ""
+	var sb strings.Builder
 	index := 0
 
 	for {
@@ -45,32 +45,32 @@ func escape(s string) string {
 			break
 		}
 		if r == utf8.RuneError && size == 1 {
-			result += fmt.Sprintf("\\x%02x", s[index])
+			sb.WriteString(fmt.Sprintf("\\x%02x", s[index]))
 			index += 1
 			continue
 		}
 
 		index += size
 		if r == '\t' {
-			result += "\\t"
+			sb.WriteString("\\t")
 			continue
 		}
 		if r == '\n' {
-			result += "\\n"
+			sb.WriteString("\\n")
 			continue
 		}
 		if r == '"' {
-			result += "\\\""
+			sb.WriteString("\\\"")
 			continue
 		}
 		if r == '\\' {
-			result += "\\\\"
+			sb.WriteString("\\\\")
 			continue
 		}
-		result += string(r)
+		sb.WriteRune(r)
 	}
 
-	return result
+	return sb.String()
 }
 
 func quote(s string) string {
