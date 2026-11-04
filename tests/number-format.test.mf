@@ -136,6 +136,49 @@ try { (NaN).format("b"); error "unreachable"; } catch err { println($`(NaN).form
 
 print("\n");
 
+# o formatting
+println($`(0).format("o") is {repr((0).format("o"))}`);
+println($`(+123).format("o") is {repr((+123).format("o"))}`);
+println($`(-123).format("o") is {repr((-123).format("o"))}`);
+
+print("\n");
+
+println($`(0).format("+o") is {repr((0).format("+o"))}`);
+println($`(+123).format("+o") is {repr((+123).format("+o"))}`);
+println($`(-123).format("+o") is {repr((-123).format("+o"))}`);
+
+print("\n");
+
+println($`(0).format("+8o") is {repr((0).format("+8o"))}`);
+println($`(+123).format("+8o") is {repr((+123).format("+8o"))}`);
+println($`(-123).format("+8o") is {repr((-123).format("+8o"))}`);
+
+print("\n");
+
+println($`(0).format("+08o") is {repr((0).format("+08o"))}`);
+println($`(+123).format("+08o") is {repr((+123).format("+08o"))}`);
+println($`(-123).format("+08o") is {repr((-123).format("+08o"))}`);
+
+print("\n");
+
+println($`(0).format("+#08o") is {repr((0).format("+#08o"))}`);
+println($`(0).format("+#016o") is {repr((0).format("+#016o"))}`);
+println($`(+123).format("+#08o") is {repr((+123).format("+#08o"))}`);
+println($`(-123).format("+#08o") is {repr((-123).format("+#08o"))}`);
+println($`(+0xFF).format("#08o") is {repr((+0xFF).format("#08o"))}`);
+println($`(-0xFF).format("#08o") is {repr((-0xFF).format("#08o"))}`);
+
+print("\n");
+
+try { (0).format(".3o"); error "unreachable"; } catch err { println($`(0).format(".3o") produced the error {repr(err)}`); }
+try { (+3.14).format("o"); error "unreachable"; } catch err { println($`(+3.14).format("o") produced the error {repr(err)}`); }
+try { (-3.14).format("o"); error "unreachable"; } catch err { println($`(-3.14).format("o") produced the error {repr(err)}`); }
+try { (+Inf).format("o"); error "unreachable"; } catch err { println($`(+Inf).format("o") produced the error {repr(err)}`); }
+try { (-Inf).format("o"); error "unreachable"; } catch err { println($`(-Inf).format("o") produced the error {repr(err)}`); }
+try { (NaN).format("o"); error "unreachable"; } catch err { println($`(NaN).format("o") produced the error {repr(err)}`); }
+
+print("\n");
+
 # x formatting
 println($`(0).format("x") is {repr((0).format("x"))}`);
 println($`(+123).format("x") is {repr((+123).format("x"))}`);
@@ -328,6 +371,36 @@ try { (0).format("+#08"); error "unreachable"; } catch err { println($`(0).forma
 # (-Inf).format("b") produced the error "cannot convert -Inf into an integer"
 # (NaN).format("b") produced the error "cannot convert NaN into an integer"
 #
+# (0).format("o") is "0"
+# (+123).format("o") is "173"
+# (-123).format("o") is "-173"
+#
+# (0).format("+o") is "+0"
+# (+123).format("+o") is "+173"
+# (-123).format("+o") is "-173"
+#
+# (0).format("+8o") is "      +0"
+# (+123).format("+8o") is "    +173"
+# (-123).format("+8o") is "    -173"
+#
+# (0).format("+08o") is "+0000000"
+# (+123).format("+08o") is "+0000173"
+# (-123).format("+08o") is "-0000173"
+#
+# (0).format("+#08o") is "+0o00000"
+# (0).format("+#016o") is "+0o0000000000000"
+# (+123).format("+#08o") is "+0o00173"
+# (-123).format("+#08o") is "-0o00173"
+# (+0xFF).format("#08o") is "0o000377"
+# (-0xFF).format("#08o") is "-0o00377"
+#
+# (0).format(".3o") produced the error "precision specifier not supported for octal integer format, received \".3o\""
+# (+3.14).format("o") produced the error "cannot convert 3.14 into an integer without truncation"
+# (-3.14).format("o") produced the error "cannot convert -3.14 into an integer without truncation"
+# (+Inf).format("o") produced the error "cannot convert Inf into an integer"
+# (-Inf).format("o") produced the error "cannot convert -Inf into an integer"
+# (NaN).format("o") produced the error "cannot convert NaN into an integer"
+#
 # (0).format("x") is "0"
 # (+123).format("x") is "7b"
 # (-123).format("x") is "-7b"
@@ -388,6 +461,6 @@ try { (0).format("+#08"); error "unreachable"; } catch err { println($`(0).forma
 # (-Inf).format("X") produced the error "cannot convert -Inf into an integer"
 # (NaN).format("X") produced the error "cannot convert NaN into an integer"
 #
-# (0).format("") produced the error "expected format string matching \\+?#?0?\\d*(\\.\\d+)?[fdbxX], received \"\""
-# (0).format("oops") produced the error "expected format string matching \\+?#?0?\\d*(\\.\\d+)?[fdbxX], received \"oops\""
-# (0).format("+#08") produced the error "expected format string matching \\+?#?0?\\d*(\\.\\d+)?[fdbxX], received \"+#08\""
+# (0).format("") produced the error "expected format string matching \\+?#?0?\\d*(\\.\\d+)?[fdboxX], received \"\""
+# (0).format("oops") produced the error "expected format string matching \\+?#?0?\\d*(\\.\\d+)?[fdboxX], received \"oops\""
+# (0).format("+#08") produced the error "expected format string matching \\+?#?0?\\d*(\\.\\d+)?[fdboxX], received \"+#08\""

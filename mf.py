@@ -1534,6 +1534,7 @@ class Lexer:
     RE_IDENTIFIER = re.compile(r"^[a-zA-Z_]\w*", re.ASCII)
     RE_NUMBER_DEC = re.compile(r"^\d+(\.\d+)?", re.ASCII)
     RE_INTEGER_BIN = re.compile(r"^0b[01]+", re.ASCII)
+    RE_INTEGER_OCT = re.compile(r"^0o[0-7]+", re.ASCII)
     RE_INTEGER_HEX = re.compile(r"^0x[0-9a-fA-F]+", re.ASCII)
     RE_INTEGER_DEC = re.compile(r"^\d+", re.ASCII)
 
@@ -1629,6 +1630,19 @@ class Lexer:
             text = match[0]
             self.position += len(text)
             integer = int(text, 2)
+            if integer < MIN_SAFE_INTEGER or integer > MAX_SAFE_INTEGER:
+                raise ParseError(
+                    self.location,
+                    f"binary integer {text} is outside the safe integer range",
+                )
+            return self._new_token(
+                TokenKind.NUMBER, text, value=Number.new(float(integer))
+            )
+        match = Lexer.RE_INTEGER_OCT.match(self.source[self.position :])
+        if match is not None:
+            text = match[0]
+            self.position += len(text)
+            integer = int(text, 8)
             if integer < MIN_SAFE_INTEGER or integer > MAX_SAFE_INTEGER:
                 raise ParseError(
                     self.location,
@@ -5690,6 +5704,14 @@ def builtin_number_init(value: Value) -> Union[Value, Error]:
                         f"binary integer {data} is outside the safe integer range",
                     )
                 return Number.new(sign * float(integer))
+            if Lexer.RE_INTEGER_OCT.fullmatch(data) is not None:
+                integer = int(data, 8)
+                if integer < MIN_SAFE_INTEGER or integer > MAX_SAFE_INTEGER:
+                    return Error(
+                        None,
+                        f"binary integer {data} is outside the safe integer range",
+                    )
+                return Number.new(sign * float(integer))
             if Lexer.RE_INTEGER_HEX.fullmatch(data) is not None:
                 integer = int(data, 16)
                 if integer < MIN_SAFE_INTEGER or integer > MAX_SAFE_INTEGER:
@@ -5784,17 +5806,18 @@ def builtin_number_ceil(number: Number) -> Union[Value, Error]:
 
 
 # $1 sign (+): Always show sign.
-# $2 altf (#): Alternate form => 0b for binary, 0x for hex with base x, 0X for
-#              hex with base X.
+# $2 altf (#): Alternate form => 0b for binary, 0o for octal, 0x for hex with
+#              base x, 0X for hex with base X.
 # $3 zero (0): Pad with zeros up to the provided width.
 # $4 wstr (width): Minimum total width of the output string.
 # $5 prec (precision): Number of displayed digits after the decimal point.
-# $6 base (fdbxX): Digit base => b for binary, x for hex (lower), X for hex
-#                  (upper), d for decimal integer, f for decimal float.
-_NUMBER_FORMAT_REGEXP = re.compile(r"^(\+)?(#)?(0)?(\d*)(\.\d+)?([fdbxX])$")
+# $6 base (fdbxX): Digit base => b for binary, o for octal, x for hex (lower),
+#                  X for hex (upper), d for decimal integer, f for decimal
+#                  float.
+_NUMBER_FORMAT_REGEXP = re.compile(r"^(\+)?(#)?(0)?(\d*)(\.\d+)?([fdboxX])$")
 # Expected format used for error messages, matching the general shape of the
 # actual format string, but without the captures and anchors visible.
-_NUMBER_FORMAT_EXPECTED = r"\+?#?0?\d*(\.\d+)?[fdbxX]"
+_NUMBER_FORMAT_EXPECTED = r"\+?#?0?\d*(\.\d+)?[fdboxX]"
 
 
 @builtin("number::format", [Number, String])
@@ -5813,9 +5836,11 @@ def builtin_number_format(number: Number, fmt: String) -> Union[Value, Error]:
     prec = m.group(5) or ""
     base = m.group(6)
 
-    if base in ("b", "x", "X"):
+    if base in ("b", "o", "x", "X"):
         if prec:
-            ifmt = "binary" if base == "b" else "hexadecimal"
+            ifmt = (
+                "binary" if base == "b" else "octal" if base == "o" else "hexadecimal"
+            )
             return Error(
                 None,
                 f"precision specifier not supported for {ifmt} integer format, received {fmt}",

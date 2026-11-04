@@ -122,6 +122,7 @@
 <line-feed> ::= ? Unicode character U+000A ?
 
 <number> ::= /0b[01]+/
+           | /0o[0-7]+/
            | /0x[0-9a-fA-F]+/
            | /\d+(\.\d+)?/
 

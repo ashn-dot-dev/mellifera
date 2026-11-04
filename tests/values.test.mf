@@ -11,6 +11,7 @@ dumpln( 123    );
 dumpln( 123.0  );
 dumpln( 123.45 );
 dumpln( 0b11001010 );
+dumpln( 0o12345670 );
 dumpln( 0xdeadbeef );
 
 print("\n");
@@ -90,6 +91,7 @@ dumpln( println );
 # 123
 # 123.45
 # 202
+# 2739128
 # 3735928559
 #
 # "hello"
@@ -126,9 +128,9 @@ dumpln( println );
 # {0}
 #
 #
-# named_function@[values.test.mf, line 74]
-# function@[values.test.mf, line 76]
+# named_function@[values.test.mf, line 75]
 # function@[values.test.mf, line 77]
+# function@[values.test.mf, line 78]
 #
 # dumpln@builtin
 # println@builtin

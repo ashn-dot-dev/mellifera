@@ -29,6 +29,8 @@ var reIntegerDec = regexp.MustCompile(`^\d+`)
 var reIntegerDecFullmatch = regexp.MustCompile(`^\d+$`)
 var reIntegerBin = regexp.MustCompile(`^0b[01]+`)
 var reIntegerBinFullmatch = regexp.MustCompile(`^0b[01]+$`)
+var reIntegerOct = regexp.MustCompile(`^0o[0-7]+`)
+var reIntegerOctFullmatch = regexp.MustCompile(`^0o[0-7]+$`)
 var reIntegerHex = regexp.MustCompile(`^0x[0-9a-fA-F]+`)
 var reIntegerHexFullmatch = regexp.MustCompile(`^0x[0-9a-fA-F]+$`)
 var reNumberDec = regexp.MustCompile(`^\d+(\.\d+)?`)
@@ -2896,6 +2898,33 @@ func (self *Lexer) lexNumber() (Token, error) {
 		return Token{
 			Kind:     TOKEN_NUMBER,
 			Literal:  bin,
+			Location: self.currentLocation(),
+			Value:    self.ctx.NewNumber(float64(parsed)),
+		}, nil
+	}
+
+	oct := reIntegerOct.FindString(self.source[self.position:])
+	if oct != "" {
+		self.position += len(oct)
+		parsed, err := strconv.ParseInt(oct, 0, 64)
+		if err != nil {
+			if errors.Is(err, strconv.ErrRange) {
+				return Token{}, ParseError{
+					Location: self.currentLocation(),
+					why:      fmt.Sprintf("octal integer %s is outside the safe integer range", oct),
+				}
+			}
+			return Token{}, err
+		}
+		if parsed < MIN_SAFE_INTEGER || parsed > MAX_SAFE_INTEGER {
+			return Token{}, ParseError{
+				Location: self.currentLocation(),
+				why:      fmt.Sprintf("octal integer %s is outside the safe integer range", oct),
+			}
+		}
+		return Token{
+			Kind:     TOKEN_NUMBER,
+			Literal:  oct,
 			Location: self.currentLocation(),
 			Value:    self.ctx.NewNumber(float64(parsed)),
 		}, nil
@@ -8619,6 +8648,19 @@ func BuiltinNumberInit(ctx *Context) Value {
 				}
 				return ctx.NewNumber(float64(sign) * float64(parsed)), nil
 			}
+			if reIntegerOctFullmatch.MatchString(data) {
+				parsed, err := strconv.ParseInt(data, 0, 64)
+				if err != nil {
+					if errors.Is(err, strconv.ErrRange) {
+						return nil, NewError(nil, ctx.NewStringf("octal integer %s is outside the safe integer range", data))
+					}
+					return nil, NewError(nil, ctx.NewString(err.Error()))
+				}
+				if parsed < MIN_SAFE_INTEGER || parsed > MAX_SAFE_INTEGER {
+					return nil, NewError(nil, ctx.NewStringf("octal integer %s is outside the safe integer range", data))
+				}
+				return ctx.NewNumber(float64(sign) * float64(parsed)), nil
+			}
 			if reIntegerHexFullmatch.MatchString(data) {
 				parsed, err := strconv.ParseInt(data, 0, 64)
 				if err != nil {
@@ -8682,19 +8724,19 @@ func BuiltinNumberIsInteger(ctx *Context) Value {
 
 func BuiltinNumberFormat(ctx *Context) Value {
 	// $1 sign (+): Always show sign.
-	// $2 altf (#): Alternate form => 0b for binary, 0x for hex with base x, 0X
-	//              for hex with base X.
+	// $2 altf (#): Alternate form => 0b for binary, 0o for octal, 0x for hex
+	//              with base x, 0X for hex with base X.
 	// $3 zero (0): Pad with zeros up to the provided width.
 	// $4 wstr (width): Minimum total width of the output string.
 	// $5 prec (precision): Number of displayed digits after the decimal point.
-	// $6 base (fdbxX): Digit base => b for binary, x for hex (lower), X for
-	//                  hex (upper), d for decimal integer, f for decimal
-	//                  float.
-	formatString := `^(\+)?(#)?(0)?(\d*)(\.\d+)?([fdbxX])$`
+	// $6 base (fdbxX): Digit base => b for binary, o for octal, x for hex
+	//                  (lower), X for hex (upper), d for decimal integer, f
+	//                  for decimal float.
+	formatString := `^(\+)?(#)?(0)?(\d*)(\.\d+)?([fdboxX])$`
 	formatRegexp := regexp.MustCompile(formatString)
 	// Expected format used for error messages, matching the general shape of
 	// the actual format string, but without the captures and anchors visible.
-	expected := `\+?#?0?\d*(\.\d+)?[fdbxX]`
+	expected := `\+?#?0?\d*(\.\d+)?[fdboxX]`
 
 	return ctx.NewBuiltin("number::format", []Type{TVal(NUMBER), TVal(STRING)}, func(ctx *Context, arguments []Value) (Value, error) {
 		self := arguments[0].(*Number)
@@ -8713,11 +8755,13 @@ func BuiltinNumberFormat(ctx *Context) Value {
 		base := matches[6]
 
 		switch base {
-		case "b", "x", "X":
+		case "b", "o", "x", "X":
 			if prec != "" {
 				var ifmt string
 				if base == "b" {
 					ifmt = "binary"
+				} else if base == "o" {
+					ifmt = "octal"
 				} else {
 					ifmt = "hexadecimal"
 				}
@@ -8727,11 +8771,17 @@ func BuiltinNumberFormat(ctx *Context) Value {
 			if err != nil {
 				return nil, NewError(nil, ctx.NewString(err.Error()))
 			}
+			if altf != "" && base == "o" {
+				// Go's printf-family of functions use the prefix 0 for octal
+				// numbers formatted with the %o specifier. Instead, specify a
+				// base of %O, which uses the 0o prefix.
+				base = "O"
+			}
 			if altf != "" && zero != "" && wstr != "" {
 				// For some reason, Go's printf-family of functions exclude the
-				// 0b/0x/0X prefix from the width when zero-padding. Reduce the
-				// width by 2 so that the actual minimum output width matches
-				// the requested minimum output width.
+				// 0b/Oo/0x/0X prefix from the width when zero-padding. Reduce
+				// the width by 2 so that the actual minimum output width
+				// matches the requested minimum output width.
 				n, err := strconv.Atoi(wstr)
 				if err != nil {
 					return nil, NewError(nil, ctx.NewString(err.Error()))
