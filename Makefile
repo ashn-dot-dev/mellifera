@@ -1,32 +1,25 @@
 .POSIX:
 .PHONY: \
-	default all-go all-py \
-	build build-go \
-	wasm wasm-go \
+	default all \
+	build \
+	wasm \
 	install \
-	check check-go check-py \
-	lint-py \
-	format format-go format-py \
+	check \
+	format \
 	clean
 
 MELLIFERA_HOME = $$HOME/.mellifera
 
-default: build-go
+default: build
 
-all-go: build-go wasm-go format-go check-go
+all: build wasm format check
 
-all-py: format-py lint-py check-py
+bin/mf: build
 
-bin/mf: build-go
-
-build: build-go
-
-build-go:
+build:
 	go build -o=bin/ cmd/mf/mf.go
 
-wasm: wasm-go
-
-wasm-go:
+wasm:
 	GOARCH=wasm GOOS=js go build -o mellifera.wasm cmd/wasm/wasm.go
 	cp "$$(go env GOROOT)/lib/wasm/wasm_exec.js" .
 
@@ -35,39 +28,16 @@ install: bin/mf
 	mkdir -p "$(MELLIFERA_HOME)/lib"
 	cp -r bin "$(MELLIFERA_HOME)"
 	cp -r lib "$(MELLIFERA_HOME)"
-	cp mf.py "$(MELLIFERA_HOME)"
 
-check: check-go
-
-check-go: bin/mf
+check: bin/mf
 	MELLIFERA_HOME="$(realpath .)" sh bin/mf-test
 
-check-py:
-	MELLIFERA_HOME="$(realpath .)" sh bin/mf-test --py
-
-# Flake8 Ignored Errors:
-#   E203 - Conflicts with Black.
-#   E221 - Disabled for manual vertically-aligned code.
-#   E241 - Disabled for manual vertically-aligned code.
-#   E501 - Conflicts with Black.
-#   W503 - Conflicts with Black.
-lint-py:
-	python3 -m mypy --check-untyped-defs mf.py
-	python3 -m flake8 --ignore=E203,E221,E241,E501,W503 mf.py
-
-format: format-go
-
-format-go:
+format:
 	go fmt
 	go fmt cmd/mf/*.go
 	go fmt cmd/wasm/*.go
 
-format-py:
-	python3 -m black mf.py
-
 clean:
-	rm -rf __pycache__
-	rm -rf .mypy_cache
 	rm -f bin/mf
 	rm -f mellifera.wasm
 	rm -f wasm_exec.js

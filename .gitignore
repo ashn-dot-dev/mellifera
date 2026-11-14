@@ -1,8 +1,5 @@
 *.wasm
 *.tmp
 
-.mypy_cache/
-__pycache__/
-.venv-mellifera/
 bin/mf
 wasm_exec.js

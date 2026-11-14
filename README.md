@@ -446,76 +446,21 @@ hello 🐝
 
 ## Development
 
-Mellifera currently has two implementations: a library & interpreter written in
-Go (`mellifera.go` and `cmd/mf/mf.go`), which serves as the primary language
-implementation, and an older reference interpreter written in Python (`mf.py`),
-which served as the original language implementation during prototyping. In
-order to ensure that Mellifera does not depend on a particular host language,
-both implementations are updated to support the same core set of language
-features and built-in functions. Most users will want to use the Go
-implementation, and most `make` targets will default to the Go version of that
-target. However, specific `*-go` and `*-py` versions of targets should be used
-when hacking on either the Go implementation or Python implementation,
-respectively.
-
-### General Development (Default Go Implementation)
+Mellifera is written in Go and requires Go version 1.26 or later. The core
+language is implemented in the `mellifera` package found in `mellifera.go`,
+with the Mellifera CLI interpreter, `mf`, found in `cmd/mf/mf.go`. Mellifera is
+also supported in the browser via [WebAssembly](https://webassembly.org), with
+the Wasm interpreter in found in `cmd/wasm/wasm.go`.
 
 ```
 make build   # build standalone interpreter executable
+make wasm    # build Wasm module for embedding in the browser
 make check   # run interpreter golden tests
-make format  # format sources
+make format  # format sources using go fmt
 make install # install standalone Mellifera tooling
-```
 
-### Development on the Go Library & Interpreter
-
-```
-make build-go  # build standalone interpreter executable
-make wasm-go   # build Wasm module for embedding in the browser
-make check-go  # run interpreter golden tests
-make format-go # format sources using go fmt
-make install   # install standalone Mellifera tooling
-```
-
-The Go Mellifera implementation has support for running Mellifera programs in
-the browser via [WebAssembly](https://webassembly.org). In a terminal, run the
-following command:
-
-```
-make wasm-go && python3 -m http.server
-```
-
-Then, navigate to `http://localhost:8000/mellifera.html` in your web browser to
-interact with a minimal web build of the interpreter.
-
-### Development on the Python Reference Interpreter
-
-```
-python3 -m venv .venv-mellifera
-. .venv-mellifera/bin/activate
-python3 -m pip install -r requirements.txt
-
-make check-py  # run interpreter golden tests
-make lint-py   # lint with mypy and flake8
-make format-py # format using black
-```
-
-### Development on Both Interpreters
-
-There is a script, `tools/validate-compatibility.sh`, that will validate that
-the token stream and abstract syntax tree representations produced by both
-interpreters are identical for a large set of programs in the Mellifera
-repository, including all example and test programs:
-
-```
-sh tools/validate-compatibility.sh
-```
-
-To build, format, lint, run tests, and validate compatibility between both
-implementations, use the following one-liner:
-
-```
-make clean format-go format-py lint-py build-go wasm-go check-go check-py && sh tools/validate-compatibility.sh
+# Wasm interpreter served at http://localhost:8000/mellifera.html
+make wasm && python3 -m http.server
 ```
 
 ## Contributing
