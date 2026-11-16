@@ -2697,9 +2697,13 @@ type Token struct {
 	Kind     string
 	Literal  string
 	Location *SourceLocation // Optional
-	Value    Value           // Optional
-	Template []AstExpression // Optional
-	Group    int             // Optional
+	// Optional data component of the token for tokens which require
+	// passing such data through to the parser and/or evaluator.
+	//
+	// Holds a Value for types that can be constructed at lex time.
+	// Holds a []AstExpression for template components.
+	// Holds an int for group capture number.
+	data any
 }
 
 func (self Token) String() string {
@@ -2899,7 +2903,7 @@ func (self *Lexer) lexNumber() (Token, error) {
 			Kind:     TOKEN_NUMBER,
 			Literal:  bin,
 			Location: self.currentLocation(),
-			Value:    self.ctx.NewNumber(float64(parsed)),
+			data:     self.ctx.NewNumber(float64(parsed)),
 		}, nil
 	}
 
@@ -2926,7 +2930,7 @@ func (self *Lexer) lexNumber() (Token, error) {
 			Kind:     TOKEN_NUMBER,
 			Literal:  oct,
 			Location: self.currentLocation(),
-			Value:    self.ctx.NewNumber(float64(parsed)),
+			data:     self.ctx.NewNumber(float64(parsed)),
 		}, nil
 	}
 
@@ -2953,7 +2957,7 @@ func (self *Lexer) lexNumber() (Token, error) {
 			Kind:     TOKEN_NUMBER,
 			Literal:  hex,
 			Location: self.currentLocation(),
-			Value:    self.ctx.NewNumber(float64(parsed)),
+			data:     self.ctx.NewNumber(float64(parsed)),
 		}, nil
 	}
 
@@ -2968,7 +2972,7 @@ func (self *Lexer) lexNumber() (Token, error) {
 			Kind:     TOKEN_NUMBER,
 			Literal:  dec,
 			Location: self.currentLocation(),
-			Value:    self.ctx.NewNumber(parsed),
+			data:     self.ctx.NewNumber(parsed),
 		}, nil
 	}
 
@@ -3097,7 +3101,7 @@ func (self *Lexer) lexEscString() (Token, error) {
 		Kind:     TOKEN_STRING,
 		Literal:  literal,
 		Location: self.currentLocation(),
-		Value:    self.ctx.NewString(string(bytes)),
+		data:     self.ctx.NewString(string(bytes)),
 	}, nil
 }
 
@@ -3174,7 +3178,7 @@ func (self *Lexer) lexRawString() (Token, error) {
 		Kind:     TOKEN_STRING,
 		Literal:  literal,
 		Location: location,
-		Value:    self.ctx.NewString(string(bytes)),
+		data:     self.ctx.NewString(string(bytes)),
 	}, nil
 }
 
@@ -3319,7 +3323,7 @@ func (self *Lexer) lexTemplate() (Token, error) {
 		Kind:     TOKEN_TEMPLATE,
 		Literal:  literal,
 		Location: location,
-		Template: template,
+		data:     template,
 	}, nil
 }
 
@@ -3377,7 +3381,7 @@ func (self *Lexer) lexRegexp() (Token, error) {
 		Kind:     TOKEN_REGEXP,
 		Literal:  literal,
 		Location: location,
-		Value:    regexp,
+		data:     regexp,
 	}, nil
 }
 
@@ -3403,7 +3407,7 @@ func (self *Lexer) lexRegexpGroup() (Token, error) {
 			Kind:     TOKEN_REGEXP_GROUP,
 			Literal:  literal,
 			Location: location,
-			Group:    int(parsed),
+			data:     int(parsed),
 		}, nil
 	}
 
@@ -6870,7 +6874,7 @@ type Parser struct {
 func NewParser(lexer *Lexer) (Parser, error) {
 	self := Parser{
 		lexer:        lexer,
-		currentToken: Token{"invalid program", "", lexer.location, nil, nil, 0},
+		currentToken: Token{"invalid program", "", lexer.location, nil},
 
 		precedences: map[string]int{
 			TOKEN_OR:       PRECEDENCE_OR,
@@ -7064,7 +7068,11 @@ func (self *Parser) ParseExpressionTemplate() (AstExpression, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &AstExpressionTemplate{token.Location, token.Template}, nil
+	template, ok := token.data.([]AstExpression)
+	if !ok {
+		return nil, errors.New("missing template data")
+	}
+	return &AstExpressionTemplate{token.Location, template}, nil
 }
 
 func (self *Parser) ParseExpressionNull() (AstExpression, error) {
@@ -7104,9 +7112,9 @@ func (self *Parser) ParseExpressionNumber() (AstExpression, error) {
 			fmt.Sprintf("expected number, found %v", self.currentToken),
 		}
 	}
-	value, ok := token.Value.(*Number)
+	value, ok := token.data.(*Number)
 	if !ok {
-		return nil, errors.New("missing number token value")
+		return nil, errors.New("missing number token data")
 	}
 	return &AstExpressionNumber{token.Location, value}, nil
 }
@@ -7119,9 +7127,9 @@ func (self *Parser) ParseExpressionString() (AstExpression, error) {
 			fmt.Sprintf("expected string, found %v", self.currentToken),
 		}
 	}
-	value, ok := token.Value.(*String)
+	value, ok := token.data.(*String)
 	if !ok {
-		return nil, errors.New("missing string token value")
+		return nil, errors.New("missing string token data")
 	}
 	return &AstExpressionString{token.Location, value}, nil
 }
@@ -7134,9 +7142,9 @@ func (self *Parser) ParseExpressionRegexp() (AstExpression, error) {
 			fmt.Sprintf("expected regexp, found %v", self.currentToken),
 		}
 	}
-	value, ok := token.Value.(*Regexp)
+	value, ok := token.data.(*Regexp)
 	if !ok {
-		return nil, errors.New("missing regexp token value")
+		return nil, errors.New("missing regexp token data")
 	}
 	return &AstExpressionRegexp{token.Location, value}, nil
 }
@@ -7149,7 +7157,11 @@ func (self *Parser) ParseExpressionRegexpGroup() (AstExpression, error) {
 			fmt.Sprintf("expected regexp group, found %v", self.currentToken),
 		}
 	}
-	return &AstExpressionRegexpGroup{token.Location, token.Group}, nil
+	group, ok := token.data.(int)
+	if !ok {
+		return nil, errors.New("missing regexp group token data")
+	}
+	return &AstExpressionRegexpGroup{token.Location, group}, nil
 }
 
 func (self *Parser) ParseExpressionVector() (AstExpression, error) {
