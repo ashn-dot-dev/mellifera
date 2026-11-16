@@ -112,6 +112,12 @@ func BuiltinImport(ctx *mellifera.Context) mellifera.Value {
 			}
 			program, err := parser.ParseProgram()
 			if err != nil {
+				if e, ok := err.(mellifera.ParseError); ok {
+					return nil, e
+				}
+				if e, ok := err.(mellifera.Error); ok {
+					return nil, e
+				}
 				return nil, mellifera.NewError(nil, ctx.NewString(err.Error()))
 			}
 			result, err = program.Eval(ctx, mellifera.NewEnvironment(ctx.BaseEnvironment))
