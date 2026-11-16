@@ -8792,6 +8792,10 @@ func BuiltinNumberFormat(ctx *Context) Value {
 				}
 				wstr = strconv.Itoa(n)
 			}
+			if base == "O" {
+				// Adjust so 0o{digits} does not have an extra leading 0 digit.
+				altf = ""
+			}
 			fmtStr := "%" + sign + altf + zero + wstr + base
 			return ctx.NewString(fmt.Sprintf(fmtStr, integer)), nil
 		case "d":
