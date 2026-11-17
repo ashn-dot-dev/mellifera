@@ -1,0 +1,51 @@
+let int = import("int");
+
+dumpln(int::u8::shiftl_wrapped(+0, 0));
+dumpln(int::u8::shiftl_wrapped(+1, 0));
+dumpln(int::u8::shiftl_wrapped(+0, 1));
+dumpln(int::u8::shiftl_wrapped(+1, 1));
+dumpln(int::u8::shiftl_wrapped(+1, 2));
+
+print("\n");
+
+dumpln(int::s8::shiftl_wrapped(+0, 0));
+dumpln(int::s8::shiftl_wrapped(+1, 0));
+dumpln(int::s8::shiftl_wrapped(+0, 1));
+dumpln(int::s8::shiftl_wrapped(+1, 1));
+dumpln(int::s8::shiftl_wrapped(+1, 2));
+dumpln(int::s8::shiftl_wrapped(-1, 0));
+dumpln(int::s8::shiftl_wrapped(-1, 1));
+dumpln(int::s8::shiftl_wrapped(-1, 2));
+
+print("\n");
+
+dumpln(int::u8::shiftl_wrapped(math::pow(2, 7), 1));
+dumpln(int::u8::shiftl_wrapped(+1, 10));
+dumpln(int::s8::shiftl_wrapped(-1, 10));
+
+print("\n");
+
+try { int::u8::shiftl_wrapped(+0, -1); } catch err { dumpln(err); }
+try { int::s8::shiftl_wrapped(+0, -1); } catch err { dumpln(err); }
+################################################################################
+# 0
+# 1
+# 0
+# 2
+# 4
+#
+# 0
+# 1
+# 0
+# 2
+# 4
+# -1
+# -2
+# -4
+#
+# 0
+# 0
+# 0
+#
+# "bitwise shift magnitude -1 is negative"
+# "bitwise shift magnitude -1 is negative"

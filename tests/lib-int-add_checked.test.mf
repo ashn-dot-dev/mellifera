@@ -1,0 +1,17 @@
+let int = import("int");
+
+dumpln(int::u8::add_checked(1, 2));
+try { int::u8::add_checked(int::u8::MAX, 1); } catch err { dumpln(err); }
+
+print("\n");
+
+dumpln(int::s8::add_checked(-1, 2));
+try { int::s8::add_checked(int::s8::MAX, +1); } catch err { dumpln(err); }
+try { int::s8::add_checked(int::s8::MIN, -1); } catch err { dumpln(err); }
+################################################################################
+# 3
+# "value 256 is outside the unsigned 8-bit integer range"
+#
+# 1
+# "value 128 is outside the signed 8-bit integer range"
+# "value -129 is outside the signed 8-bit integer range"

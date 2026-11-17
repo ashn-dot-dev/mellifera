@@ -1,0 +1,23 @@
+let int = import("int");
+
+println(int::u8::bit_not(0b10101100).format("08b"));
+println(int::u8::bit_not(int::u8::MIN).format("08b"));
+println(int::u8::bit_not(int::u8::MAX).format("08b"));
+println(int::s8::bit_not(int::s8::MIN).format("08b"));
+
+print("\n");
+
+dumpln(int::s8::bit_not(-1));
+dumpln(int::s8::bit_not(-2));
+dumpln(int::s8::bit_not(+0));
+dumpln(int::s8::bit_not(int::s8::MAX));
+################################################################################
+# 01010011
+# 11111111
+# 00000000
+# 01111111
+#
+# 0
+# 1
+# -1
+# -128

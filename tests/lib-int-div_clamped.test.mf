@@ -1,0 +1,19 @@
+let int = import("int");
+
+dumpln(int::u8::div_clamped(9, 2));
+try { int::u8::div_clamped(1, 0); } catch err { dumpln(err); }
+
+print("\n");
+
+dumpln(int::s8::div_clamped(9, +2));
+dumpln(int::s8::div_clamped(9, -2));
+try { int::s8::div_clamped(1, 0); } catch err { dumpln(err); }
+dumpln(int::s8::div_clamped(int::s8::MIN, -1));
+################################################################################
+# 4
+# "attempted / operation with denominator zero"
+#
+# 4
+# -4
+# "attempted / operation with denominator zero"
+# 127

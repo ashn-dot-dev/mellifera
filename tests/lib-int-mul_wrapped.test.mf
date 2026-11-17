@@ -1,0 +1,17 @@
+let int = import("int");
+
+dumpln(int::u8::mul_wrapped(2, 2));
+dumpln(int::u8::mul_wrapped(int::u8::MAX, 2));
+
+print("\n");
+
+dumpln(int::s8::mul_wrapped(2, -2));
+dumpln(int::s8::mul_wrapped(int::s8::MAX, 2));
+dumpln(int::s8::mul_wrapped(int::s8::MIN, 2));
+################################################################################
+# 4
+# 254
+#
+# -4
+# -2
+# 0

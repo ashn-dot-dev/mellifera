@@ -1,0 +1,19 @@
+let int = import("int");
+
+dumpln(int::u8::div_checked(9, 2));
+try { int::u8::div_checked(1, 0); } catch err { dumpln(err); }
+
+print("\n");
+
+dumpln(int::s8::div_checked(9, +2));
+dumpln(int::s8::div_checked(9, -2));
+try { int::s8::div_checked(1, 0); } catch err { dumpln(err); }
+try { int::s8::div_checked(int::s8::MIN, -1); } catch err { dumpln(err); }
+################################################################################
+# 4
+# "attempted / operation with denominator zero"
+#
+# 4
+# -4
+# "attempted / operation with denominator zero"
+# "value 128 is outside the signed 8-bit integer range"

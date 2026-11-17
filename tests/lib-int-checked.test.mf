@@ -1,0 +1,35 @@
+let int = import("int");
+
+dumpln(int::u8::checked(+0));
+dumpln(int::u8::checked(+0x12));
+dumpln(int::u8::checked(+0xFF));
+try { int::u8::checked(+0x100); } catch err { dumpln(err); }
+try { int::u8::checked(-0x12); } catch err { dumpln(err); }
+try { int::u8::checked(-0xFF); } catch err { dumpln(err); }
+try { int::u8::checked(-0x100); } catch err { dumpln(err); }
+
+print("\n");
+
+dumpln(int::s8::checked(+0));
+dumpln(int::s8::checked(+0x12));
+try { int::s8::checked(+0xFF); } catch err { dumpln(err); }
+try { int::s8::checked(+0x100); } catch err { dumpln(err); }
+dumpln(int::s8::checked(-0x12));
+try { int::s8::checked(-0xFF); } catch err { dumpln(err); }
+try { int::s8::checked(-0x100); } catch err { dumpln(err); }
+################################################################################
+# 0
+# 18
+# 255
+# "value 256 is outside the unsigned 8-bit integer range"
+# "value -18 is outside the unsigned 8-bit integer range"
+# "value -255 is outside the unsigned 8-bit integer range"
+# "value -256 is outside the unsigned 8-bit integer range"
+#
+# 0
+# 18
+# "value 255 is outside the signed 8-bit integer range"
+# "value 256 is outside the signed 8-bit integer range"
+# -18
+# "value -255 is outside the signed 8-bit integer range"
+# "value -256 is outside the signed 8-bit integer range"

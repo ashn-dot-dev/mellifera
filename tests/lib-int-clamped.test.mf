@@ -1,0 +1,35 @@
+let int = import("int");
+
+dumpln(int::u8::clamped(+0));
+dumpln(int::u8::clamped(+0x12));
+dumpln(int::u8::clamped(+0xFF));
+dumpln(int::u8::clamped(+0x100));
+dumpln(int::u8::clamped(-0x12));
+dumpln(int::u8::clamped(-0xFF));
+dumpln(int::u8::clamped(-0x100));
+
+print("\n");
+
+dumpln(int::s8::clamped(+0));
+dumpln(int::s8::clamped(+0x12));
+dumpln(int::s8::clamped(+0xFF));
+dumpln(int::s8::clamped(+0x100));
+dumpln(int::s8::clamped(-0x12));
+dumpln(int::s8::clamped(-0xFF));
+dumpln(int::s8::clamped(-0x100));
+################################################################################
+# 0
+# 18
+# 255
+# 255
+# 0
+# 0
+# 0
+#
+# 0
+# 18
+# 127
+# 127
+# -18
+# -128
+# -128

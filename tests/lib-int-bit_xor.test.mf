@@ -1,0 +1,23 @@
+let int = import("int");
+
+println(int::u8::bit_xor(0b10101100, 0b11110000).format("08b"));
+println(int::u8::bit_xor(int::u8::MIN, 0b11110000).format("08b"));
+println(int::u8::bit_xor(int::u8::MAX, 0b11110000).format("08b"));
+println(int::s8::bit_xor(int::s8::MAX, 0b01110000).format("08b"));
+
+print("\n");
+
+dumpln(int::s8::bit_xor(-1, +5));
+dumpln(int::s8::bit_xor(-1, -1));
+dumpln(int::s8::bit_xor(int::s8::MIN, -1));
+dumpln(int::s8::bit_xor(int::s8::MIN, int::s8::MAX));
+################################################################################
+# 01011100
+# 11110000
+# 00001111
+# 00001111
+#
+# -6
+# 0
+# 127
+# -1

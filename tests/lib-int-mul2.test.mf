@@ -1,0 +1,95 @@
+let int = import("int");
+
+dumpln(int::u8::mul2(1, 1));
+dumpln(int::u8::mul2(1, 2));
+dumpln(int::u8::mul2(int::u8::MAX, 2));
+dumpln(int::u8::mul2(int::u8::MAX, int::u8::MAX));
+
+print("\n");
+
+dumpln(int::u16::mul2(1, 1));
+dumpln(int::u16::mul2(1, 2));
+dumpln(int::u16::mul2(int::u16::MAX, 2));
+dumpln(int::u16::mul2(int::u16::MAX, int::u16::MAX));
+
+print("\n");
+
+dumpln(int::u32::mul2(1, 1));
+dumpln(int::u32::mul2(1, 2));
+dumpln(int::u32::mul2(int::u32::MAX, 2));
+dumpln(int::u32::mul2(int::u32::MAX, int::u32::MAX));
+
+print("\n");
+
+dumpln(int::s8::mul2(+1, +1));
+dumpln(int::s8::mul2(+1, +2));
+dumpln(int::s8::mul2(+1, -1));
+dumpln(int::s8::mul2(+1, -2));
+dumpln(int::s8::mul2(int::s8::MAX, +2));
+dumpln(int::s8::mul2(int::s8::MAX, -2));
+dumpln(int::s8::mul2(int::s8::MAX, int::s8::MAX));
+dumpln(int::s8::mul2(int::s8::MIN, int::s8::MAX));
+
+print("\n");
+
+dumpln(int::s16::mul2(+1, +1));
+dumpln(int::s16::mul2(+1, +2));
+dumpln(int::s16::mul2(+1, -1));
+dumpln(int::s16::mul2(+1, -2));
+dumpln(int::s16::mul2(int::s16::MAX, +2));
+dumpln(int::s16::mul2(int::s16::MAX, -2));
+dumpln(int::s16::mul2(int::s16::MAX, int::s16::MAX));
+dumpln(int::s16::mul2(int::s16::MIN, int::s16::MAX));
+
+print("\n");
+
+dumpln(int::s32::mul2(+1, +1));
+dumpln(int::s32::mul2(+1, +2));
+dumpln(int::s32::mul2(+1, -1));
+dumpln(int::s32::mul2(+1, -2));
+dumpln(int::s32::mul2(int::s32::MAX, +2));
+dumpln(int::s32::mul2(int::s32::MAX, -2));
+dumpln(int::s32::mul2(int::s32::MAX, int::s32::MAX));
+dumpln(int::s32::mul2(int::s32::MIN, int::s32::MAX));
+################################################################################
+# {"upper": 0, "lower": 1}
+# {"upper": 0, "lower": 2}
+# {"upper": 1, "lower": 254}
+# {"upper": 254, "lower": 1}
+#
+# {"upper": 0, "lower": 1}
+# {"upper": 0, "lower": 2}
+# {"upper": 1, "lower": 65534}
+# {"upper": 65534, "lower": 1}
+#
+# {"upper": 0, "lower": 1}
+# {"upper": 0, "lower": 2}
+# {"upper": 1, "lower": 4294967294}
+# {"upper": 4294967294, "lower": 1}
+#
+# {"upper": 0, "lower": 1}
+# {"upper": 0, "lower": 2}
+# {"upper": -1, "lower": 255}
+# {"upper": -1, "lower": 254}
+# {"upper": 0, "lower": 254}
+# {"upper": -1, "lower": 2}
+# {"upper": 63, "lower": 1}
+# {"upper": -64, "lower": 128}
+#
+# {"upper": 0, "lower": 1}
+# {"upper": 0, "lower": 2}
+# {"upper": -1, "lower": 65535}
+# {"upper": -1, "lower": 65534}
+# {"upper": 0, "lower": 65534}
+# {"upper": -1, "lower": 2}
+# {"upper": 16383, "lower": 1}
+# {"upper": -16384, "lower": 32768}
+#
+# {"upper": 0, "lower": 1}
+# {"upper": 0, "lower": 2}
+# {"upper": -1, "lower": 4294967295}
+# {"upper": -1, "lower": 4294967294}
+# {"upper": 0, "lower": 4294967294}
+# {"upper": -1, "lower": 2}
+# {"upper": 1073741823, "lower": 1}
+# {"upper": -1073741824, "lower": 2147483648}

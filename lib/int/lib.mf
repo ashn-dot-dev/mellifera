@@ -1,0 +1,267 @@
+let fixed_width = function(bits, signedness) {
+    assert(bits == 8 or bits == 16 or bits == 32);
+    assert(signedness == "unsigned" or signedness == "signed");
+
+    let minimum = null;
+    let maximum = null;
+    let modulus = math::pow(2, bits);
+    if signedness == "unsigned" {
+        minimum = 0;
+        maximum = modulus - 1;
+    }
+    if signedness == "signed" {
+        minimum = -modulus / 2;
+        maximum = +modulus / 2 - 1;
+    }
+
+    let shift_magnitude = function(n) {
+        if not number::is_integer(n) {
+            error $"bitwise shift magnitude {n} is not an integer";
+        }
+        if n < 0 {
+            error $"bitwise shift magnitude {n} is negative";
+        }
+        return n;
+    };
+
+    let T = freeze {
+        .BITS = bits,
+        .MIN = minimum,
+        .MAX = maximum,
+        .MODULUS = modulus,
+        .checked = function(n) {
+            if not number::is_integer(n) {
+                error $"value {n} is not an integer";
+            }
+            if n < T::MIN or n > T::MAX {
+                error $"value {n} is outside the {signedness} {T::BITS}-bit integer range";
+            }
+            return n + 0; # normalize with -0 + 0 as +0
+        },
+        .wrapped = function(n) {
+            if not number::is_integer(n) {
+                error $"value {n} is not an integer";
+            }
+            n = math::mod(n, T::MODULUS);
+            if n > T::MAX {
+                return n - T::MODULUS;
+            }
+            return n + 0; # normalize with -0 + 0 as +0
+        },
+        .clamped = function(n) {
+            if not number::is_integer(n) {
+                error $"value {n} is not an integer";
+            }
+            if n < T::MIN {
+                return T::MIN;
+            }
+            if n > T::MAX {
+                return T::MAX;
+            }
+            return n + 0; # normalize with -0 + 0 as +0
+        },
+        .add = function(lhs, rhs) {
+            return T::add_checked(lhs, rhs); # default to checked arithmetic
+        },
+        .sub = function(lhs, rhs) {
+            return T::sub_checked(lhs, rhs); # default to checked arithmetic
+        },
+        .mul = function(lhs, rhs) {
+            return T::mul_checked(lhs, rhs); # default to checked arithmetic
+        },
+        # Returns a map of the form {.upper = UPPER_BITS, .lower = LOWER_BITS}
+        # where the equation upper * MODULUS + lower produces the exact product
+        # of the provided arguments lhs and rhs.
+        #
+        # For negative products, the upper component holds the signed high bits
+        # of the result, while the lower component holds the unsigned low bits
+        # of the result.
+        .mul2 = function(lhs, rhs) {
+            lhs = T::checked(lhs);
+            rhs = T::checked(rhs);
+            let half = math::pow(2, bits / 2);
+            let lhs_hi = (lhs / half).floor();
+            let lhs_lo = math::mod(lhs, half);
+            let rhs_hi = (rhs / half).floor();
+            let rhs_lo = math::mod(rhs, half);
+            let mid = lhs_hi * rhs_lo + lhs_lo * rhs_hi;
+            let lo = lhs_lo * rhs_lo + math::mod(mid, half) * half;
+            let hi = lhs_hi * rhs_hi + (mid / half).floor() + (lo / T::MODULUS).floor();
+            return {.upper = hi, .lower = math::mod(lo, T::MODULUS)};
+        },
+        .div = function(lhs, rhs) {
+            return T::div_checked(lhs, rhs); # default to checked arithmetic
+        },
+        .rem = function(lhs, rhs) {
+            return T::rem_checked(lhs, rhs); # default to checked arithmetic
+        },
+        .shiftl = function(lhs, rhs) {
+            return T::shiftl_checked(lhs, rhs); # default to checked bit shifts
+        },
+        .shiftr = function(lhs, rhs) {
+            return T::shiftr_checked(lhs, rhs); # default to checked bit shifts
+        },
+        .bit_not = function(n) {
+            let n_bits = math::mod(T::checked(n), T::MODULUS);
+            let result = 0;
+            for bit in T::BITS {
+                if n_bits % 2 == 0 {
+                    result = result + math::pow(2, bit);
+                }
+                n_bits = (n_bits / 2).floor();
+            }
+            return T::wrapped(result);
+        },
+        .bit_and = function(lhs, rhs) {
+            let lhs_bits = math::mod(T::checked(lhs), T::MODULUS);
+            let rhs_bits = math::mod(T::checked(rhs), T::MODULUS);
+            let result = 0;
+            for bit in T::BITS {
+                if lhs_bits % 2 == 1 and rhs_bits % 2 == 1 {
+                    result = result + math::pow(2, bit);
+                }
+                lhs_bits = (lhs_bits / 2).floor();
+                rhs_bits = (rhs_bits / 2).floor();
+            }
+            return T::wrapped(result);
+        },
+        .bit_or = function(lhs, rhs) {
+            let lhs_bits = math::mod(T::checked(lhs), T::MODULUS);
+            let rhs_bits = math::mod(T::checked(rhs), T::MODULUS);
+            let result = 0;
+            for bit in T::BITS {
+                if lhs_bits % 2 == 1 or rhs_bits % 2 == 1 {
+                    result = result + math::pow(2, bit);
+                }
+                lhs_bits = (lhs_bits / 2).floor();
+                rhs_bits = (rhs_bits / 2).floor();
+            }
+            return T::wrapped(result);
+        },
+        .bit_xor = function(lhs, rhs) {
+            let lhs_bits = math::mod(T::checked(lhs), T::MODULUS);
+            let rhs_bits = math::mod(T::checked(rhs), T::MODULUS);
+            let result = 0;
+            for bit in T::BITS {
+                if lhs_bits % 2 != rhs_bits % 2 {
+                    result = result + math::pow(2, bit);
+                }
+                lhs_bits = (lhs_bits / 2).floor();
+                rhs_bits = (rhs_bits / 2).floor();
+            }
+            return T::wrapped(result);
+        },
+        .add_checked = function(lhs, rhs) {
+            return T::checked(T::checked(lhs) + T::checked(rhs));
+        },
+        .sub_checked = function(lhs, rhs) {
+            return T::checked(T::checked(lhs) - T::checked(rhs));
+        },
+        .mul_checked = function(lhs, rhs) {
+            return T::checked(T::checked(lhs) * T::checked(rhs));
+        },
+        .div_checked = function(lhs, rhs) {
+            lhs = T::checked(lhs);
+            rhs = T::checked(rhs);
+            if rhs == 0 {
+                error "attempted / operation with denominator zero";
+            }
+            return T::checked((lhs / rhs).trunc());
+        },
+        .rem_checked = function(lhs, rhs) {
+            lhs = T::checked(lhs);
+            rhs = T::checked(rhs);
+            if rhs == 0 {
+                error "attempted % operation with denominator zero";
+            }
+            return T::checked(lhs % rhs);
+        },
+        .shiftl_checked = function(lhs, rhs) {
+            return T::checked(T::checked(lhs) * math::pow(2, shift_magnitude(rhs)));
+        },
+        .shiftr_checked = function(lhs, rhs) {
+            return T::checked((T::checked(lhs) / math::pow(2, shift_magnitude(rhs))).floor());
+        },
+        .add_wrapped = function(lhs, rhs) {
+            return T::wrapped(T::checked(lhs) + T::checked(rhs));
+        },
+        .sub_wrapped = function(lhs, rhs) {
+            return T::wrapped(T::checked(lhs) - T::checked(rhs));
+        },
+        .mul_wrapped = function(lhs, rhs) {
+            return T::wrapped(T::mul2(lhs, rhs).lower);
+        },
+        .div_wrapped = function(lhs, rhs) {
+            lhs = T::checked(lhs);
+            rhs = T::checked(rhs);
+            if rhs == 0 {
+                error "attempted / operation with denominator zero";
+            }
+            return T::wrapped((lhs / rhs).trunc());
+        },
+        .rem_wrapped = function(lhs, rhs) {
+            lhs = T::checked(lhs);
+            rhs = T::checked(rhs);
+            if rhs == 0 {
+                error "attempted % operation with denominator zero";
+            }
+            return T::wrapped(lhs % rhs);
+        },
+        .shiftl_wrapped = function(lhs, rhs) {
+            return T::wrapped(T::checked(lhs) * math::pow(2, shift_magnitude(rhs)));
+        },
+        .shiftr_wrapped = function(lhs, rhs) {
+            return T::wrapped((T::checked(lhs) / math::pow(2, shift_magnitude(rhs))).floor());
+        },
+        .add_clamped = function(lhs, rhs) {
+            return T::clamped(T::checked(lhs) + T::checked(rhs));
+        },
+        .sub_clamped = function(lhs, rhs) {
+            return T::clamped(T::checked(lhs) - T::checked(rhs));
+        },
+        .mul_clamped = function(lhs, rhs) {
+            return T::clamped(T::checked(lhs) * T::checked(rhs));
+        },
+        .div_clamped = function(lhs, rhs) {
+            lhs = T::checked(lhs);
+            rhs = T::checked(rhs);
+            if rhs == 0 {
+                error "attempted / operation with denominator zero";
+            }
+            return T::clamped((lhs / rhs).trunc());
+        },
+        .rem_clamped = function(lhs, rhs) {
+            lhs = T::checked(lhs);
+            rhs = T::checked(rhs);
+            if rhs == 0 {
+                error "attempted % operation with denominator zero";
+            }
+            return T::clamped(lhs % rhs);
+        },
+        .shiftl_clamped = function(lhs, rhs) {
+            return T::clamped(T::checked(lhs) * math::pow(2, shift_magnitude(rhs)));
+        },
+        .shiftr_clamped = function(lhs, rhs) {
+            return T::clamped((T::checked(lhs) / math::pow(2, shift_magnitude(rhs))).floor());
+        },
+    };
+
+    return T;
+};
+
+let u8 = fixed_width(8, "unsigned");
+let u16 = fixed_width(16, "unsigned");
+let u32 = fixed_width(32, "unsigned");
+
+let s8 = fixed_width(8, "signed");
+let s16 = fixed_width(16, "signed");
+let s32 = fixed_width(32, "signed");
+
+return {
+    .u8 = u8,
+    .u16 = u16,
+    .u32 = u32,
+    .s8 = s8,
+    .s16 = s16,
+    .s32 = s32,
+};

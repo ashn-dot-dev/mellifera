@@ -1,0 +1,17 @@
+let int = import("int");
+
+dumpln(int::u8::sub_clamped(2, 1));
+dumpln(int::u8::sub_clamped(int::u8::MIN, 1));
+
+print("\n");
+
+dumpln(int::s8::sub_clamped(2, -1));
+dumpln(int::s8::sub_clamped(int::s8::MAX, -1));
+dumpln(int::s8::sub_clamped(int::s8::MIN, +1));
+################################################################################
+# 1
+# 0
+#
+# 3
+# 127
+# -128

@@ -1,0 +1,47 @@
+let int = import("int");
+
+dumpln(int::u8::shiftl_checked(+0, 0));
+dumpln(int::u8::shiftl_checked(+1, 0));
+dumpln(int::u8::shiftl_checked(+0, 1));
+dumpln(int::u8::shiftl_checked(+1, 1));
+dumpln(int::u8::shiftl_checked(+1, 2));
+
+print("\n");
+
+dumpln(int::s8::shiftl_checked(+0, 0));
+dumpln(int::s8::shiftl_checked(+1, 0));
+dumpln(int::s8::shiftl_checked(+0, 1));
+dumpln(int::s8::shiftl_checked(+1, 1));
+dumpln(int::s8::shiftl_checked(+1, 2));
+dumpln(int::s8::shiftl_checked(-1, 0));
+dumpln(int::s8::shiftl_checked(-1, 1));
+dumpln(int::s8::shiftl_checked(-1, 2));
+
+print("\n");
+
+try { int::u8::shiftl_checked(math::pow(2, 7), 1); } catch err { dumpln(err); }
+try { int::u8::shiftl_checked(+1, 10); } catch err { dumpln(err); }
+try { int::s8::shiftl_checked(-1, 10); } catch err { dumpln(err); }
+try { int::u8::shiftl_checked(+0, -1); } catch err { dumpln(err); }
+try { int::s8::shiftl_checked(+0, -1); } catch err { dumpln(err); }
+################################################################################
+# 0
+# 1
+# 0
+# 2
+# 4
+#
+# 0
+# 1
+# 0
+# 2
+# 4
+# -1
+# -2
+# -4
+#
+# "value 256 is outside the unsigned 8-bit integer range"
+# "value 1024 is outside the unsigned 8-bit integer range"
+# "value -1024 is outside the signed 8-bit integer range"
+# "bitwise shift magnitude -1 is negative"
+# "bitwise shift magnitude -1 is negative"

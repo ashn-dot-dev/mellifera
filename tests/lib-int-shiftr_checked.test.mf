@@ -1,0 +1,47 @@
+let int = import("int");
+
+dumpln(int::u8::shiftr_checked(+0, 0));
+dumpln(int::u8::shiftr_checked(+1, 0));
+dumpln(int::u8::shiftr_checked(+0, 1));
+dumpln(int::u8::shiftr_checked(+1, 1));
+dumpln(int::u8::shiftr_checked(+1, 2));
+dumpln(int::u8::shiftr_checked(+4, 1));
+
+print("\n");
+
+dumpln(int::s8::shiftr_checked(+0, 0));
+dumpln(int::s8::shiftr_checked(+1, 0));
+dumpln(int::s8::shiftr_checked(+0, 1));
+dumpln(int::s8::shiftr_checked(+1, 1));
+dumpln(int::s8::shiftr_checked(+1, 2));
+dumpln(int::s8::shiftr_checked(+4, 1));
+dumpln(int::s8::shiftr_checked(-1, 0));
+dumpln(int::s8::shiftr_checked(-1, 1));
+dumpln(int::s8::shiftr_checked(-1, 2));
+dumpln(int::s8::shiftr_checked(-4, 1));
+
+print("\n");
+
+try { int::u8::shiftr_checked(+0, -1); } catch err { dumpln(err); }
+try { int::s8::shiftr_checked(+0, -1); } catch err { dumpln(err); }
+################################################################################
+# 0
+# 1
+# 0
+# 0
+# 0
+# 2
+#
+# 0
+# 1
+# 0
+# 0
+# 0
+# 2
+# -1
+# -1
+# -1
+# -2
+#
+# "bitwise shift magnitude -1 is negative"
+# "bitwise shift magnitude -1 is negative"
