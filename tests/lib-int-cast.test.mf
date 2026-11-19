@@ -1,0 +1,65 @@
+let int = import("int");
+
+dumpln(int::u8::cast(+123));
+dumpln(int::u8::cast(+256));
+dumpln(int::u8::cast(-128));
+dumpln(int::u8::cast(-1));
+
+print("\n");
+
+dumpln(int::s8::cast(+123));
+dumpln(int::s8::cast(+256));
+dumpln(int::s8::cast(+128));
+dumpln(int::s8::cast(-129));
+
+print("\n");
+
+dumpln(int::u8::cast(+0.5));
+dumpln(int::u8::cast(+1.5));
+dumpln(int::u8::cast(-1.5));
+
+print("\n");
+
+dumpln(int::s8::cast(+0.5));
+dumpln(int::s8::cast(+1.5));
+dumpln(int::s8::cast(-1.5));
+
+print("\n");
+
+dumpln(int::u16::cast(int::u8::cast(-1)));
+dumpln(int::s16::cast(int::s8::cast(-1)));
+dumpln(int::u8::cast(int::u16::cast(0xFFFF)));
+dumpln(int::s8::cast(int::s16::cast(0x7FFF)));
+
+print("\n");
+
+try { dumpln(int::u8::cast(NaN)); } catch err { dumpln(err); }
+try { dumpln(int::u8::cast(+Inf)); } catch err { dumpln(err); }
+try { dumpln(int::u8::cast(-Inf)); } catch err { dumpln(err); }
+################################################################################
+# 123
+# 0
+# 128
+# 255
+#
+# 123
+# 0
+# -128
+# 127
+#
+# 0
+# 1
+# 255
+#
+# 0
+# 1
+# -1
+#
+# 255
+# -1
+# 255
+# -1
+#
+# "value NaN is not an integer"
+# "value Inf is not an integer"
+# "value -Inf is not an integer"

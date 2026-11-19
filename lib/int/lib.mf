@@ -60,6 +60,9 @@ let fixed_width = function(bits, signedness) {
             }
             return n + 0; # normalize with -0 + 0 as +0
         },
+        .cast = function(n) {
+            return T::wrapped(number::trunc(n));
+        },
         .add = function(lhs, rhs) {
             return T::add_checked(lhs, rhs); # default to checked arithmetic
         },
