@@ -4843,18 +4843,14 @@ func (self *AstExpressionLe) Eval(ctx *Context, env *Environment) (Value, error)
 		return nil, err
 	}
 
-	lhsNumber, lhsIsNumber := lhs.(*Number)
-	if lhsIsNumber {
-		rhsNumber, rhsIsNumber := rhs.(*Number)
-		if rhsIsNumber {
+	if lhsNumber, lhsIsNumber := lhs.(*Number); lhsIsNumber {
+		if rhsNumber, rhsIsNumber := rhs.(*Number); rhsIsNumber {
 			return ctx.NewBoolean(lhsNumber.data <= rhsNumber.data), nil
 		}
 	}
 
-	lhsString, lhsIsString := lhs.(*String)
-	if lhsIsString {
-		rhsString, rhsIsString := rhs.(*String)
-		if rhsIsString {
+	if lhsString, lhsIsString := lhs.(*String); lhsIsString {
+		if rhsString, rhsIsString := rhs.(*String); rhsIsString {
 			return ctx.NewBoolean(lhsString.data <= rhsString.data), nil
 		}
 	}
@@ -4895,18 +4891,14 @@ func (self *AstExpressionGe) Eval(ctx *Context, env *Environment) (Value, error)
 		return nil, err
 	}
 
-	lhsNumber, lhsIsNumber := lhs.(*Number)
-	if lhsIsNumber {
-		rhsNumber, rhsIsNumber := rhs.(*Number)
-		if rhsIsNumber {
+	if lhsNumber, lhsIsNumber := lhs.(*Number); lhsIsNumber {
+		if rhsNumber, rhsIsNumber := rhs.(*Number); rhsIsNumber {
 			return ctx.NewBoolean(lhsNumber.data >= rhsNumber.data), nil
 		}
 	}
 
-	lhsString, lhsIsString := lhs.(*String)
-	if lhsIsString {
-		rhsString, rhsIsString := rhs.(*String)
-		if rhsIsString {
+	if lhsString, lhsIsString := lhs.(*String); lhsIsString {
+		if rhsString, rhsIsString := rhs.(*String); rhsIsString {
 			return ctx.NewBoolean(lhsString.data >= rhsString.data), nil
 		}
 	}
@@ -4947,18 +4939,14 @@ func (self *AstExpressionLt) Eval(ctx *Context, env *Environment) (Value, error)
 		return nil, err
 	}
 
-	lhsNumber, lhsIsNumber := lhs.(*Number)
-	if lhsIsNumber {
-		rhsNumber, rhsIsNumber := rhs.(*Number)
-		if rhsIsNumber {
+	if lhsNumber, lhsIsNumber := lhs.(*Number); lhsIsNumber {
+		if rhsNumber, rhsIsNumber := rhs.(*Number); rhsIsNumber {
 			return ctx.NewBoolean(lhsNumber.data < rhsNumber.data), nil
 		}
 	}
 
-	lhsString, lhsIsString := lhs.(*String)
-	if lhsIsString {
-		rhsString, rhsIsString := rhs.(*String)
-		if rhsIsString {
+	if lhsString, lhsIsString := lhs.(*String); lhsIsString {
+		if rhsString, rhsIsString := rhs.(*String); rhsIsString {
 			return ctx.NewBoolean(lhsString.data < rhsString.data), nil
 		}
 	}
@@ -4999,18 +4987,14 @@ func (self *AstExpressionGt) Eval(ctx *Context, env *Environment) (Value, error)
 		return nil, err
 	}
 
-	lhsNumber, lhsIsNumber := lhs.(*Number)
-	if lhsIsNumber {
-		rhsNumber, rhsIsNumber := rhs.(*Number)
-		if rhsIsNumber {
+	if lhsNumber, lhsIsNumber := lhs.(*Number); lhsIsNumber {
+		if rhsNumber, rhsIsNumber := rhs.(*Number); rhsIsNumber {
 			return ctx.NewBoolean(lhsNumber.data > rhsNumber.data), nil
 		}
 	}
 
-	lhsString, lhsIsString := lhs.(*String)
-	if lhsIsString {
-		rhsString, rhsIsString := rhs.(*String)
-		if rhsIsString {
+	if lhsString, lhsIsString := lhs.(*String); lhsIsString {
+		if rhsString, rhsIsString := rhs.(*String); rhsIsString {
 			return ctx.NewBoolean(lhsString.data > rhsString.data), nil
 		}
 	}
@@ -5051,10 +5035,8 @@ func (self *AstExpressionEqRe) Eval(ctx *Context, env *Environment) (Value, erro
 		return nil, err
 	}
 
-	lhsString, lhsIsString := lhs.(*String)
-	if lhsIsString {
-		rhsRegexp, rhsIsRegexp := rhs.(*Regexp)
-		if rhsIsRegexp {
+	if lhsString, lhsIsString := lhs.(*String); lhsIsString {
+		if rhsRegexp, rhsIsRegexp := rhs.(*Regexp); rhsIsRegexp {
 			result := rhsRegexp.data.FindStringSubmatchIndex(lhsString.data)
 			env.setRegexpMatch(regexpMatch{lhsString.data, result})
 			return ctx.NewBoolean(result != nil), nil
@@ -5097,10 +5079,8 @@ func (self *AstExpressionNeRe) Eval(ctx *Context, env *Environment) (Value, erro
 		return nil, err
 	}
 
-	lhsString, lhsIsString := lhs.(*String)
-	if lhsIsString {
-		rhsRegexp, rhsIsRegexp := rhs.(*Regexp)
-		if rhsIsRegexp {
+	if lhsString, lhsIsString := lhs.(*String); lhsIsString {
+		if rhsRegexp, rhsIsRegexp := rhs.(*Regexp); rhsIsRegexp {
 			result := rhsRegexp.data.FindStringSubmatchIndex(lhsString.data)
 			env.setRegexpMatch(regexpMatch{lhsString.data, result})
 			return ctx.NewBoolean(result == nil), nil
@@ -5143,26 +5123,20 @@ func (self *AstExpressionAdd) Eval(ctx *Context, env *Environment) (Value, error
 		return nil, err
 	}
 
-	lhsNumber, lhsIsNumber := lhs.(*Number)
-	if lhsIsNumber {
-		rhsNumber, rhsIsNumber := rhs.(*Number)
-		if rhsIsNumber {
+	if lhsNumber, lhsIsNumber := lhs.(*Number); lhsIsNumber {
+		if rhsNumber, rhsIsNumber := rhs.(*Number); rhsIsNumber {
 			return ctx.NewNumber(lhsNumber.data + rhsNumber.data), nil
 		}
 	}
 
-	lhsString, lhsIsString := lhs.(*String)
-	if lhsIsString {
-		rhsString, rhsIsString := rhs.(*String)
-		if rhsIsString {
+	if lhsString, lhsIsString := lhs.(*String); lhsIsString {
+		if rhsString, rhsIsString := rhs.(*String); rhsIsString {
 			return ctx.NewString(lhsString.data + rhsString.data), nil
 		}
 	}
 
-	lhsVector, lhsIsVector := lhs.(*Vector)
-	if lhsIsVector {
-		rhsVector, rhsIsVector := rhs.(*Vector)
-		if rhsIsVector {
+	if lhsVector, lhsIsVector := lhs.(*Vector); lhsIsVector {
+		if rhsVector, rhsIsVector := rhs.(*Vector); rhsIsVector {
 			elements := []Value{}
 			for _, element := range lhsVector.Elements() {
 				elements = append(elements, element.Copy())
@@ -5210,10 +5184,8 @@ func (self *AstExpressionSub) Eval(ctx *Context, env *Environment) (Value, error
 		return nil, err
 	}
 
-	lhsNumber, lhsIsNumber := lhs.(*Number)
-	if lhsIsNumber {
-		rhsNumber, rhsIsNumber := rhs.(*Number)
-		if rhsIsNumber {
+	if lhsNumber, lhsIsNumber := lhs.(*Number); lhsIsNumber {
+		if rhsNumber, rhsIsNumber := rhs.(*Number); rhsIsNumber {
 			return ctx.NewNumber(lhsNumber.data - rhsNumber.data), nil
 		}
 	}
@@ -5254,10 +5226,8 @@ func (self *AstExpressionMul) Eval(ctx *Context, env *Environment) (Value, error
 		return nil, err
 	}
 
-	lhsNumber, lhsIsNumber := lhs.(*Number)
-	if lhsIsNumber {
-		rhsNumber, rhsIsNumber := rhs.(*Number)
-		if rhsIsNumber {
+	if lhsNumber, lhsIsNumber := lhs.(*Number); lhsIsNumber {
+		if rhsNumber, rhsIsNumber := rhs.(*Number); rhsIsNumber {
 			return ctx.NewNumber(lhsNumber.data * rhsNumber.data), nil
 		}
 	}
@@ -5298,10 +5268,8 @@ func (self *AstExpressionDiv) Eval(ctx *Context, env *Environment) (Value, error
 		return nil, err
 	}
 
-	lhsNumber, lhsIsNumber := lhs.(*Number)
-	if lhsIsNumber {
-		rhsNumber, rhsIsNumber := rhs.(*Number)
-		if rhsIsNumber {
+	if lhsNumber, lhsIsNumber := lhs.(*Number); lhsIsNumber {
+		if rhsNumber, rhsIsNumber := rhs.(*Number); rhsIsNumber {
 			return ctx.NewNumber(lhsNumber.data / rhsNumber.data), nil
 		}
 	}
@@ -5342,10 +5310,8 @@ func (self *AstExpressionRem) Eval(ctx *Context, env *Environment) (Value, error
 		return nil, err
 	}
 
-	lhsNumber, lhsIsNumber := lhs.(*Number)
-	if lhsIsNumber {
-		rhsNumber, rhsIsNumber := rhs.(*Number)
-		if rhsIsNumber {
+	if lhsNumber, lhsIsNumber := lhs.(*Number); lhsIsNumber {
+		if rhsNumber, rhsIsNumber := rhs.(*Number); rhsIsNumber {
 			// The remainder will have the same sign as the dividend.
 			// This behavior is identical to C's remainder operator.
 			//   +7 % +3 => +1
