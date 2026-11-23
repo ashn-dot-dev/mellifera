@@ -99,10 +99,10 @@ let fixed_width = function(bits, signedness) {
             return T::rem_checked(lhs, rhs); # default to checked arithmetic
         },
         .shiftl = function(lhs, rhs) {
-            return T::shiftl_checked(lhs, rhs); # default to checked bit shifts
+            return T::shiftl_wrapped(lhs, rhs); # default to checked bit shifts
         },
         .shiftr = function(lhs, rhs) {
-            return T::shiftr_checked(lhs, rhs); # default to checked bit shifts
+            return T::shiftr_wrapped(lhs, rhs); # default to checked bit shifts
         },
         .bit_not = function(n) {
             let n_bits = math::mod(T::checked(n), T::MODULUS);
