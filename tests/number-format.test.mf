@@ -447,12 +447,12 @@ try { (0).format("+#08"); error "unreachable"; } catch err { println($`(0).forma
 # (+123).format("+08X") is "+000007B"
 # (-123).format("+08X") is "-000007B"
 #
-# (0).format("+#08X") is "+0X00000"
-# (0).format("+#016X") is "+0X0000000000000"
-# (+123).format("+#08X") is "+0X0007B"
-# (-123).format("+#08X") is "-0X0007B"
-# (+0xFF).format("#08X") is "0X0000FF"
-# (-0xFF).format("#08X") is "-0X000FF"
+# (0).format("+#08X") is "+0x00000"
+# (0).format("+#016X") is "+0x0000000000000"
+# (+123).format("+#08X") is "+0x0007B"
+# (-123).format("+#08X") is "-0x0007B"
+# (+0xFF).format("#08X") is "0x0000FF"
+# (-0xFF).format("#08X") is "-0x000FF"
 #
 # (0).format(".3X") produced the error "precision specifier not supported for hexadecimal integer format, received \".3X\""
 # (+3.14).format("X") produced the error "cannot convert 3.14 into an integer without truncation"

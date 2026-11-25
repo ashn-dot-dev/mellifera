@@ -8703,13 +8703,13 @@ func BuiltinNumberIsInteger(ctx *Context) Value {
 func BuiltinNumberFormat(ctx *Context) Value {
 	// $1 sign (+): Always show sign.
 	// $2 altf (#): Alternate form => 0b for binary, 0o for octal, 0x for hex
-	//              with base x, 0X for hex with base X.
+	//              with base x, and 0x for hex with base X.
 	// $3 zero (0): Pad with zeros up to the provided width.
 	// $4 wstr (width): Minimum total width of the output string.
 	// $5 prec (precision): Number of displayed digits after the decimal point.
 	// $6 base (fdbxX): Digit base => b for binary, o for octal, x for hex
-	//                  (lower), X for hex (upper), d for decimal integer, f
-	//                  for decimal float.
+	//                  (lowercase digits), X for hex (uppercase digits), d for
+	//                  decimal integer, f for decimal float.
 	formatString := `^(\+)?(#)?(0)?(\d*)(\.\d+)?([fdboxX])$`
 	formatRegexp := regexp.MustCompile(formatString)
 	// Expected format used for error messages, matching the general shape of
@@ -8775,7 +8775,9 @@ func BuiltinNumberFormat(ctx *Context) Value {
 				altf = ""
 			}
 			fmtStr := "%" + sign + altf + zero + wstr + base
-			return ctx.NewString(fmt.Sprintf(fmtStr, integer)), nil
+			formatted := fmt.Sprintf(fmtStr, integer)
+			// Replace 0XDIGITS with 0xDIGITS.
+			return ctx.NewString(strings.ReplaceAll(formatted, "X", "x")), nil
 		case "d":
 			if altf != "" {
 				return nil, NewError(nil, ctx.NewStringf("# flag not supported for decimal integer format, received %v", format))
