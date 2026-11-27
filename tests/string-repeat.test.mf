@@ -1,0 +1,31 @@
+dumpln("".repeat(0));
+dumpln("".repeat(1));
+dumpln("".repeat(2));
+
+print("\n");
+
+dumpln("x".repeat(0));
+dumpln("x".repeat(1));
+dumpln("x".repeat(2));
+
+print("\n");
+
+dumpln("na ".repeat(16) + "batman");
+
+print("\n");
+
+try { "foo".repeat(1.5); } catch err { dumpln(err); }
+try { "foo".repeat(-1); } catch err { dumpln(err); }
+################################################################################
+# ""
+# ""
+# ""
+#
+# ""
+# "x"
+# "xx"
+#
+# "na na na na na na na na na na na na na na na na batman"
+#
+# "cannot convert 1.5 into an integer without truncation"
+# "expected non-negative integer, received -1"

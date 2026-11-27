@@ -452,6 +452,7 @@ func NewContext() *Context {
 		{ctx.NewString("split"), BuiltinStringSplit(ctx)},
 		{ctx.NewString("join"), BuiltinStringJoin(ctx)},
 		{ctx.NewString("cut"), BuiltinStringCut(ctx)},
+		{ctx.NewString("repeat"), BuiltinStringRepeat(ctx)},
 		{ctx.NewString("replace"), BuiltinStringReplace(ctx)},
 		{ctx.NewString("to_title"), BuiltinStringToTitle(ctx)},
 		{ctx.NewString("to_upper"), BuiltinStringToUpper(ctx)},
@@ -9124,6 +9125,28 @@ func BuiltinStringCut(ctx *Context) Value {
 			return nil, NewError(nil, ctx.NewString(err.Error()))
 		}
 		return result, nil
+	})
+}
+
+func BuiltinStringRepeat(ctx *Context) Value {
+	return ctx.NewBuiltin("string::replace", []Type{TVal(STRING), TVal(NUMBER)}, func(ctx *Context, arguments []Value) (Value, error) {
+		self := arguments[0].(*String)
+		data := []byte(self.data)
+
+		count, err := ValueAsSafeInteger(arguments[1])
+		if err != nil {
+			return nil, NewError(nil, ctx.NewString(err.Error()))
+		}
+		if count < 0 {
+			return nil, NewError(nil, ctx.NewStringf("expected non-negative integer, received %v", arguments[1]))
+		}
+
+		var sb strings.Builder
+		for i := int64(0); i < count; i += 1 {
+			sb.Write(data)
+		}
+
+		return ctx.NewString(sb.String()), nil
 	})
 }
 
