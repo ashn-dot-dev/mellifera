@@ -407,6 +407,8 @@ type Context struct {
 	identifierCache       map[string]*String
 	constStringIntoString *String
 	constStringNext       *String
+	constStringKey        *String
+	constStringValue      *String
 	callDepth             int
 }
 
@@ -527,6 +529,8 @@ func NewContext() *Context {
 	ctx.identifierCache = map[string]*String{}
 	ctx.constStringIntoString = ctx.NewString("into_string")
 	ctx.constStringNext = ctx.NewString("next")
+	ctx.constStringKey = ctx.NewString("key")
+	ctx.constStringValue = ctx.NewString("value")
 	ctx.callDepth = 0
 
 	ctx.BaseEnvironment.Let("boolean", ctx.booleanMeta)
@@ -9795,11 +9799,16 @@ func BuiltinMapInit(ctx *Context) Value {
 					}
 					return nil, err
 				}
-				iteratedVector, ok := iterated.(*Vector)
-				if !ok || iteratedVector.Count() != 2 {
-					return nil, NewError(nil, ctx.NewStringf("iterator next must return a two element vector, received %s", iterated))
+				iteratedMap, ok := iterated.(*Map)
+				if !ok || iteratedMap.Count() != 2 {
+					return nil, NewError(nil, ctx.NewStringf("iterator next must return a two element map, received %s", iterated))
 				}
-				err = result.Insert(iteratedVector.Get(0).Copy(), iteratedVector.Get(1).Copy())
+				iteratedKey, iteratedHasKey := iteratedMap.Lookup(ctx.constStringKey)
+				iteratedValue, iteratedHasValue := iteratedMap.Lookup(ctx.constStringValue)
+				if !iteratedHasKey || !iteratedHasValue {
+					return nil, NewError(nil, ctx.NewStringf("expected iterator value to be a two element map with keys %s and %s, received %s", ctx.constStringKey, ctx.constStringValue, iterated))
+				}
+				err = result.Insert(iteratedKey.Copy(), iteratedValue.Copy())
 				if err != nil {
 					return nil, NewError(nil, ctx.NewString(err.Error()))
 				}
@@ -9810,11 +9819,16 @@ func BuiltinMapInit(ctx *Context) Value {
 		if valueVector, ok := value.(*Vector); ok {
 			result := ctx.NewMapOrPanic(nil)
 			for _, element := range valueVector.Elements() {
-				elementVector, ok := element.(*Vector)
-				if !ok || elementVector.Count() != 2 {
-					return nil, NewError(nil, ctx.NewStringf("expected vector element to be a two element vector, received %s", element))
+				elementMap, ok := element.(*Map)
+				if !ok || elementMap.Count() != 2 {
+					return nil, NewError(nil, ctx.NewStringf("expected vector element to be a two element map, received %s", element))
 				}
-				err := result.Insert(elementVector.Get(0).Copy(), elementVector.Get(1).Copy())
+				elementKey, elementHasKey := elementMap.Lookup(ctx.constStringKey)
+				elementValue, elementHasValue := elementMap.Lookup(ctx.constStringValue)
+				if !elementHasKey || !elementHasValue {
+					return nil, NewError(nil, ctx.NewStringf("expected vector element to be a two element map with keys %s and %s, received %s", ctx.constStringKey, ctx.constStringValue, element))
+				}
+				err := result.Insert(elementKey.Copy(), elementValue.Copy())
 				if err != nil {
 					return nil, NewError(nil, ctx.NewString(err.Error()))
 				}
@@ -9836,11 +9850,16 @@ func BuiltinMapInit(ctx *Context) Value {
 		if valueSet, ok := value.(*Set); ok {
 			result := ctx.NewMapOrPanic(nil)
 			for _, element := range valueSet.Elements() {
-				elementVector, ok := element.(*Vector)
-				if !ok || elementVector.Count() != 2 {
-					return nil, NewError(nil, ctx.NewStringf("expected set element to be a two element vector, received %s", element))
+				elementMap, ok := element.(*Map)
+				if !ok || elementMap.Count() != 2 {
+					return nil, NewError(nil, ctx.NewStringf("expected set element to be a two element map, received %s", element))
 				}
-				err := result.Insert(elementVector.Get(0).Copy(), elementVector.Get(1).Copy())
+				elementKey, elementHasKey := elementMap.Lookup(ctx.constStringKey)
+				elementValue, elementHasValue := elementMap.Lookup(ctx.constStringValue)
+				if !elementHasKey || !elementHasValue {
+					return nil, NewError(nil, ctx.NewStringf("expected set element to be a two element map with keys %s and %s, received %s", ctx.constStringKey, ctx.constStringValue, element))
+				}
+				err := result.Insert(elementKey.Copy(), elementValue.Copy())
 				if err != nil {
 					return nil, NewError(nil, ctx.NewString(err.Error()))
 				}
