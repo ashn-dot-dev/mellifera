@@ -1,5 +1,5 @@
 let fixed_width = function(bits, signedness) {
-    assert(bits == 8 or bits == 16 or bits == 32);
+    assert(bits == 8 or bits == 16 or bits == 24 or bits == 32);
     assert(signedness == "unsigned" or signedness == "signed");
 
     let minimum = null;
@@ -260,6 +260,649 @@ let s8 = fixed_width(8, "signed");
 let s16 = fixed_width(16, "signed");
 let s32 = fixed_width(32, "signed");
 
+# Structure of a Big Integer
+#
+# sign:
+# -1 if the integer <  0
+#  0 if the integer == 0
+# +1 if the integer >  0
+#
+# limbs:
+# Vector of u24 numbers representing the magnitude of the integer. A limb size
+# of 24 is used so that the product of two limbs is will always safely fit in a
+# number result without rounding while being exactly three octets in size.
+let u24 = fixed_width(24, "unsigned");
+let normalized = function(integer) {
+    assert(ty::is(integer, big));
+    while integer.limbs.count() != 0 and integer.limbs[integer.limbs.count() - 1] == 0 {
+        integer.limbs.pop();
+    }
+    if integer.limbs.count() == 0 {
+        integer.sign = 0;
+    }
+    return integer;
+};
+let big = type {
+    .init = function(value) {
+        if ty::is(value, big) {
+            return value;
+        }
+
+        if ty::is_number(value) {
+            if not number::is_integer(value) {
+                error $"value {value} is not an integer";
+            }
+
+            let sign = 0;
+            if value > 0 {
+                sign = +1;
+            }
+            elif value < 0 {
+                sign = -1;
+            }
+
+            let n = math::abs(value);
+            let limbs = [];
+            while n != 0 {
+                limbs.push(n % u24::MODULUS);
+                n = number::floor(n / u24::MODULUS);
+            }
+
+            return new big {
+                .sign = sign,
+                .limbs = limbs,
+            };
+        }
+
+        if ty::is_boolean(value) {
+            return big::init(number::init(value));
+        }
+
+        if ty::is_string(value) {
+            let result = big::init(0);
+
+            # binary string
+            if value =~ r`^([+-])?0b([01]+)$` {
+                for digit in $2.bytes() {
+                    result = big::mul(result, 2);
+                    result = big::add(result, number::init("0b" + digit));
+                }
+                if $1 == "-" {
+                    result = big::neg(result);
+                }
+                return result;
+            }
+            # octal string
+            elif value =~ r`^([+-])?0o([0-7]+)$` {
+                for digit in $2.bytes() {
+                    result = big::mul(result, 8);
+                    result = big::add(result, number::init("0o" + digit));
+                }
+                if $1 == "-" {
+                    result = big::neg(result);
+                }
+                return result;
+            }
+            # hexadecimal string
+            elif value =~ r`^([+-])?0x([0-9a-fA-F]+)$` {
+                for digit in $2.bytes() {
+                    result = big::mul(result, 16);
+                    result = big::add(result, number::init("0x" + digit));
+                }
+                if $1 == "-" {
+                    result = big::neg(result);
+                }
+                return result;
+            }
+            # decimal string
+            elif value =~ r`^([+-])?(\d+)$` {
+                for digit in $2.bytes() {
+                    result = big::mul(result, 10);
+                    result = big::add(result, number::init(digit));
+                }
+                if $1 == "-" {
+                    result = big::neg(result);
+                }
+                return result;
+            }
+
+            error $"cannot convert string {repr(value)} to a big integer (invalid string format)";
+        }
+
+        error $"cannot convert value {repr(value)} to a big integer";
+    },
+    .into_number = function(self) {
+        return number::init(big::init(self).into_string());
+    },
+    .into_string = function(self) {
+        return big::format(self, "d");
+    },
+    .format = function(self, format) {
+        self = big::init(self);
+
+        # $1 sign (+): Always show sign.
+        # $2 altf (#): Alternate form => 0b for binary, 0o for octal, 0x for
+        #              hex with base x, and 0x for hex with base X.
+        # $3 zero (0): Pad with zeros up to the provided width.
+        # $4 wstr (width): Minimum total width of the output string.
+        # $5 base (dbxX): Digit base => b for binary, o for octal, x for hex
+        #                 (lowercase digits), X for hex (uppercase digits), or
+        #                 d for decimal integer.
+        if format !~ r`^(\+)?(#)?(0)?(\d*)([dboxX])$` {
+            error $`expected format string matching \+?#?0?\d*[dboxX], received {repr(format)}`;
+        }
+        let sign = $1;
+        let altf = $2;
+        let zero = $3;
+        let wstr = $4;
+        let base = $5;
+
+        # The + or - sign at the beginning of the string.
+        let posneg = "";
+        if self.sign == -1 {
+            posneg = "-";
+        }
+        elif sign != null {
+            posneg = "+";
+        }
+
+        # Padding character up to the requested padding width.
+        let pad = " ";
+        if zero != null {
+            pad = "0";
+        }
+
+        # Requested padding width.
+        let width = 0;
+        if wstr != null and wstr != "" {
+            width = number::init(wstr);
+        }
+
+        # Base prefix after the + or - sign and before the integer digits.
+        let prefix = "";
+        if altf != null {
+            if base == "d" {
+                error $`# flag not supported for decimal integer format, received {repr(format)}`;
+            }
+            prefix = {
+                "b": "0b",
+                "o": "0o",
+                "x": "0x",
+                "X": "0x",
+            }[base];
+        }
+
+        # Calculate the individual digits of the string in the requested base.
+        let digits_table_lower = [
+            "0", "1", "2", "3", "4", "5", "6", "7",
+            "8", "9", "a", "b", "c", "d", "e", "f",
+        ];
+        let digits_table_upper = [
+            "0", "1", "2", "3", "4", "5", "6", "7",
+            "8", "9", "A", "B", "C", "D", "E", "F",
+        ];
+        let digits_table = {
+            "b": digits_table_lower,
+            "o": digits_table_lower,
+            "x": digits_table_lower,
+            "X": digits_table_upper,
+            "d": digits_table_lower,
+        }[base];
+        let radix = {
+            "b": 2,
+            "o": 8,
+            "x": 16,
+            "X": 16,
+            "d": 10,
+        }[base];
+        let magnitude = big::abs(self);
+        let digits = [];
+        if magnitude.sign == 0 {
+            # Write a single zero digit.
+            digits.insert(0, "0");
+        }
+        while magnitude.sign != 0 {
+            let divrem = big::divrem(magnitude, radix);
+            let digit = "0";
+            if divrem.rem.sign != 0 {
+                assert(divrem.rem.sign == +1);
+                digit = digits_table[divrem.rem.limbs[0]];
+            }
+            digits.insert(0, digit);
+            magnitude = divrem.div;
+        }
+
+        # Assemble the formatted string.
+        let head = posneg + prefix;
+        let rear = string::join("", digits);
+        let result = head + rear;
+        if result.count() < width {
+            let padding = string::join("", vector::init(width - result.count()).map(function(_) {
+                return pad;
+            }));
+            if zero != null {
+                result = head + padding + rear;
+            }
+            else {
+                result = padding + head + rear;
+            }
+            assert(result.count() == width);
+        }
+        return result;
+    },
+    .compare = function(lhs, rhs) {
+        lhs = big::init(lhs);
+        rhs = big::init(rhs);
+
+        if lhs.sign > rhs.sign {
+            return +1;
+        }
+        if lhs.sign < rhs.sign {
+            return -1;
+        }
+
+        assert(lhs.sign == rhs.sign);
+        let sign = lhs.sign;
+        if lhs.limbs.count() > rhs.limbs.count() {
+            return sign;
+        }
+        if lhs.limbs.count() < rhs.limbs.count() {
+            return -sign;
+        }
+
+        assert(lhs.limbs.count() == rhs.limbs.count());
+        let count = lhs.limbs.count();
+        for i in count {
+            let limb_idx = count - i - 1;
+            let lhs_limb = lhs.limbs[limb_idx];
+            let rhs_limb = rhs.limbs[limb_idx];
+            if lhs_limb > rhs_limb {
+                return sign;
+            }
+            if lhs_limb < rhs_limb {
+                return -sign;
+            }
+        }
+
+        return 0;
+    },
+    .neg = function(self) {
+        self = big::init(self);
+        if self.sign == +1 {
+            self.sign = -1;
+            return self;
+        }
+        if self.sign == -1 {
+            self.sign = +1;
+            return self;
+        }
+        return self;
+    },
+    .abs = function(self) {
+        self = big::init(self);
+        self.sign = self.sign * self.sign;
+        return self;
+    },
+    .add = function(lhs, rhs) {
+        lhs = big::init(lhs);
+        rhs = big::init(rhs);
+
+        # 0 + rhs == rhs
+        if lhs.sign == 0 {
+            return rhs;
+        }
+        # lhs + 0 == lhs
+        if rhs.sign == 0 {
+            return lhs;
+        }
+        # (+lhs) + (-rhs) == (+lhs) - (+rhs)
+        if lhs.sign == +1 and rhs.sign == -1 {
+            return big::sub(lhs, big::neg(rhs));
+        }
+        # (-lhs) + (+rhs) == (+rhs) - (+lhs)
+        if lhs.sign == -1 and rhs.sign == +1 {
+            return big::sub(rhs, big::neg(lhs));
+        }
+
+        # (+lhs) + (+rhs) == +(lhs + rhs)
+        # (-lhs) + (-rhs) == -(lhs + rhs)
+        assert(lhs.sign == rhs.sign);
+        let sign = lhs.sign;
+        let limbs = vector::init(1 + max(lhs.limbs.count(), rhs.limbs.count()));
+        let carry = 0;
+        for i in limbs.count() {
+            let lhs_limb = 0;
+            if i < lhs.limbs.count() {
+                lhs_limb = lhs.limbs[i];
+            }
+            let rhs_limb = 0;
+            if i < rhs.limbs.count() {
+                rhs_limb = rhs.limbs[i];
+            }
+            let total = lhs_limb + rhs_limb + carry;
+            limbs[i] = u24::cast(total);
+            carry = number::init(total > u24::MAX);
+        }
+        assert(carry == 0);
+
+        return normalized(new big {
+            .sign = sign,
+            .limbs = limbs,
+        });
+    },
+    .sub = function(lhs, rhs) {
+        lhs = big::init(lhs);
+        rhs = big::init(rhs);
+
+        # 0 - rhs == -(rhs)
+        if lhs.sign == 0 {
+            return big::neg(rhs);
+        }
+        # lhs - 0 == lhs
+        if rhs.sign == 0 {
+            return lhs;
+        }
+        # (+lhs) - (-rhs) == (+lhs) + (+rhs)
+        if lhs.sign == +1 and rhs.sign == -1 {
+            return big::add(lhs, big::neg(rhs));
+        }
+        # (-lhs) - (+rhs) == (-lhs) + (-rhs)
+        if lhs.sign == -1 and rhs.sign == +1 {
+            return big::add(lhs, big::neg(rhs));
+        }
+
+        # (+lhs) - (+rhs) == +(lhs - rhs)
+        # (-lhs) - (-rhs) == -(lhs - rhs)
+        assert(lhs.sign == rhs.sign);
+        let sign = lhs.sign;
+        # Note that the expression (lhs - rhs) will require flipping the sign
+        # of the result if the magnitude of lhs is greater than the magnitude
+        # of rhs:
+        # (+5) - (+3) == +2
+        # (+3) - (+5) == -2
+        # (-5) - (-3) == -2
+        # (-3) - (-5) == +2
+        let cmp = big::compare(lhs, rhs);
+        let neg = ((sign == +1) and (cmp < 0)) or ((sign == -1) and (cmp > 0));
+        if neg {
+            let tmp = lhs;
+            lhs = rhs;
+            rhs = tmp;
+        }
+        let limbs = vector::init(max(lhs.limbs.count(), rhs.limbs.count()));
+        let borrow = 0;
+        for i in limbs.count() {
+            let lhs_limb = 0;
+            if i < lhs.limbs.count() {
+                lhs_limb = lhs.limbs[i];
+            }
+            let rhs_limb = 0;
+            if i < rhs.limbs.count() {
+                rhs_limb = rhs.limbs[i];
+            }
+            let total = lhs_limb - rhs_limb - borrow;
+            limbs[i] = u24::cast(total);
+            borrow = number::init(total < 0);
+        }
+        assert(borrow == 0);
+
+        let self = normalized(new big {
+            .sign = sign,
+            .limbs = limbs,
+        });
+        if neg {
+            self.sign = self.sign * -1;
+        }
+        return self;
+    },
+    .mul = function(lhs, rhs) {
+        lhs = big::init(lhs);
+        rhs = big::init(rhs);
+
+        # 0 * rhs == 0
+        # lhs * 0 == 0
+        if lhs.sign == 0 or rhs.sign == 0 {
+            return new big {
+                .sign = 0,
+                .limbs = [],
+            };
+        }
+
+        # Algorithm M (Multiplication of nonnegative integers)
+        #
+        # The Art of Computer Programming, Volume 2: Seminumerical Algorithms
+        # (Third Edition) page 268.
+        let u = lhs.limbs;
+        let v = rhs.limbs;
+        let m = u.count();
+        let n = v.count();
+        let b = u24::MODULUS;
+        let w = vector::init(m + n).map(function(_) { return 0; });
+        for j in n {
+            if v[j] == 0 {
+                w[j + m] = 0;
+                continue;
+            }
+            let k = 0;
+            for i in m {
+                let u_limb = 0;
+                if i < u.count() {
+                    u_limb = u[i];
+                }
+                let v_limb = 0;
+                if j < v.count() {
+                    v_limb = v[j];
+                }
+                let t = u_limb * v_limb + w[i + j] + k;
+                w[i + j] = t % b;
+                k = number::floor(t / b);
+                assert(k < b);
+            }
+            w[j + m] = k;
+        }
+
+        return normalized(new big {
+            .sign = lhs.sign * rhs.sign,
+            .limbs = w,
+        });
+    },
+    .div = function(lhs, rhs) {
+        return big::divrem(lhs, rhs).div;
+    },
+    .rem = function(lhs, rhs) {
+        return big::divrem(lhs, rhs).rem;
+    },
+    .divrem = function(lhs, rhs) {
+        lhs = big::init(lhs);
+        rhs = big::init(rhs);
+
+        # lhs / 0 == undefined
+        if rhs.sign == 0 {
+            error "attempted divrem operation with denominator zero";
+        }
+
+        # Div takes sign equal to the left hand sign multiplied by the
+        # right hand sign. Rem takes sign equal to the left hand sign.
+        #
+        # +7 / +3 == +2 and +7 % +3 == +1
+        # +7 / -3 == -2 and +7 % -3 == +1
+        # -7 / +3 == -2 and -7 % +3 == -1
+        # -7 / -3 == +2 and -7 % -3 == -1
+        let div_sign = lhs.sign * rhs.sign;
+        let rem_sign = lhs.sign;
+
+        # abs(lhs) < abs(rhs) => abs(div) == 0
+        #                        abs(rem) == abs(lhs)
+        if big::compare(big::abs(lhs), big::abs(rhs)) < 0 {
+            return {
+                .div = normalized(new big {
+                    .sign = div_sign,
+                    .limbs = [],
+                }),
+                .rem = normalized(new big {
+                    .sign = rem_sign,
+                    .limbs = lhs.limbs,
+                }),
+            };
+        }
+
+        # The right hand side has a single limb (digit) => short division.
+        if rhs.limbs.count() == 1 {
+            let lhs_count = lhs.limbs.count();
+            let div_limbs = vector::init(lhs_count);
+            let short_div = 0;
+            let short_rem = 0;
+            for i in lhs_count {
+                # 123 / 3
+                # ^^^
+                # ||\_ digit place 0 (third iteration)
+                # |\__ digit place 1 (second iteration)
+                # \___ digit place 2 (first iteration)
+                let place = (lhs_count - 1) - i;
+                # 123 / 3
+                # vvvvvvv
+                # 1   / 3 => 0 with remainder 1
+                # 12  / 3 => 4 with remainder 0
+                #  03 / 3 => 1 with remainder 0
+                # vvvvvvv
+                #  41 with remainder 0
+                let value = short_rem * u24::MODULUS + lhs.limbs[place];
+                short_div = (value / rhs.limbs[0]).floor();
+                short_rem = (value % rhs.limbs[0]);
+                div_limbs[place] = short_div;
+            }
+            return {
+                .div = normalized(new big {
+                    .sign = div_sign,
+                    .limbs = div_limbs,
+                }),
+                .rem = normalized(new big {
+                    .sign = rem_sign,
+                    .limbs = [short_rem],
+                }),
+            };
+        }
+
+        # Algorithm D (Division of nonnegative integers)
+        #
+        # The Art of Computer Programming, Volume 2: Seminumerical Algorithms
+        # (Third Edition) page 272.
+        let u = lhs.limbs;
+        let v = rhs.limbs;
+        let m = u.count() - v.count();
+        let n = v.count();
+        let b = u24::MODULUS;
+        # Power of two d such that v_(n-1) >= floor(b/2), initially 2 ** 0.
+        let d = 1;
+        while not (v[n - 1] * d >= b / 2) {
+            d = d * 2;
+        }
+        # Set (u_(m+n) u_(m+n-1) ... u_1 u_0)_b equal to (u_(m+n-1) ... u_1
+        # u_0)_b times d.
+        let scaled = big::mul(big::abs(lhs), d).limbs;
+        u = vector::init(m + n + 1);
+        for i in u.count() {
+            if i < scaled.count() {
+                u[i] = scaled[i];
+                continue;
+            }
+            u[i] = 0;
+        }
+        # Set (v_(n-1) ... v_1 v_0)_b equal to (v_(n-1) ... v_1 v_0)_b times d.
+        let scaled = big::mul(big::abs(rhs), d).limbs;
+        v = vector::init(n);
+        for i in v.count() {
+            if i < scaled.count() {
+                v[i] = scaled[i];
+                continue;
+            }
+            v[i] = 0;
+        }
+
+        let q = vector::init(m + 1).map(function(_) { return 0; });
+        let j = m;
+        while j >= 0 {
+            # Set q_hat equal to floor((u_(j+n)b+u_(j+n-1)) / v_(n - 1)) and
+            # let r_hat be the remainder, (u_(j+n)b+u_(j+n-1)) mod v_(n-1).
+            let x = u[j + n] * b + u[j + n - 1];
+            let q_hat = math::floor(x / v[n - 1]);
+            let r_hat = x % v[n - 1];
+
+            # Test if q_hat >= b or q_hat*v_(n-2) > b*r_hat+u_(j+n-2)...
+            while q_hat >= b or q_hat * v[n - 2] > b * r_hat + u[j + n - 2] {
+                # ...if so, decrease q_hat by 1, increase r_hat by v_(n-1), and
+                # repeat this test if r_hat < b.
+                q_hat = q_hat - 1;
+                r_hat = r_hat + v[n - 1];
+                if r_hat >= b {
+                    break;
+                }
+            }
+
+            # Replace (u_(j+n) u_(j+n-1) ... u_j)_b by (u_(j+n) u_(j+n-1) ...
+            # u_j)_b - q_hat(0v_(n-1) ... v_1 v_0)_b.
+            #
+            # The digits (u_(j+n),u_(j+n-1),...,u_j) should be kept positive;
+            # if the result of this step is actually negative, (u_(j+n)
+            # u_(j+n-1) ... u_j)_b should be left as the true value plus
+            # b^(n+1), namely as the b's complement of the true value, and the
+            # "borrow" to the left should be remembered.
+            let carry = 0;
+            let borrow = 0;
+            for i in n {
+                let x = q_hat * v[i] + carry;
+                let y = x % b;
+                carry = (x - y) / b;
+                let z = u[i + j] - y - borrow;
+                u[i + j] = u24::cast(z);
+                borrow = number::init(z < 0);
+            }
+            let z = u[j + n] - carry - borrow;
+            u[j + n] = u24::cast(z);
+
+            # Set q_j equal to q_hat. If the result from the previous step was
+            # negative, go to the add back step...
+            q[j] = q_hat;
+            if z < 0 {
+                # Decrease q_j by 1, and add (0v_(n-1) ... v_1 v_0)_b to
+                # (u_(j+n) u_(j+n-1) ... u_(j+1) u_j)_b. A carry will occur to
+                # the left of u_(j+n), and it should be ignored since it
+                # cancels with the borrow that occurred previously.
+                q[j] = q[j] - 1;
+                let carry = 0;
+                for i in n {
+                    let x = u[i + j] + v[i] + carry;
+                    u[i + j] = x % b;
+                    carry = number::init(x >= b);
+                }
+                u[j + n] = (u[j + n] + carry) % b;
+            }
+
+            # ... otherwise decrease j by one and loop on j.
+            j = j - 1;
+        }
+
+        # Now (q_m ... q_1 q_0)_b is the desired quotient, and the desired
+        # remainder may be obtained by dividing (u_(n-1) ... u_1 u_0)_b by d.
+        let r = big::div(normalized(new big {
+            .sign = +1,
+            .limbs = u.slice(0, n),
+        }), d).limbs;
+
+        return {
+            .div = normalized(new big {
+                .sign = div_sign,
+                .limbs = q,
+            }),
+            .rem = normalized(new big {
+                .sign = rem_sign,
+                .limbs = r,
+            }),
+        };
+    },
+};
+
+
 return {
     .u8 = u8,
     .u16 = u16,
@@ -267,4 +910,5 @@ return {
     .s8 = s8,
     .s16 = s16,
     .s32 = s32,
+    .big = big,
 };

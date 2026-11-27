@@ -1,0 +1,101 @@
+let int = import("int");
+
+dumpln(int::big::init(+0));
+dumpln(int::big::init(-0));
+dumpln(int::big::init(+1));
+dumpln(int::big::init(-1));
+dumpln(int::big::init(+123));
+dumpln(int::big::init(-123));
+dumpln(int::big::init(+0x0FFFFFF));
+dumpln(int::big::init(+0x1000000));
+dumpln(int::big::init(-0x1000000));
+dumpln(int::big::init(number::MAX_SAFE_INTEGER));
+dumpln(int::big::init(number::MIN_SAFE_INTEGER));
+
+print("\n");
+
+dumpln(int::big::init(true));
+dumpln(int::big::init(false));
+
+print("\n");
+
+dumpln(int::big::init("0"));
+dumpln(int::big::init("+0"));
+dumpln(int::big::init("-0"));
+dumpln(int::big::init("+123"));
+dumpln(int::big::init("-123"));
+dumpln(int::big::init("+0b1111011"));
+dumpln(int::big::init("-0b1111011"));
+dumpln(int::big::init("+0o173"));
+dumpln(int::big::init("-0o173"));
+dumpln(int::big::init("+0x7b"));
+dumpln(int::big::init("-0x7B"));
+dumpln(int::big::init("+123123123123123123123123123123"));
+dumpln(int::big::init("-123123123123123123123123123123"));
+dumpln(int::big::init("+0xFFFFFFFFFFFFFFFFFFFFFFFF"));
+dumpln(int::big::init("-0xFFFFFFFFFFFFFFFFFFFFFFFF"));
+
+print("\n");
+
+dumpln(int::big::init(int::big::init(+123)));
+dumpln(int::big::init(int::big::init(-123)));
+
+print("\n");
+
+try { int::big::init(+1.5); } catch err { dumpln(err); }
+try { int::big::init(+Inf); } catch err { dumpln(err); }
+try { int::big::init(-Inf); } catch err { dumpln(err); }
+try { int::big::init(NaN); } catch err { dumpln(err); }
+try { int::big::init(null); } catch err { dumpln(err); }
+try { int::big::init(""); } catch err { dumpln(err); }
+try { int::big::init("+"); } catch err { dumpln(err); }
+try { int::big::init(" 123"); } catch err { dumpln(err); }
+try { int::big::init("12a"); } catch err { dumpln(err); }
+try { int::big::init("0b102"); } catch err { dumpln(err); }
+try { int::big::init("0X7B"); } catch err { dumpln(err); }
+################################################################################
+# {"sign": 0, "limbs": []}
+# {"sign": 0, "limbs": []}
+# {"sign": 1, "limbs": [1]}
+# {"sign": -1, "limbs": [1]}
+# {"sign": 1, "limbs": [123]}
+# {"sign": -1, "limbs": [123]}
+# {"sign": 1, "limbs": [16777215]}
+# {"sign": 1, "limbs": [0, 1]}
+# {"sign": -1, "limbs": [0, 1]}
+# {"sign": 1, "limbs": [16777215, 16777215, 31]}
+# {"sign": -1, "limbs": [16777215, 16777215, 31]}
+#
+# {"sign": 1, "limbs": [1]}
+# {"sign": 0, "limbs": []}
+#
+# {"sign": 0, "limbs": []}
+# {"sign": 0, "limbs": []}
+# {"sign": 0, "limbs": []}
+# {"sign": 1, "limbs": [123]}
+# {"sign": -1, "limbs": [123]}
+# {"sign": 1, "limbs": [123]}
+# {"sign": -1, "limbs": [123]}
+# {"sign": 1, "limbs": [123]}
+# {"sign": -1, "limbs": [123]}
+# {"sign": 1, "limbs": [123]}
+# {"sign": -1, "limbs": [123]}
+# {"sign": 1, "limbs": [5239731, 12953400, 7776797, 9295119, 1]}
+# {"sign": -1, "limbs": [5239731, 12953400, 7776797, 9295119, 1]}
+# {"sign": 1, "limbs": [16777215, 16777215, 16777215, 16777215]}
+# {"sign": -1, "limbs": [16777215, 16777215, 16777215, 16777215]}
+#
+# {"sign": 1, "limbs": [123]}
+# {"sign": -1, "limbs": [123]}
+#
+# "value 1.5 is not an integer"
+# "value Inf is not an integer"
+# "value -Inf is not an integer"
+# "value NaN is not an integer"
+# "cannot convert value null to a big integer"
+# "cannot convert string \"\" to a big integer (invalid string format)"
+# "cannot convert string \"+\" to a big integer (invalid string format)"
+# "cannot convert string \" 123\" to a big integer (invalid string format)"
+# "cannot convert string \"12a\" to a big integer (invalid string format)"
+# "cannot convert string \"0b102\" to a big integer (invalid string format)"
+# "cannot convert string \"0X7B\" to a big integer (invalid string format)"

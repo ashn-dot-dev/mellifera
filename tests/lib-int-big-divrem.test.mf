@@ -1,0 +1,83 @@
+let int = import("int");
+
+let divrem_into_string = function(divrem) {
+    return string::init({
+        .div = divrem.div.into_string(),
+        .rem = divrem.rem.into_string(),
+    });
+};
+
+println(divrem_into_string(int::big::divrem(0, +1)));
+println(divrem_into_string(int::big::divrem(0, -1)));
+println(divrem_into_string(int::big::divrem(+1, +1)));
+println(divrem_into_string(int::big::divrem(-1, -1)));
+println(divrem_into_string(int::big::divrem(+1, -1)));
+println(divrem_into_string(int::big::divrem("+123123123123123123123123123123", +1)));
+println(divrem_into_string(int::big::divrem("+123123123123123123123123123123", -1)));
+
+print("\n");
+
+println(divrem_into_string(int::big::divrem(+456, +123)));
+println(divrem_into_string(int::big::divrem(+456, -123)));
+println(divrem_into_string(int::big::divrem(-456, +123)));
+println(divrem_into_string(int::big::divrem(-456, -123)));
+println(divrem_into_string(int::big::divrem(+123, +456)));
+
+print("\n");
+
+println(divrem_into_string(int::big::divrem("+123123123123123123123123123123", "+456456456456456456456")));
+println(divrem_into_string(int::big::divrem("+123123123123123123123123123123", "-456456456456456456456")));
+println(divrem_into_string(int::big::divrem("-123123123123123123123123123123", "+456456456456456456456")));
+println(divrem_into_string(int::big::divrem("-123123123123123123123123123123", "-456456456456456456456")));
+println(divrem_into_string(int::big::divrem("+123123123123123123123123123123", +456)));
+println(divrem_into_string(int::big::divrem("-456456456456456456456", "+123123123123123123123123123123")));
+
+print("\n");
+
+# The big::divrem() operation is implemented using Knuth's Algorithm D from The
+# Art of Computer Programming, Volume 2. The algorithm contains a special add
+# back case that is infrequently executed. These cases force the add back step,
+# verified by sticking an `error "HERE";` in the add back branch, and are
+# included to make sure that branch is behaving as expected.
+println(divrem_into_string(int::big::divrem("+0x1000000000000000000", "+0x800000000000000001")));
+println(divrem_into_string(int::big::divrem("+0x1000000000000000000", "-0x800000000000000001")));
+println(divrem_into_string(int::big::divrem("-0x1000000000000000000", "+0x800000000000000001")));
+println(divrem_into_string(int::big::divrem("-0x1000000000000000000", "-0x800000000000000001")));
+println(divrem_into_string(int::big::divrem("+0x800000000000000000", "+0x400000000000000001")));
+
+print("\n");
+
+try { int::big::divrem(+1, 0); } catch err { dumpln(err); }
+try { int::big::divrem(-1, 0); } catch err { dumpln(err); }
+try { int::big::divrem("+123123123123123123123123123123", 0); } catch err { dumpln(err); }
+################################################################################
+# {"div": "0", "rem": "0"}
+# {"div": "0", "rem": "0"}
+# {"div": "1", "rem": "0"}
+# {"div": "1", "rem": "0"}
+# {"div": "-1", "rem": "0"}
+# {"div": "123123123123123123123123123123", "rem": "0"}
+# {"div": "-123123123123123123123123123123", "rem": "0"}
+#
+# {"div": "3", "rem": "87"}
+# {"div": "-3", "rem": "87"}
+# {"div": "-3", "rem": "-87"}
+# {"div": "3", "rem": "-87"}
+# {"div": "0", "rem": "123"}
+#
+# {"div": "269736842", "rem": "48048048048171171171"}
+# {"div": "-269736842", "rem": "48048048048171171171"}
+# {"div": "-269736842", "rem": "-48048048048171171171"}
+# {"div": "269736842", "rem": "-48048048048171171171"}
+# {"div": "270006848954217375270006848", "rem": "435"}
+# {"div": "0", "rem": "-456456456456456456456"}
+#
+# {"div": "1", "rem": "2361183241434822606847"}
+# {"div": "-1", "rem": "2361183241434822606847"}
+# {"div": "-1", "rem": "-2361183241434822606847"}
+# {"div": "1", "rem": "-2361183241434822606847"}
+# {"div": "1", "rem": "1180591620717411303423"}
+#
+# "attempted divrem operation with denominator zero"
+# "attempted divrem operation with denominator zero"
+# "attempted divrem operation with denominator zero"

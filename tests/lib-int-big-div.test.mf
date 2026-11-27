@@ -1,0 +1,72 @@
+let int = import("int");
+
+println(int::big::div(0, +1));
+println(int::big::div(0, -1));
+println(int::big::div(+1, +1));
+println(int::big::div(-1, -1));
+println(int::big::div(+1, -1));
+println(int::big::div("+123123123123123123123123123123", +1));
+println(int::big::div("+123123123123123123123123123123", -1));
+
+print("\n");
+
+println(int::big::div(+456, +123));
+println(int::big::div(+456, -123));
+println(int::big::div(-456, +123));
+println(int::big::div(-456, -123));
+println(int::big::div(+123, +456));
+
+print("\n");
+
+println(int::big::div("+123123123123123123123123123123", "+456456456456456456456"));
+println(int::big::div("+123123123123123123123123123123", "-456456456456456456456"));
+println(int::big::div("-123123123123123123123123123123", "+456456456456456456456"));
+println(int::big::div("-123123123123123123123123123123", "-456456456456456456456"));
+println(int::big::div("+123123123123123123123123123123", +456));
+println(int::big::div("-456456456456456456456", "+123123123123123123123123123123"));
+
+print("\n");
+
+# Knuth's Algorithm D add back check.
+println(int::big::div("+0x1000000000000000000", "+0x800000000000000001"));
+println(int::big::div("+0x1000000000000000000", "-0x800000000000000001"));
+println(int::big::div("-0x1000000000000000000", "+0x800000000000000001"));
+println(int::big::div("-0x1000000000000000000", "-0x800000000000000001"));
+println(int::big::div("+0x800000000000000000", "+0x400000000000000001"));
+
+print("\n");
+
+try { int::big::div(+1, 0); } catch err { dumpln(err); }
+try { int::big::div(-1, 0); } catch err { dumpln(err); }
+try { int::big::div("+123123123123123123123123123123", 0); } catch err { dumpln(err); }
+################################################################################
+# 0
+# 0
+# 1
+# 1
+# -1
+# 123123123123123123123123123123
+# -123123123123123123123123123123
+#
+# 3
+# -3
+# -3
+# 3
+# 0
+#
+# 269736842
+# -269736842
+# -269736842
+# 269736842
+# 270006848954217375270006848
+# 0
+#
+# 1
+# -1
+# -1
+# 1
+# 1
+#
+# "attempted divrem operation with denominator zero"
+# "attempted divrem operation with denominator zero"
+# "attempted divrem operation with denominator zero"

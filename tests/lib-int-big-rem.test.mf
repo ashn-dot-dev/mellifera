@@ -1,0 +1,72 @@
+let int = import("int");
+
+println(int::big::rem(0, +1));
+println(int::big::rem(0, -1));
+println(int::big::rem(+1, +1));
+println(int::big::rem(-1, -1));
+println(int::big::rem(+1, -1));
+println(int::big::rem("+123123123123123123123123123123", +1));
+println(int::big::rem("+123123123123123123123123123123", -1));
+
+print("\n");
+
+println(int::big::rem(+456, +123));
+println(int::big::rem(+456, -123));
+println(int::big::rem(-456, +123));
+println(int::big::rem(-456, -123));
+println(int::big::rem(+123, +456));
+
+print("\n");
+
+println(int::big::rem("+123123123123123123123123123123", "+456456456456456456456"));
+println(int::big::rem("+123123123123123123123123123123", "-456456456456456456456"));
+println(int::big::rem("-123123123123123123123123123123", "+456456456456456456456"));
+println(int::big::rem("-123123123123123123123123123123", "-456456456456456456456"));
+println(int::big::rem("+123123123123123123123123123123", +456));
+println(int::big::rem("-456456456456456456456", "+123123123123123123123123123123"));
+
+print("\n");
+
+# Knuth's Algorithm D add back check.
+println(int::big::rem("+0x1000000000000000000", "+0x800000000000000001"));
+println(int::big::rem("+0x1000000000000000000", "-0x800000000000000001"));
+println(int::big::rem("-0x1000000000000000000", "+0x800000000000000001"));
+println(int::big::rem("-0x1000000000000000000", "-0x800000000000000001"));
+println(int::big::rem("+0x800000000000000000", "+0x400000000000000001"));
+
+print("\n");
+
+try { int::big::rem(+1, 0); } catch err { dumpln(err); }
+try { int::big::rem(-1, 0); } catch err { dumpln(err); }
+try { int::big::rem("+123123123123123123123123123123", 0); } catch err { dumpln(err); }
+################################################################################
+# 0
+# 0
+# 0
+# 0
+# 0
+# 0
+# 0
+#
+# 87
+# 87
+# -87
+# -87
+# 123
+#
+# 48048048048171171171
+# 48048048048171171171
+# -48048048048171171171
+# -48048048048171171171
+# 435
+# -456456456456456456456
+#
+# 2361183241434822606847
+# 2361183241434822606847
+# -2361183241434822606847
+# -2361183241434822606847
+# 1180591620717411303423
+#
+# "attempted divrem operation with denominator zero"
+# "attempted divrem operation with denominator zero"
+# "attempted divrem operation with denominator zero"

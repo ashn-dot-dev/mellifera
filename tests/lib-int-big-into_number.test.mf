@@ -1,0 +1,37 @@
+let int = import("int");
+
+dumpln(int::big::into_number(0));
+dumpln(int::big::into_number(+1));
+dumpln(int::big::into_number(-1));
+
+print("\n");
+
+dumpln(int::big::into_number(+123));
+dumpln(int::big::into_number(-123));
+dumpln(int::big::into_number("+0x1000000"));
+dumpln(int::big::into_number("-0x1000000"));
+
+print("\n");
+
+dumpln(int::big::into_number(number::MAX_SAFE_INTEGER));
+dumpln(int::big::into_number("+9007199254740993")); # float rounding
+dumpln(int::big::into_number(number::MIN_SAFE_INTEGER));
+dumpln(int::big::into_number("-9007199254740993")); # float rounding
+dumpln(int::big::into_number("+123123123123123123123123123123")); # float rounding
+dumpln(int::big::into_number("-123123123123123123123123123123")); # float rounding
+################################################################################
+# 0
+# 1
+# -1
+#
+# 123
+# -123
+# 16777216
+# -16777216
+#
+# 9007199254740991
+# 9007199254740992
+# -9007199254740991
+# -9007199254740992
+# 123123123123123116907360681984
+# -123123123123123116907360681984

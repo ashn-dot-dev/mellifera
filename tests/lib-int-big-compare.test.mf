@@ -1,0 +1,49 @@
+let int = import("int");
+
+dumpln(int::big::compare(0, 0));
+dumpln(int::big::compare(0, +1));
+dumpln(int::big::compare(0, -1));
+dumpln(int::big::compare(+1, 0));
+dumpln(int::big::compare(-1, 0));
+dumpln(int::big::compare(+1, +1));
+dumpln(int::big::compare(-1, -1));
+
+print("\n");
+
+dumpln(int::big::compare(+123, +456));
+dumpln(int::big::compare(+456, +123));
+dumpln(int::big::compare(-123, -456));
+dumpln(int::big::compare(-456, -123));
+dumpln(int::big::compare(+123, -456));
+dumpln(int::big::compare(-123, +456));
+dumpln(int::big::compare(+456, -123));
+dumpln(int::big::compare(-456, +123));
+
+print("\n");
+
+dumpln(int::big::compare("+123123123123123123123123123123", "+456456456456456"));
+dumpln(int::big::compare("+456456456456456", "+123123123123123123123123123123"));
+dumpln(int::big::compare("+0x1000000000000000000", "+0x1000000000000000001"));
+dumpln(int::big::compare("+0x1000000000000000001", "+0x1000000000000000000"));
+################################################################################
+# 0
+# -1
+# 1
+# 1
+# -1
+# 0
+# 0
+#
+# -1
+# 1
+# 1
+# -1
+# 1
+# -1
+# 1
+# -1
+#
+# 1
+# -1
+# -1
+# 1

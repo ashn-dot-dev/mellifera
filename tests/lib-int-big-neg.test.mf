@@ -1,0 +1,25 @@
+let int = import("int");
+
+dumpln(int::big::neg(0).into_string());
+dumpln(int::big::neg(+1).into_string());
+dumpln(int::big::neg(-1).into_string());
+
+print("\n");
+
+dumpln(int::big::neg(+123).into_string());
+dumpln(int::big::neg(-123).into_string());
+
+print("\n");
+
+dumpln(int::big::neg("+123123123123123123123123123123").into_string());
+dumpln(int::big::neg("-123123123123123123123123123123").into_string());
+################################################################################
+# "0"
+# "-1"
+# "1"
+#
+# "-123"
+# "123"
+#
+# "-123123123123123123123123123123"
+# "123123123123123123123123123123"

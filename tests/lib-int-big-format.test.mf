@@ -1,0 +1,352 @@
+let int = import("int");
+
+# d formatting
+println($`int::big::init(0).format("d") is {repr(int::big::init(0).format("d"))}`);
+println($`int::big::init("+123123123123123123123123123123").format("d") is {repr(int::big::init("+123123123123123123123123123123").format("d"))}`);
+println($`int::big::init("-123123123123123123123123123123").format("d") is {repr(int::big::init("-123123123123123123123123123123").format("d"))}`);
+
+print("\n");
+
+println($`int::big::init(0).format("+d") is {repr(int::big::init(0).format("+d"))}`);
+println($`int::big::init("+123123123123123123123123123123").format("+d") is {repr(int::big::init("+123123123123123123123123123123").format("+d"))}`);
+println($`int::big::init("-123123123123123123123123123123").format("+d") is {repr(int::big::init("-123123123123123123123123123123").format("+d"))}`);
+
+print("\n");
+
+println($`int::big::init(0).format("+32d") is {repr(int::big::init(0).format("+32d"))}`);
+println($`int::big::init("+123123123123123123123123123123").format("+32d") is {repr(int::big::init("+123123123123123123123123123123").format("+32d"))}`);
+println($`int::big::init("-123123123123123123123123123123").format("+32d") is {repr(int::big::init("-123123123123123123123123123123").format("+32d"))}`);
+
+print("\n");
+
+println($`int::big::init(0).format("+032d") is {repr(int::big::init(0).format("+032d"))}`);
+println($`int::big::init("+123123123123123123123123123123").format("+032d") is {repr(int::big::init("+123123123123123123123123123123").format("+032d"))}`);
+println($`int::big::init("-123123123123123123123123123123").format("+032d") is {repr(int::big::init("-123123123123123123123123123123").format("+032d"))}`);
+
+print("\n");
+
+try { int::big::init(0).format("#d"); error "unreachable"; } catch err { println($`int::big::init(0).format("#d") produced the error {repr(err)}`); }
+
+print("\n");
+
+# b formatting
+println($`int::big::init(0).format("b") is {repr(int::big::init(0).format("b"))}`);
+println($`int::big::init("+123123123123123123123123123123").format("b") is {repr(int::big::init("+123123123123123123123123123123").format("b"))}`);
+println($`int::big::init("-123123123123123123123123123123").format("b") is {repr(int::big::init("-123123123123123123123123123123").format("b"))}`);
+
+print("\n");
+
+println($`int::big::init(0).format("+b") is {repr(int::big::init(0).format("+b"))}`);
+println($`int::big::init("+123123123123123123123123123123").format("+b") is {repr(int::big::init("+123123123123123123123123123123").format("+b"))}`);
+println($`int::big::init("-123123123123123123123123123123").format("+b") is {repr(int::big::init("-123123123123123123123123123123").format("+b"))}`);
+
+print("\n");
+
+println($`int::big::init(0).format("+100b") is {repr(int::big::init(0).format("+100b"))}`);
+println($`int::big::init("+123123123123123123123123123123").format("+100b") is {repr(int::big::init("+123123123123123123123123123123").format("+100b"))}`);
+println($`int::big::init("-123123123123123123123123123123").format("+100b") is {repr(int::big::init("-123123123123123123123123123123").format("+100b"))}`);
+
+print("\n");
+
+println($`int::big::init(0).format("+0100b") is {repr(int::big::init(0).format("+0100b"))}`);
+println($`int::big::init("+123123123123123123123123123123").format("+0100b") is {repr(int::big::init("+123123123123123123123123123123").format("+0100b"))}`);
+println($`int::big::init("-123123123123123123123123123123").format("+0100b") is {repr(int::big::init("-123123123123123123123123123123").format("+0100b"))}`);
+
+print("\n");
+
+println($`int::big::init(0).format("+#08b") is {repr(int::big::init(0).format("+#08b"))}`);
+println($`int::big::init(0).format("+#0100b") is {repr(int::big::init(0).format("+#0100b"))}`);
+println($`int::big::init("+123123123123123123123123123123").format("+#08b") is {repr(int::big::init("+123123123123123123123123123123").format("+#08b"))}`);
+println($`int::big::init("+123123123123123123123123123123").format("+#0100b") is {repr(int::big::init("+123123123123123123123123123123").format("+#0100b"))}`);
+println($`int::big::init("-123123123123123123123123123123").format("+#0100b") is {repr(int::big::init("-123123123123123123123123123123").format("+#0100b"))}`);
+println($`int::big::init("+0xFFFFFFFFFFFFFFFFFFFFFFFF").format("#0100b") is {repr(int::big::init("+0xFFFFFFFFFFFFFFFFFFFFFFFF").format("#0100b"))}`);
+println($`int::big::init("-0xFFFFFFFFFFFFFFFFFFFFFFFF").format("#0100b") is {repr(int::big::init("-0xFFFFFFFFFFFFFFFFFFFFFFFF").format("#0100b"))}`);
+
+print("\n");
+
+println($`int::big::init(0).format("+#100b") is {repr(int::big::init(0).format("+#100b"))}`);
+println($`int::big::init("+123123123123123123123123123123").format("+#100b") is {repr(int::big::init("+123123123123123123123123123123").format("+#100b"))}`);
+println($`int::big::init("-123123123123123123123123123123").format("+#100b") is {repr(int::big::init("-123123123123123123123123123123").format("+#100b"))}`);
+
+print("\n");
+
+# o formatting
+println($`int::big::init(0).format("o") is {repr(int::big::init(0).format("o"))}`);
+println($`int::big::init("+123123123123123123123123123123").format("o") is {repr(int::big::init("+123123123123123123123123123123").format("o"))}`);
+println($`int::big::init("-123123123123123123123123123123").format("o") is {repr(int::big::init("-123123123123123123123123123123").format("o"))}`);
+
+print("\n");
+
+println($`int::big::init(0).format("+o") is {repr(int::big::init(0).format("+o"))}`);
+println($`int::big::init("+123123123123123123123123123123").format("+o") is {repr(int::big::init("+123123123123123123123123123123").format("+o"))}`);
+println($`int::big::init("-123123123123123123123123123123").format("+o") is {repr(int::big::init("-123123123123123123123123123123").format("+o"))}`);
+
+print("\n");
+
+println($`int::big::init(0).format("+32o") is {repr(int::big::init(0).format("+32o"))}`);
+println($`int::big::init("+123123123123123123123123123123").format("+32o") is {repr(int::big::init("+123123123123123123123123123123").format("+32o"))}`);
+println($`int::big::init("-123123123123123123123123123123").format("+32o") is {repr(int::big::init("-123123123123123123123123123123").format("+32o"))}`);
+
+print("\n");
+
+println($`int::big::init(0).format("+032o") is {repr(int::big::init(0).format("+032o"))}`);
+println($`int::big::init("+123123123123123123123123123123").format("+032o") is {repr(int::big::init("+123123123123123123123123123123").format("+032o"))}`);
+println($`int::big::init("-123123123123123123123123123123").format("+032o") is {repr(int::big::init("-123123123123123123123123123123").format("+032o"))}`);
+
+print("\n");
+
+println($`int::big::init(0).format("+#08o") is {repr(int::big::init(0).format("+#08o"))}`);
+println($`int::big::init(0).format("+#032o") is {repr(int::big::init(0).format("+#032o"))}`);
+println($`int::big::init("+123123123123123123123123123123").format("+#08o") is {repr(int::big::init("+123123123123123123123123123123").format("+#08o"))}`);
+println($`int::big::init("+123123123123123123123123123123").format("+#032o") is {repr(int::big::init("+123123123123123123123123123123").format("+#032o"))}`);
+println($`int::big::init("-123123123123123123123123123123").format("+#032o") is {repr(int::big::init("-123123123123123123123123123123").format("+#032o"))}`);
+println($`int::big::init("+0xFFFFFFFFFFFFFFFFFFFFFFFF").format("#032o") is {repr(int::big::init("+0xFFFFFFFFFFFFFFFFFFFFFFFF").format("#032o"))}`);
+println($`int::big::init("-0xFFFFFFFFFFFFFFFFFFFFFFFF").format("#032o") is {repr(int::big::init("-0xFFFFFFFFFFFFFFFFFFFFFFFF").format("#032o"))}`);
+
+print("\n");
+
+println($`int::big::init(0).format("+#32o") is {repr(int::big::init(0).format("+#32o"))}`);
+println($`int::big::init("+123123123123123123123123123123").format("+#32o") is {repr(int::big::init("+123123123123123123123123123123").format("+#32o"))}`);
+println($`int::big::init("-123123123123123123123123123123").format("+#32o") is {repr(int::big::init("-123123123123123123123123123123").format("+#32o"))}`);
+
+print("\n");
+
+# x formatting
+println($`int::big::init(0).format("x") is {repr(int::big::init(0).format("x"))}`);
+println($`int::big::init("+123123123123123123123123123123").format("x") is {repr(int::big::init("+123123123123123123123123123123").format("x"))}`);
+println($`int::big::init("-123123123123123123123123123123").format("x") is {repr(int::big::init("-123123123123123123123123123123").format("x"))}`);
+
+print("\n");
+
+println($`int::big::init(0).format("+x") is {repr(int::big::init(0).format("+x"))}`);
+println($`int::big::init("+123123123123123123123123123123").format("+x") is {repr(int::big::init("+123123123123123123123123123123").format("+x"))}`);
+println($`int::big::init("-123123123123123123123123123123").format("+x") is {repr(int::big::init("-123123123123123123123123123123").format("+x"))}`);
+
+print("\n");
+
+println($`int::big::init(0).format("+32x") is {repr(int::big::init(0).format("+32x"))}`);
+println($`int::big::init("+123123123123123123123123123123").format("+32x") is {repr(int::big::init("+123123123123123123123123123123").format("+32x"))}`);
+println($`int::big::init("-123123123123123123123123123123").format("+32x") is {repr(int::big::init("-123123123123123123123123123123").format("+32x"))}`);
+
+print("\n");
+
+println($`int::big::init(0).format("+032x") is {repr(int::big::init(0).format("+032x"))}`);
+println($`int::big::init("+123123123123123123123123123123").format("+032x") is {repr(int::big::init("+123123123123123123123123123123").format("+032x"))}`);
+println($`int::big::init("-123123123123123123123123123123").format("+032x") is {repr(int::big::init("-123123123123123123123123123123").format("+032x"))}`);
+
+print("\n");
+
+println($`int::big::init(0).format("+#08x") is {repr(int::big::init(0).format("+#08x"))}`);
+println($`int::big::init(0).format("+#032x") is {repr(int::big::init(0).format("+#032x"))}`);
+println($`int::big::init("+123123123123123123123123123123").format("+#08x") is {repr(int::big::init("+123123123123123123123123123123").format("+#08x"))}`);
+println($`int::big::init("+123123123123123123123123123123").format("+#032x") is {repr(int::big::init("+123123123123123123123123123123").format("+#032x"))}`);
+println($`int::big::init("-123123123123123123123123123123").format("+#032x") is {repr(int::big::init("-123123123123123123123123123123").format("+#032x"))}`);
+println($`int::big::init("+0xFFFFFFFFFFFFFFFFFFFFFFFF").format("#032x") is {repr(int::big::init("+0xFFFFFFFFFFFFFFFFFFFFFFFF").format("#032x"))}`);
+println($`int::big::init("-0xFFFFFFFFFFFFFFFFFFFFFFFF").format("#032x") is {repr(int::big::init("-0xFFFFFFFFFFFFFFFFFFFFFFFF").format("#032x"))}`);
+
+print("\n");
+
+println($`int::big::init(0).format("+#32x") is {repr(int::big::init(0).format("+#32x"))}`);
+println($`int::big::init("+123123123123123123123123123123").format("+#32x") is {repr(int::big::init("+123123123123123123123123123123").format("+#32x"))}`);
+println($`int::big::init("-123123123123123123123123123123").format("+#32x") is {repr(int::big::init("-123123123123123123123123123123").format("+#32x"))}`);
+
+print("\n");
+
+# X formatting
+println($`int::big::init(0).format("X") is {repr(int::big::init(0).format("X"))}`);
+println($`int::big::init("+123123123123123123123123123123").format("X") is {repr(int::big::init("+123123123123123123123123123123").format("X"))}`);
+println($`int::big::init("-123123123123123123123123123123").format("X") is {repr(int::big::init("-123123123123123123123123123123").format("X"))}`);
+
+print("\n");
+
+println($`int::big::init(0).format("+X") is {repr(int::big::init(0).format("+X"))}`);
+println($`int::big::init("+123123123123123123123123123123").format("+X") is {repr(int::big::init("+123123123123123123123123123123").format("+X"))}`);
+println($`int::big::init("-123123123123123123123123123123").format("+X") is {repr(int::big::init("-123123123123123123123123123123").format("+X"))}`);
+
+print("\n");
+
+println($`int::big::init(0).format("+32X") is {repr(int::big::init(0).format("+32X"))}`);
+println($`int::big::init("+123123123123123123123123123123").format("+32X") is {repr(int::big::init("+123123123123123123123123123123").format("+32X"))}`);
+println($`int::big::init("-123123123123123123123123123123").format("+32X") is {repr(int::big::init("-123123123123123123123123123123").format("+32X"))}`);
+
+print("\n");
+
+println($`int::big::init(0).format("+032X") is {repr(int::big::init(0).format("+032X"))}`);
+println($`int::big::init("+123123123123123123123123123123").format("+032X") is {repr(int::big::init("+123123123123123123123123123123").format("+032X"))}`);
+println($`int::big::init("-123123123123123123123123123123").format("+032X") is {repr(int::big::init("-123123123123123123123123123123").format("+032X"))}`);
+
+print("\n");
+
+println($`int::big::init(0).format("+#08X") is {repr(int::big::init(0).format("+#08X"))}`);
+println($`int::big::init(0).format("+#032X") is {repr(int::big::init(0).format("+#032X"))}`);
+println($`int::big::init("+123123123123123123123123123123").format("+#08X") is {repr(int::big::init("+123123123123123123123123123123").format("+#08X"))}`);
+println($`int::big::init("+123123123123123123123123123123").format("+#032X") is {repr(int::big::init("+123123123123123123123123123123").format("+#032X"))}`);
+println($`int::big::init("-123123123123123123123123123123").format("+#032X") is {repr(int::big::init("-123123123123123123123123123123").format("+#032X"))}`);
+println($`int::big::init("+0xFFFFFFFFFFFFFFFFFFFFFFFF").format("#032X") is {repr(int::big::init("+0xFFFFFFFFFFFFFFFFFFFFFFFF").format("#032X"))}`);
+println($`int::big::init("-0xFFFFFFFFFFFFFFFFFFFFFFFF").format("#032X") is {repr(int::big::init("-0xFFFFFFFFFFFFFFFFFFFFFFFF").format("#032X"))}`);
+
+print("\n");
+
+println($`int::big::init(0).format("+#32X") is {repr(int::big::init(0).format("+#32X"))}`);
+println($`int::big::init("+123123123123123123123123123123").format("+#32X") is {repr(int::big::init("+123123123123123123123123123123").format("+#32X"))}`);
+println($`int::big::init("-123123123123123123123123123123").format("+#32X") is {repr(int::big::init("-123123123123123123123123123123").format("+#32X"))}`);
+
+print("\n");
+
+# invalid format strings
+try { int::big::init(0).format(""); error "unreachable"; } catch err { println($`int::big::init(0).format("") produced the error {repr(err)}`); }
+try { int::big::init(0).format("oops"); error "unreachable"; } catch err { println($`int::big::init(0).format("oops") produced the error {repr(err)}`); }
+try { int::big::init(0).format("+#08"); error "unreachable"; } catch err { println($`int::big::init(0).format("+#08") produced the error {repr(err)}`); }
+try { int::big::init(0).format("f"); error "unreachable"; } catch err { println($`int::big::init(0).format("f") produced the error {repr(err)}`); }
+try { int::big::init(0).format(".3d"); error "unreachable"; } catch err { println($`int::big::init(0).format(".3d") produced the error {repr(err)}`); }
+
+print("\n");
+
+# invalid big integers
+try { int::big::format(+3.14, "d"); error "unreachable"; } catch err { println($`int::big::format(+3.14, "d") produced the error {repr(err)}`); }
+try { int::big::format(-3.14, "d"); error "unreachable"; } catch err { println($`int::big::format(-3.14, "d") produced the error {repr(err)}`); }
+try { int::big::format(+Inf, "d"); error "unreachable"; } catch err { println($`int::big::format(+Inf, "d") produced the error {repr(err)}`); }
+try { int::big::format(-Inf, "d"); error "unreachable"; } catch err { println($`int::big::format(-Inf, "d") produced the error {repr(err)}`); }
+try { int::big::format(NaN, "d"); error "unreachable"; } catch err { println($`int::big::format(NaN, "d") produced the error {repr(err)}`); }
+################################################################################
+# int::big::init(0).format("d") is "0"
+# int::big::init("+123123123123123123123123123123").format("d") is "123123123123123123123123123123"
+# int::big::init("-123123123123123123123123123123").format("d") is "-123123123123123123123123123123"
+#
+# int::big::init(0).format("+d") is "+0"
+# int::big::init("+123123123123123123123123123123").format("+d") is "+123123123123123123123123123123"
+# int::big::init("-123123123123123123123123123123").format("+d") is "-123123123123123123123123123123"
+#
+# int::big::init(0).format("+32d") is "                              +0"
+# int::big::init("+123123123123123123123123123123").format("+32d") is " +123123123123123123123123123123"
+# int::big::init("-123123123123123123123123123123").format("+32d") is " -123123123123123123123123123123"
+#
+# int::big::init(0).format("+032d") is "+0000000000000000000000000000000"
+# int::big::init("+123123123123123123123123123123").format("+032d") is "+0123123123123123123123123123123"
+# int::big::init("-123123123123123123123123123123").format("+032d") is "-0123123123123123123123123123123"
+#
+# int::big::init(0).format("#d") produced the error "# flag not supported for decimal integer format, received \"#d\""
+#
+# int::big::init(0).format("b") is "0"
+# int::big::init("+123123123123123123123123123123").format("b") is "1100011011101010100001111011101101010101000011101110001011010011100111000010011111111001110110011"
+# int::big::init("-123123123123123123123123123123").format("b") is "-1100011011101010100001111011101101010101000011101110001011010011100111000010011111111001110110011"
+#
+# int::big::init(0).format("+b") is "+0"
+# int::big::init("+123123123123123123123123123123").format("+b") is "+1100011011101010100001111011101101010101000011101110001011010011100111000010011111111001110110011"
+# int::big::init("-123123123123123123123123123123").format("+b") is "-1100011011101010100001111011101101010101000011101110001011010011100111000010011111111001110110011"
+#
+# int::big::init(0).format("+100b") is "                                                                                                  +0"
+# int::big::init("+123123123123123123123123123123").format("+100b") is "  +1100011011101010100001111011101101010101000011101110001011010011100111000010011111111001110110011"
+# int::big::init("-123123123123123123123123123123").format("+100b") is "  -1100011011101010100001111011101101010101000011101110001011010011100111000010011111111001110110011"
+#
+# int::big::init(0).format("+0100b") is "+000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+# int::big::init("+123123123123123123123123123123").format("+0100b") is "+001100011011101010100001111011101101010101000011101110001011010011100111000010011111111001110110011"
+# int::big::init("-123123123123123123123123123123").format("+0100b") is "-001100011011101010100001111011101101010101000011101110001011010011100111000010011111111001110110011"
+#
+# int::big::init(0).format("+#08b") is "+0b00000"
+# int::big::init(0).format("+#0100b") is "+0b0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+# int::big::init("+123123123123123123123123123123").format("+#08b") is "+0b1100011011101010100001111011101101010101000011101110001011010011100111000010011111111001110110011"
+# int::big::init("+123123123123123123123123123123").format("+#0100b") is "+0b1100011011101010100001111011101101010101000011101110001011010011100111000010011111111001110110011"
+# int::big::init("-123123123123123123123123123123").format("+#0100b") is "-0b1100011011101010100001111011101101010101000011101110001011010011100111000010011111111001110110011"
+# int::big::init("+0xFFFFFFFFFFFFFFFFFFFFFFFF").format("#0100b") is "0b00111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111"
+# int::big::init("-0xFFFFFFFFFFFFFFFFFFFFFFFF").format("#0100b") is "-0b0111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111"
+#
+# int::big::init(0).format("+#100b") is "                                                                                                +0b0"
+# int::big::init("+123123123123123123123123123123").format("+#100b") is "+0b1100011011101010100001111011101101010101000011101110001011010011100111000010011111111001110110011"
+# int::big::init("-123123123123123123123123123123").format("+#100b") is "-0b1100011011101010100001111011101101010101000011101110001011010011100111000010011111111001110110011"
+#
+# int::big::init(0).format("o") is "0"
+# int::big::init("+123123123123123123123123123123").format("o") is "143352417355250356132347023771663"
+# int::big::init("-123123123123123123123123123123").format("o") is "-143352417355250356132347023771663"
+#
+# int::big::init(0).format("+o") is "+0"
+# int::big::init("+123123123123123123123123123123").format("+o") is "+143352417355250356132347023771663"
+# int::big::init("-123123123123123123123123123123").format("+o") is "-143352417355250356132347023771663"
+#
+# int::big::init(0).format("+32o") is "                              +0"
+# int::big::init("+123123123123123123123123123123").format("+32o") is "+143352417355250356132347023771663"
+# int::big::init("-123123123123123123123123123123").format("+32o") is "-143352417355250356132347023771663"
+#
+# int::big::init(0).format("+032o") is "+0000000000000000000000000000000"
+# int::big::init("+123123123123123123123123123123").format("+032o") is "+143352417355250356132347023771663"
+# int::big::init("-123123123123123123123123123123").format("+032o") is "-143352417355250356132347023771663"
+#
+# int::big::init(0).format("+#08o") is "+0o00000"
+# int::big::init(0).format("+#032o") is "+0o00000000000000000000000000000"
+# int::big::init("+123123123123123123123123123123").format("+#08o") is "+0o143352417355250356132347023771663"
+# int::big::init("+123123123123123123123123123123").format("+#032o") is "+0o143352417355250356132347023771663"
+# int::big::init("-123123123123123123123123123123").format("+#032o") is "-0o143352417355250356132347023771663"
+# int::big::init("+0xFFFFFFFFFFFFFFFFFFFFFFFF").format("#032o") is "0o77777777777777777777777777777777"
+# int::big::init("-0xFFFFFFFFFFFFFFFFFFFFFFFF").format("#032o") is "-0o77777777777777777777777777777777"
+#
+# int::big::init(0).format("+#32o") is "                            +0o0"
+# int::big::init("+123123123123123123123123123123").format("+#32o") is "+0o143352417355250356132347023771663"
+# int::big::init("-123123123123123123123123123123").format("+#32o") is "-0o143352417355250356132347023771663"
+#
+# int::big::init(0).format("x") is "0"
+# int::big::init("+123123123123123123123123123123").format("x") is "18dd50f76aa1dc5a7384ff3b3"
+# int::big::init("-123123123123123123123123123123").format("x") is "-18dd50f76aa1dc5a7384ff3b3"
+#
+# int::big::init(0).format("+x") is "+0"
+# int::big::init("+123123123123123123123123123123").format("+x") is "+18dd50f76aa1dc5a7384ff3b3"
+# int::big::init("-123123123123123123123123123123").format("+x") is "-18dd50f76aa1dc5a7384ff3b3"
+#
+# int::big::init(0).format("+32x") is "                              +0"
+# int::big::init("+123123123123123123123123123123").format("+32x") is "      +18dd50f76aa1dc5a7384ff3b3"
+# int::big::init("-123123123123123123123123123123").format("+32x") is "      -18dd50f76aa1dc5a7384ff3b3"
+#
+# int::big::init(0).format("+032x") is "+0000000000000000000000000000000"
+# int::big::init("+123123123123123123123123123123").format("+032x") is "+00000018dd50f76aa1dc5a7384ff3b3"
+# int::big::init("-123123123123123123123123123123").format("+032x") is "-00000018dd50f76aa1dc5a7384ff3b3"
+#
+# int::big::init(0).format("+#08x") is "+0x00000"
+# int::big::init(0).format("+#032x") is "+0x00000000000000000000000000000"
+# int::big::init("+123123123123123123123123123123").format("+#08x") is "+0x18dd50f76aa1dc5a7384ff3b3"
+# int::big::init("+123123123123123123123123123123").format("+#032x") is "+0x000018dd50f76aa1dc5a7384ff3b3"
+# int::big::init("-123123123123123123123123123123").format("+#032x") is "-0x000018dd50f76aa1dc5a7384ff3b3"
+# int::big::init("+0xFFFFFFFFFFFFFFFFFFFFFFFF").format("#032x") is "0x000000ffffffffffffffffffffffff"
+# int::big::init("-0xFFFFFFFFFFFFFFFFFFFFFFFF").format("#032x") is "-0x00000ffffffffffffffffffffffff"
+#
+# int::big::init(0).format("+#32x") is "                            +0x0"
+# int::big::init("+123123123123123123123123123123").format("+#32x") is "    +0x18dd50f76aa1dc5a7384ff3b3"
+# int::big::init("-123123123123123123123123123123").format("+#32x") is "    -0x18dd50f76aa1dc5a7384ff3b3"
+#
+# int::big::init(0).format("X") is "0"
+# int::big::init("+123123123123123123123123123123").format("X") is "18DD50F76AA1DC5A7384FF3B3"
+# int::big::init("-123123123123123123123123123123").format("X") is "-18DD50F76AA1DC5A7384FF3B3"
+#
+# int::big::init(0).format("+X") is "+0"
+# int::big::init("+123123123123123123123123123123").format("+X") is "+18DD50F76AA1DC5A7384FF3B3"
+# int::big::init("-123123123123123123123123123123").format("+X") is "-18DD50F76AA1DC5A7384FF3B3"
+#
+# int::big::init(0).format("+32X") is "                              +0"
+# int::big::init("+123123123123123123123123123123").format("+32X") is "      +18DD50F76AA1DC5A7384FF3B3"
+# int::big::init("-123123123123123123123123123123").format("+32X") is "      -18DD50F76AA1DC5A7384FF3B3"
+#
+# int::big::init(0).format("+032X") is "+0000000000000000000000000000000"
+# int::big::init("+123123123123123123123123123123").format("+032X") is "+00000018DD50F76AA1DC5A7384FF3B3"
+# int::big::init("-123123123123123123123123123123").format("+032X") is "-00000018DD50F76AA1DC5A7384FF3B3"
+#
+# int::big::init(0).format("+#08X") is "+0x00000"
+# int::big::init(0).format("+#032X") is "+0x00000000000000000000000000000"
+# int::big::init("+123123123123123123123123123123").format("+#08X") is "+0x18DD50F76AA1DC5A7384FF3B3"
+# int::big::init("+123123123123123123123123123123").format("+#032X") is "+0x000018DD50F76AA1DC5A7384FF3B3"
+# int::big::init("-123123123123123123123123123123").format("+#032X") is "-0x000018DD50F76AA1DC5A7384FF3B3"
+# int::big::init("+0xFFFFFFFFFFFFFFFFFFFFFFFF").format("#032X") is "0x000000FFFFFFFFFFFFFFFFFFFFFFFF"
+# int::big::init("-0xFFFFFFFFFFFFFFFFFFFFFFFF").format("#032X") is "-0x00000FFFFFFFFFFFFFFFFFFFFFFFF"
+#
+# int::big::init(0).format("+#32X") is "                            +0x0"
+# int::big::init("+123123123123123123123123123123").format("+#32X") is "    +0x18DD50F76AA1DC5A7384FF3B3"
+# int::big::init("-123123123123123123123123123123").format("+#32X") is "    -0x18DD50F76AA1DC5A7384FF3B3"
+#
+# int::big::init(0).format("") produced the error "expected format string matching \\+?#?0?\\d*[dboxX], received \"\""
+# int::big::init(0).format("oops") produced the error "expected format string matching \\+?#?0?\\d*[dboxX], received \"oops\""
+# int::big::init(0).format("+#08") produced the error "expected format string matching \\+?#?0?\\d*[dboxX], received \"+#08\""
+# int::big::init(0).format("f") produced the error "expected format string matching \\+?#?0?\\d*[dboxX], received \"f\""
+# int::big::init(0).format(".3d") produced the error "expected format string matching \\+?#?0?\\d*[dboxX], received \".3d\""
+#
+# int::big::format(+3.14, "d") produced the error "value 3.14 is not an integer"
+# int::big::format(-3.14, "d") produced the error "value -3.14 is not an integer"
+# int::big::format(+Inf, "d") produced the error "value Inf is not an integer"
+# int::big::format(-Inf, "d") produced the error "value -Inf is not an integer"
+# int::big::format(NaN, "d") produced the error "value NaN is not an integer"

@@ -1,0 +1,43 @@
+let int = import("int");
+
+dumpln(string::init(int::big::init(0)));
+dumpln(string::init(int::big::init(+1)));
+dumpln(string::init(int::big::init(-1)));
+
+print("\n");
+
+dumpln(string::init(int::big::init(+123)));
+dumpln(string::init(int::big::init(-123)));
+dumpln(string::init(int::big::init(+0x1000000)));
+dumpln(string::init(int::big::init(-0x1000000)));
+
+print("\n");
+
+dumpln(string::init(int::big::init("+123123123123123123123123123123")));
+dumpln(string::init(int::big::init("-123123123123123123123123123123")));
+dumpln(string::init(int::big::init("+0xFFFFFFFFFFFFFFFFFFFFFFFF")));
+dumpln(string::init(int::big::init("-0xFFFFFFFFFFFFFFFFFFFFFFFF")));
+
+print("\n");
+
+dumpln(int::big::into_string(true));
+dumpln(int::big::into_string("0x7b"));
+dumpln(int::big::into_string(math::pow(2, 8)));
+################################################################################
+# "0"
+# "1"
+# "-1"
+#
+# "123"
+# "-123"
+# "16777216"
+# "-16777216"
+#
+# "123123123123123123123123123123"
+# "-123123123123123123123123123123"
+# "79228162514264337593543950335"
+# "-79228162514264337593543950335"
+#
+# "1"
+# "123"
+# "256"
