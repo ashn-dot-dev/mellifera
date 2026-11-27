@@ -14,6 +14,8 @@ println($`number::init("-Inf") is {repr(number::init("-Inf"))}`);
 println($`number::init("NaN") is {repr(number::init("NaN"))}`);
 println($`number::init("+NaN") is {repr(number::init("+NaN"))}`);
 println($`number::init("-NaN") is {repr(number::init("-NaN"))}`);
+println($`number::init() with +1e309 is {number::init("+1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")}`);
+println($`number::init() with -1e309 is {number::init("-1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")}`);
 
 print("\n");
 
@@ -44,6 +46,8 @@ try { number::init("0x20000000000000"); } catch err { println($`number::init("0x
 # number::init("NaN") is NaN
 # number::init("+NaN") is NaN
 # number::init("-NaN") is NaN
+# number::init() with +1e309 is Inf
+# number::init() with -1e309 is -Inf
 #
 # number::init(null) produces the error "cannot convert value null to number"
 # number::init("foo") produces the error "cannot convert value \"foo\" to number"

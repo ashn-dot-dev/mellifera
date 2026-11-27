@@ -2967,6 +2967,22 @@ func (self *Lexer) lexNumber() (Token, error) {
 		self.position += len(dec)
 		parsed, err := strconv.ParseFloat(dec, 64)
 		if err != nil {
+			if errors.Is(err, strconv.ErrRange) {
+				// From https://pkg.go.dev/strconv#ParseFloat:
+				//
+				// > f s is syntactically well-formed but is more than 1/2 ULP
+				// > away from the largest floating point number of the given
+				// > size, ParseFloat returns f = > ±Inf, err.Err = ErrRange.
+				//
+				// Mellifera chooses to accept this parsing as ±Inf without
+				// error.
+				return Token{
+					Kind:     TOKEN_NUMBER,
+					Literal:  dec,
+					Location: self.currentLocation(),
+					data:     self.ctx.NewNumber(parsed),
+				}, nil
+			}
 			return Token{}, err
 		}
 		return Token{
@@ -8656,6 +8672,18 @@ func BuiltinNumberInit(ctx *Context) Value {
 			if reNumberDecFullmatch.MatchString(data) {
 				parsed, err := strconv.ParseFloat(data, 64)
 				if err != nil {
+					if errors.Is(err, strconv.ErrRange) {
+						// From https://pkg.go.dev/strconv#ParseFloat:
+						//
+						// > f s is syntactically well-formed but is more than
+						// > 1/2 ULP away from the largest floating point
+						// > number of the given size, ParseFloat returns f =
+						// > ±Inf, err.Err = ErrRange.
+						//
+						// Mellifera chooses to accept this parsing as ±Inf
+						// without error.
+						return ctx.NewNumber(float64(sign) * parsed), nil
+					}
 					return nil, NewError(nil, ctx.NewString(err.Error()))
 				}
 				return ctx.NewNumber(float64(sign) * parsed), nil
